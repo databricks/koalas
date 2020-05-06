@@ -1331,6 +1331,35 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 kdf.groupby("d").apply(sum).sort_index(), pdf.groupby("d").apply(sum).sort_index()
             )
 
+    def test_apply_with_side_effect(self):
+        pdf = pd.DataFrame(
+            {"d": [1.0, 1.0, 1.0, 2.0, 2.0, 2.0], "v": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        acc = ks.utils.default_session().sparkContext.accumulator(0)
+
+        def sum_with_acc_frame(x) -> ks.DataFrame[np.float64, np.float64]:
+            nonlocal acc
+            acc += 1
+            return np.sum(x)
+
+        actual = kdf.groupby("d").apply(sum_with_acc_frame).sort_index()
+        actual.columns = ["d", "v"]
+        self.assert_eq(actual, pdf.groupby("d").apply(sum).sort_index().reset_index(drop=True))
+        self.assert_eq(acc.value, 2)
+
+        def sum_with_acc_series(x) -> np.float64:
+            nonlocal acc
+            acc += 1
+            return np.sum(x)
+
+        self.assert_eq(
+            kdf.groupby("d")["v"].apply(sum_with_acc_series).sort_index(),
+            pdf.groupby("d")["v"].apply(sum).sort_index().reset_index(drop=True),
+        )
+        self.assert_eq(acc.value, 4)
+
     def test_transform(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},
