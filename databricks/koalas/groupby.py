@@ -977,7 +977,7 @@ class GroupBy(object):
         def pandas_groupby_apply(pdf):
 
             if not is_series_groupby and LooseVersion(pd.__version__) < LooseVersion("0.25"):
-                # `groupby.apply` in pandas<2.5 runs the functions twice for the first group.
+                # `groupby.apply` in pandas<0.25 runs the functions twice for the first group.
                 # https://github.com/pandas-dev/pandas/pull/24748
                 from pandas.core.base import SelectionMixin
 
