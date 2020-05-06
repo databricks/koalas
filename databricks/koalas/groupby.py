@@ -21,6 +21,7 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 import sys
 import inspect
 from collections import Callable, OrderedDict, namedtuple
+from distutils.version import LooseVersion
 from functools import partial
 from itertools import product
 from typing import Any, List, Tuple, Union
@@ -974,10 +975,34 @@ class GroupBy(object):
                     return_schema = StructType([StructField("0", return_schema)])
 
         def pandas_groupby_apply(pdf):
-            if is_series_groupby:
-                pdf_or_ser = pdf.groupby(input_groupnames)[name].apply(func)
+
+            if not is_series_groupby and LooseVersion(pd.__version__) < LooseVersion("0.25"):
+                # `groupby.apply` in pandas<2.5 runs the functions twice for the first group.
+                # https://github.com/pandas-dev/pandas/pull/24748
+                from pandas.core.base import SelectionMixin
+
+                f = SelectionMixin._builtin_table.get(func, func)
+
+                dummy_value = None
+
+                def _func(df):
+                    nonlocal dummy_value
+                    if dummy_value is None:
+                        if should_return_series:
+                            dummy_value = pd.Series()
+                        else:
+                            dummy_value = pd.DataFrame()
+                        return dummy_value
+                    else:
+                        return f(df)
+
             else:
-                pdf_or_ser = pdf.groupby(input_groupnames).apply(func)
+                _func = func
+
+            if is_series_groupby:
+                pdf_or_ser = pdf.groupby(input_groupnames)[name].apply(_func)
+            else:
+                pdf_or_ser = pdf.groupby(input_groupnames).apply(_func)
 
             if not isinstance(pdf_or_ser, pd.DataFrame):
                 return pd.DataFrame(pdf_or_ser)
