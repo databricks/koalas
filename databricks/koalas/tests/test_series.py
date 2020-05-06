@@ -1404,6 +1404,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
             expected_result = repr((pser.floordiv(-100), pser.mod(-100)))
             self.assert_eq(repr(kser.divmod(-100)), expected_result)
+            expected_result = repr((pser.floordiv(0), pser.mod(0)))
+            self.assert_eq(repr(kser.divmod(0)), expected_result)
+            expected_result = repr((pser.floordiv(100), pser.mod(100)))
+            self.assert_eq(repr(kser.divmod(100)), expected_result)
 
     def test_rdivmod(self):
         pser = pd.Series([100, None, 300, None, 500], name="Koalas")
@@ -1416,6 +1420,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
             expected_result = repr((pser.rfloordiv(-100), pser.rmod(-100)))
             self.assert_eq(repr(kser.rdivmod(-100)), expected_result)
+            expected_result = repr((pser.rfloordiv(0), pser.rmod(0)))
+            self.assert_eq(repr(kser.rdivmod(0)), expected_result)
+            expected_result = repr((pser.rfloordiv(100), pser.rmod(100)))
+            self.assert_eq(repr(kser.rdivmod(100)), expected_result)
 
     def test_mod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
