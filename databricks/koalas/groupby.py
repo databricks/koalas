@@ -626,7 +626,7 @@ class GroupBy(object):
         Name: a, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._diff(periods, part_cols=[s.spark_column for s in sg._groupkeys])
         )
 
     def cummax(self):
@@ -674,7 +674,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cum(F.max, True, part_cols=[s.spark_column for s in sg._groupkeys])
         )
 
     def cummin(self):
@@ -721,7 +721,7 @@ class GroupBy(object):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cum(F.min, True, part_cols=[s.spark_column for s in sg._groupkeys])
         )
 
     def cumprod(self):
@@ -769,7 +769,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cumprod(True, part_cols=[s.spark_column for s in sg._groupkeys])
         )
 
     def cumsum(self):
@@ -817,7 +817,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cum(F.sum, True, part_cols=[s.spark_column for s in sg._groupkeys])
         )
 
     def apply(self, func):
@@ -1224,7 +1224,9 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._rank(method, ascending, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._rank(
+                method, ascending, part_cols=[s.spark_column for s in sg._groupkeys]
+            )
         )
 
     # TODO: add axis parameter
@@ -1662,7 +1664,9 @@ class GroupBy(object):
         8  0
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._shift(
+                periods, fill_value, part_cols=[s.spark_column for s in sg._groupkeys]
+            )
         )
 
     def transform(self, func):
@@ -2261,7 +2265,9 @@ class SeriesGroupBy(GroupBy):
         return op(self)
 
     def _fillna(self, *args, **kwargs):
-        return Series._fillna(self._kser, *args, **kwargs, part_cols=self._groupkeys_scols)
+        return self._kser._fillna(
+            *args, **kwargs, part_cols=[s.spark_column for s in self._groupkeys]
+        )
 
     @property
     def _kdf(self) -> DataFrame:
