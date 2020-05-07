@@ -1592,8 +1592,8 @@ class GroupBy(object):
         10    10
         Name: b, dtype: int64
         """
-        tmp_col = "__row_number__"
         sdf = self._kdf._sdf
+        tmp_col = verify_temp_column_name(sdf, "__row_number__")
         window = Window.partitionBy(self._groupkeys_scols).orderBy(NATURAL_ORDER_COLUMN_NAME)
         sdf = (
             sdf.withColumn(tmp_col, F.row_number().over(window))
