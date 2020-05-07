@@ -96,6 +96,36 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             pdf1.groupby(pdf2[("x", "a")])[[("y", "c")]].sum().sort_index(),
         )
 
+    def test_split_apply_combine_on_series(self):
+        pdf1 = pd.DataFrame({"C": [0.362, 0.227, 1.267, -0.562], "B": [1, 2, 3, 4]})
+        pdf2 = pd.DataFrame({"A": [1, 1, 2, 2]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        for as_index in [True, False]:
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
+
+            with self.subTest(as_index=as_index):
+                self.assert_eq(
+                    sort(kdf1.groupby(kdf2.A, as_index=as_index).sum()),
+                    sort(pdf1.groupby(pdf2.A, as_index=as_index).sum()),
+                )
+                self.assert_eq(
+                    sort(kdf1.groupby(kdf2.A, as_index=as_index).B.sum()),
+                    sort(pdf1.groupby(pdf2.A, as_index=as_index).B.sum()),
+                )
+
+        self.assert_eq(
+            kdf1.B.groupby(kdf2.A).sum().sort_index(), pdf1.B.groupby(pdf2.A).sum().sort_index(),
+        )
+        self.assert_eq(
+            (kdf1.B + 1).groupby(kdf2.A).sum().sort_index(),
+            (pdf1.B + 1).groupby(pdf2.A).sum().sort_index(),
+        )
+
     def test_aggregate(self):
         pdf1 = pd.DataFrame({"C": [0.362, 0.227, 1.267, -0.562], "B": [1, 2, 3, 4]})
         pdf2 = pd.DataFrame({"A": [1, 1, 2, 2]})

@@ -57,7 +57,13 @@ from databricks.koalas.missing.groupby import (
 )
 from databricks.koalas.series import Series, _col
 from databricks.koalas.config import get_option
-from databricks.koalas.utils import column_labels_level, scol_for, name_like_string
+from databricks.koalas.utils import (
+    align_diff_frames,
+    column_labels_level,
+    name_like_string,
+    scol_for,
+    verify_temp_column_name,
+)
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 
 # to keep it the same as pandas
@@ -1965,14 +1971,106 @@ class GroupBy(object):
                 kdf = kdf.reset_index()
         return kdf
 
+    @staticmethod
+    def _resolve_grouping_from_diff_dataframes(
+        kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]
+    ) -> Tuple[DataFrame, List[Series], List[Tuple[str, ...]]]:
+        column_labels_level = kdf._internal.column_labels_level
+
+        need_assign = []
+        column_labels = []
+        for i, col_or_s in enumerate(by):
+            if isinstance(col_or_s, Series):
+                if any(
+                    col_or_s.spark_column._jc.equals(scol._jc)
+                    for scol in kdf._internal.data_spark_columns
+                ):
+                    need_assign.append(False)
+                    column_labels.append(col_or_s._internal.column_labels[0])
+                else:
+                    need_assign.append(True)
+                    temp_label = verify_temp_column_name(
+                        kdf,
+                        tuple(
+                            ([""] * (column_labels_level - 1)) + ["__tmp_groupkey_{}__".format(i)]
+                        ),
+                    )
+                    column_labels.append(temp_label)  # type: ignore
+            elif isinstance(col_or_s, tuple):
+                kser = kdf[col_or_s]
+                if not isinstance(kser, Series):
+                    raise ValueError(name_like_string(col_or_s))
+                need_assign.append(False)
+                column_labels.append(col_or_s)
+            else:
+                raise ValueError(col_or_s)
+
+        def assign_columns(kdf, this_column_labels, that_column_labels):
+            raise NotImplementedError(
+                "Duplicated labels with groupby() and "
+                "'compute.ops_on_diff_frames' option are not supported currently "
+                "Please use unique labels in series and frames."
+            )
+
+        for col_or_s, assign, label in zip(by, need_assign, column_labels):
+            if assign:
+                kser = col_or_s
+                kdf = align_diff_frames(
+                    assign_columns, kdf, kser.rename(label), fillna=False, how="inner",
+                )
+
+        new_by_series = []
+        for col_or_s, assign, label in zip(by, need_assign, column_labels):
+            if assign:
+                kser = col_or_s
+                new_by_series.append(kdf._kser_for(label).rename(kser.name))
+            else:
+                new_by_series.append(kdf._kser_for(label))
+
+        return kdf, new_by_series, column_labels
+
+    @staticmethod
+    def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]) -> List[Series]:
+        new_by_series = []
+        for col_or_s in by:
+            if isinstance(col_or_s, Series):
+                new_by_series.append(col_or_s)
+            elif isinstance(col_or_s, tuple):
+                kser = kdf[col_or_s]
+                if not isinstance(kser, Series):
+                    raise ValueError(name_like_string(col_or_s))
+                new_by_series.append(kser)
+            else:
+                raise ValueError(col_or_s)
+        return new_by_series
+
 
 class DataFrameGroupBy(GroupBy):
+    @staticmethod
+    def _build(
+        kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
+    ) -> "DataFrameGroupBy":
+        if any(isinstance(col_or_s, Series) and kdf is not col_or_s._kdf for col_or_s in by):
+            kdf, new_by_series, column_labels = GroupBy._resolve_grouping_from_diff_dataframes(
+                kdf, by
+            )
+            agg_columns = [
+                label
+                for label in kdf._internal.column_labels
+                if all(not kdf._kser_for(label)._equals(key) for key in new_by_series)
+                and label not in column_labels
+            ]
+        else:
+            new_by_series = GroupBy._resolve_grouping(kdf, by)
+            agg_columns = [
+                label
+                for label in kdf._internal.column_labels
+                if all(not kdf[label]._equals(key) for key in new_by_series)
+            ]
+        return DataFrameGroupBy(kdf, new_by_series, as_index=as_index, agg_columns=agg_columns)
+
     def __init__(
-        self,
-        kdf: DataFrame,
-        by: List[Series],
-        as_index: bool,
-        agg_columns: List[Union[str, Tuple[str, ...]]],
+        self, kdf: DataFrame, by: List[Series], as_index: bool, agg_columns: List[Tuple[str, ...]],
     ):
         self._kdf = kdf
         self._groupkeys = by
@@ -2117,6 +2215,19 @@ class DataFrameGroupBy(GroupBy):
 
 
 class SeriesGroupBy(GroupBy):
+    @staticmethod
+    def _build(
+        kser: Series, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
+    ) -> "SeriesGroupBy":
+        if any(isinstance(col_or_s, Series) and kser._kdf is not col_or_s._kdf for col_or_s in by):
+            kdf, new_by_series, _ = GroupBy._resolve_grouping_from_diff_dataframes(
+                kser.to_frame(), by
+            )
+            return SeriesGroupBy(kdf[kser.name], new_by_series, as_index=as_index)
+        else:
+            new_by_series = GroupBy._resolve_grouping(kser._kdf, by)
+            return SeriesGroupBy(kser, new_by_series, as_index=as_index)
+
     def __init__(self, kser: Series, by: List[Series], as_index: bool = True):
         self._kser = kser
         self._groupkeys = by
