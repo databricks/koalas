@@ -1858,9 +1858,6 @@ class GroupBy(object):
         spam    2
         Name: value1, dtype: int64
         """
-        if isinstance(self, DataFrameGroupBy):
-            self._agg_columns = self._groupkeys + self._agg_columns
-            self._agg_columns_scols = self._groupkeys_scols + self._agg_columns_scols
         if dropna:
             stat_function = lambda col: F.countDistinct(col)
         else:
@@ -1868,7 +1865,11 @@ class GroupBy(object):
                 F.countDistinct(col)
                 + F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0)
             )
-        return self._reduce_for_stat_function(stat_function, only_numeric=False)
+
+        should_include_groupkeys = isinstance(self, DataFrameGroupBy)
+        return self._reduce_for_stat_function(
+            stat_function, only_numeric=False, should_include_groupkeys=should_include_groupkeys
+        )
 
     def rolling(self, window, min_periods=None):
         """
@@ -1919,7 +1920,14 @@ class GroupBy(object):
         """
         return ExpandingGroupby(self, self._groupkeys, min_periods=min_periods)
 
-    def _reduce_for_stat_function(self, sfun, only_numeric):
+    def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
+        if should_include_groupkeys:
+            agg_columns = self._groupkeys + self._agg_columns
+            agg_columns_scols = self._groupkeys_scols + self._agg_columns_scols
+        else:
+            agg_columns = self._agg_columns
+            agg_columns_scols = self._agg_columns_scols
+
         groupkey_cols = [
             s.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(self._groupkeys_scols)
         ]
@@ -1928,9 +1936,9 @@ class GroupBy(object):
 
         data_columns = []
         column_labels = []
-        if len(self._agg_columns) > 0:
+        if len(agg_columns) > 0:
             stat_exprs = []
-            for kser, c in zip(self._agg_columns, self._agg_columns_scols):
+            for kser, c in zip(agg_columns, agg_columns_scols):
                 spark_type = kser.spark_type
                 name = kser._internal.data_spark_column_names[0]
                 label = kser._internal.column_labels[0]
@@ -2280,8 +2288,13 @@ class SeriesGroupBy(GroupBy):
     def _agg_columns(self):
         return [self._kser]
 
-    def _reduce_for_stat_function(self, sfun, only_numeric):
-        return _col(super(SeriesGroupBy, self)._reduce_for_stat_function(sfun, only_numeric))
+    def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
+        assert not should_include_groupkeys, should_include_groupkeys
+        return _col(
+            super(SeriesGroupBy, self)._reduce_for_stat_function(
+                sfun, only_numeric, should_include_groupkeys
+            )
+        )
 
     def agg(self, *args, **kwargs):
         return _MissingPandasLikeSeriesGroupBy.agg(self, *args, **kwargs)
