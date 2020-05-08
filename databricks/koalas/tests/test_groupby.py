@@ -1333,17 +1333,39 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
-            kdf.groupby("b").apply(lambda x: x + 1).sort_index(),
-            pdf.groupby("b").apply(lambda x: x + 1).sort_index(),
+            kdf.groupby("b").apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby("b").apply(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby(["a", "b"]).apply(lambda x: x * x).sort_index(),
-            pdf.groupby(["a", "b"]).apply(lambda x: x * x).sort_index(),
+            kdf.groupby("b")["a"].apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby("b")["a"].apply(lambda x: x + x.min()).sort_index(),
+        )
+        # TODO: handle agg_columns.
+        # self.assert_eq(
+        #     kdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        #     pdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        # )
+        self.assert_eq(
+            kdf.groupby(["a", "b"]).apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(["a", "b"]).apply(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
             kdf.groupby(["b"])["c"].apply(lambda x: 1).sort_index(),
             pdf.groupby(["b"])["c"].apply(lambda x: 1).sort_index(),
         )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5).apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pdf.b // 5).apply(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)["a"].apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pdf.b // 5)["a"].apply(lambda x: x + x.min()).sort_index(),
+        )
+        # TODO: handle agg_columns.
+        # self.assert_eq(
+        #     kdf.groupby(kdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        #     pdf.groupby(pdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        # )
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
             kdf.groupby("b").apply(1)
@@ -1358,8 +1380,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(("x", "b")).apply(lambda x: 1).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x * x).sort_index(),
-            pdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x * x).sort_index(),
+            kdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x + x.min()).sort_index(),
         )
 
     def test_apply_without_shortcut(self):
