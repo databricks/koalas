@@ -1475,12 +1475,32 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("b").transform(lambda x: x + 1).sort_index(),
         )
         self.assert_eq(
+            kdf.groupby("b")["a"].transform(lambda x: x + 1).sort_index(),
+            pdf.groupby("b")["a"].transform(lambda x: x + 1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby("b")[["a"]].transform(lambda x: x + 1).sort_index(),
+            pdf.groupby("b")[["a"]].transform(lambda x: x + 1).sort_index(),
+        )
+        self.assert_eq(
             kdf.groupby(["a", "b"]).transform(lambda x: x * x).sort_index(),
             pdf.groupby(["a", "b"]).transform(lambda x: x * x).sort_index(),
         )
         self.assert_eq(
             kdf.groupby(["b"])["c"].transform(lambda x: x).sort_index(),
             pdf.groupby(["b"])["c"].transform(lambda x: x).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5).transform(lambda x: x + 1).sort_index(),
+            pdf.groupby(pdf.b // 5).transform(lambda x: x + 1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)["a"].transform(lambda x: x + 1).sort_index(),
+            pdf.groupby(pdf.b // 5)["a"].transform(lambda x: x + 1).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)[["a"]].transform(lambda x: x + 1).sort_index(),
+            pdf.groupby(pdf.b // 5)[["a"]].transform(lambda x: x + 1).sort_index(),
         )
 
         # multi-index columns
