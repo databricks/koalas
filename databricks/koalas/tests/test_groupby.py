@@ -1630,6 +1630,32 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("a")["b"].head(100000).sort_index(),
         )
 
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].head(2).sort_index(),
+            kdf.groupby("a")[["b"]].head(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].head(-2).sort_index(),
+            kdf.groupby("a")[["b"]].head(-2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].head(100000).sort_index(),
+            kdf.groupby("a")[["b"]].head(100000).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.groupby(pdf.a // 2).head(2).sort_index(),
+            kdf.groupby(kdf.a // 2).head(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby(pdf.a // 2)["b"].head(2).sort_index(),
+            kdf.groupby(kdf.a // 2)["b"].head(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby(pdf.a // 2)[["b"]].head(2).sort_index(),
+            kdf.groupby(kdf.a // 2)[["b"]].head(2).sort_index(),
+        )
+
         # multi-index
         midx = pd.MultiIndex(
             [["x", "y"], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]],
