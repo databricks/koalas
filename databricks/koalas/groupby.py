@@ -1772,10 +1772,11 @@ class GroupBy(object):
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
 
-        if isinstance(self, DataFrameGroupBy):
-            kdf = self._kdf
-        else:
+        if isinstance(self, SeriesGroupBy):
             kdf = self._kser._kdf
+        else:
+            kdf = self._kdf
+
         groupkey_labels = [
             verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
             for i in range(len(self._groupkeys))
