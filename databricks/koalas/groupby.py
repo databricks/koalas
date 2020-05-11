@@ -1810,12 +1810,25 @@ class GroupBy(object):
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
-        input_groupnames = [s.name for s in self._groupkeys]
+
+        if isinstance(self, SeriesGroupBy):
+            kdf = self._kser._kdf
+        else:
+            kdf = self._kdf
+
+        groupkey_labels = [
+            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
+            for i in range(len(self._groupkeys))
+        ]
+        kdf = kdf[
+            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)]
+            + self._agg_columns
+        ]
+
+        groupkey_names = [label if len(label) > 1 else label[0] for label in groupkey_labels]
 
         def pandas_transform(pdf):
-            # pandas GroupBy.transform drops grouping columns.
-            pdf = pdf.drop(columns=input_groupnames)
-            return pdf.transform(func)
+            return pdf.groupby(groupkey_names).transform(func)
 
         should_infer_schema = return_sig is None
 
@@ -1823,29 +1836,33 @@ class GroupBy(object):
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
-            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
-            pdf = pdf.groupby(input_groupnames).transform(func)
-            kdf = DataFrame(pdf)
-            return_schema = kdf._sdf.drop(*HIDDEN_COLUMNS).schema
+            pdf = kdf.head(limit + 1)._to_internal_pandas()
+            pdf = pdf.groupby(groupkey_names).transform(func)
+            kdf_from_pandas = DataFrame(pdf)
+            return_schema = kdf_from_pandas._sdf.drop(*HIDDEN_COLUMNS).schema
             if len(pdf) <= limit:
-                return kdf
+                return kdf_from_pandas
 
             sdf = GroupBy._spark_group_map_apply(
-                self._kdf, pandas_transform, self._groupkeys_scols, return_schema, retain_index=True
+                kdf,
+                pandas_transform,
+                [kdf._internal.spark_column_for(label) for label in groupkey_labels],
+                return_schema,
+                retain_index=True,
             )
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.with_new_sdf(sdf)
+            internal = kdf.drop(groupkey_labels, axis=1)._internal.with_new_sdf(sdf)
         else:
             return_type = infer_return_type(func).tpe
-            data_columns = self._kdf._internal.data_spark_column_names
+            data_columns = kdf._internal.data_spark_column_names
             return_schema = StructType(
-                [StructField(c, return_type) for c in data_columns if c not in input_groupnames]
+                [StructField(c, return_type) for c in data_columns if c not in groupkey_names]
             )
 
             sdf = GroupBy._spark_group_map_apply(
-                self._kdf,
+                kdf,
                 pandas_transform,
-                self._groupkeys_scols,
+                [kdf._internal.spark_column_for(label) for label in groupkey_labels],
                 return_schema,
                 retain_index=False,
             )

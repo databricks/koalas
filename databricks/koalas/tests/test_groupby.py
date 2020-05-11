@@ -1471,16 +1471,36 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
-            kdf.groupby("b").transform(lambda x: x + 1).sort_index(),
-            pdf.groupby("b").transform(lambda x: x + 1).sort_index(),
+            kdf.groupby("b").transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby("b").transform(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby(["a", "b"]).transform(lambda x: x * x).sort_index(),
-            pdf.groupby(["a", "b"]).transform(lambda x: x * x).sort_index(),
+            kdf.groupby("b")["a"].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby("b")["a"].transform(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby(["b"])["c"].transform(lambda x: x).sort_index(),
-            pdf.groupby(["b"])["c"].transform(lambda x: x).sort_index(),
+            kdf.groupby("b")[["a"]].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby("b")[["a"]].transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["a", "b"]).transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(["a", "b"]).transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["b"])["c"].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(["b"])["c"].transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5).transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pdf.b // 5).transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)["a"].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pdf.b // 5)["a"].transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)[["a"]].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pdf.b // 5)[["a"]].transform(lambda x: x + x.min()).sort_index(),
         )
 
         # multi-index columns
@@ -1489,12 +1509,12 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf.columns = columns
 
         self.assert_eq(
-            kdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index(),
-            pdf.groupby(("x", "b")).transform(lambda x: x + 1).sort_index(),
+            kdf.groupby(("x", "b")).transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(("x", "b")).transform(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x * x).sort_index(),
-            pdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x * x).sort_index(),
+            kdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby([("x", "a"), ("x", "b")]).transform(lambda x: x + x.min()).sort_index(),
         )
 
     def test_transform_without_shortcut(self):
