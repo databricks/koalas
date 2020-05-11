@@ -1073,14 +1073,34 @@ class GroupBy(object):
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
 
-        data_schema = self._kdf._sdf.drop(*HIDDEN_COLUMNS).schema
-        groupby_names = [s.name for s in self._groupkeys]
+        groupkey_length = len(self._groupkeys)
+
+        kdf = self._kdf
+        data_schema = kdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+        groupkey_labels = [
+            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
+            for i in range(groupkey_length)
+        ]
+
+        # TODO: handle agg_columns.
+        kdf = kdf[
+            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)]
+            + [kdf._kser_for(label) for label in kdf._internal.column_labels]
+        ]
+
+        def wrapped_func(pdf):
+            return func(pdf.iloc[:, groupkey_length:])
 
         def pandas_filter(pdf):
-            return pdf.groupby(groupby_names).filter(func)
+            groupkeys = [pser for _, pser in pdf.iteritems()][:groupkey_length]
+            return pdf.groupby(groupkeys).filter(wrapped_func).iloc[:, groupkey_length:]
 
         sdf = GroupBy._spark_group_map_apply(
-            self._kdf, pandas_filter, self._groupkeys_scols, data_schema, retain_index=True
+            kdf,
+            pandas_filter,
+            [kdf._internal.spark_column_for(label) for label in groupkey_labels],
+            data_schema,
+            retain_index=True,
         )
         return DataFrame(self._kdf._internal.with_new_sdf(sdf))
 
