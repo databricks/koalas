@@ -153,6 +153,18 @@ class ReshapeTest(ReusedSQLTestCase):
             almost=True,
         )
 
+        self.assert_eq(
+            ks.get_dummies(kdf, prefix={"A": "foo", "B": "bar"}),
+            pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}),
+            almost=True,
+        )
+
+        self.assert_eq(
+            ks.get_dummies(kdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"]),
+            pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"]),
+            almost=True,
+        )
+
         with self.assertRaisesRegex(NotImplementedError, "string types"):
             ks.get_dummies(kdf, prefix="foo")
         with self.assertRaisesRegex(ValueError, "Length of 'prefix' \\(1\\) .* \\(2\\)"):
