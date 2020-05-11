@@ -934,37 +934,64 @@ class GroupBy(object):
         1    2
         Name: B, dtype: int32
         """
+        from pandas.core.base import SelectionMixin
+
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
-        input_groupnames = [s.name for s in self._groupkeys]
 
-        should_return_series = False
         is_series_groupby = isinstance(self, SeriesGroupBy)
+
+        if is_series_groupby:
+            kdf = self._kser._kdf
+        else:
+            kdf = self._kdf
+
+        groupkey_labels = [
+            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
+            for i in range(len(self._groupkeys))
+        ]
+        # TODO: handle agg_columns.
+        kdf = kdf[
+            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)]
+            + [kdf._kser_for(label) for label in kdf._internal.column_labels]
+        ]
+
+        groupkey_names = [label if len(label) > 1 else label[0] for label in groupkey_labels]
+
         if is_series_groupby:
             name = self._kser.name
+            pandas_apply = SelectionMixin._builtin_table.get(func, func)
+        else:
+            f = SelectionMixin._builtin_table.get(func, func)
+
+            def pandas_apply(pdf):
+                return f(pdf.drop(groupkey_names, axis=1))
+
+        should_return_series = False
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             limit = get_option("compute.shortcut_limit")
-            pdf = self._kdf.head(limit + 1)._to_internal_pandas()
+            pdf = kdf.head(limit + 1)._to_internal_pandas()
             if is_series_groupby:
-                pser_or_pdf = pdf.groupby(input_groupnames)[name].apply(func)
+                pser_or_pdf = pdf.groupby(groupkey_names)[name].apply(pandas_apply)
             else:
-                pser_or_pdf = pdf.groupby(input_groupnames).apply(func)
+                pser_or_pdf = pdf.groupby(groupkey_names).apply(pandas_apply)
             kser_or_kdf = ks.from_pandas(pser_or_pdf)
             if len(pdf) <= limit:
                 return kser_or_kdf
 
-            kdf = kser_or_kdf
             if isinstance(kser_or_kdf, ks.Series):
                 should_return_series = True
-                kdf = kser_or_kdf.to_frame()
+                kdf_from_pandas = kser_or_kdf.to_frame()
+            else:
+                kdf_from_pandas = kser_or_kdf
 
-            return_schema = kdf._sdf.drop(*HIDDEN_COLUMNS).schema
+            return_schema = kdf_from_pandas._sdf.drop(*HIDDEN_COLUMNS).schema
         else:
             if not is_series_groupby and getattr(return_sig, "__origin__", None) == ks.Series:
                 raise TypeError(
@@ -985,9 +1012,6 @@ class GroupBy(object):
             if not is_series_groupby and LooseVersion(pd.__version__) < LooseVersion("0.25"):
                 # `groupby.apply` in pandas<0.25 runs the functions twice for the first group.
                 # https://github.com/pandas-dev/pandas/pull/24748
-                from pandas.core.base import SelectionMixin
-
-                f = SelectionMixin._builtin_table.get(func, func)
 
                 should_skip_first_call = True
 
@@ -1000,15 +1024,15 @@ class GroupBy(object):
                         else:
                             return pd.DataFrame()
                     else:
-                        return f(df)
+                        return pandas_apply(df)
 
             else:
-                wrapped_func = func
+                wrapped_func = pandas_apply
 
             if is_series_groupby:
-                pdf_or_ser = pdf.groupby(input_groupnames)[name].apply(wrapped_func)
+                pdf_or_ser = pdf.groupby(groupkey_names)[name].apply(wrapped_func)
             else:
-                pdf_or_ser = pdf.groupby(input_groupnames).apply(wrapped_func)
+                pdf_or_ser = pdf.groupby(groupkey_names).apply(wrapped_func)
 
             if not isinstance(pdf_or_ser, pd.DataFrame):
                 return pd.DataFrame(pdf_or_ser)
@@ -1016,16 +1040,16 @@ class GroupBy(object):
                 return pdf_or_ser
 
         sdf = GroupBy._spark_group_map_apply(
-            self._kdf,
+            kdf,
             pandas_groupby_apply,
-            self._groupkeys_scols,
+            [kdf._internal.spark_column_for(label) for label in groupkey_labels],
             return_schema,
             retain_index=should_infer_schema,
         )
 
         if should_infer_schema:
             # If schema is inferred, we can restore indexes too.
-            internal = kdf._internal.with_new_sdf(sdf)
+            internal = kdf_from_pandas._internal.with_new_sdf(sdf)
         else:
             # Otherwise, it loses index.
             internal = _InternalFrame(spark_frame=sdf, index_map=None)
