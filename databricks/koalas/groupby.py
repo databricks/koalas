@@ -1594,17 +1594,36 @@ class GroupBy(object):
         10    10
         Name: b, dtype: int64
         """
-        sdf = self._kdf._sdf
+        if isinstance(self, SeriesGroupBy):
+            kdf = self._kser._kdf
+        else:
+            kdf = self._kdf
+
+        if self._agg_columns_selected:
+            agg_columns = self._agg_columns
+        else:
+            agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
+
+        groupkey_labels = [
+            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
+            for i in range(len(self._groupkeys))
+        ]
+        kdf = kdf[
+            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)] + agg_columns
+        ]
+        groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
+
+        sdf = kdf._sdf
         tmp_col = verify_temp_column_name(sdf, "__row_number__")
-        window = Window.partitionBy(self._groupkeys_scols).orderBy(NATURAL_ORDER_COLUMN_NAME)
+        window = Window.partitionBy(groupkey_scols).orderBy(NATURAL_ORDER_COLUMN_NAME)
         sdf = (
             sdf.withColumn(tmp_col, F.row_number().over(window))
             .filter(F.col(tmp_col) <= n)
             .drop(tmp_col)
         )
 
-        internal = self._kdf._internal.with_new_sdf(sdf)
-        return DataFrame(internal)
+        internal = kdf._internal.with_new_sdf(sdf)
+        return DataFrame(internal).drop(groupkey_labels, axis=1)
 
     def shift(self, periods=1, fill_value=None):
         """
@@ -2079,10 +2098,21 @@ class DataFrameGroupBy(GroupBy):
                 for label in kdf._internal.column_labels
                 if all(not kdf[label]._equals(key) for key in new_by_series)
             ]
-        return DataFrameGroupBy(kdf, new_by_series, as_index=as_index, agg_columns=agg_columns)
+        return DataFrameGroupBy(
+            kdf,
+            new_by_series,
+            as_index=as_index,
+            agg_columns=agg_columns,
+            agg_columns_selected=False,
+        )
 
     def __init__(
-        self, kdf: DataFrame, by: List[Series], as_index: bool, agg_columns: List[Tuple[str, ...]],
+        self,
+        kdf: DataFrame,
+        by: List[Series],
+        as_index: bool,
+        agg_columns: List[Tuple[str, ...]],
+        agg_columns_selected: bool,
     ):
         self._kdf = kdf
         self._groupkeys = by
@@ -2091,6 +2121,7 @@ class DataFrameGroupBy(GroupBy):
 
         self._agg_columns = [kdf[label] for label in agg_columns]
         self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
+        self._agg_columns_selected = agg_columns_selected
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
@@ -2115,7 +2146,11 @@ class DataFrameGroupBy(GroupBy):
                     if name in groupkey_names:
                         raise ValueError("cannot insert {}, already exists".format(name))
             return DataFrameGroupBy(
-                self._kdf, self._groupkeys, as_index=self._as_index, agg_columns=item,
+                self._kdf,
+                self._groupkeys,
+                as_index=self._as_index,
+                agg_columns=item,
+                agg_columns_selected=True,
             )
 
     def _apply_series_op(self, op):
@@ -2259,6 +2294,7 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
+        self._agg_columns_selected = True
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeSeriesGroupBy, item):
