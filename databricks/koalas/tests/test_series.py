@@ -1495,3 +1495,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(repr(pser.to_frame(name="a")), repr(kser.to_frame(name="a")))
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series(["a", "b", "c"], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(repr(pser.to_frame(name="a")), repr(kser.to_frame(name="a")))
