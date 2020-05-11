@@ -97,7 +97,6 @@ class _MissingPandasLikeSeriesGroupBy(object):
     aggregate = unsupported_function("aggregate")
     cumcount = unsupported_function("cumcount")
     describe = unsupported_function("describe")
-    filter = unsupported_function("filter")
     get_group = unsupported_function("get_group")
     median = unsupported_function("median")
     ngroup = unsupported_function("ngroup")

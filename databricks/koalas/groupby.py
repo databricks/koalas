@@ -1090,11 +1090,23 @@ class GroupBy(object):
         1  bar  2  5.0
         3  bar  4  1.0
         5  bar  6  9.0
+
+        >>> df.B.groupby(df.A).filter(lambda x: x.mean() > 3.)
+        1    2
+        3    4
+        5    6
+        Name: B, dtype: int64
         """
+        from pandas.core.base import SelectionMixin
+
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
 
-        kdf = self._kdf
+        is_series_groupby = isinstance(self, SeriesGroupBy)
+        if is_series_groupby:
+            kdf = self._kser._kdf
+        else:
+            kdf = self._kdf
 
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
@@ -1107,11 +1119,20 @@ class GroupBy(object):
             kdf, self._groupkeys, agg_columns
         )
 
-        def wrapped_func(pdf):
-            return func(pdf.drop(groupkey_names, axis=1))
+        if is_series_groupby:
+            name = self._kser.name
 
-        def pandas_filter(pdf):
-            return pdf.groupby(groupkey_names).filter(wrapped_func).drop(groupkey_names, axis=1)
+            def pandas_filter(pdf):
+                return pd.DataFrame(pdf.groupby(groupkey_names)[name].filter(func))
+
+        else:
+            f = SelectionMixin._builtin_table.get(func, func)
+
+            def wrapped_func(pdf):
+                return f(pdf.drop(groupkey_names, axis=1))
+
+            def pandas_filter(pdf):
+                return pdf.groupby(groupkey_names).filter(wrapped_func).drop(groupkey_names, axis=1)
 
         sdf = GroupBy._spark_group_map_apply(
             kdf,
@@ -1120,7 +1141,12 @@ class GroupBy(object):
             data_schema,
             retain_index=True,
         )
-        return DataFrame(self._kdf[agg_columns]._internal.with_new_sdf(sdf))
+
+        kdf = DataFrame(self._kdf[agg_columns]._internal.with_new_sdf(sdf))
+        if is_series_groupby:
+            return _col(kdf)
+        else:
+            return kdf
 
     @staticmethod
     def _prepare_group_map_apply(kdf, groupkeys, agg_columns):
@@ -2393,9 +2419,6 @@ class SeriesGroupBy(GroupBy):
         return _col(super(SeriesGroupBy, self).transform(func))
 
     transform.__doc__ = GroupBy.transform.__doc__
-
-    def filter(self, *args, **kwargs):
-        return _MissingPandasLikeSeriesGroupBy.filter(self, *args, **kwargs)
 
     def idxmin(self, skipna=True):
         return _col(super(SeriesGroupBy, self).idxmin(skipna))
