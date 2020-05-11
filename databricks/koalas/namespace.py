@@ -1576,6 +1576,8 @@ def get_dummies(
             "Length of 'prefix' ({}) did not match the length of "
             "the columns being encoded ({}).".format(len(prefix), len(column_labels))
         )
+    elif isinstance(prefix, dict):
+        prefix = [prefix[column_label[0]] for column_label in column_labels]
 
     all_values = _reduce_spark_multi(
         kdf._sdf, [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels]
