@@ -160,6 +160,12 @@ class ReshapeTest(ReusedSQLTestCase):
         )
 
         self.assert_eq(
+            ks.get_dummies(kdf, prefix={"B": "foo", "A": "bar"}),
+            pd.get_dummies(pdf, prefix={"B": "foo", "A": "bar"}),
+            almost=True,
+        )
+
+        self.assert_eq(
             ks.get_dummies(kdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"]),
             pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"]),
             almost=True,
