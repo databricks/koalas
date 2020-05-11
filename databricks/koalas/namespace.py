@@ -1505,6 +1505,8 @@ def get_dummies(
             raise NotImplementedError(
                 "get_dummies currently does not support prefix as string types"
             )
+        elif isinstance(prefix, dict):
+            prefix = list(prefix.values())
         kdf = data.copy()
 
         if columns is None:
