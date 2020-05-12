@@ -215,6 +215,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
 
+        # test considering series does not have NA/NaN values
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser, pser)
+
     def test_dropna(self):
         pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
 
