@@ -2181,7 +2181,7 @@ class GroupBy(object):
             else:
                 new_by_series.append(kdf._kser_for(label))
 
-        return kdf, new_by_series, tmp_column_labels
+        return kdf, new_by_series, tmp_column_labels  # type: ignore
 
     @staticmethod
     def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]) -> List[Series]:
@@ -2233,7 +2233,7 @@ class DataFrameGroupBy(GroupBy):
 
         self._agg_columns_selected = agg_columns is not None
         if self._agg_columns_selected:
-            for label in agg_columns:
+            for label in agg_columns:  # type: ignore
                 if label in ignore_column_labels:
                     raise KeyError(label)
         else:
@@ -2243,7 +2243,7 @@ class DataFrameGroupBy(GroupBy):
                 if all(not kdf._kser_for(label)._equals(key) for key in by)
                 and label not in ignore_column_labels
             ]
-        self._agg_columns = [kdf[label] for label in agg_columns]
+        self._agg_columns = [kdf[label] for label in agg_columns]  # type: ignore
         self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
 
     def __getattr__(self, item: str) -> Any:
