@@ -1377,16 +1377,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("b").apply(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby("b")["a"].apply(lambda x: x + x.min()).sort_index(),
-            pdf.groupby("b")["a"].apply(lambda x: x + x.min()).sort_index(),
+            kdf.groupby("b")["a"].apply(lambda x, y, z: x + x.min() + y * z, 10, z=20).sort_index(),
+            pdf.groupby("b")["a"].apply(lambda x, y, z: x + x.min() + y * z, 10, z=20).sort_index(),
         )
         self.assert_eq(
             kdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby(["a", "b"]).apply(lambda x: x + x.min()).sort_index(),
-            pdf.groupby(["a", "b"]).apply(lambda x: x + x.min()).sort_index(),
+            kdf.groupby(["a", "b"]).apply(lambda x, y, z: x + x.min() + y + z, 1, z=2).sort_index(),
+            pdf.groupby(["a", "b"]).apply(lambda x, y, z: x + x.min() + y + z, 1, z=2).sort_index(),
         )
         self.assert_eq(
             kdf.groupby(["b"])["c"].apply(lambda x: 1).sort_index(),
