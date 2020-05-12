@@ -1593,6 +1593,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("b").filter(lambda x: any(x.a == 2)).sort_index(),
         )
         self.assert_eq(
+            kdf.groupby("b")["a"].filter(lambda x: any(x == 2)).sort_index(),
+            pdf.groupby("b")["a"].filter(lambda x: any(x == 2)).sort_index(),
+        )
+        self.assert_eq(
             kdf.groupby("b")[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
             pdf.groupby("b")[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
         )
@@ -1603,6 +1607,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(kdf["b"] // 5).filter(lambda x: any(x.a == 2)).sort_index(),
             pdf.groupby(pdf["b"] // 5).filter(lambda x: any(x.a == 2)).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf["b"] // 5)["a"].filter(lambda x: any(x == 2)).sort_index(),
+            pdf.groupby(pdf["b"] // 5)["a"].filter(lambda x: any(x == 2)).sort_index(),
         )
         self.assert_eq(
             kdf.groupby(kdf["b"] // 5)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
