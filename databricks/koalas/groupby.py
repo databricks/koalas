@@ -78,6 +78,14 @@ class GroupBy(object):
     :type _groupkeys: List[Series]
     """
 
+    @property
+    def _groupkeys_scols(self):
+        return [s.spark_column for s in self._groupkeys]
+
+    @property
+    def _agg_columns_scols(self):
+        return [s.spark_column for s in self._agg_columns]
+
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
     def aggregate(self, func_or_funcs=None, *args, **kwargs):
@@ -207,13 +215,8 @@ class GroupBy(object):
         else:
             agg_cols = [col.name for col in self._agg_columns]
             func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
-        index_map = OrderedDict(
-            (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
-            for i, s in enumerate(self._groupkeys)
-        )
-        kdf = DataFrame(
-            GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys_scols, index_map)
-        )
+
+        kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
         if not self._as_index:
             should_drop_index = set(
                 i
@@ -235,13 +238,11 @@ class GroupBy(object):
     agg = aggregate
 
     @staticmethod
-    def _spark_groupby(kdf, func, groupkeys_scols=(), index_map=None):
-        assert (len(groupkeys_scols) > 0 and index_map is not None) or (
-            len(groupkeys_scols) == 0 and index_map is None
-        )
-
+    def _spark_groupby(kdf, func, groupkeys=()):
         sdf = kdf._sdf
-        groupkey_cols = [s.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(groupkeys_scols)]
+        groupkey_scols = [
+            s.spark_column.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(groupkeys)
+        ]
         multi_aggs = any(isinstance(v, list) for v in func.values())
         reordered = []
         data_columns = []
@@ -270,7 +271,14 @@ class GroupBy(object):
 
                 else:
                     reordered.append(F.expr("{1}(`{0}`) as `{2}`".format(name, aggfunc, data_col)))
-        sdf = sdf.groupby(*groupkey_cols).agg(*reordered)
+        sdf = sdf.groupby(*groupkey_scols).agg(*reordered)
+        if len(groupkeys) > 0:
+            index_map = OrderedDict(
+                (SPARK_INDEX_NAME_FORMAT(i), s._internal.column_labels[0])
+                for i, s in enumerate(groupkeys)
+            )
+        else:
+            index_map = None
         return _InternalFrame(
             spark_frame=sdf,
             column_labels=column_labels,
@@ -626,7 +634,7 @@ class GroupBy(object):
         Name: a, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._diff(periods, part_cols=[s.spark_column for s in sg._groupkeys])
+            lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
         )
 
     def cummax(self):
@@ -674,7 +682,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.max, True, part_cols=[s.spark_column for s in sg._groupkeys])
+            lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols)
         )
 
     def cummin(self):
@@ -721,7 +729,7 @@ class GroupBy(object):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.min, True, part_cols=[s.spark_column for s in sg._groupkeys])
+            lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols)
         )
 
     def cumprod(self):
@@ -769,7 +777,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cumprod(True, part_cols=[s.spark_column for s in sg._groupkeys])
+            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols)
         )
 
     def cumsum(self):
@@ -817,7 +825,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.sum, True, part_cols=[s.spark_column for s in sg._groupkeys])
+            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols)
         )
 
     def apply(self, func, *args, **kwargs):
@@ -958,10 +966,7 @@ class GroupBy(object):
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
 
-        if is_series_groupby:
-            kdf = self._kser._kdf
-        else:
-            kdf = self._kdf
+        kdf = self._kdf
 
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
@@ -1120,10 +1125,8 @@ class GroupBy(object):
             raise TypeError("%s object is not callable" % type(func))
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
-        if is_series_groupby:
-            kdf = self._kser._kdf
-        else:
-            kdf = self._kdf
+
+        kdf = self._kdf
 
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
@@ -1183,10 +1186,7 @@ class GroupBy(object):
         output_func = GroupBy._make_pandas_df_builder_func(kdf, func, return_schema, retain_index)
         grouped_map_func = pandas_udf(return_schema, PandasUDFType.GROUPED_MAP)(output_func)
         sdf = kdf._sdf.drop(*HIDDEN_COLUMNS)
-        input_groupkeys = [s for s in groupkeys_scols]
-        sdf = sdf.groupby(*input_groupkeys).apply(grouped_map_func)
-
-        return sdf
+        return sdf.groupby(*groupkeys_scols).apply(grouped_map_func)
 
     @staticmethod
     def _make_pandas_df_builder_func(kdf, func, return_schema, retain_index):
@@ -1318,9 +1318,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._rank(
-                method, ascending, part_cols=[s.spark_column for s in sg._groupkeys]
-            )
+            lambda sg: sg._kser._rank(method, ascending, part_cols=sg._groupkeys_scols)
         )
 
     # TODO: add axis parameter
@@ -1540,12 +1538,7 @@ class GroupBy(object):
         """
         return self._apply_series_op(
             lambda sg: sg._kser._fillna(
-                value,
-                method,
-                axis,
-                inplace,
-                limit,
-                part_cols=[s.spark_column for s in sg._groupkeys],
+                value, method, axis, inplace, limit, part_cols=sg._groupkeys_scols,
             )
         )
 
@@ -1697,10 +1690,7 @@ class GroupBy(object):
         10    10
         Name: b, dtype: int64
         """
-        if isinstance(self, SeriesGroupBy):
-            kdf = self._kser._kdf
-        else:
-            kdf = self._kdf
+        kdf = self._kdf
 
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
@@ -1784,9 +1774,7 @@ class GroupBy(object):
         8  0
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._shift(
-                periods, fill_value, part_cols=[s.spark_column for s in sg._groupkeys]
-            )
+            lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols)
         )
 
     def transform(self, func, *args, **kwargs):
@@ -1906,13 +1894,8 @@ class GroupBy(object):
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
 
-        if isinstance(self, SeriesGroupBy):
-            kdf = self._kser._kdf
-        else:
-            kdf = self._kdf
-
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
-            kdf, self._groupkeys, agg_columns=self._agg_columns
+            self._kdf, self._groupkeys, agg_columns=self._agg_columns
         )
 
         def pandas_transform(pdf):
@@ -2227,7 +2210,6 @@ class DataFrameGroupBy(GroupBy):
     ):
         self._kdf = kdf
         self._groupkeys = by
-        self._groupkeys_scols = [s.spark_column for s in self._groupkeys]
         self._as_index = as_index
         self._ignore_column_labels = ignore_column_labels
 
@@ -2244,7 +2226,6 @@ class DataFrameGroupBy(GroupBy):
                 and label not in ignore_column_labels
             ]
         self._agg_columns = [kdf[label] for label in agg_columns]  # type: ignore
-        self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
@@ -2390,18 +2371,6 @@ class SeriesGroupBy(GroupBy):
     def __init__(self, kser: Series, by: List[Series], as_index: bool = True):
         self._kser = kser
         self._groupkeys = by
-        # TODO: this class resolves the groupkeys and agg_columns always by columns names
-        #   e.g., F.col("..."). This is because of the limitation of `SeriesGroupBy`
-        #   implementation, which reuses the implementation in `GroupBy`.
-        #   `SeriesGroupBy` creates another DataFrame and
-        #   internal IDs of the columns become different. Maybe we should refactor the whole
-        #   class in the future.
-        self._groupkeys_scols = [
-            F.col(s._internal.data_spark_column_names[0]) for s in self._groupkeys
-        ]
-        self._agg_columns_scols = [
-            F.col(s._internal.data_spark_column_names[0]) for s in self._agg_columns
-        ]
 
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
@@ -2422,10 +2391,7 @@ class SeriesGroupBy(GroupBy):
 
     @property
     def _kdf(self) -> DataFrame:
-        # TODO: Currently cannot handle the case when the values in current series
-        #  and groupkeys series are different but only their names are same.
-        series = [self._kser] + [s for s in self._groupkeys if not s._equals(self._kser)]
-        return DataFrame(self._kser._kdf._internal.with_new_columns(series))
+        return self._kser._kdf
 
     @property
     def _agg_columns(self):
