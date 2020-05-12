@@ -24,7 +24,7 @@ from collections import Callable, OrderedDict, namedtuple
 from distutils.version import LooseVersion
 from functools import partial
 from itertools import product
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -966,7 +966,11 @@ class GroupBy(object):
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
         else:
-            agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
+            agg_columns = [
+                kdf._kser_for(label)
+                for label in kdf._internal.column_labels
+                if label not in self._ignore_column_labels
+            ]
 
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
             kdf, self._groupkeys, agg_columns
@@ -1124,7 +1128,11 @@ class GroupBy(object):
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
         else:
-            agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
+            agg_columns = [
+                kdf._kser_for(label)
+                for label in kdf._internal.column_labels
+                if label not in self._ignore_column_labels
+            ]
 
         data_schema = self._kdf[agg_columns]._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
 
@@ -1697,7 +1705,11 @@ class GroupBy(object):
         if self._agg_columns_selected:
             agg_columns = self._agg_columns
         else:
-            agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
+            agg_columns = [
+                kdf._kser_for(label)
+                for label in kdf._internal.column_labels
+                if label not in self._ignore_column_labels
+            ]
 
         kdf, groupkey_labels, _ = self._prepare_group_map_apply(kdf, self._groupkeys, agg_columns)
         groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
@@ -2118,21 +2130,19 @@ class GroupBy(object):
     @staticmethod
     def _resolve_grouping_from_diff_dataframes(
         kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]
-    ) -> Tuple[DataFrame, List[Series], List[Tuple[str, ...]]]:
+    ) -> Tuple[DataFrame, List[Series], Set[Tuple[str, ...]]]:
         column_labels_level = kdf._internal.column_labels_level
 
-        need_assign = []
         column_labels = []
+        tmp_column_labels = set()
         for i, col_or_s in enumerate(by):
             if isinstance(col_or_s, Series):
                 if any(
                     col_or_s.spark_column._jc.equals(scol._jc)
                     for scol in kdf._internal.data_spark_columns
                 ):
-                    need_assign.append(False)
                     column_labels.append(col_or_s._internal.column_labels[0])
                 else:
-                    need_assign.append(True)
                     temp_label = verify_temp_column_name(
                         kdf,
                         tuple(
@@ -2140,11 +2150,11 @@ class GroupBy(object):
                         ),
                     )
                     column_labels.append(temp_label)  # type: ignore
+                    tmp_column_labels.add(temp_label)
             elif isinstance(col_or_s, tuple):
                 kser = kdf[col_or_s]
                 if not isinstance(kser, Series):
                     raise ValueError(name_like_string(col_or_s))
-                need_assign.append(False)
                 column_labels.append(col_or_s)
             else:
                 raise ValueError(col_or_s)
@@ -2156,22 +2166,22 @@ class GroupBy(object):
                 "Please use unique labels in series and frames."
             )
 
-        for col_or_s, assign, label in zip(by, need_assign, column_labels):
-            if assign:
+        for col_or_s, label in zip(by, column_labels):
+            if label in tmp_column_labels:
                 kser = col_or_s
                 kdf = align_diff_frames(
                     assign_columns, kdf, kser.rename(label), fillna=False, how="inner",
                 )
 
         new_by_series = []
-        for col_or_s, assign, label in zip(by, need_assign, column_labels):
-            if assign:
+        for col_or_s, label in zip(by, column_labels):
+            if label in tmp_column_labels:
                 kser = col_or_s
                 new_by_series.append(kdf._kser_for(label).rename(kser.name))
             else:
                 new_by_series.append(kdf._kser_for(label))
 
-        return kdf, new_by_series, column_labels
+        return kdf, new_by_series, tmp_column_labels
 
     @staticmethod
     def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]) -> List[Series]:
@@ -2195,28 +2205,16 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
     ) -> "DataFrameGroupBy":
         if any(isinstance(col_or_s, Series) and kdf is not col_or_s._kdf for col_or_s in by):
-            kdf, new_by_series, column_labels = GroupBy._resolve_grouping_from_diff_dataframes(
-                kdf, by
-            )
-            agg_columns = [
-                label
-                for label in kdf._internal.column_labels
-                if all(not kdf._kser_for(label)._equals(key) for key in new_by_series)
-                and label not in column_labels
-            ]
+            (
+                kdf,
+                new_by_series,
+                ignore_column_labels,
+            ) = GroupBy._resolve_grouping_from_diff_dataframes(kdf, by)
         else:
             new_by_series = GroupBy._resolve_grouping(kdf, by)
-            agg_columns = [
-                label
-                for label in kdf._internal.column_labels
-                if all(not kdf[label]._equals(key) for key in new_by_series)
-            ]
+            ignore_column_labels = set()
         return DataFrameGroupBy(
-            kdf,
-            new_by_series,
-            as_index=as_index,
-            agg_columns=agg_columns,
-            agg_columns_selected=False,
+            kdf, new_by_series, as_index=as_index, ignore_column_labels=ignore_column_labels,
         )
 
     def __init__(
@@ -2224,17 +2222,29 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame,
         by: List[Series],
         as_index: bool,
-        agg_columns: List[Tuple[str, ...]],
-        agg_columns_selected: bool,
+        ignore_column_labels: Set[Tuple[str, ...]],
+        agg_columns: List[Tuple[str, ...]] = None,
     ):
         self._kdf = kdf
         self._groupkeys = by
         self._groupkeys_scols = [s.spark_column for s in self._groupkeys]
         self._as_index = as_index
+        self._ignore_column_labels = ignore_column_labels
 
+        self._agg_columns_selected = agg_columns is not None
+        if self._agg_columns_selected:
+            for label in agg_columns:
+                if label in ignore_column_labels:
+                    raise KeyError(label)
+        else:
+            agg_columns = [
+                label
+                for label in kdf._internal.column_labels
+                if all(not kdf._kser_for(label)._equals(key) for key in by)
+                and label not in ignore_column_labels
+            ]
         self._agg_columns = [kdf[label] for label in agg_columns]
         self._agg_columns_scols = [s.spark_column for s in self._agg_columns]
-        self._agg_columns_selected = agg_columns_selected
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(_MissingPandasLikeDataFrameGroupBy, item):
@@ -2262,8 +2272,8 @@ class DataFrameGroupBy(GroupBy):
                 self._kdf,
                 self._groupkeys,
                 as_index=self._as_index,
+                ignore_column_labels=self._ignore_column_labels,
                 agg_columns=item,
-                agg_columns_selected=True,
             )
 
     def _apply_series_op(self, op):
