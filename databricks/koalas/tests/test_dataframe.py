@@ -2786,9 +2786,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.apply(lambda x: x + 1).sort_index(), pdf.apply(lambda x: x + 1).sort_index()
         )
+        self.assert_eq(
+            kdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+            pdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+        )
+        self.assert_eq(
+            kdf.apply(lambda x, b: x + b, b=1).sort_index(),
+            pdf.apply(lambda x, b: x + b, b=1).sort_index(),
+        )
+
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.apply(lambda x: x + 1).sort_index(), pdf.apply(lambda x: x + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+                pdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+            )
+            self.assert_eq(
+                kdf.apply(lambda x, b: x + b, b=1).sort_index(),
+                pdf.apply(lambda x, b: x + b, b=1).sort_index(),
             )
 
         # returning a Series
@@ -2796,10 +2813,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.apply(lambda x: len(x), axis=1).sort_index(),
             pdf.apply(lambda x: len(x), axis=1).sort_index(),
         )
+        self.assert_eq(
+            kdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
+            pdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.apply(lambda x: len(x), axis=1).sort_index(),
                 pdf.apply(lambda x: len(x), axis=1).sort_index(),
+            )
+            self.assert_eq(
+                kdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
+                pdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
@@ -2856,9 +2881,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame(pdf)
 
         self.assert_eq(kdf.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index())
+        self.assert_eq(
+            kdf.apply_batch(lambda pdf, a: pdf + a, args=(1,)).sort_index(), (pdf + 1).sort_index()
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.apply_batch(lambda pdf, b: pdf + b, b=1).sort_index(), (pdf + 1).sort_index()
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):

@@ -2012,7 +2012,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     T = property(transpose)
 
-    def apply_batch(self, func):
+    def apply_batch(self, func, args=(), **kwds):
         """
         Apply a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
         DataFrame given to the function is of a batch used internally.
@@ -2058,6 +2058,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         func : function
             Function to apply to each pandas frame.
+        args : tuple
+            Positional arguments to pass to `func` in addition to the
+            array/series.
+        **kwds
+            Additional keyword arguments to pass as keywords arguments to
+            `func`.
 
         Returns
         -------
@@ -2091,6 +2097,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.apply_batch(lambda pdf: pdf.query('A == 1'))
            A  B
         0  1  2
+
+        You can also specify extra arguments.
+        >>> def calculation(pdf, y, z) -> ks.DataFrame[int, int]:
+        ...     return pdf ** y + z
+        >>> df.apply_batch(calculation, args=(10,), z=20)
+                c0        c1
+        0       21      1044
+        1    59069   1048596
+        2  9765645  60466196
         """
         # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
 
@@ -2106,6 +2121,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
         should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"
+
+        original_func = func
+        func = lambda o: original_func(o, *args, **kwds)
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -2138,7 +2156,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
         else:
-            return_schema = infer_return_type(func).tpe
+            return_schema = infer_return_type(original_func).tpe
             is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
             if not is_return_dataframe:
                 raise TypeError(
@@ -2173,7 +2191,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     map_in_pandas.__doc__ = apply_batch.__doc__
 
-    def apply(self, func, axis=0):
+    def apply(self, func, axis=0, args=(), **kwds):
         """
         Apply a function along an axis of the DataFrame.
 
@@ -2239,6 +2257,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             * 0 or 'index': apply function to each column.
             * 1 or 'columns': apply function to each row.
+        args : tuple
+            Positional arguments to pass to `func` in addition to the
+            array/series.
+        **kwds
+            Additional keyword arguments to pass as keywords arguments to
+            `func`.
 
         Returns
         -------
@@ -2320,6 +2344,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0   4   9
         1   4   9
         2   4   9
+
+        You can also specify extra arguments.
+
+        >>> def plus_two(a, b, c) -> ks.DataFrame[np.int64, np.int64]:
+        ...     return a + b + c
+        ...
+        >>> df.apply(plus_two, axis=1, args=(1,), c=3)
+           c0  c1
+        0   8  13
+        1   8  13
+        2   8  13
         """
         from databricks.koalas.groupby import GroupBy
         from databricks.koalas.series import _col
@@ -2337,7 +2372,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         should_infer_schema = return_sig is None
 
         def apply_func(pdf):
-            pdf_or_pser = pdf.apply(func, axis=axis)
+            pdf_or_pser = pdf.apply(func, axis=axis, args=args, **kwds)
             if isinstance(pdf_or_pser, pd.Series):
                 return pdf_or_pser.to_frame()
             else:
@@ -2348,7 +2383,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
-            applied = pdf.apply(func, axis=axis)
+            applied = pdf.apply(func, axis=axis, args=args, **kwds)
             kser_or_kdf = ks.from_pandas(applied)
             if len(pdf) <= limit:
                 return kser_or_kdf
