@@ -950,17 +950,14 @@ class GroupBy(object):
         else:
             kdf = self._kdf
 
-        groupkey_labels = [
-            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
-            for i in range(len(self._groupkeys))
-        ]
-        # TODO: handle agg_columns.
-        kdf = kdf[
-            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)]
-            + [kdf._kser_for(label) for label in kdf._internal.column_labels]
-        ]
+        if self._agg_columns_selected:
+            agg_columns = self._agg_columns
+        else:
+            agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
 
-        groupkey_names = [label if len(label) > 1 else label[0] for label in groupkey_labels]
+        kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
+            kdf, self._groupkeys, agg_columns
+        )
 
         if is_series_groupby:
             name = self._kser.name
@@ -1097,27 +1094,24 @@ class GroupBy(object):
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
 
-        groupkey_length = len(self._groupkeys)
-
         kdf = self._kdf
-        data_schema = kdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
-        groupkey_labels = [
-            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
-            for i in range(groupkey_length)
-        ]
 
-        # TODO: handle agg_columns.
-        kdf = kdf[
-            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)]
-            + [kdf._kser_for(label) for label in kdf._internal.column_labels]
-        ]
+        if self._agg_columns_selected:
+            agg_columns = self._agg_columns
+        else:
+            agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
+
+        data_schema = self._kdf[agg_columns]._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+
+        kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
+            kdf, self._groupkeys, agg_columns
+        )
 
         def wrapped_func(pdf):
-            return func(pdf.iloc[:, groupkey_length:])
+            return func(pdf.drop(groupkey_names, axis=1))
 
         def pandas_filter(pdf):
-            groupkeys = [pser for _, pser in pdf.iteritems()][:groupkey_length]
-            return pdf.groupby(groupkeys).filter(wrapped_func).iloc[:, groupkey_length:]
+            return pdf.groupby(groupkey_names).filter(wrapped_func).drop(groupkey_names, axis=1)
 
         sdf = GroupBy._spark_group_map_apply(
             kdf,
@@ -1126,7 +1120,16 @@ class GroupBy(object):
             data_schema,
             retain_index=True,
         )
-        return DataFrame(self._kdf._internal.with_new_sdf(sdf))
+        return DataFrame(self._kdf[agg_columns]._internal.with_new_sdf(sdf))
+
+    @staticmethod
+    def _prepare_group_map_apply(kdf, groupkeys, agg_columns):
+        groupkey_labels = [
+            verify_temp_column_name(kdf, "__groupkey_{}__".format(i)) for i in range(len(groupkeys))
+        ]
+        kdf = kdf[[s.rename(label) for s, label in zip(groupkeys, groupkey_labels)] + agg_columns]
+        groupkey_names = [label if len(label) > 1 else label[0] for label in groupkey_labels]
+        return kdf, groupkey_labels, groupkey_names
 
     @staticmethod
     def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):
@@ -1657,13 +1660,7 @@ class GroupBy(object):
         else:
             agg_columns = [kdf._kser_for(label) for label in kdf._internal.column_labels]
 
-        groupkey_labels = [
-            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
-            for i in range(len(self._groupkeys))
-        ]
-        kdf = kdf[
-            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)] + agg_columns
-        ]
+        kdf, groupkey_labels, _ = self._prepare_group_map_apply(kdf, self._groupkeys, agg_columns)
         groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
 
         sdf = kdf._sdf
@@ -1849,16 +1846,9 @@ class GroupBy(object):
         else:
             kdf = self._kdf
 
-        groupkey_labels = [
-            verify_temp_column_name(kdf, "__groupkey_{}__".format(i))
-            for i in range(len(self._groupkeys))
-        ]
-        kdf = kdf[
-            [s.rename(label) for s, label in zip(self._groupkeys, groupkey_labels)]
-            + self._agg_columns
-        ]
-
-        groupkey_names = [label if len(label) > 1 else label[0] for label in groupkey_labels]
+        kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
+            kdf, self._groupkeys, agg_columns=self._agg_columns
+        )
 
         def pandas_transform(pdf):
             return pdf.groupby(groupkey_names).transform(func)

@@ -1380,11 +1380,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("b")["a"].apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby("b")["a"].apply(lambda x: x + x.min()).sort_index(),
         )
-        # TODO: handle agg_columns.
-        # self.assert_eq(
-        #     kdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
-        #     pdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
-        # )
+        self.assert_eq(
+            kdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby("b")[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        )
         self.assert_eq(
             kdf.groupby(["a", "b"]).apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby(["a", "b"]).apply(lambda x: x + x.min()).sort_index(),
@@ -1401,11 +1400,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(kdf.b // 5)["a"].apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby(pdf.b // 5)["a"].apply(lambda x: x + x.min()).sort_index(),
         )
-        # TODO: handle agg_columns.
-        # self.assert_eq(
-        #     kdf.groupby(kdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
-        #     pdf.groupby(pdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
-        # )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        )
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
             kdf.groupby("b").apply(1)
@@ -1594,11 +1592,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("b").filter(lambda x: any(x.a == 2)).sort_index(),
             pdf.groupby("b").filter(lambda x: any(x.a == 2)).sort_index(),
         )
-        # TODO: handle agg_columns.
-        # self.assert_eq(
-        #     kdf.groupby("b")[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
-        #     pdf.groupby("b")[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
-        # )
+        self.assert_eq(
+            kdf.groupby("b")[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
+            pdf.groupby("b")[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
+        )
         self.assert_eq(
             kdf.groupby(["a", "b"]).filter(lambda x: any(x.a == 2)).sort_index(),
             pdf.groupby(["a", "b"]).filter(lambda x: any(x.a == 2)).sort_index(),
@@ -1607,11 +1604,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(kdf["b"] // 5).filter(lambda x: any(x.a == 2)).sort_index(),
             pdf.groupby(pdf["b"] // 5).filter(lambda x: any(x.a == 2)).sort_index(),
         )
-        # TODO: handle agg_columns.
-        # self.assert_eq(
-        #     kdf.groupby(kdf["b"] // 5)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
-        #     pdf.groupby(pdf["b"] // 5)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
-        # )
+        self.assert_eq(
+            kdf.groupby(kdf["b"] // 5)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
+            pdf.groupby(pdf["b"] // 5)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
+        )
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
             kdf.groupby("b").filter(1)
