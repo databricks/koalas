@@ -820,7 +820,7 @@ class GroupBy(object):
             lambda sg: sg._kser._cum(F.sum, True, part_cols=[s.spark_column for s in sg._groupkeys])
         )
 
-    def apply(self, func):
+    def apply(self, func, *args, **kwargs):
         """
         Apply function `func` group-wise and combine the results together.
 
@@ -857,6 +857,10 @@ class GroupBy(object):
         func : callable
             A callable that takes a DataFrame as its first argument, and
             returns a dataframe.
+        *args
+            Positional arguments to pass to func.
+        **kwargs
+            Keyword arguments to pass to func.
 
         Returns
         -------
@@ -927,11 +931,20 @@ class GroupBy(object):
 
         You can also return a scalar value as a aggregated value of the group:
 
-        >>> def plus_max(x) -> np.int:
+        >>> def plus_length(x) -> np.int:
         ...    return len(x)
-        >>> df.B.groupby(df.A).apply(plus_max).sort_index()
+        >>> df.B.groupby(df.A).apply(plus_length).sort_index()
         0    1
         1    2
+        Name: B, dtype: int32
+
+        The extra arguments to the function can be passed as below.
+
+        >>> def calculation(x, y, z) -> np.int:
+        ...    return len(x) + y * z
+        >>> df.B.groupby(df.A).apply(calculation, 5, z=10).sort_index()
+        0    51
+        1    52
         Name: B, dtype: int32
         """
         from pandas.core.base import SelectionMixin
@@ -965,8 +978,8 @@ class GroupBy(object):
         else:
             f = SelectionMixin._builtin_table.get(func, func)
 
-            def pandas_apply(pdf):
-                return f(pdf.drop(groupkey_names, axis=1))
+            def pandas_apply(pdf, *a, **k):
+                return f(pdf.drop(groupkey_names, axis=1), *a, **k)
 
         should_return_series = False
 
@@ -975,9 +988,9 @@ class GroupBy(object):
             limit = get_option("compute.shortcut_limit")
             pdf = kdf.head(limit + 1)._to_internal_pandas()
             if is_series_groupby:
-                pser_or_pdf = pdf.groupby(groupkey_names)[name].apply(pandas_apply)
+                pser_or_pdf = pdf.groupby(groupkey_names)[name].apply(pandas_apply, *args, **kwargs)
             else:
-                pser_or_pdf = pdf.groupby(groupkey_names).apply(pandas_apply)
+                pser_or_pdf = pdf.groupby(groupkey_names).apply(pandas_apply, *args, **kwargs)
             kser_or_kdf = ks.from_pandas(pser_or_pdf)
             if len(pdf) <= limit:
                 return kser_or_kdf
@@ -1012,7 +1025,7 @@ class GroupBy(object):
 
                 should_skip_first_call = True
 
-                def wrapped_func(df):
+                def wrapped_func(df, *a, **k):
                     nonlocal should_skip_first_call
                     if should_skip_first_call:
                         should_skip_first_call = False
@@ -1021,15 +1034,15 @@ class GroupBy(object):
                         else:
                             return pd.DataFrame()
                     else:
-                        return pandas_apply(df)
+                        return pandas_apply(df, *a, **k)
 
             else:
                 wrapped_func = pandas_apply
 
             if is_series_groupby:
-                pdf_or_ser = pdf.groupby(groupkey_names)[name].apply(wrapped_func)
+                pdf_or_ser = pdf.groupby(groupkey_names)[name].apply(wrapped_func, *args, **kwargs)
             else:
-                pdf_or_ser = pdf.groupby(groupkey_names).apply(wrapped_func)
+                pdf_or_ser = pdf.groupby(groupkey_names).apply(wrapped_func, *args, **kwargs)
 
             if not isinstance(pdf_or_ser, pd.DataFrame):
                 return pd.DataFrame(pdf_or_ser)
@@ -1738,7 +1751,7 @@ class GroupBy(object):
             )
         )
 
-    def transform(self, func):
+    def transform(self, func, *args, **kwargs):
         """
         Apply function column-by-column to the GroupBy object.
 
@@ -1770,6 +1783,10 @@ class GroupBy(object):
         func : callable
             A callable that takes a Series as its first argument, and
             returns a Series.
+        *args
+            Positional arguments to pass to func.
+        **kwargs
+            Keyword arguments to pass to func.
 
         Returns
         -------
@@ -1834,6 +1851,16 @@ class GroupBy(object):
         1    3
         2    6
         Name: B, dtype: int64
+
+        You can also specify extra arguments to pass to the function.
+
+        >>> def calculation(x, y, z) -> ks.Series[np.int]:
+        ...    return x + x.min() + y + z
+        >>> g.transform(calculation, 5, z=20)  # doctest: +NORMALIZE_WHITESPACE
+            B   C
+        0  27  33
+        1  28  35
+        2  31  35
         """
         if not isinstance(func, Callable):
             raise TypeError("%s object is not callable" % type(func))
@@ -1851,7 +1878,7 @@ class GroupBy(object):
         )
 
         def pandas_transform(pdf):
-            return pdf.groupby(groupkey_names).transform(func)
+            return pdf.groupby(groupkey_names).transform(func, *args, **kwargs)
 
         should_infer_schema = return_sig is None
 
@@ -1860,7 +1887,7 @@ class GroupBy(object):
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
             pdf = kdf.head(limit + 1)._to_internal_pandas()
-            pdf = pdf.groupby(groupkey_names).transform(func)
+            pdf = pdf.groupby(groupkey_names).transform(func, *args, **kwargs)
             kdf_from_pandas = DataFrame(pdf)
             return_schema = kdf_from_pandas._sdf.drop(*HIDDEN_COLUMNS).schema
             if len(pdf) <= limit:
@@ -2382,8 +2409,8 @@ class SeriesGroupBy(GroupBy):
     def aggregate(self, *args, **kwargs):
         return _MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
-    def transform(self, func):
-        return _col(super(SeriesGroupBy, self).transform(func))
+    def transform(self, func, *args, **kwargs):
+        return _col(super(SeriesGroupBy, self).transform(func, *args, **kwargs))
 
     transform.__doc__ = GroupBy.transform.__doc__
 
