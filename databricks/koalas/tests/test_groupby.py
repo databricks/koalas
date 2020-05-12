@@ -1126,6 +1126,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("A")["C"].fillna(0).sort_index(),
         )
         self.assert_eq(
+            kdf.groupby("A")[["C"]].fillna(0).sort_index(),
+            pdf.groupby("A")[["C"]].fillna(0).sort_index(),
+        )
+        self.assert_eq(
             kdf.groupby("A").fillna(method="bfill").sort_index(),
             pdf.groupby("A").fillna(method="bfill").sort_index(),
         )
@@ -1135,12 +1139,22 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
         self.assert_eq(
+            kdf.groupby("A")[["C"]].fillna(method="bfill").sort_index(),
+            pdf.groupby("A")[["C"]].fillna(method="bfill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
             kdf.groupby("A").fillna(method="ffill").sort_index(),
             pdf.groupby("A").fillna(method="ffill").sort_index(),
         )
         self.assert_eq(
             kdf.groupby("A")["C"].fillna(method="ffill").sort_index(),
             pdf.groupby("A")["C"].fillna(method="ffill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby("A")[["C"]].fillna(method="ffill").sort_index(),
+            pdf.groupby("A")[["C"]].fillna(method="ffill").sort_index(),
             almost=True,
         )
         self.assert_eq(
@@ -1154,6 +1168,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
         self.assert_eq(
+            kdf.groupby(kdf.A // 5)[["C"]].fillna(method="bfill").sort_index(),
+            pdf.groupby(pdf.A // 5)[["C"]].fillna(method="bfill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
             kdf.groupby(kdf.A // 5).fillna(method="ffill").sort_index(),
             pdf.groupby(pdf.A // 5).fillna(method="ffill").sort_index(),
             almost=True,
@@ -1161,6 +1180,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(kdf.A // 5)["C"].fillna(method="ffill").sort_index(),
             pdf.groupby(pdf.A // 5)["C"].fillna(method="ffill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.A // 5)[["C"]].fillna(method="ffill").sort_index(),
+            pdf.groupby(pdf.A // 5)[["C"]].fillna(method="ffill").sort_index(),
             almost=True,
         )
 
@@ -1199,13 +1223,22 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 kdf.groupby("A").ffill().sort_index(),
                 pdf.groupby("A").ffill().sort_index().drop("A", 1),
             )
+            self.assert_eq(
+                kdf.groupby("A")[["B"]].ffill().sort_index(),
+                pdf.groupby("A")[["B"]].ffill().sort_index().drop("A", 1),
+            )
         else:
             self.assert_eq(
                 kdf.groupby("A").ffill().sort_index(), pdf.groupby("A").ffill().sort_index()
             )
+            self.assert_eq(
+                kdf.groupby("A")[["B"]].ffill().sort_index(),
+                pdf.groupby("A")[["B"]].ffill().sort_index(),
+            )
         self.assert_eq(
-            repr(kdf.groupby("A")["B"].ffill().sort_index()),
-            repr(pdf.groupby("A")["B"].ffill().sort_index()),
+            kdf.groupby("A")["B"].ffill().sort_index(),
+            pdf.groupby("A")["B"].ffill().sort_index(),
+            almost=True,
         )
 
         # multi-index columns
@@ -1241,13 +1274,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 kdf.groupby("A").bfill().sort_index(),
                 pdf.groupby("A").bfill().sort_index().drop("A", 1),
             )
+            self.assert_eq(
+                kdf.groupby("A")[["B"]].bfill().sort_index(),
+                pdf.groupby("A")[["B"]].bfill().sort_index().drop("A", 1),
+            )
         else:
             self.assert_eq(
                 kdf.groupby("A").bfill().sort_index(), pdf.groupby("A").bfill().sort_index()
             )
+            self.assert_eq(
+                kdf.groupby("A")[["B"]].bfill().sort_index(),
+                pdf.groupby("A")[["B"]].bfill().sort_index(),
+            )
         self.assert_eq(
-            repr(kdf.groupby("A")["B"].bfill().sort_index()),
-            repr(pdf.groupby("A")["B"].bfill().sort_index()),
+            kdf.groupby("A")["B"].bfill().sort_index(), pdf.groupby("A")["B"].bfill().sort_index(),
         )
 
         # multi-index columns

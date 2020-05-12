@@ -1517,7 +1517,16 @@ class GroupBy(object):
         2  3.0  1.0  5
         3  3.0  1.0  4
         """
-        return self._fillna(value, method, axis, inplace, limit)
+        return self._apply_series_op(
+            lambda sg: sg._kser._fillna(
+                value,
+                method,
+                axis,
+                inplace,
+                limit,
+                part_cols=[s.spark_column for s in sg._groupkeys],
+            )
+        )
 
     def bfill(self, limit=None):
         """
@@ -1566,7 +1575,7 @@ class GroupBy(object):
         2  3.0  1.0  5
         3  3.0  1.0  4
         """
-        return self._fillna(method="bfill", limit=limit)
+        return self.fillna(method="bfill", limit=limit)
 
     backfill = bfill
 
@@ -1617,7 +1626,7 @@ class GroupBy(object):
         2  NaN  NaN  5
         3  3.0  1.0  4
         """
-        return self._fillna(method="ffill", limit=limit)
+        return self.fillna(method="ffill", limit=limit)
 
     pad = ffill
 
@@ -2237,17 +2246,6 @@ class DataFrameGroupBy(GroupBy):
         internal = self._kdf._internal.with_new_columns(applied, keep_order=False)
         return DataFrame(internal)
 
-    def _fillna(self, *args, **kwargs):
-        applied = []
-        kdf = self._kdf
-
-        for label in kdf._internal.column_labels:
-            if all(not self._kdf[label]._equals(key) for key in self._groupkeys):
-                applied.append(kdf[label].groupby(self._groupkeys)._fillna(*args, **kwargs))
-
-        internal = kdf._internal.with_new_columns(applied, keep_order=False)
-        return DataFrame(internal)
-
     # TODO: Implement 'percentiles', 'include', and 'exclude' arguments.
     # TODO: Add ``DataFrame.select_dtypes`` to See Also when 'include'
     #   and 'exclude' arguments are implemented.
@@ -2384,11 +2382,6 @@ class SeriesGroupBy(GroupBy):
 
     def _apply_series_op(self, op):
         return op(self)
-
-    def _fillna(self, *args, **kwargs):
-        return self._kser._fillna(
-            *args, **kwargs, part_cols=[s.spark_column for s in self._groupkeys]
-        )
 
     @property
     def _kdf(self) -> DataFrame:
