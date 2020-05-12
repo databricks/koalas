@@ -2439,7 +2439,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return result
 
-    def transform(self, func):
+    def transform(self, func, axis=0, *args, **kwargs):
         """
         Call ``func`` on self producing a Series with transformed values
         and that has the same length as its input.
@@ -2472,6 +2472,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         func : function
             Function to use for transforming the data. It must work when pandas Series
             is passed.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
+        *args
+            Positional arguments to pass to func.
+        **kwargs
+            Keyword arguments to pass to func.
 
         Returns
         -------
@@ -2529,8 +2535,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  0  1
         1  1  4
         2  4  9
+
+        You can also specify extra arguments.
+
+        >>> def calculation(x, y, z) -> ks.Series[int]:
+        ...     return x ** y + z
+        >>> df.transform(calculation, y=10, z=20)  # doctest: +NORMALIZE_WHITESPACE
+              X
+              A      B
+        0    20     21
+        1    21   1044
+        2  1044  59069
         """
         assert callable(func), "the first argument should be a callable function."
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
+
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
@@ -2540,7 +2561,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
-            transformed = pdf.transform(func)
+            transformed = pdf.transform(func, axis, *args, **kwargs)
             kdf = DataFrame(transformed)
             if len(pdf) <= limit:
                 return kdf
@@ -2550,7 +2571,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.column_labels, kdf._internal.column_labels
             ):
                 pudf = pandas_udf(
-                    func,
+                    lambda c: func(c, *args, **kwargs),
                     returnType=kdf._internal.spark_type_for(output_label),
                     functionType=PandasUDFType.SCALAR,
                 )
@@ -2562,9 +2583,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = self._internal.with_new_columns(applied)
             return DataFrame(internal)
         else:
-            return self._apply_series_op(lambda kser: kser.transform_batch(func))
+            return self._apply_series_op(lambda kser: kser.transform_batch(func, *args, **kwargs))
 
-    def transform_batch(self, func):
+    def transform_batch(self, func, *args, **kwargs):
         """
         Transform chunks with a function that takes pandas DataFrame and outputs pandas DataFrame.
         The pandas DataFrame given to the function is of a batch used internally. The length of
@@ -2609,6 +2630,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         func : function
             Function to transform each pandas frame.
+        *args
+            Positional arguments to pass to func.
+        **kwargs
+            Keyword arguments to pass to func.
 
         Returns
         -------
@@ -2659,6 +2684,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    5
         2    7
         Name: B, dtype: int64
+
+        You can also specify extra arguments as below.
+
+        >>> df.transform_batch(lambda pdf, a, b, c: pdf.B + a + b + c, 1, 2, c=3)
+        0     8
+        1    10
+        2    12
+        Name: B, dtype: int64
         """
         from databricks.koalas.groupby import GroupBy
         from databricks.koalas import Series
@@ -2667,6 +2700,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
+        original_func = func
+        func = lambda o: original_func(o, *args, **kwargs)
 
         names = self._internal.to_internal_spark_frame.schema.names
         should_by_pass = LooseVersion(pyspark.__version__) >= "3.0"
@@ -2760,7 +2795,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     sdf = self._internal.spark_frame.select(*applied)
                 return DataFrame(kdf._internal.with_new_sdf(sdf))
         else:
-            return_schema = infer_return_type(func).tpe
+            return_schema = infer_return_type(original_func).tpe
             is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
             is_return_series = getattr(return_sig, "__origin__", None) == ks.Series
             if not is_return_dataframe and not is_return_series:
