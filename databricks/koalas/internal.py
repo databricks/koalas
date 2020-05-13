@@ -864,6 +864,7 @@ class _InternalFrame(object):
         self,
         scols_or_ksers: List[Union[spark.Column, "Series"]],
         column_labels: Optional[List[Tuple[str, ...]]] = None,
+        column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
         keep_order: bool = True,
     ) -> "_InternalFrame":
         """
@@ -911,12 +912,16 @@ class _InternalFrame(object):
 
         sdf = self._sdf.select(self.index_spark_columns + data_spark_columns + hidden_columns)
 
+        if column_label_names is _NoValue:
+            column_label_names = self._column_label_names
+
         return self.copy(
             spark_frame=sdf,
             column_labels=column_labels,
             data_spark_columns=[
                 scol_for(sdf, col) for col in self._sdf.select(data_spark_columns).columns
             ],
+            column_label_names=column_label_names,
             spark_column=None,
         )
 
