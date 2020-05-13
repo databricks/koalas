@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
 
 
-def combine_frames(this, *args, how="full"):
+def combine_frames(this, *args, how="full", preserve_order_column=False):
     """
     This method combines `this` DataFrame with a different `that` DataFrame or
     Series from a different DataFrame.
@@ -49,9 +49,10 @@ def combine_frames(this, *args, how="full"):
     So, if `compute.ops_on_diff_frames` option is False,
     this method throws an exception.
     """
-    from databricks.koalas import Series
-    from databricks.koalas import DataFrame
     from databricks.koalas.config import get_option
+    from databricks.koalas.frame import DataFrame
+    from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
+    from databricks.koalas.series import Series
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(
@@ -99,6 +100,11 @@ def combine_frames(this, *args, how="full"):
 
         joined_df = this._sdf.alias("this").join(that._sdf.alias("that"), on=join_scols, how=how)
 
+        if preserve_order_column:
+            order_column = [scol_for(this._sdf, NATURAL_ORDER_COLUMN_NAME)]
+        else:
+            order_column = []
+
         joined_df = joined_df.select(
             merged_index_scols
             + [
@@ -113,10 +119,15 @@ def combine_frames(this, *args, how="full"):
                 )
                 for label in that._internal.column_labels
             ]
+            + order_column
         )
 
         index_columns = set(this._internal.index_spark_column_names)
-        new_data_columns = [c for c in joined_df.columns if c not in index_columns]
+        new_data_columns = [
+            col
+            for col in joined_df.columns
+            if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
+        ]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
         column_labels = [
             tuple(["this"] + ([""] * (level - len(label))) + list(label))
@@ -148,7 +159,9 @@ def combine_frames(this, *args, how="full"):
         )
 
 
-def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
+def align_diff_frames(
+    resolve_func, this, that, fillna=True, how="full", preserve_order_column=False
+):
     """
     This method aligns two different DataFrames with a given `func`. Columns are resolved and
     handled within the given `func`.
@@ -210,7 +223,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
     common_column_labels = set(this_column_labels).intersection(that_column_labels)
 
     # 1. Perform the join given two dataframes.
-    combined = combine_frames(this, that, how=how)
+    combined = combine_frames(this, that, how=how, preserve_order_column=preserve_order_column)
 
     # 2. Apply the given function to transform the columns in a batch and keep the new columns.
     combined_column_labels = combined._internal.column_labels

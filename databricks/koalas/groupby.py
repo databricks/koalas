@@ -2170,7 +2170,12 @@ class GroupBy(object):
             if label in tmp_column_labels:
                 kser = col_or_s
                 kdf = align_diff_frames(
-                    assign_columns, kdf, kser.rename(label), fillna=False, how="inner",
+                    assign_columns,
+                    kdf,
+                    kser.rename(label),
+                    fillna=False,
+                    how="inner",
+                    preserve_order_column=True,
                 )
 
         new_by_series = []
