@@ -2883,12 +2883,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> df = ks.DataFrame([(1, -2), (3, -4), (5, -6)], columns=['A', 'B'])
+        >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
         >>> df
            A  B
-        0  1 -2
-        1  3 -4
-        2  5 -6
+        0  1  2
+        1  3  4
+        2  5  6
 
         >>> def plus_one_func(pser) -> ks.Series[np.int64]:
         ...     return pser + 1
@@ -2918,11 +2918,11 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         You can also use ``np.ufunc`` as input.
 
-        >>> df.B.transform_batch(np.abs)
-        0    2
-        1    4
-        2    6
-        Name: B, dtype: int64
+        >>> df.A.transform_batch(np.add, 10)
+        0    11
+        1    13
+        2    15
+        Name: A, dtype: int64
         """
 
         assert callable(func), "the first argument should be a callable function."
