@@ -974,7 +974,7 @@ class GroupBy(object):
             agg_columns = [
                 kdf._kser_for(label)
                 for label in kdf._internal.column_labels
-                if label not in self._ignore_column_labels
+                if label not in self._column_labels_to_exlcude
             ]
 
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
@@ -1134,7 +1134,7 @@ class GroupBy(object):
             agg_columns = [
                 kdf._kser_for(label)
                 for label in kdf._internal.column_labels
-                if label not in self._ignore_column_labels
+                if label not in self._column_labels_to_exlcude
             ]
 
         data_schema = self._kdf[agg_columns]._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
@@ -1698,7 +1698,7 @@ class GroupBy(object):
             agg_columns = [
                 kdf._kser_for(label)
                 for label in kdf._internal.column_labels
-                if label not in self._ignore_column_labels
+                if label not in self._column_labels_to_exlcude
             ]
 
         kdf, groupkey_labels, _ = self._prepare_group_map_apply(kdf, self._groupkeys, agg_columns)
@@ -2191,13 +2191,16 @@ class DataFrameGroupBy(GroupBy):
             (
                 kdf,
                 new_by_series,
-                ignore_column_labels,
+                column_labels_to_exlcude,
             ) = GroupBy._resolve_grouping_from_diff_dataframes(kdf, by)
         else:
             new_by_series = GroupBy._resolve_grouping(kdf, by)
-            ignore_column_labels = set()
+            column_labels_to_exlcude = set()
         return DataFrameGroupBy(
-            kdf, new_by_series, as_index=as_index, ignore_column_labels=ignore_column_labels,
+            kdf,
+            new_by_series,
+            as_index=as_index,
+            column_labels_to_exlcude=column_labels_to_exlcude,
         )
 
     def __init__(
@@ -2205,25 +2208,25 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame,
         by: List[Series],
         as_index: bool,
-        ignore_column_labels: Set[Tuple[str, ...]],
+        column_labels_to_exlcude: Set[Tuple[str, ...]],
         agg_columns: List[Tuple[str, ...]] = None,
     ):
         self._kdf = kdf
         self._groupkeys = by
         self._as_index = as_index
-        self._ignore_column_labels = ignore_column_labels
+        self._column_labels_to_exlcude = column_labels_to_exlcude
 
         self._agg_columns_selected = agg_columns is not None
         if self._agg_columns_selected:
             for label in agg_columns:  # type: ignore
-                if label in ignore_column_labels:
+                if label in column_labels_to_exlcude:
                     raise KeyError(label)
         else:
             agg_columns = [
                 label
                 for label in kdf._internal.column_labels
                 if all(not kdf._kser_for(label)._equals(key) for key in by)
-                and label not in ignore_column_labels
+                and label not in column_labels_to_exlcude
             ]
         self._agg_columns = [kdf[label] for label in agg_columns]  # type: ignore
 
@@ -2253,7 +2256,7 @@ class DataFrameGroupBy(GroupBy):
                 self._kdf,
                 self._groupkeys,
                 as_index=self._as_index,
-                ignore_column_labels=self._ignore_column_labels,
+                column_labels_to_exlcude=self._column_labels_to_exlcude,
                 agg_columns=item,
             )
 
