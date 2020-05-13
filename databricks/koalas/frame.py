@@ -6182,29 +6182,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     % (len(old_names), len(column_labels))
                 )
             column_label_names = columns.names
-            data_columns = [name_like_string(label) for label in column_labels]
-            data_spark_columns = [
-                self._internal.spark_column_for(label).alias(name)
-                for label, name in zip(self._internal.column_labels, data_columns)
-            ]
-            self._internal = self._internal.with_new_columns(
-                data_spark_columns, column_labels=column_labels
-            )
-            sdf = self._sdf.select(
-                self._internal.index_spark_columns
-                + [
-                    self._internal.spark_column_for(label).alias(name)
-                    for label, name in zip(self._internal.column_labels, data_columns)
-                ]
-                + list(HIDDEN_COLUMNS)
-            )
-            data_spark_columns = [scol_for(sdf, col) for col in data_columns]
-            self._internal = self._internal.copy(
-                spark_frame=sdf,
-                column_labels=column_labels,
-                data_spark_columns=data_spark_columns,
-                column_label_names=column_label_names,
-            )
         else:
             old_names = self._internal.column_labels
             if len(old_names) != len(columns):
@@ -6217,22 +6194,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_label_names = columns.names
             else:
                 column_label_names = None
-            data_columns = [name_like_string(label) for label in column_labels]
-            sdf = self._sdf.select(
-                self._internal.index_spark_columns
-                + [
-                    self._internal.spark_column_for(label).alias(name)
-                    for label, name in zip(self._internal.column_labels, data_columns)
-                ]
-                + list(HIDDEN_COLUMNS)
-            )
-            data_spark_columns = [scol_for(sdf, col) for col in data_columns]
-            self._internal = self._internal.copy(
-                spark_frame=sdf,
-                column_labels=column_labels,
-                data_spark_columns=data_spark_columns,
-                column_label_names=column_label_names,
-            )
+        data_columns = [name_like_string(label) for label in column_labels]
+        data_spark_columns = [
+            self._internal.spark_column_for(label).alias(name)
+            for label, name in zip(self._internal.column_labels, data_columns)
+        ]
+        self._internal = self._internal.with_new_columns(
+            data_spark_columns, column_labels=column_labels, column_label_names=column_label_names
+        )
 
     @property
     def dtypes(self):
