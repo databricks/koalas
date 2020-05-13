@@ -124,9 +124,9 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
         index_columns = set(this._internal.index_spark_column_names)
         new_data_columns = [
-            c
-            for c in joined_df.columns
-            if c not in index_columns and c != NATURAL_ORDER_COLUMN_NAME
+            col
+            for col in joined_df.columns
+            if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
         ]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
         column_labels = [
