@@ -1802,7 +1802,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
         if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
             raise NotImplementedError(
-                "`to_markdown()` only supported in Kaoals with pandas >= 1.0.0"
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
             )
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
