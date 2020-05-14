@@ -2800,7 +2800,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             is_return_series = getattr(return_sig, "__origin__", None) == ks.Series
             if not is_return_dataframe and not is_return_series:
                 raise TypeError(
-                    "The given function should specify a frame or seires as its type "
+                    "The given function should specify a frame or series as its type "
                     "hints; however, the return type was %s." % return_sig
                 )
             if is_return_series:
