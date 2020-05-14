@@ -180,14 +180,10 @@ class IndexOpsMixin(object):
 
     def __truediv__(self, other):
         def truediv(left, right):
-            return F.when(
-                F.lit(right == 0) & (F.lit(left != np.inf) & F.lit(left != -np.inf)),
-                F.lit(np.inf).__div__(left),
-            ).otherwise(
-                F.when(
-                    (F.lit(left == np.inf) | F.lit(left == -np.inf)) & F.lit(right is not np.nan),
-                    left,
-                ).otherwise(left.__truediv__(right))
+            return F.when(F.lit(right != 0), left.__div__(right)).otherwise(
+                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                    F.lit(np.inf).__div__(left)
+                )
             )
 
         return _numpy_column_op(truediv)(self, other)
@@ -218,17 +214,10 @@ class IndexOpsMixin(object):
 
     def __floordiv__(self, other):
         def floordiv(left, right):
-            return F.when(
-                F.lit(right == 0) & (F.lit(left != np.inf) & F.lit(left != -np.inf)),
-                F.lit(np.inf).__div__(left),
-            ).otherwise(
-                F.when(
-                    F.lit(right == 0) & (F.lit(left == np.inf) | F.lit(left == -np.inf)), left
-                ).otherwise(
-                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), np.nan).otherwise(
-                        F.when(F.lit(right is np.nan), np.nan).otherwise(
-                            F.floor(left.__div__(right))
-                        )
+            return F.when(F.lit(right is np.nan), np.nan).otherwise(
+                F.when(F.lit(right != 0), F.floor(left.__div__(right))).otherwise(
+                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                        F.lit(np.inf).__div__(left)
                     )
                 )
             )
