@@ -2915,6 +2915,14 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1     9
         2    11
         Name: A, dtype: int64
+
+        You can also use ``np.ufunc`` as input.
+
+        >>> df.A.transform_batch(np.add, 10)
+        0    11
+        1    13
+        2    15
+        Name: A, dtype: int64
         """
 
         assert callable(func), "the first argument should be a callable function."
