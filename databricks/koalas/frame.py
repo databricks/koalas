@@ -2106,6 +2106,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0       21      1044
         1    59069   1048596
         2  9765645  60466196
+
+        You can also use ``np.ufunc`` as input.
+
+        >>> df.apply_batch(np.add, args=(10,))
+            A   B
+        0  11  12
+        1  13  14
+        2  15  16
         """
         # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
 
