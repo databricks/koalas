@@ -1467,15 +1467,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
-    def test_div_zero(self):
+    def test_div_zero_and_nan(self):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
         kser = ks.from_pandas(pser)
 
         self.assert_eq(repr(pser.div(0)), repr(kser.div(0)))
         self.assert_eq(repr(pser.truediv(0)), repr(kser.truediv(0)))
         self.assert_eq(repr(pser / 0), repr(kser / 0))
+        self.assert_eq(repr(pser.div(np.nan)), repr(kser.div(np.nan)))
+        self.assert_eq(repr(pser.truediv(np.nan)), repr(kser.truediv(np.nan)))
+        self.assert_eq(repr(pser / np.nan), repr(kser / np.nan))
 
-        # floordiv has different behavior in pandas > 1.0.0
+        # floordiv has different behavior in pandas > 1.0.0 when divide by 0
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             self.assert_eq(repr(pser.floordiv(0)), repr(kser.floordiv(0)))
             self.assert_eq(repr(pser // 0), repr(kser // 0))
@@ -1485,9 +1488,4 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             )
             self.assert_eq(repr(kser.floordiv(0)), repr(result))
             self.assert_eq(repr(kser // 0), repr(result))
-
-    def test_floordiv_nan(self):
-        pser = pd.Series([-100, 0, 100, None, np.nan], name="Koalas")
-        kser = ks.from_pandas(pser)
-
         self.assert_eq(repr(pser.floordiv(np.nan)), repr(kser.floordiv(np.nan)))

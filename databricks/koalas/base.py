@@ -184,9 +184,10 @@ class IndexOpsMixin(object):
                 F.lit(right == 0) & (F.lit(left != np.inf) & F.lit(left != -np.inf)),
                 F.lit(np.inf).__div__(left),
             ).otherwise(
-                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
-                    left.__truediv__(right)
-                )
+                F.when(
+                    (F.lit(left == np.inf) | F.lit(left == -np.inf)) & F.lit(right is not np.nan),
+                    left,
+                ).otherwise(left.__truediv__(right))
             )
 
         return _numpy_column_op(truediv)(self, other)
@@ -221,8 +222,14 @@ class IndexOpsMixin(object):
                 F.lit(right == 0) & (F.lit(left != np.inf) & F.lit(left != -np.inf)),
                 F.lit(np.inf).__div__(left),
             ).otherwise(
-                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
-                    F.when(F.lit(right) == np.nan, np.nan).otherwise(F.floor(left.__div__(right)))
+                F.when(
+                    F.lit(right == 0) & (F.lit(left == np.inf) | F.lit(left == -np.inf)), left
+                ).otherwise(
+                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), np.nan).otherwise(
+                        F.when(F.lit(right is np.nan), np.nan).otherwise(
+                            F.floor(left.__div__(right))
+                        )
+                    )
                 )
             )
 
