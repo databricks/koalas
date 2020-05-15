@@ -1111,6 +1111,36 @@ class LocIndexer(_LocIndexerLike):
             cols_sel = (cols_sel,)
         return self._get_from_multiindex_column(cols_sel, missing_keys)
 
+    def __setitem__(self, key, value):
+        from databricks.koalas.series import Series
+
+        super(LocIndexer, self).__setitem__(key, value)
+
+        if self._is_series:
+            cond, limit, remaining_index = self._select_rows(key)
+            if cond is None:
+                cond = F.lit(True)
+            if isinstance(value, Series):
+                if remaining_index is not None and remaining_index == 0:
+                    raise ValueError("No axis named {} for object type {}".format(key, type(value)))
+                value = value.spark_column
+            else:
+                value = F.lit(value)
+
+            # For overwrite internal DataFrame
+            _kdf = self._kdf_or_kser._kdf
+            col_name = self._kdf_or_kser.name or "0"
+            sdf = _kdf._internal._sdf
+            cond = F.when(cond, value).otherwise(scol_for(sdf, col_name))
+            sdf = sdf.withColumn(col_name, cond)
+            data_scols = [
+                scol_for(sdf, scol_name) for scol_name in _kdf._internal.data_spark_column_names
+            ]
+
+            internal = _kdf._internal.copy(spark_frame=sdf, data_spark_columns=data_scols)
+
+            self._kdf_or_kser._kdf._internal = internal
+
 
 class iLocIndexer(_LocIndexerLike):
     """

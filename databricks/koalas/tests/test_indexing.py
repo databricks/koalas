@@ -1038,6 +1038,20 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaisesRegex(ValueError, "Incompatible indexer with DataFrame"):
             kser.iloc[1] = kdf[["b"]]
 
+    def test_series_in_frame_loc_setitem(self):
+        pdf = pd.DataFrame(
+            [[0, 2, 3], [0, 4, 1], [10, 20, 30]], index=[4, 5, 5], columns=["A", "B", "C"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        pdf["C"].loc[(pdf["A"] <= pdf["B"])] = 10
+        kdf["C"].loc[(kdf["A"] <= kdf["B"])] = 10
+        self.assert_eq(kdf, pdf)
+
+        pdf["C"].loc[(pdf["A"] <= pdf["B"])] = -pdf["C"]
+        kdf["C"].loc[(kdf["A"] <= kdf["B"])] = -kdf["C"]
+        self.assert_eq(kdf, pdf)
+
     def test_iloc_raises(self):
         pdf = pd.DataFrame({"A": [1, 2], "B": [3, 4], "C": [5, 6]})
         kdf = ks.from_pandas(pdf)
