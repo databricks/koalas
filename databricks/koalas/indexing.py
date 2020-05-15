@@ -1128,18 +1128,18 @@ class LocIndexer(_LocIndexerLike):
                 value = F.lit(value)
 
             # For overwrite internal DataFrame
-            _kdf = self._kdf_or_kser._kdf
+            kdf = self._kdf_or_kser._kdf
             col_name = self._kdf_or_kser.name or "0"
-            sdf = _kdf._internal._sdf
+            sdf = kdf._internal._sdf
             cond = F.when(cond, value).otherwise(scol_for(sdf, col_name))
             sdf = sdf.withColumn(col_name, cond)
             data_scols = [
-                scol_for(sdf, scol_name) for scol_name in _kdf._internal.data_spark_column_names
+                scol_for(sdf, scol_name) for scol_name in kdf._internal.data_spark_column_names
             ]
 
-            internal = _kdf._internal.copy(spark_frame=sdf, data_spark_columns=data_scols)
+            internal = kdf._internal.copy(spark_frame=sdf, data_spark_columns=data_scols)
 
-            self._kdf_or_kser._kdf._internal = internal
+            kdf._internal = internal
 
 
 class iLocIndexer(_LocIndexerLike):
