@@ -1764,13 +1764,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf._to_internal_pandas(), self.to_latex, pd.DataFrame.to_latex, args
         )
 
-    def to_markdown(self, buf=None, mode=None, max_rows=None):
+    def to_markdown(self, buf=None, mode=None):
         """
         Print DataFrame in Markdown-friendly format.
-
-        .. note:: This method should only be used if the resulting Pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory. If the input
-                  is large, set max_rows parameter.
 
         Parameters
         ----------
@@ -1806,10 +1802,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
-        if max_rows is not None:
-            kdf = self.head(max_rows)
-        else:
-            kdf = self
+        kdf = self
         return validate_arguments_and_invoke_function(
             kdf._to_internal_pandas(), self.to_markdown, pd.DataFrame.to_markdown, args
         )
