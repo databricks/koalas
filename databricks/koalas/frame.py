@@ -1285,7 +1285,7 @@ class DataFrame(_Frame, Generic[T]):
         ... # 0,1,2,3
         ... # 1,4,5,6
 
-        We can omit the the index by passing the keyword `index` and setting
+        We can omit the index by passing the keyword `index` and setting
         it to false.
 
         >>> df.to_clipboard(sep=',', index=False)  # doctest: +SKIP
@@ -1801,7 +1801,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
         if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
             raise NotImplementedError(
-                "`to_markdown()` only supported in Kaoals with pandas >= 1.0.0"
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
             )
         # Make sure locals() call is at the top of the function so we don't capture local variables.
         args = locals()
@@ -2796,7 +2796,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             is_return_series = getattr(return_sig, "__origin__", None) == ks.Series
             if not is_return_dataframe and not is_return_series:
                 raise TypeError(
-                    "The given function should specify a frame or seires as its type "
+                    "The given function should specify a frame or series as its type "
                     "hints; however, the return type was %s." % return_sig
                 )
             if is_return_series:
