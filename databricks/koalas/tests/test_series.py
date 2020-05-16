@@ -215,6 +215,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
 
+        # test considering series does not have NA/NaN values
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser, pser)
+
     def test_dropna(self):
         pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
 
@@ -1500,3 +1505,29 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.mad(), kser.mad())
+
+    def test_to_frame(self):
+        kser = ks.Series(["a", "b", "c"])
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.to_frame(name="a"), kser.to_frame(name="a"))
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series(["a", "b", "c"], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.to_frame(name="a"), kser.to_frame(name="a"))
+
+    def test_shape(self):
+        kser = ks.Series(["a", "b", "c"])
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.shape, kser.shape)
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series(["a", "b", "c"], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.shape, kser.shape)

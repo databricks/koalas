@@ -453,7 +453,11 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
                     sdf = sdf.limit(sdf.count() + limit)
 
             data_columns = sdf.select(data_spark_columns).columns
-            sdf = sdf.select(index_scols + data_spark_columns)
+
+            if cond is None:
+                sdf = sdf.select(index_scols + data_spark_columns + [NATURAL_ORDER_COLUMN_NAME])
+            else:
+                sdf = sdf.select(index_scols + data_spark_columns)
         except AnalysisException:
             raise KeyError(
                 "[{}] don't exist in columns".format(

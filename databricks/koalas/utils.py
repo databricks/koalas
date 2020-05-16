@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
 
 
-def combine_frames(this, *args, how="full"):
+def combine_frames(this, *args, how="full", preserve_order_column=False):
     """
     This method combines `this` DataFrame with a different `that` DataFrame or
     Series from a different DataFrame.
@@ -49,9 +49,10 @@ def combine_frames(this, *args, how="full"):
     So, if `compute.ops_on_diff_frames` option is False,
     this method throws an exception.
     """
-    from databricks.koalas import Series
-    from databricks.koalas import DataFrame
     from databricks.koalas.config import get_option
+    from databricks.koalas.frame import DataFrame
+    from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
+    from databricks.koalas.series import Series
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(
@@ -99,6 +100,11 @@ def combine_frames(this, *args, how="full"):
 
         joined_df = this._sdf.alias("this").join(that._sdf.alias("that"), on=join_scols, how=how)
 
+        if preserve_order_column:
+            order_column = [scol_for(this._sdf, NATURAL_ORDER_COLUMN_NAME)]
+        else:
+            order_column = []
+
         joined_df = joined_df.select(
             merged_index_scols
             + [
@@ -113,10 +119,15 @@ def combine_frames(this, *args, how="full"):
                 )
                 for label in that._internal.column_labels
             ]
+            + order_column
         )
 
         index_columns = set(this._internal.index_spark_column_names)
-        new_data_columns = [c for c in joined_df.columns if c not in index_columns]
+        new_data_columns = [
+            col
+            for col in joined_df.columns
+            if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
+        ]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
         column_labels = [
             tuple(["this"] + ([""] * (level - len(label))) + list(label))
@@ -148,7 +159,9 @@ def combine_frames(this, *args, how="full"):
         )
 
 
-def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
+def align_diff_frames(
+    resolve_func, this, that, fillna=True, how="full", preserve_order_column=False
+):
     """
     This method aligns two different DataFrames with a given `func`. Columns are resolved and
     handled within the given `func`.
@@ -210,7 +223,7 @@ def align_diff_frames(resolve_func, this, that, fillna=True, how="full"):
     common_column_labels = set(this_column_labels).intersection(that_column_labels)
 
     # 1. Perform the join given two dataframes.
-    combined = combine_frames(this, that, how=how)
+    combined = combine_frames(this, that, how=how, preserve_order_column=preserve_order_column)
 
     # 2. Apply the given function to transform the columns in a batch and keep the new columns.
     combined_column_labels = combined._internal.column_labels
@@ -486,59 +499,102 @@ def validate_bool_kwarg(value, arg_name):
     return value
 
 
-def verify_temp_column_name(df: Union["DataFrame", spark.DataFrame], column_name: str) -> str:
+def verify_temp_column_name(
+    df: Union["DataFrame", spark.DataFrame], column_name_or_label: Union[str, Tuple[str, ...]]
+) -> Union[str, Tuple[str, ...]]:
     """
     Verify that the given column name does not exist in the given Koalas or Spark DataFrame.
 
-    The temporary column names should start and end with `__`. In addition, `column_name` only
-    expects a single string instead of labels when `df` is a Koalas DataFrame.
+    The temporary column names should start and end with `__`. In addition, `column_name_or_label`
+    expects a single string, or column labels when `df` is a Koalas DataFrame.
 
     >>> kdf = ks.DataFrame({("x", "a"): ['a', 'b', 'c']})
     >>> kdf["__dummy__"] = 0
+    >>> kdf[("", "__dummy__")] = 1
     >>> kdf  # doctest: +NORMALIZE_WHITESPACE
        x __dummy__
-       a
-    0  a         0
-    1  b         0
-    2  c         0
+       a           __dummy__
+    0  a         0         1
+    1  b         0         1
+    2  c         0         1
 
     >>> verify_temp_column_name(kdf, '__tmp__')
-    '__tmp__'
+    ('__tmp__', '')
+    >>> verify_temp_column_name(kdf, ('', '__tmp__'))
+    ('', '__tmp__')
     >>> verify_temp_column_name(kdf, '__dummy__')
     Traceback (most recent call last):
     ...
-    AssertionError: ... `__dummy__` ...
+    AssertionError: ... `(__dummy__, )` ...
+    >>> verify_temp_column_name(kdf, ('', '__dummy__'))
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... `(, __dummy__)` ...
+    >>> verify_temp_column_name(kdf, 'dummy')
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... should be empty or start and end with `__`: ('dummy', '')
+    >>> verify_temp_column_name(kdf, ('', 'dummy'))
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... should be empty or start and end with `__`: ('', 'dummy')
 
     >>> sdf = kdf._internal.spark_frame
     >>> sdf.select(kdf._internal.data_spark_columns).show()  # doctest: +NORMALIZE_WHITESPACE
-    +------+---------+
-    |(x, a)|__dummy__|
-    +------+---------+
-    |     a|        0|
-    |     b|        0|
-    |     c|        0|
-    +------+---------+
+    +------+---------+-------------+
+    |(x, a)|__dummy__|(, __dummy__)|
+    +------+---------+-------------+
+    |     a|        0|            1|
+    |     b|        0|            1|
+    |     c|        0|            1|
+    +------+---------+-------------+
 
     >>> verify_temp_column_name(sdf, '__tmp__')
     '__tmp__'
     >>> verify_temp_column_name(sdf, '__dummy__')
     Traceback (most recent call last):
     ...
-    AssertionError: ... `__dummy__` ... '(x, a)', '__dummy__', ...
+    AssertionError: ... `__dummy__` ... '(x, a)', '__dummy__', '(, __dummy__)', ...
+    >>> verify_temp_column_name(sdf, ('', '__dummy__'))
+    Traceback (most recent call last):
+    ...
+    AssertionError: <class 'tuple'>
+    >>> verify_temp_column_name(sdf, 'dummy')
+    Traceback (most recent call last):
+    ...
+    AssertionError: ... should start and end with `__`: dummy
     """
     from databricks.koalas.frame import DataFrame
 
-    assert column_name.startswith("__") and column_name.endswith(
-        "__"
-    ), "The temporary column name should start and end with `__`."
-
     if isinstance(df, DataFrame):
+        if isinstance(column_name_or_label, str):
+            column_name = column_name_or_label
+
+            level = df._internal.column_labels_level
+            column_name_or_label = tuple([column_name_or_label] + ([""] * (level - 1)))
+        else:
+            column_name = name_like_string(column_name_or_label)
+
+        assert any(len(label) > 0 for label in column_name_or_label) and all(
+            label == "" or (label.startswith("__") and label.endswith("__"))
+            for label in column_name_or_label
+        ), "The temporary column name should be empty or start and end with `__`: {}".format(
+            column_name_or_label
+        )
         assert all(
-            column_name != label[0] for label in df._internal.column_labels
+            column_name_or_label != label for label in df._internal.column_labels
         ), "The given column name `{}` already exists in the Koalas DataFrame: {}".format(
-            column_name, df.columns
+            name_like_string(column_name_or_label), df.columns
         )
         df = df._internal.spark_frame
+    else:
+        assert isinstance(column_name_or_label, str), type(column_name_or_label)
+        assert column_name_or_label.startswith("__") and column_name_or_label.endswith(
+            "__"
+        ), "The temporary column name should start and end with `__`: {}".format(
+            column_name_or_label
+        )
+        column_name = column_name_or_label
 
     assert isinstance(df, spark.DataFrame), type(df)
     assert (
@@ -546,7 +602,8 @@ def verify_temp_column_name(df: Union["DataFrame", spark.DataFrame], column_name
     ), "The given column name `{}` already exists in the Spark DataFrame: {}".format(
         column_name, df.columns
     )
-    return column_name
+
+    return column_name_or_label
 
 
 def compare_null_first(left, right, comp):

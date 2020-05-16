@@ -2741,7 +2741,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     T = property(transpose)
 
-    def transform(self, func, *args, **kwargs):
+    def transform(self, func, axis=0, *args, **kwargs):
         """
         Call ``func`` producing the same type as `self` with transformed values
         and that has the same axis length as input.
@@ -2761,6 +2761,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ----------
         func : function or list
             A function or a list of functions to use for transforming the data.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
         *args
             Positional arguments to pass to `func`.
         **kwargs
@@ -2813,6 +2815,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1  1.000000  2.718282
         2  1.414214  7.389056
         """
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
+
         if isinstance(func, list):
             applied = []
             for f in func:
@@ -2823,7 +2829,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             return self.apply(func, args=args, **kwargs)
 
-    def transform_batch(self, func) -> "ks.Series":
+    def transform_batch(self, func, *args, **kwargs) -> "ks.Series":
         """
         Transform the data with the function that takes pandas Series and outputs pandas Series.
         The pandas Series given to the function is of a batch used internally.
@@ -2862,6 +2868,10 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         ----------
         func : function
             Function to apply to each pandas frame.
+        *args
+            Positional arguments to pass to func.
+        **kwargs
+            Keyword arguments to pass to func.
 
         Returns
         -------
@@ -2895,6 +2905,24 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         1    4
         2    6
         Name: A, dtype: int64
+
+        You can also specify extra arguments.
+
+        >>> def plus_one_func(pser, a, b, c=3) -> ks.Series[np.int64]:
+        ...     return pser + a + b + c
+        >>> df.A.transform_batch(plus_one_func, 1, b=2)
+        0     7
+        1     9
+        2    11
+        Name: A, dtype: int64
+
+        You can also use ``np.ufunc`` as input.
+
+        >>> df.A.transform_batch(np.add, 10)
+        0    11
+        1    13
+        2    15
+        Name: A, dtype: int64
         """
 
         assert callable(func), "the first argument should be a callable function."
@@ -2918,6 +2946,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 )
             return_schema = sig_return.tpe
 
+        ff = func
+        func = lambda o: ff(o, *args, **kwargs)
         return self._transform_batch(func, return_schema)
 
     def _transform_batch(self, func, return_schema):

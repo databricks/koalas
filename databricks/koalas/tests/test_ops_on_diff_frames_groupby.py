@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import unittest
+
 import pandas as pd
 
 from databricks import koalas as ks
@@ -94,6 +96,36 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf1.groupby(kdf2[("x", "a")])[[("y", "c")]].sum().sort_index(),
             pdf1.groupby(pdf2[("x", "a")])[[("y", "c")]].sum().sort_index(),
+        )
+
+    def test_split_apply_combine_on_series(self):
+        pdf1 = pd.DataFrame({"C": [0.362, 0.227, 1.267, -0.562], "B": [1, 2, 3, 4]})
+        pdf2 = pd.DataFrame({"A": [1, 1, 2, 2]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        for as_index in [True, False]:
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
+
+            with self.subTest(as_index=as_index):
+                self.assert_eq(
+                    sort(kdf1.groupby(kdf2.A, as_index=as_index).sum()),
+                    sort(pdf1.groupby(pdf2.A, as_index=as_index).sum()),
+                )
+                self.assert_eq(
+                    sort(kdf1.groupby(kdf2.A, as_index=as_index).B.sum()),
+                    sort(pdf1.groupby(pdf2.A, as_index=as_index).B.sum()),
+                )
+
+        self.assert_eq(
+            kdf1.B.groupby(kdf2.A).sum().sort_index(), pdf1.B.groupby(pdf2.A).sum().sort_index(),
+        )
+        self.assert_eq(
+            (kdf1.B + 1).groupby(kdf2.A).sum().sort_index(),
+            (pdf1.B + 1).groupby(pdf2.A).sum().sort_index(),
         )
 
     def test_aggregate(self):
@@ -178,4 +210,365 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf1.groupby(kdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
             pdf1.groupby(pdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
+        )
+
+    def test_apply(self):
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},
+            columns=["a", "b", "c"],
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8])
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pkey).apply(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pkey)["a"].apply(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pkey)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["a", kkey]).apply(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(["a", pkey]).apply(lambda x: x + x.min()).sort_index(),
+        )
+
+    def test_transform(self):
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},
+            columns=["a", "b", "c"],
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8])
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pkey).transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pkey)["a"].transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(pkey)[["a"]].transform(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["a", kkey]).transform(lambda x: x + x.min()).sort_index(),
+            pdf.groupby(["a", pkey]).transform(lambda x: x + x.min()).sort_index(),
+        )
+
+    def test_filter(self):
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6], "b": [1, 1, 2, 3, 5, 8], "c": [1, 4, 9, 16, 25, 36]},
+            columns=["a", "b", "c"],
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8])
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).filter(lambda x: any(x.a == 2)).sort_index(),
+            pdf.groupby(pkey).filter(lambda x: any(x.a == 2)).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].filter(lambda x: any(x == 2)).sort_index(),
+            pdf.groupby(pkey)["a"].filter(lambda x: any(x == 2)).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
+            pdf.groupby(pkey)[["a"]].filter(lambda x: any(x.a == 2)).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["a", kkey]).filter(lambda x: any(x.a == 2)).sort_index(),
+            pdf.groupby(["a", pkey]).filter(lambda x: any(x.a == 2)).sort_index(),
+        )
+
+    def test_head(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 1, 1, 1, 2, 2, 2, 3, 3, 3] * 3,
+                "b": [2, 3, 1, 4, 6, 9, 8, 10, 7, 5] * 3,
+                "c": [3, 5, 2, 5, 1, 2, 6, 4, 3, 6] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 1, 1, 2, 2, 2, 3, 3, 3] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            pdf.groupby(pkey).head(2).sort_index(), kdf.groupby(kkey).head(2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a")["b"].head(2).sort_index(), kdf.groupby("a")["b"].head(2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].head(2).sort_index(),
+            kdf.groupby("a")[["b"]].head(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby([pkey, "b"]).head(2).sort_index(),
+            kdf.groupby([kkey, "b"]).head(2).sort_index(),
+        )
+
+    def test_cummin(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).cummin().sort_index(),
+            pdf.groupby(pkey).cummin().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].cummin().sort_index(),
+            pdf.groupby(pkey)["a"].cummin().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].cummin().sort_index(),
+            pdf.groupby(pkey)[["a"]].cummin().sort_index(),
+            almost=True,
+        )
+
+    def test_cummax(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).cummax().sort_index(),
+            pdf.groupby(pkey).cummax().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].cummax().sort_index(),
+            pdf.groupby(pkey)["a"].cummax().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].cummax().sort_index(),
+            pdf.groupby(pkey)[["a"]].cummax().sort_index(),
+            almost=True,
+        )
+
+    def test_cumsum(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).cumsum().sort_index(),
+            pdf.groupby(pkey).cumsum().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].cumsum().sort_index(),
+            pdf.groupby(pkey)["a"].cumsum().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].cumsum().sort_index(),
+            pdf.groupby(pkey)[["a"]].cumsum().sort_index(),
+            almost=True,
+        )
+
+    def test_cumprod(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).cumprod().sort_index(),
+            pdf.groupby(pkey).cumprod().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].cumprod().sort_index(),
+            pdf.groupby(pkey)["a"].cumprod().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].cumprod().sort_index(),
+            pdf.groupby(pkey)[["a"]].cumprod().sort_index(),
+            almost=True,
+        )
+
+    def test_diff(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            }
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).diff().sort_index(),
+            pdf.groupby(pkey).diff().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].diff().sort_index(),
+            pdf.groupby(pkey)["a"].diff().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].diff().sort_index(),
+            pdf.groupby(pkey)[["a"]].diff().sort_index(),
+            almost=True,
+        )
+
+    def test_rank(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).rank().sort_index(),
+            pdf.groupby(pkey).rank().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].rank().sort_index(),
+            pdf.groupby(pkey)["a"].rank().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].rank().sort_index(),
+            pdf.groupby(pkey)[["a"]].rank().sort_index(),
+            almost=True,
+        )
+
+    @unittest.skipIf(pd.__version__ < "0.24.0", "not supported before pandas 0.24.0")
+    def test_shift(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 1, 2, 2, 3, 3] * 3,
+                "b": [1, 1, 2, 2, 3, 4] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 2, 3, 4] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).shift().sort_index(),
+            pdf.groupby(pkey).shift().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["a"].shift().sort_index(),
+            pdf.groupby(pkey)["a"].shift().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["a"]].shift().sort_index(),
+            pdf.groupby(pkey)[["a"]].shift().sort_index(),
+            almost=True,
+        )
+
+    def test_fillna(self):
+        pdf = pd.DataFrame(
+            {
+                "A": [1, 1, 2, 2] * 3,
+                "B": [2, 4, None, 3] * 3,
+                "C": [None, None, None, 1] * 3,
+                "D": [0, 1, 5, 4] * 3,
+            }
+        )
+        pkey = pd.Series([1, 1, 2, 2] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        self.assert_eq(
+            kdf.groupby(kkey).fillna(0).sort_index(),
+            pdf.groupby(pkey).fillna(0).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["C"].fillna(0).sort_index(),
+            pdf.groupby(pkey)["C"].fillna(0).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["C"]].fillna(0).sort_index(),
+            pdf.groupby(pkey)[["C"]].fillna(0).sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey).fillna(method="bfill").sort_index(),
+            pdf.groupby(pkey).fillna(method="bfill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["C"].fillna(method="bfill").sort_index(),
+            pdf.groupby(pkey)["C"].fillna(method="bfill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["C"]].fillna(method="bfill").sort_index(),
+            pdf.groupby(pkey)[["C"]].fillna(method="bfill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey).fillna(method="ffill").sort_index(),
+            pdf.groupby(pkey).fillna(method="ffill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)["C"].fillna(method="ffill").sort_index(),
+            pdf.groupby(pkey)["C"].fillna(method="ffill").sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kkey)[["C"]].fillna(method="ffill").sort_index(),
+            pdf.groupby(pkey)[["C"]].fillna(method="ffill").sort_index(),
+            almost=True,
         )
