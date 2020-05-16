@@ -58,7 +58,6 @@ class _MissingPandasLikeSeries(object):
     iteritems = unsupported_function("iteritems")
     last = unsupported_function("last")
     last_valid_index = unsupported_function("last_valid_index")
-    mad = unsupported_function("mad")
     prod = unsupported_function("prod")
     product = unsupported_function("product")
     rdivmod = unsupported_function("rdivmod")
