@@ -4730,6 +4730,71 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result_series.name = self.name
         return result_series
 
+    def unstack(self, level=-1):
+        """
+        Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.
+        The level involved will automatically get sorted.
+
+        Parameters
+        ----------
+        level : int, str, or list of these, default last level
+            Level(s) to unstack, can pass level name.
+
+        Returns
+        -------
+        DataFrame
+            Unstacked Series.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4],
+        ...               index=pd.MultiIndex.from_product([['one', 'two'],
+        ...                                                 ['a', 'b']]))
+        >>> s
+        one  a    1
+             b    2
+        two  a    3
+             b    4
+        Name: 0, dtype: int64
+
+        >>> s.unstack(level=-1).sort_index()
+             a  b
+        one  1  2
+        two  3  4
+
+        >>> s.unstack(level=0).sort_index()
+           one  two
+        a    1    3
+        b    2    4
+        """
+        if not isinstance(self.index, ks.MultiIndex):
+            raise ValueError("Series.unstack only support for a MultiIndex")
+        index_nlevels = self.index.nlevels
+        if level > 0 and (level > index_nlevels - 1):
+            raise IndexError(
+                "Too many levels: Index has only {} levels, not {}".format(index_nlevels, level + 1)
+            )
+        elif level < 0 and (level < -index_nlevels):
+            raise IndexError(
+                "Too many levels: Index has only {} levels, {} is not a valid level number".format(
+                    index_nlevels, level
+                )
+            )
+        if self.index.has_duplicates:
+            raise ValueError("Index contains duplicate entries, cannot reshape")
+
+        sdf = self._internal.spark_frame
+        index_scol_names = self._internal.index_spark_column_names.copy()
+        pivot_col = index_scol_names.pop(level)
+        data_scol_name = self._internal.data_spark_column_names[0]
+
+        sdf = sdf.groupby(index_scol_names).pivot(pivot_col).sum(data_scol_name)
+        internal = _InternalFrame(
+            spark_frame=sdf,
+            index_map=OrderedDict((index_scol_name, None) for index_scol_name in index_scol_names),
+        )
+        return DataFrame(internal)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 

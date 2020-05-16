@@ -81,7 +81,6 @@ class _MissingPandasLikeSeries(object):
     tshift = unsupported_function("tshift")
     tz_convert = unsupported_function("tz_convert")
     tz_localize = unsupported_function("tz_localize")
-    unstack = unsupported_function("unstack")
     view = unsupported_function("view")
 
     # Deprecated functions
