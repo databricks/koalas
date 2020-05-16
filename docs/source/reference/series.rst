@@ -124,6 +124,7 @@ Computations / Descriptive Stats
    Series.cumprod
    Series.describe
    Series.kurt
+   Series.mad
    Series.max
    Series.mean
    Series.min
