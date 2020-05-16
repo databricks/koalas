@@ -179,6 +179,14 @@ class IndexOpsMixin(object):
     __mul__ = _column_op(spark.Column.__mul__)
 
     def __truediv__(self, other):
+        """
+        __truediv__ has different behaviour between pandas and PySpark for several cases.
+        1. when dividing np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When dividing positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When dividing -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When dividing negative number by zero, PySpark returns null whereas pandas returns -np.inf
+        """
+
         def truediv(left, right):
             return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
                 F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
@@ -213,6 +221,14 @@ class IndexOpsMixin(object):
         return _numpy_column_op(rtruediv)(self, other)
 
     def __floordiv__(self, other):
+        """
+        __floordiv__ has different behaviour between pandas and PySpark for several cases.
+        1. when dividing np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When dividing positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When dividing -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When dividing negative number by zero, PySpark returns null whereas pandas returns -np.inf
+        """
+
         def floordiv(left, right):
             return F.when(F.lit(right is np.nan), np.nan).otherwise(
                 F.when(
