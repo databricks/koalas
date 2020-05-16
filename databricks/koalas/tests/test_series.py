@@ -1489,3 +1489,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(repr(pser.floordiv(np.nan)), repr(kser.floordiv(np.nan)))
+
+    def test_mad(self):
+        pser = pd.Series([1, 2, 3, 4], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pser = pd.Series([None, -2, 5, 10, 50, np.nan, -20], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())

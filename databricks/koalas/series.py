@@ -4700,6 +4700,31 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result_series.name = self.name
         return result_series
 
+    def mad(self):
+        """
+        Return the mean absolute deviation of values.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: 0, dtype: int64
+
+        >>> s.mad()
+        1.0
+        """
+
+        sdf = self._internal.spark_frame
+        column_name = self._internal.data_spark_column_names[0]
+        avg = _unpack_scalar(sdf.select(F.avg(sdf[column_name])))
+        mad = _unpack_scalar(sdf.select(F.avg(F.abs(sdf[column_name] - avg))))
+
+        return mad
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
