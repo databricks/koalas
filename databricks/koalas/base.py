@@ -181,10 +181,10 @@ class IndexOpsMixin(object):
     def __truediv__(self, other):
         """
         __truediv__ has different behaviour between pandas and PySpark for several cases.
-        1. when dividing np.inf by zero, PySpark returns null whereas pandas returns np.inf
-        2. When dividing positive number by zero, PySpark returns null whereas pandas returns np.inf
-        3. When dividing -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
-        4. When dividing negative number by zero, PySpark returns null whereas pandas returns -np.inf
+        1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
         """
 
         def truediv(left, right):
@@ -223,10 +223,10 @@ class IndexOpsMixin(object):
     def __floordiv__(self, other):
         """
         __floordiv__ has different behaviour between pandas and PySpark for several cases.
-        1. when dividing np.inf by zero, PySpark returns null whereas pandas returns np.inf
-        2. When dividing positive number by zero, PySpark returns null whereas pandas returns np.inf
-        3. When dividing -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
-        4. When dividing negative number by zero, PySpark returns null whereas pandas returns -np.inf
+        1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
         """
 
         def floordiv(left, right):
