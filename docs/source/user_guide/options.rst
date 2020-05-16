@@ -142,7 +142,7 @@ There are several types of the default index that can be configured by `compute.
 
 **sequence**: It implements a sequence that increases one by one, by PySpark's Window function without
 specifying partition. Therefore, it can end up with whole partition in single node.
-This index type should be avoided when the data is large. This is default. See example below:
+This index type should be avoided when the data is large. This is default. See the example below:
 
 .. code-block:: python
 
@@ -170,7 +170,7 @@ group-map approach in a distributed manner. It still generates the sequential in
 If the default index must be the sequence in a large dataset, this
 index has to be used.
 Note that if more data are added to the data source after creating this index,
-then it does not guarantee the sequential index. See example below:
+then it does not guarantee the sequential index. See the example below:
 
 .. code-block:: python
 
@@ -191,12 +191,10 @@ This is conceptually equivalent to the PySpark example as below:
     [0, 1, 2]
 
 **distributed**: It implements a monotonically increasing sequence simply by using
-PySpark's `monotonically_increasing_id` function in a fully distributed manner.
-If the index does not have to be a sequence that increases one by one, this index
-should be used. Performance-wise, this index almost does not have any penalty
-comparing to other index types. Note that we cannot use this type of index for
-combining two dataframes because it is not guaranteed to have the same indexes in
-two dataframes. See example below:
+PySpark's `monotonically_increasing_id` function in a fully distributed manner. The
+values are indeterministic. If the index does not have to be a sequence that increases
+one by one, this index should be used. Performance-wise, this index almost does not
+have any penalty comparing to other index types. See the example below:
 
 .. code-block:: python
 
@@ -217,6 +215,13 @@ This is conceptually equivalent to the PySpark example as below:
     >>> spark_df.select(F.monotonically_increasing_id()) \
     ...     .rdd.map(lambda r: r[0]).collect()
     [25769803776, 60129542144, 94489280512]
+
+.. warning::
+    It is very unlikely for this type of index to be used for computing two
+    different dataframes because it is not guaranteed to have the same indexes in two dataframes.
+    If you use this default index and turn on `compute.ops_on_diff_frames`, the result
+    from the operations between two different DataFrames will likely be an unexpected
+    output due to the indeterministic index values. 
 
 
 Available options
