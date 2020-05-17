@@ -4898,6 +4898,8 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
+        elif not hasattr(ks.Series, item):
+            raise AttributeError("'Series' object has no attribute '{}'".format(item))
         return self.getField(item)
 
     def _to_internal_pandas(self):
