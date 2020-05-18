@@ -9328,34 +9328,56 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 raise ValueError("items should be a list-like object.")
             if axis == 0:
-                # TODO: support multi-index here
-                if len(index_scols) != 1:
-                    raise ValueError("Single index must be specified.")
-                col = None
-                for item in items:
-                    if col is None:
-                        col = index_scols[0] == F.lit(item)
-                    else:
-                        col = col | (index_scols[0] == F.lit(item))
+                if len(index_scols) > 1:
+                    # for multi-index
+                    cols = []
+                    col = None
+                    for item in items:
+                        if col is None:
+                            for i, element in enumerate(item):
+                                if col is None:
+                                    col = index_scols[i] == F.lit(element)
+                                else:
+                                    col = col & (index_scols[i] == F.lit(element))
+                        cols.append(col)
+                        col = None
+                    for c in cols:
+                        if col is None:
+                            col = c
+                        else:
+                            col = col | c
+                else:
+                    col = None
+                    for item in items:
+                        if col is None:
+                            col = index_scols[0] == F.lit(item)
+                        else:
+                            col = col | (index_scols[0] == F.lit(item))
                 return DataFrame(self._internal.with_filter(col))
             elif axis == 1:
                 return self[items]
         elif like is not None:
             if axis == 0:
-                # TODO: support multi-index here
-                if len(index_scols) != 1:
-                    raise ValueError("Single index must be specified.")
-                return DataFrame(self._internal.with_filter(index_scols[0].contains(like)))
+                col = None
+                for index_scol in index_scols:
+                    if col is None:
+                        col = index_scol.contains(like)
+                    else:
+                        col = col | index_scol.contains(like)
+                return DataFrame(self._internal.with_filter(col))
             elif axis == 1:
                 column_labels = self._internal.column_labels
                 output_labels = [label for label in column_labels if any(like in i for i in label)]
                 return self[output_labels]
         elif regex is not None:
             if axis == 0:
-                # TODO: support multi-index here
-                if len(index_scols) != 1:
-                    raise ValueError("Single index must be specified.")
-                return DataFrame(self._internal.with_filter(index_scols[0].rlike(regex)))
+                col = None
+                for index_scol in index_scols:
+                    if col is None:
+                        col = index_scol.rlike(regex)
+                    else:
+                        col = col | index_scol.rlike(regex)
+                return DataFrame(self._internal.with_filter(col))
             elif axis == 1:
                 column_labels = self._internal.column_labels
                 matcher = re.compile(regex)

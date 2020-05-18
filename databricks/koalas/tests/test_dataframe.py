@@ -2672,17 +2672,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pdf.set_index("ba", append=True)
         kdf = ks.from_pandas(pdf)
 
+        self.assert_eq(
+            kdf.filter(items=[("aa", 1), ("bd", 2)], axis=0).sort_index(),
+            pdf.filter(items=[("aa", 1), ("bd", 2)], axis=0).sort_index(),
+        )
+
+        self.assert_eq(kdf.filter(like="b", axis=0), pdf.filter(like="b", axis=0))
+
+        self.assert_eq(kdf.filter(regex="b.*", axis=0), pdf.filter(regex="b.*", axis=0))
+
         with self.assertRaisesRegex(ValueError, "items should be a list-like object"):
             kdf.filter(items="b")
-
-        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
-            kdf.filter(items=["b"], axis=0)
-
-        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
-            kdf.filter(like="b", axis="index")
-
-        with self.assertRaisesRegex(ValueError, "Single index must be specified."):
-            kdf.filter(regex="b.*", axis="index")
 
         with self.assertRaisesRegex(ValueError, "No axis named"):
             kdf.filter(regex="b.*", axis=123)
