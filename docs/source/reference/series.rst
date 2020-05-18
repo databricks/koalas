@@ -19,12 +19,9 @@ Attributes
    :toctree: api/
 
    Series.index
-
-.. autosummary::
-   :toctree: api/
-
    Series.dtype
    Series.dtypes
+   Series.ndim
    Series.name
    Series.spark_type
    Series.shape
@@ -102,6 +99,8 @@ Function application, GroupBy & Window
    Series.transform_batch
    Series.map
    Series.groupby
+   Series.rolling
+   Series.expanding
    Series.pipe
 
 .. _api.series.stats:
@@ -132,6 +131,7 @@ Computations / Descriptive Stats
    Series.nsmallest
    Series.pct_change
    Series.nunique
+   Series.is_unique
    Series.quantile
    Series.rank
    Series.skew
@@ -154,6 +154,8 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.drop
+   Series.drop_duplicates
+   Series.equals
    Series.add_prefix
    Series.add_suffix
    Series.head
