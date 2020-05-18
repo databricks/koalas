@@ -4732,7 +4732,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def item(self):
         """
-        Return the first element of the underlying data as a python scalar.
+        Return the first element of the underlying data as a Python scalar.
 
         Returns
         -------
