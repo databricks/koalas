@@ -3493,6 +3493,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             expected_result1 = pdf.explode("A")
             expected_result2 = pdf.explode("B")
         else:
+            midx = pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "a"), ("x", "b"), ("x", "b"), ("y", "c"), ("y", "c")]
+            )
             expected_result1.index = midx
             expected_result2 = pdf
 
