@@ -194,7 +194,7 @@ def pandas_wraps(function=None, return_col=None, return_scalar=None):
 
     >>> @pandas_wraps(return_col=float)
     ... def fun(col1, col2 = None, arg1="x", **kwargs):
-    ...    return 2.0 * col1 if arg1 == "x" else 3.0 * col1 * col2 * kwargs['col3']
+    ...     return 2.0 * col1 if arg1 == "x" else 3.0 * col1 * col2 * kwargs['col3']
 
     >>> fun(df.col1)
     0    2.0

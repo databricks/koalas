@@ -2789,7 +2789,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
 
         >>> def sqrt(x) -> float:
-        ...    return np.sqrt(x)
+        ...     return np.sqrt(x)
         >>> s.transform(sqrt)
         0    0.000000
         1    1.000000
@@ -2800,7 +2800,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         input, it is possible to provide several input functions:
 
         >>> def exp(x) -> float:
-        ...    return np.exp(x)
+        ...     return np.exp(x)
         >>> s.transform([sqrt, exp])
                sqrt       exp
         0  0.000000  1.000000
@@ -2862,7 +2862,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             To avoid this, specify return type in ``func``, for instance, as below:
 
             >>> def plus_one(x) -> ks.Series[int]:
-            ...    return x + 1
+            ...     return x + 1
 
         Parameters
         ----------
