@@ -123,6 +123,7 @@ Computations / Descriptive Stats
    Series.cumsum
    Series.cumprod
    Series.describe
+   Series.filter
    Series.kurt
    Series.mad
    Series.max

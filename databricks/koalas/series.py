@@ -1925,6 +1925,70 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
+    def filter(self, items=None, like=None, regex=None, axis=0):
+        """
+        Subset rows of series according to labels in the specified index.
+
+        Note that this routine does not filter a series on its
+        contents. The filter is applied to the labels of the index.
+
+        Parameters
+        ----------
+        items : list-like
+            Keep labels from indices which are in items.
+        like : string
+            Keep labels from indices for which "like in label == True".
+        regex : string (regular expression)
+            Keep labels from indices for which re.search(regex, label) == True.
+        axis : used only for sanity check because series only support index axis.
+
+        Returns
+        -------
+        Series
+            Series with specified index labels filtered.
+
+        Notes
+        -----
+        The ``items``, ``like``, and ``regex`` parameters are
+        enforced to be mutually exclusive.
+
+        Examples
+        --------
+        >>> kser = ks.Series([0, 1, 2], index=['one', 'two', 'three'])
+        >>> kser
+        one      0
+        two      1
+        three    2
+        Name: 0, dtype: int64
+
+        Select rows by name
+
+        >>> kser.filter(items=['one', 'three'])
+        one      0
+        three    2
+        Name: 0, dtype: int64
+
+        Select rows by regular expression
+
+        >>> kser.filter(regex='e$')
+        one      0
+        three    2
+        Name: 0, dtype: int64
+
+        Select rows containing 'hre'
+
+        >>> kser.filter(like='hre')
+        three    2
+        Name: 0, dtype: int64
+        """
+        axis = validate_axis(axis)
+        if axis == 1:
+            raise ValueError("Series does not support columns axis.")
+
+        filtered_df = self.to_frame().filter(items=items, like=like, regex=regex, axis=axis)
+
+        return getattr(filtered_df, list(filtered_df.columns)[0])
+
     def head(self, n: int = 5) -> "Series":
         """
         Return the first n rows.

@@ -1631,3 +1631,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_item(self):
         kser = ks.Series([10, 20])
         self.assertRaises(ValueError, lambda: kser.item())
+
+    def test_filter(self):
+        kser = ks.Series([0, 1, 2], index=["one", "two", "three"])
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.filter(items=["one", "three"]), kser.filter(items=["one", "three"]))
+        self.assert_eq(pser.filter(regex="e$"), kser.filter(regex="e$"))
+        self.assert_eq(pser.filter(like="hre"), kser.filter(like="hre"))
