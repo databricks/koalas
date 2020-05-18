@@ -187,7 +187,7 @@ class IndexOpsMixin(object):
         4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
 
         +-------------------------------------------+
-        | dividend (divisor: 0) | PySpark | pandas  |
+        | dividend (divisor: 0) | PySpark |  pandas |
         |-----------------------|---------|---------|
         |         np.inf        |   null  |  np.inf |
         |        -np.inf        |   null  | -np.inf |
@@ -238,7 +238,7 @@ class IndexOpsMixin(object):
         4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
 
         +-------------------------------------------+
-        | dividend (divisor: 0) | PySpark | pandas  |
+        | dividend (divisor: 0) | PySpark |  pandas |
         |-----------------------|---------|---------|
         |         np.inf        |   null  |  np.inf |
         |        -np.inf        |   null  | -np.inf |
