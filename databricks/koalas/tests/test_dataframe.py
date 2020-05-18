@@ -3464,3 +3464,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Truncate: B must be after C"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.truncate("C", "B", axis=1)
+
+    def test_explode(self):
+        pdf = pd.DataFrame({"A": [[-1.0, np.nan], [0.0, np.inf], [1.0, -np.inf]], "B": 1})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.explode("A"), kdf.explode("A"), almost=True)
+        self.assert_eq(repr(pdf.explode("B")), repr(kdf.explode("B")))
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+        # MultiIndex
+        midx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        pdf.index = midx
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.explode("A"), kdf.explode("A"), almost=True)
+        self.assert_eq(repr(pdf.explode("B")), repr(kdf.explode("B")))
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(pdf.explode(("A", "Z")), kdf.explode(("A", "Z")), almost=True)
+        self.assert_eq(repr(pdf.explode(("B", "X"))), repr(kdf.explode(("B", "X"))))
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))

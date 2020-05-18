@@ -56,6 +56,7 @@ from pyspark.sql.types import (
     ShortType,
     StructType,
     StructField,
+    ArrayType,
 )
 from pyspark.sql.window import Window
 
@@ -10424,6 +10425,62 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             # Returns a frame
             return result
+
+    def explode(self, column):
+        """
+        Transform each element of a list-like to a row, replicating index values.
+
+        Parameters
+        ----------
+        column : str or tuple
+            Column to explode.
+
+        Returns
+        -------
+        DataFrame
+            Exploded lists to rows of the subset columns;
+            index will be duplicated for these rows.
+
+        See Also
+        --------
+        DataFrame.unstack : Pivot a level of the (necessarily hierarchical)
+            index labels.
+        DataFrame.melt : Unpivot a DataFrame from wide format to long format.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': [[1, 2, 3], [], [3, 4]], 'B': 1})
+        >>> df
+                   A  B
+        0  [1, 2, 3]  1
+        1         []  1
+        2     [3, 4]  1
+
+        >>> df.explode('A')
+             A  B
+        0  1.0  1
+        0  2.0  1
+        0  3.0  1
+        1  NaN  1
+        2  3.0  1
+        2  4.0  1
+        """
+        if isinstance(column, tuple) or is_scalar(column):
+            spark_type = self[column].spark_type
+            if not isinstance(spark_type, ArrayType):
+                return self
+            column = name_like_string(column)
+        else:
+            raise ValueError("column must be a scalar")
+
+        sdf = self._sdf
+        sdf = sdf.withColumn(column, F.explode_outer(sdf[column]))
+        index_scol_names = self._internal.index_spark_column_names
+        internal = _InternalFrame(
+            spark_frame=sdf,
+            index_map=OrderedDict((index_scol_name, None) for index_scol_name in index_scol_names),
+        )
+        return DataFrame(internal)
 
     def _to_internal_pandas(self):
         """
