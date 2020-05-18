@@ -1506,14 +1506,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.mad(), kser.mad())
 
-        pmidx = pd.MultiIndex.from_tuples([('a', '1'), ('a', '2'), ('b', '1'), ('b', '2'), ('c', '1')])
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2"), ("c", "1")]
+        )
         pser = pd.Series([1, 2, 3, 4, 5], name="Koalas")
         pser.index = pmidx
         kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.mad(), kser.mad())
 
-        pmidx = pd.MultiIndex.from_tuples([('a', '1'), ('a', '2'), ('b', '1'), ('b', '2'), ('c', '1')])
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2"), ("c", "1")]
+        )
         pser = pd.Series([None, -2, 5, 50, np.nan], name="Koalas")
         pser.index = pmidx
         kser = ks.from_pandas(pser)
