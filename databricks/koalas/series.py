@@ -1369,7 +1369,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
     def to_markdown(self, buf=None, mode=None):
         """
-        Print DataFrame in Markdown-friendly format.
+        Print Series in Markdown-friendly format.
 
         .. note:: This method should only be used if the resulting Pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
@@ -1388,12 +1388,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Returns
         -------
         str
-            DataFrame in Markdown-friendly format.
+            Series in Markdown-friendly format.
 
         Examples
         --------
         >>> s = ks.Series(["elk", "pig", "dog", "quetzal"], name="animal")
-        >>> s.to_markdown()
+        >>> s.to_markdown()  # doctest: +SKIP
         |    | animal   |
         |---:|:---------|
         |  0 | elk      |
