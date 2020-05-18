@@ -185,6 +185,15 @@ class IndexOpsMixin(object):
         2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
         3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
         4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
+
+        +-------------------------------------------+
+        | dividend (divisor: 0) | PySpark | pandas  |
+        |-----------------------|---------|---------|
+        |         np.inf        |   null  |  np.inf |
+        |        -np.inf        |   null  | -np.inf |
+        |           10          |   null  |  np.inf |
+        |          -10          |   null  | -np.inf |
+        +-----------------------|---------|---------+
         """
 
         def truediv(left, right):
@@ -227,6 +236,15 @@ class IndexOpsMixin(object):
         2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
         3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
         4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
+
+        +-------------------------------------------+
+        | dividend (divisor: 0) | PySpark | pandas  |
+        |-----------------------|---------|---------|
+        |         np.inf        |   null  |  np.inf |
+        |        -np.inf        |   null  | -np.inf |
+        |           10          |   null  |  np.inf |
+        |          -10          |   null  | -np.inf |
+        +-----------------------|---------|---------+
         """
 
         def floordiv(left, right):
