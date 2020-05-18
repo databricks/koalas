@@ -5562,6 +5562,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     Thor  Stormbuster
         3     Hulk        Smash
 
+        You can use `tuple` or `list` types as parameters of a `subset`
+
+        >>> df.replace('Mjolnir', 'Stormbuster', subset=('weapon',))
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
+
+        >>> df.replace('Mjolnir', 'Stormbuster', subset=['weapon'])
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
+
         Dict like `to_replace`
 
         >>> df = ks.DataFrame({'A': [0, 1, 2, 3, 4],
