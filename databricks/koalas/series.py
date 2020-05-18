@@ -22,6 +22,7 @@ import inspect
 from collections import Iterable, OrderedDict
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -1365,6 +1366,52 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         )
 
     to_latex.__doc__ = DataFrame.to_latex.__doc__
+
+    def to_markdown(self, buf=None, mode=None):
+        """
+        Print DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> s = ks.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        >>> s.to_markdown()
+        |    | animal   |
+        |---:|:---------|
+        |  0 | elk      |
+        |  1 | pig      |
+        |  2 | dog      |
+        |  3 | quetzal  |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kser = self
+        return validate_arguments_and_invoke_function(
+            kser._to_internal_pandas(), self.to_markdown, pd.Series.to_markdown, args
+        )
 
     def to_pandas(self):
         """
