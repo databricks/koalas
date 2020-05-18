@@ -3469,8 +3469,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"A": [[-1.0, np.nan], [0.0, np.inf], [1.0, -np.inf]], "B": 1})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.explode("A"), kdf.explode("A"), almost=True)
-        self.assert_eq(repr(pdf.explode("B")), repr(kdf.explode("B")))
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode("A")
+            expected_result2 = pdf.explode("B")
+        else:
+            expected_result1 = pd.DataFrame(
+                {"A": [-1, np.nan, 0, np.inf, 1, -np.inf], "B": [1, 1, 1, 1, 1, 1]},
+                index=[0, 0, 1, 1, 2, 2],
+            )
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
 
         self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
 
@@ -3479,8 +3489,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.index = midx
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.explode("A"), kdf.explode("A"), almost=True)
-        self.assert_eq(repr(pdf.explode("B")), repr(kdf.explode("B")))
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode("A")
+            expected_result2 = pdf.explode("B")
+        else:
+            expected_result1.index = midx
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
 
         self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
 
@@ -3489,7 +3506,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(pdf.explode(("A", "Z")), kdf.explode(("A", "Z")), almost=True)
-        self.assert_eq(repr(pdf.explode(("B", "X"))), repr(kdf.explode(("B", "X"))))
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode(("A", "Z"))
+            expected_result2 = pdf.explode(("B", "X"))
+        else:
+            expected_result1.columns = columns
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode(("A", "Z")), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode(("B", "X"))), repr(expected_result2))
 
         self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
