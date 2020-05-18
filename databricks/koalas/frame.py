@@ -9328,7 +9328,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 raise ValueError("items should be a list-like object.")
             if axis == 0:
-                if len(index_scols) > 1:
+                if len(index_scols) == 1:
+                    col = None
+                    for item in items:
+                        if col is None:
+                            col = index_scols[0] == F.lit(item)
+                        else:
+                            col = col | (index_scols[0] == F.lit(item))
+                elif len(index_scols) > 1:
                     # for multi-index
                     cols = []
                     col = None
@@ -9347,12 +9354,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         else:
                             col = col | c
                 else:
-                    col = None
-                    for item in items:
-                        if col is None:
-                            col = index_scols[0] == F.lit(item)
-                        else:
-                            col = col | (index_scols[0] == F.lit(item))
+                    raise ValueError("Single or multi index must be specified.")
                 return DataFrame(self._internal.with_filter(col))
             elif axis == 1:
                 return self[items]
