@@ -3114,6 +3114,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  3  400
         4  4  500
 
+        >>> df1.where(df1 > 1, df2.A).sort_index()
+           A    B
+        0  0  100
+        1 -1  200
+        2  2  300
+        3  3  400
+        4  4  500
+
+        >>> df1.where(df1 > 1, df2.A + 100).sort_index()
+             A    B
+        0  100  100
+        1   99  200
+        2    2  300
+        3    3  400
+        4    4  500
+
         When the column name of cond is different from self, it treats all values are False
 
         >>> cond = ks.DataFrame({'C': [0, -1, -2, -3, -4], 'D':[4, 3, 2, 1, 0]}) % 3 == 0
