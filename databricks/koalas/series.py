@@ -4750,7 +4750,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         >>> kser.item()
         10
         """
-        if len(self) != 1:
+        if len(self[:2]) != 1:
             raise ValueError("can only convert an array of size 1 to a Python scalar")
         return self[0]
 
