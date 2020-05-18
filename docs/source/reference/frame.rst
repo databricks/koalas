@@ -285,7 +285,6 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.line
    DataFrame.plot.pie
    DataFrame.plot.scatter
-   DataFrame.plot.kde
    DataFrame.plot.density
    DataFrame.hist
    DataFrame.kde
