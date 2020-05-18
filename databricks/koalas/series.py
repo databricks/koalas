@@ -4735,6 +4735,12 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.
         The level involved will automatically get sorted.
 
+        Notes
+        -----
+        Unlike pandas, Koalas doesn't check whether an index is duplicated or not
+        because the checking of duplicated index requires scanning whole data which
+        can be quite expensive.
+
         Parameters
         ----------
         level : int, str, or list of these, default last level
@@ -4780,8 +4786,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                     index_nlevels, level
                 )
             )
-        if self.index.has_duplicates:
-            raise ValueError("Index contains duplicate entries, cannot reshape")
 
         sdf = self._internal.spark_frame
         index_scol_names = self._internal.index_spark_column_names.copy()
