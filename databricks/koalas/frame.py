@@ -5562,8 +5562,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     Thor  Stormbuster
         3     Hulk        Smash
 
-        You can also use iterable objects that return a list of columns,
-        such as `tuple` or `list` as parameters.
+        You can also use an iterable object that returns a list of columns,
+        such as `tuple` or` list`, as input to the `subset` parameter.
 
         >>> df.replace('Mjolnir', 'Stormbuster', subset=('weapon',))
               name       weapon
