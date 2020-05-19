@@ -725,6 +725,46 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return (self != other).rename(self.name)
 
+    def divmod(self, other):
+        """
+        Return Integer division and modulo of series and other, element-wise
+        (binary operator `divmod`).
+
+        Parameters
+        ----------
+        other : Series or scalar value
+
+        Returns
+        -------
+        Series
+            The result of the operation.
+
+        See Also
+        --------
+        Series.rdivmod
+        """
+        return (self.floordiv(other), self.mod(other))
+
+    def rdivmod(self, other):
+        """
+        Return Integer division and modulo of series and other, element-wise
+        (binary operator `rdivmod`).
+
+        Parameters
+        ----------
+        other : Series or scalar value
+
+        Returns
+        -------
+        Series
+            The result of the operation.
+
+        See Also
+        --------
+        Series.divmod
+        """
+        return (self.rfloordiv(other), self.rmod(other))
+
     def between(self, left, right, inclusive=True):
         """
         Return boolean Series equivalent to left <= series <= right.
@@ -943,17 +983,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             scol = self.spark_column.cast(spark_type)
         return self._with_new_scol(scol)
-
-    def getField(self, name):
-        if not isinstance(self.spark_type, StructType):
-            raise AttributeError("Not a struct: {}".format(self.spark_type))
-        else:
-            fnames = self.spark_type.fieldNames()
-            if name not in fnames:
-                raise AttributeError(
-                    "Field {} not found, possible values are {}".format(name, ", ".join(fnames))
-                )
-            return self._with_new_scol(self.spark_column.getField(name))
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -2789,7 +2818,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
 
         >>> def sqrt(x) -> float:
-        ...    return np.sqrt(x)
+        ...     return np.sqrt(x)
         >>> s.transform(sqrt)
         0    0.000000
         1    1.000000
@@ -2800,7 +2829,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         input, it is possible to provide several input functions:
 
         >>> def exp(x) -> float:
-        ...    return np.exp(x)
+        ...     return np.exp(x)
         >>> s.transform([sqrt, exp])
                sqrt       exp
         0  0.000000  1.000000
@@ -2862,7 +2891,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             To avoid this, specify return type in ``func``, for instance, as below:
 
             >>> def plus_one(x) -> ks.Series[int]:
-            ...    return x + 1
+            ...     return x + 1
 
         Parameters
         ----------
@@ -4755,6 +4784,100 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
 
         return mad
 
+    def unstack(self, level=-1):
+        """
+        Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.
+        The level involved will automatically get sorted.
+
+        Notes
+        -----
+        Unlike pandas, Koalas doesn't check whether an index is duplicated or not
+        because the checking of duplicated index requires scanning whole data which
+        can be quite expensive.
+
+        Parameters
+        ----------
+        level : int, str, or list of these, default last level
+            Level(s) to unstack, can pass level name.
+
+        Returns
+        -------
+        DataFrame
+            Unstacked Series.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4],
+        ...               index=pd.MultiIndex.from_product([['one', 'two'],
+        ...                                                 ['a', 'b']]))
+        >>> s
+        one  a    1
+             b    2
+        two  a    3
+             b    4
+        Name: 0, dtype: int64
+
+        >>> s.unstack(level=-1).sort_index()
+             a  b
+        one  1  2
+        two  3  4
+
+        >>> s.unstack(level=0).sort_index()
+           one  two
+        a    1    3
+        b    2    4
+        """
+        if not isinstance(self.index, ks.MultiIndex):
+            raise ValueError("Series.unstack only support for a MultiIndex")
+        index_nlevels = self.index.nlevels
+        if level > 0 and (level > index_nlevels - 1):
+            raise IndexError(
+                "Too many levels: Index has only {} levels, not {}".format(index_nlevels, level + 1)
+            )
+        elif level < 0 and (level < -index_nlevels):
+            raise IndexError(
+                "Too many levels: Index has only {} levels, {} is not a valid level number".format(
+                    index_nlevels, level
+                )
+            )
+
+        sdf = self._internal.spark_frame
+        index_scol_names = self._internal.index_spark_column_names.copy()
+        pivot_col = index_scol_names.pop(level)
+        data_scol_name = self._internal.data_spark_column_names[0]
+
+        sdf = sdf.groupby(index_scol_names).pivot(pivot_col).sum(data_scol_name)
+        internal = _InternalFrame(
+            spark_frame=sdf,
+            index_map=OrderedDict((index_scol_name, None) for index_scol_name in index_scol_names),
+        )
+        return DataFrame(internal)
+
+    def item(self):
+        """
+        Return the first element of the underlying data as a Python scalar.
+
+        Returns
+        -------
+        scalar
+            The first element of Series.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kser = ks.Series([10])
+        >>> kser.item()
+        10
+        """
+        item_top_two = self[:2]
+        if len(item_top_two) != 1:
+            raise ValueError("can only convert an array of size 1 to a Python scalar")
+        return item_top_two[0]
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
@@ -4923,7 +5046,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return self.getField(item)
+        raise AttributeError("'Series' object has no attribute '{}'".format(item))
 
     def _to_internal_pandas(self):
         """

@@ -179,9 +179,28 @@ class IndexOpsMixin(object):
     __mul__ = _column_op(spark.Column.__mul__)
 
     def __truediv__(self, other):
+        """
+        __truediv__ has different behaviour between pandas and PySpark for several cases.
+        1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
+
+        +-------------------------------------------+
+        | dividend (divisor: 0) | PySpark |  pandas |
+        |-----------------------|---------|---------|
+        |         np.inf        |   null  |  np.inf |
+        |        -np.inf        |   null  | -np.inf |
+        |           10          |   null  |  np.inf |
+        |          -10          |   null  | -np.inf |
+        +-----------------------|---------|---------+
+        """
+
         def truediv(left, right):
-            return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
-                left.__truediv__(right)
+            return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
+                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                    F.lit(np.inf).__div__(left)
+                )
             )
 
         return _numpy_column_op(truediv)(self, other)
@@ -211,9 +230,32 @@ class IndexOpsMixin(object):
         return _numpy_column_op(rtruediv)(self, other)
 
     def __floordiv__(self, other):
+        """
+        __floordiv__ has different behaviour between pandas and PySpark for several cases.
+        1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
+
+        +-------------------------------------------+
+        | dividend (divisor: 0) | PySpark |  pandas |
+        |-----------------------|---------|---------|
+        |         np.inf        |   null  |  np.inf |
+        |        -np.inf        |   null  | -np.inf |
+        |           10          |   null  |  np.inf |
+        |          -10          |   null  | -np.inf |
+        +-----------------------|---------|---------+
+        """
+
         def floordiv(left, right):
-            return F.when(F.lit(right == 0), F.lit(np.inf).__div__(left)).otherwise(
-                F.when(F.lit(right) == np.nan, np.nan).otherwise(F.floor(left.__div__(right)))
+            return F.when(F.lit(right is np.nan), np.nan).otherwise(
+                F.when(
+                    F.lit(right != 0) | F.lit(right).isNull(), F.floor(left.__div__(right))
+                ).otherwise(
+                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                        F.lit(np.inf).__div__(left)
+                    )
+                )
             )
 
         return _numpy_column_op(floordiv)(self, other)
