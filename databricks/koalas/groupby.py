@@ -851,7 +851,7 @@ class GroupBy(object):
              To avoid this, specify return type in ``func``, for instance, as below:
 
              >>> def pandas_div(x) -> ks.DataFrame[float, float]:
-             ...    return x[['B', 'C']] / x[['B', 'C']]
+             ...     return x[['B', 'C']] / x[['B', 'C']]
 
              If the return type is specified, the output column names become
              `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
@@ -895,7 +895,7 @@ class GroupBy(object):
         each group together into a new DataFrame:
 
         >>> def plus_min(x):
-        ...    return x + x.min()
+        ...     return x + x.min()
         >>> g.apply(plus_min).sort_index()  # doctest: +NORMALIZE_WHITESPACE
             A  B   C
         0  aa  2   8
@@ -905,7 +905,7 @@ class GroupBy(object):
         You can specify the type hint and prevent schema inference for better performance.
 
         >>> def pandas_div(x) -> ks.DataFrame[float, float]:
-        ...    return x[['B', 'C']] / x[['B', 'C']]
+        ...     return x[['B', 'C']] / x[['B', 'C']]
         >>> g.apply(pandas_div).sort_index()  # doctest: +NORMALIZE_WHITESPACE
             c0   c1
         0  1.0  1.0
@@ -913,7 +913,7 @@ class GroupBy(object):
         2  1.0  1.0
 
         >>> def pandas_length(x) -> int:
-        ...    return len(x)
+        ...     return len(x)
         >>> g.apply(pandas_length).sort_index()  # doctest: +NORMALIZE_WHITESPACE
         0    1
         1    2
@@ -922,7 +922,7 @@ class GroupBy(object):
         In case of Series, it works as below.
 
         >>> def plus_max(x) -> ks.Series[np.int]:
-        ...    return x + x.max()
+        ...     return x + x.max()
         >>> df.B.groupby(df.A).apply(plus_max).sort_index()
         0    6
         1    3
@@ -930,7 +930,7 @@ class GroupBy(object):
         Name: B, dtype: int32
 
         >>> def plus_min(x):
-        ...    return x + x.min()
+        ...     return x + x.min()
         >>> df.B.groupby(df.A).apply(plus_min).sort_index()
         0    2
         1    3
@@ -940,7 +940,7 @@ class GroupBy(object):
         You can also return a scalar value as a aggregated value of the group:
 
         >>> def plus_length(x) -> np.int:
-        ...    return len(x)
+        ...     return len(x)
         >>> df.B.groupby(df.A).apply(plus_length).sort_index()
         0    1
         1    2
@@ -949,7 +949,7 @@ class GroupBy(object):
         The extra arguments to the function can be passed as below.
 
         >>> def calculation(x, y, z) -> np.int:
-        ...    return len(x) + y * z
+        ...     return len(x) + y * z
         >>> df.B.groupby(df.A).apply(calculation, 5, z=10).sort_index()
         0    51
         1    52
@@ -1798,7 +1798,7 @@ class GroupBy(object):
              To avoid this, specify return type in ``func``, for instance, as below:
 
              >>> def convert_to_string(x) -> ks.Series[str]:
-             ...    return x.apply("a string {}".format)
+             ...     return x.apply("a string {}".format)
 
         .. note:: the series within ``func`` is actually a pandas series. Therefore,
             any pandas APIs within this function is allowed.
@@ -1839,7 +1839,7 @@ class GroupBy(object):
         in each grouped data, and combine them into a new DataFrame:
 
         >>> def convert_to_string(x) -> ks.Series[str]:
-        ...    return x.apply("a string {}".format)
+        ...     return x.apply("a string {}".format)
         >>> g.transform(convert_to_string)  # doctest: +NORMALIZE_WHITESPACE
                     B           C
         0  a string 1  a string 4
@@ -1847,7 +1847,7 @@ class GroupBy(object):
         2  a string 3  a string 5
 
         >>> def plus_max(x) -> ks.Series[np.int]:
-        ...    return x + x.max()
+        ...     return x + x.max()
         >>> g.transform(plus_max)  # doctest: +NORMALIZE_WHITESPACE
            B   C
         0  3  10
@@ -1857,7 +1857,7 @@ class GroupBy(object):
         You can omit the type hint and let Koalas infer its type.
 
         >>> def plus_min(x):
-        ...    return x + x.min()
+        ...     return x + x.min()
         >>> g.transform(plus_min)  # doctest: +NORMALIZE_WHITESPACE
            B   C
         0  2   8
@@ -1881,7 +1881,7 @@ class GroupBy(object):
         You can also specify extra arguments to pass to the function.
 
         >>> def calculation(x, y, z) -> ks.Series[np.int]:
-        ...    return x + x.min() + y + z
+        ...     return x + x.min() + y + z
         >>> g.transform(calculation, 5, z=20)  # doctest: +NORMALIZE_WHITESPACE
             B   C
         0  27  33
