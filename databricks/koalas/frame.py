@@ -9340,12 +9340,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     cols = []
                     col = None
                     for item in items:
-                        if col is None:
-                            for i, element in enumerate(item):
-                                if col is None:
-                                    col = index_scols[i] == F.lit(element)
-                                else:
-                                    col = col & (index_scols[i] == F.lit(element))
+                        for i, element in enumerate(item):
+                            if col is None:
+                                col = index_scols[i] == F.lit(element)
+                            else:
+                                col = col & (index_scols[i] == F.lit(element))
                         cols.append(col)
                         col = None
                     for c in cols:
