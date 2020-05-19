@@ -427,7 +427,7 @@ def lazy_property(fn):
 
     @property
     @functools.wraps(fn)
-    def _lazy_property(self):
+    def wrapped_lazy_property(self):
         if not hasattr(self, attr_name):
             setattr(self, attr_name, fn(self))
         return getattr(self, attr_name)
@@ -436,9 +436,7 @@ def lazy_property(fn):
         if hasattr(self, attr_name):
             delattr(self, attr_name)
 
-    _lazy_property = _lazy_property.deleter(deleter)
-
-    return _lazy_property
+    return wrapped_lazy_property.deleter(deleter)
 
 
 def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:

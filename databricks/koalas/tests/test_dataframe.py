@@ -31,7 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.frame import _CachedDataFrame
+from databricks.koalas.frame import CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -1434,12 +1434,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_add_suffix(self):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [3, 4, 5, 6]}, index=np.random.rand(4))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.add_suffix("_col"), kdf.add_suffix("_col"))
+        self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
         pdf.columns = columns
         kdf.columns = columns
-        self.assert_eq(pdf.add_suffix("_col"), kdf.add_suffix("_col"))
+        self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
     def test_join(self):
         # check basic function
@@ -3293,7 +3293,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         with kdf.cache() as cached_df:
-            self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+            self.assert_eq(isinstance(cached_df, CachedDataFrame), True)
             self.assert_eq(
                 repr(cached_df.storage_level), repr(StorageLevel(True, True, False, True))
             )
@@ -3312,7 +3312,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         for storage_level in storage_levels:
             with kdf.persist(storage_level) as cached_df:
-                self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+                self.assert_eq(isinstance(cached_df, CachedDataFrame), True)
                 self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
 
         self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))

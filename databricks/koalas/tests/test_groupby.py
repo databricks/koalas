@@ -26,11 +26,11 @@ from databricks import koalas as ks
 from databricks.koalas.config import option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import (
-    _MissingPandasLikeDataFrameGroupBy,
-    _MissingPandasLikeSeriesGroupBy,
+    MissingPandasLikeDataFrameGroupBy,
+    MissingPandasLikeSeriesGroupBy,
 )
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
-from databricks.koalas.groupby import _is_multi_agg_with_relabel
+from databricks.koalas.groupby import is_multi_agg_with_relabel
 
 
 class GroupByTest(ReusedSQLTestCase, TestUtils):
@@ -1814,7 +1814,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # DataFrameGroupBy functions
         missing_functions = inspect.getmembers(
-            _MissingPandasLikeDataFrameGroupBy, inspect.isfunction
+            MissingPandasLikeDataFrameGroupBy, inspect.isfunction
         )
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
@@ -1836,7 +1836,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 getattr(kdf.groupby("a"), name)()
 
         # SeriesGroupBy functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeSeriesGroupBy, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeSeriesGroupBy, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -1858,7 +1858,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # DataFrameGroupBy properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeDataFrameGroupBy, lambda o: isinstance(o, property)
+            MissingPandasLikeDataFrameGroupBy, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -1884,7 +1884,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # SeriesGroupBy properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeSeriesGroupBy, lambda o: isinstance(o, property)
+            MissingPandasLikeSeriesGroupBy, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -1911,5 +1911,5 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     @staticmethod
     def test_is_multi_agg_with_relabel():
 
-        assert _is_multi_agg_with_relabel(a="max") is False
-        assert _is_multi_agg_with_relabel(a_min=("a", "max"), a_max=("a", "min")) is True
+        assert is_multi_agg_with_relabel(a="max") is False
+        assert is_multi_agg_with_relabel(a_min=("a", "max"), a_max=("a", "min")) is True

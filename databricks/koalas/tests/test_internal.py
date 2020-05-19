@@ -18,7 +18,7 @@ from collections import OrderedDict
 import pandas as pd
 
 from databricks.koalas.internal import (
-    _InternalFrame,
+    InternalFrame,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
 )
@@ -29,7 +29,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_from_pandas(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
 
-        internal = _InternalFrame.from_pandas(pdf)
+        internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
         self.assert_eq(internal.index_map, OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}))
@@ -43,7 +43,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # multi-index
         pdf.set_index("a", append=True, inplace=True)
 
-        internal = _InternalFrame.from_pandas(pdf)
+        internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
         self.assert_eq(
@@ -59,7 +59,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # multi-index columns
         pdf.columns = pd.MultiIndex.from_tuples([("x", "b")])
 
-        internal = _InternalFrame.from_pandas(pdf)
+        internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
         self.assert_eq(
