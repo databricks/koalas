@@ -4749,9 +4749,9 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
 
         sdf = self._internal.spark_frame
-        column_name = self._internal.data_spark_column_names[0]
-        avg = _unpack_scalar(sdf.select(F.avg(sdf[column_name])))
-        mad = _unpack_scalar(sdf.select(F.avg(F.abs(sdf[column_name] - avg))))
+        spark_column = self._internal.spark_column
+        avg = _unpack_scalar(sdf.select(F.avg(spark_column)))
+        mad = _unpack_scalar(sdf.select(F.avg(F.abs(spark_column - avg))))
 
         return mad
 
