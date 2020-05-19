@@ -1547,6 +1547,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.shape, kser.shape)
 
+    def test_unstack(self):
+        pser = pd.Series(
+            [10, -2, 4, 7],
+            index=pd.MultiIndex.from_tuples(
+                [("one", "a", "z"), ("one", "b", "x"), ("two", "a", "c"), ("two", "b", "v")]
+            ),
+        )
+        kser = ks.from_pandas(pser)
+
+        levels = [-3, -2, -1, 0, 1, 2]
+        for level in levels:
+            self.assert_eq(pser.unstack(level=level), kser.unstack(level=level).sort_index())
+
+        # Exceeding the range of level
+        self.assertRaises(IndexError, lambda: kser.unstack(level=3))
+        self.assertRaises(IndexError, lambda: kser.unstack(level=-4))
+        # Only support for MultiIndex
+        kser = ks.Series([10, -2, 4, 7])
+        self.assertRaises(ValueError, lambda: kser.unstack())
+
     def test_item(self):
         kser = ks.Series([10, 20])
         self.assertRaises(ValueError, lambda: kser.item())
