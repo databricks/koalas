@@ -725,6 +725,46 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return (self != other).rename(self.name)
 
+    def divmod(self, other):
+        """
+        Return Integer division and modulo of series and other, element-wise
+        (binary operator `divmod`).
+
+        Parameters
+        ----------
+        other : Series or scalar value
+
+        Returns
+        -------
+        Series
+            The result of the operation.
+
+        See Also
+        --------
+        Series.rdivmod
+        """
+        return (self.floordiv(other), self.mod(other))
+
+    def rdivmod(self, other):
+        """
+        Return Integer division and modulo of series and other, element-wise
+        (binary operator `rdivmod`).
+
+        Parameters
+        ----------
+        other : Series or scalar value
+
+        Returns
+        -------
+        Series
+            The result of the operation.
+
+        See Also
+        --------
+        Series.divmod
+        """
+        return (self.rfloordiv(other), self.rmod(other))
+
     def between(self, left, right, inclusive=True):
         """
         Return boolean Series equivalent to left <= series <= right.

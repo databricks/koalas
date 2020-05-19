@@ -1398,6 +1398,32 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
 
+    def test_divmod(self):
+        pser = pd.Series([100, None, 300, None, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(kser.divmod(-100)), repr(pser.divmod(-100)))
+            self.assert_eq(repr(kser.divmod(100)), repr(pser.divmod(100)))
+        elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            expected_result = repr((pser.floordiv(-100), pser.mod(-100)))
+            self.assert_eq(repr(kser.divmod(-100)), expected_result)
+            expected_result = repr((pser.floordiv(100), pser.mod(100)))
+            self.assert_eq(repr(kser.divmod(100)), expected_result)
+
+    def test_rdivmod(self):
+        pser = pd.Series([100, None, 300, None, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(kser.rdivmod(-100)), repr(pser.rdivmod(-100)))
+            self.assert_eq(repr(kser.rdivmod(100)), repr(pser.rdivmod(100)))
+        elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            expected_result = repr((pser.rfloordiv(-100), pser.rmod(-100)))
+            self.assert_eq(repr(kser.rdivmod(-100)), expected_result)
+            expected_result = repr((pser.rfloordiv(100), pser.rmod(100)))
+            self.assert_eq(repr(kser.rdivmod(100)), expected_result)
+
     def test_mod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
         kser = ks.from_pandas(pser)
