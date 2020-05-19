@@ -4759,6 +4759,31 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result_series.name = self.name
         return result_series
 
+    def mad(self):
+        """
+        Return the mean absolute deviation of values.
+
+        Examples
+        --------
+        >>> s = ks.Series([1, 2, 3, 4])
+        >>> s
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: 0, dtype: int64
+
+        >>> s.mad()
+        1.0
+        """
+
+        sdf = self._internal.spark_frame
+        spark_column = self._internal.spark_column
+        avg = _unpack_scalar(sdf.select(F.avg(spark_column)))
+        mad = _unpack_scalar(sdf.select(F.avg(F.abs(spark_column - avg))))
+
+        return mad
+
     def unstack(self, level=-1):
         """
         Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.

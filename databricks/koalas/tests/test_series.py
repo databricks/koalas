@@ -1521,6 +1521,35 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(repr(kser // 0), repr(result))
         self.assert_eq(repr(pser.floordiv(np.nan)), repr(kser.floordiv(np.nan)))
 
+    def test_mad(self):
+        pser = pd.Series([1, 2, 3, 4], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pser = pd.Series([None, -2, 5, 10, 50, np.nan, -20], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2"), ("c", "1")]
+        )
+        pser = pd.Series([1, 2, 3, 4, 5], name="Koalas")
+        pser.index = pmidx
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2"), ("c", "1")]
+        )
+        pser = pd.Series([None, -2, 5, 50, np.nan], name="Koalas")
+        pser.index = pmidx
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
     def test_to_frame(self):
         kser = ks.Series(["a", "b", "c"])
         pser = kser.to_pandas()
