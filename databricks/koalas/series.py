@@ -944,17 +944,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             scol = self.spark_column.cast(spark_type)
         return self._with_new_scol(scol)
 
-    def getField(self, name):
-        if not isinstance(self.spark_type, StructType):
-            raise AttributeError("Not a struct: {}".format(self.spark_type))
-        else:
-            fnames = self.spark_type.fieldNames()
-            if name not in fnames:
-                raise AttributeError(
-                    "Field {} not found, possible values are {}".format(name, ", ".join(fnames))
-                )
-            return self._with_new_scol(self.spark_column.getField(name))
-
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
         return self.rename(name)
@@ -4923,7 +4912,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return self.getField(item)
+        raise AttributeError("'Series' object has no attribute '{}'".format(item))
 
     def _to_internal_pandas(self):
         """
