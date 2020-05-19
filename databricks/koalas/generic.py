@@ -382,11 +382,11 @@ class _Frame(object):
         ...                    'col2': [4, 5, 6]},
         ...                   columns=['category', 'col1', 'col2'])
         >>> def keep_category_a(df):
-        ...    return df[df['category'] == 'A']
+        ...     return df[df['category'] == 'A']
         >>> def add_one(df, column):
-        ...    return df.assign(col3=df[column] + 1)
+        ...     return df.assign(col3=df[column] + 1)
         >>> def multiply(df, column1, column2):
-        ...    return df.assign(col4=df[column1] * df[column2])
+        ...     return df.assign(col4=df[column1] * df[column2])
 
 
         instead of writing

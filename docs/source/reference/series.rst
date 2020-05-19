@@ -53,6 +53,7 @@ Indexing, iteration
    Series.iloc
    Series.keys
    Series.pop
+   Series.item
    Series.xs
    Series.get
 
@@ -78,6 +79,8 @@ Binary operator functions
    Series.rmod
    Series.floordiv
    Series.rfloordiv
+   Series.divmod
+   Series.rdivmod
    Series.combine_first
    Series.lt
    Series.gt

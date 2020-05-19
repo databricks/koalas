@@ -2043,7 +2043,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             To avoid this, specify return type in ``func``, for instance, as below:
 
             >>> def plus_one(x) -> ks.DataFrame[float, float]:
-            ...    return x + 1
+            ...     return x + 1
 
             If the return type is specified, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
@@ -2095,6 +2095,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  2
 
         You can also specify extra arguments.
+
         >>> def calculation(pdf, y, z) -> ks.DataFrame[int, int]:
         ...     return pdf ** y + z
         >>> df.apply_batch(calculation, args=(10,), z=20)
@@ -2206,7 +2207,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             >>> # This case does not return the length of whole series but of the batch internally
             ... # used.
             ... def length(s) -> int:
-            ...    return len(s)
+            ...     return len(s)
             ...
             >>> df = ks.DataFrame({'A': range(1000)})
             >>> df.apply(length, axis=0)  # doctest: +SKIP
@@ -2234,7 +2235,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             with type hints as below:
 
             >>> def plus_one(x) -> ks.DataFrame[float, float]:
-            ...    return x + 1
+            ...     return x + 1
 
             If the return type is specified as `DataFrame`, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
@@ -2286,7 +2287,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ``np.sqrt(df)``):
 
         >>> def sqrt(x) -> ks.Series[float]:
-        ...    return np.sqrt(x)
+        ...     return np.sqrt(x)
         ...
         >>> df.apply(sqrt, axis=0)
              A    B
@@ -2305,7 +2306,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         When `axis` is 1 or 'columns', it applies the function for each row.
 
         >>> def summation(x) -> np.int64:
-        ...    return np.sum(x)
+        ...     return np.sum(x)
         ...
         >>> df.apply(summation, axis=1)
         0    13
@@ -2615,7 +2616,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             To avoid this, specify return type in ``func``, for instance, as below:
 
             >>> def plus_one(x) -> ks.DataFrame[float, float]:
-            ...    return x + 1
+            ...     return x + 1
 
             If the return type is specified, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned

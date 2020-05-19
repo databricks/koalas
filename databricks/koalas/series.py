@@ -726,6 +726,46 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         """
         return (self != other).rename(self.name)
 
+    def divmod(self, other):
+        """
+        Return Integer division and modulo of series and other, element-wise
+        (binary operator `divmod`).
+
+        Parameters
+        ----------
+        other : Series or scalar value
+
+        Returns
+        -------
+        Series
+            The result of the operation.
+
+        See Also
+        --------
+        Series.rdivmod
+        """
+        return (self.floordiv(other), self.mod(other))
+
+    def rdivmod(self, other):
+        """
+        Return Integer division and modulo of series and other, element-wise
+        (binary operator `rdivmod`).
+
+        Parameters
+        ----------
+        other : Series or scalar value
+
+        Returns
+        -------
+        Series
+            The result of the operation.
+
+        See Also
+        --------
+        Series.divmod
+        """
+        return (self.rfloordiv(other), self.rmod(other))
+
     def between(self, left, right, inclusive=True):
         """
         Return boolean Series equivalent to left <= series <= right.
@@ -944,17 +984,6 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         else:
             scol = self.spark_column.cast(spark_type)
         return self._with_new_scol(scol)
-
-    def getField(self, name):
-        if not isinstance(self.spark_type, StructType):
-            raise AttributeError("Not a struct: {}".format(self.spark_type))
-        else:
-            fnames = self.spark_type.fieldNames()
-            if name not in fnames:
-                raise AttributeError(
-                    "Field {} not found, possible values are {}".format(name, ", ".join(fnames))
-                )
-            return self._with_new_scol(self.spark_column.getField(name))
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
@@ -2836,7 +2865,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
 
         >>> def sqrt(x) -> float:
-        ...    return np.sqrt(x)
+        ...     return np.sqrt(x)
         >>> s.transform(sqrt)
         0    0.000000
         1    1.000000
@@ -2847,7 +2876,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         input, it is possible to provide several input functions:
 
         >>> def exp(x) -> float:
-        ...    return np.exp(x)
+        ...     return np.exp(x)
         >>> s.transform([sqrt, exp])
                sqrt       exp
         0  0.000000  1.000000
@@ -2909,7 +2938,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
             To avoid this, specify return type in ``func``, for instance, as below:
 
             >>> def plus_one(x) -> ks.Series[int]:
-            ...    return x + 1
+            ...     return x + 1
 
         Parameters
         ----------
@@ -4777,6 +4806,31 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result_series.name = self.name
         return result_series
 
+    def item(self):
+        """
+        Return the first element of the underlying data as a Python scalar.
+
+        Returns
+        -------
+        scalar
+            The first element of Series.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kser = ks.Series([10])
+        >>> kser.item()
+        10
+        """
+        item_top_two = self[:2]
+        if len(item_top_two) != 1:
+            raise ValueError("can only convert an array of size 1 to a Python scalar")
+        return item_top_two[0]
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
@@ -4945,7 +4999,7 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        return self.getField(item)
+        raise AttributeError("'Series' object has no attribute '{}'".format(item))
 
     def _to_internal_pandas(self):
         """
