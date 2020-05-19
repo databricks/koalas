@@ -4730,6 +4730,31 @@ class Series(_Frame, IndexOpsMixin, Generic[T]):
         result_series.name = self.name
         return result_series
 
+    def item(self):
+        """
+        Return the first element of the underlying data as a Python scalar.
+
+        Returns
+        -------
+        scalar
+            The first element of Series.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kser = ks.Series([10])
+        >>> kser.item()
+        10
+        """
+        item_top_two = self[:2]
+        if len(item_top_two) != 1:
+            raise ValueError("can only convert an array of size 1 to a Python scalar")
+        return item_top_two[0]
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 

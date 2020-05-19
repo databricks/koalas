@@ -1520,3 +1520,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(pser.shape, kser.shape)
+
+    def test_item(self):
+        kser = ks.Series([10, 20])
+        self.assertRaises(ValueError, lambda: kser.item())
