@@ -1235,45 +1235,43 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kmidx.take({1: None, 2: None}))
 
     def test_index_get_level_values(self):
-        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=pd.Index([1, 2, 3], name='ks'))
+        pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index([1, 2, 3], name="ks"))
         kdf = ks.from_pandas(pdf)
 
-        for level in [0, 'ks']:
+        for level in [0, "ks"]:
             self.assert_eq(kdf.index.get_level_values(level), pdf.index.get_level_values(level))
 
     def test_multiindex_get_level_values(self):
-        mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
-        mi.names = ['level_1', 'level_2']
-        pdf = pd.DataFrame({'a': [1, 2, 3]}, index=mi)
+        mi = pd.MultiIndex.from_arrays((list("abc"), list("def")))
+        mi.names = ["level_1", "level_2"]
+        pdf = pd.DataFrame({"a": [1, 2, 3]}, index=mi)
         kdf = ks.from_pandas(pdf)
 
-        for level in [0, 1, 'level_1', 'level_2']:
+        for level in [0, 1, "level_1", "level_2"]:
             self.assert_eq(kdf.index.get_level_values(level), pdf.index.get_level_values(level))
 
     def test_index_get_level_number(self):
         # name of two levels are the same, which is None
-        kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('ddf')])
-        with self.assertRaisesRegex(ValueError,
-                                    "The name None occurs multiple times, use a level number"):
+        kdf = ks.DataFrame({"a": [1, 2, 3]}, index=[list("aac"), list("ddf")])
+        with self.assertRaisesRegex(
+            ValueError, "The name None occurs multiple times, use a level number"
+        ):
             kdf.index._get_level_number(None)
 
-        mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
-        mi.names = ['level_1', 'level_2']
-        kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+        mi = pd.MultiIndex.from_arrays((list("abc"), list("def")))
+        mi.names = ["level_1", "level_2"]
+        kdf = ks.DataFrame({"a": [1, 2, 3]}, index=mi)
 
         # level is not int and not in the level name list
-        with self.assertRaisesRegexp(KeyError,
-                                     "Level lv_3 not found"):
-            kdf.index._get_level_number('lv_3')
+        with self.assertRaisesRegexp(KeyError, "Level lv_3 not found"):
+            kdf.index._get_level_number("lv_3")
 
         # level is int, but an invalid negative number
-        with self.assertRaisesRegexp(IndexError,
-                                     "Too many levels: Index has only"):
+        with self.assertRaisesRegexp(IndexError, "Too many levels: Index has only"):
             kdf.index._get_level_number(-3)
 
         # level is int, but an invalid positive number
-        with self.assertRaisesRegexp(IndexError,
-                                     "Too many levels: Index has only"):
+        with self.assertRaisesRegexp(IndexError, "Too many levels: Index has only"):
             kdf.index._get_level_number(3)
 
         # Correct and valid inputs in numbers
@@ -1284,7 +1282,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(output, kdf.index._get_level_number(lv))
 
         # Valid inputs as level names
-        level_names = ['level_1', 'level_2']
+        level_names = ["level_1", "level_2"]
         outputs = [0, 1]
 
         for lv, output in zip(level_names, outputs):

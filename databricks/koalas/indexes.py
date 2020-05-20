@@ -2517,29 +2517,14 @@ class MultiIndex(Index):
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
 
-    def rename(self, name, inplace=False):
-        raise NotImplementedError()
-
-    @property
-    def levels(self) -> list:
-        idx_cols = self._kdf._internal.index_columns
-        sdf = self._kdf._sdf.select(idx_cols).dropDuplicates()
-
-        # use sorting is because pandas doesn't care the appearance order of level
-        # names, so e.g. if ['b', 'd', 'a'] will return as ['a', 'b', 'd']
-        return [sorted([row[col] for row in sdf.collect()]) for col in idx_cols]
-
     def _get_level_number(self, level):
         """
         Return the level number if a valid level is given.
-
         **this is an internal method**
         """
         count = self.names.count(level)
         if (count > 1) and not isinstance(level, int):
-            raise ValueError(
-                "The name %s occurs multiple times, use a level number" % level
-            )
+            raise ValueError("The name %s occurs multiple times, use a level number" % level)
         try:
             level = self.names.index(level)
         except ValueError:
@@ -2551,8 +2536,7 @@ class MultiIndex(Index):
                     orig_level = level - self.nlevels
                     raise IndexError(
                         "Too many levels: Index has only %d "
-                        "levels, %d is not a valid level number"
-                        % (self.nlevels, orig_level)
+                        "levels, %d is not a valid level number" % (self.nlevels, orig_level)
                     )
             # Note: levels are zero-based
             elif level >= self.nlevels:
@@ -2566,57 +2550,40 @@ class MultiIndex(Index):
         """
         Return vector of label values for requested level,
         equal to the length of the index
-
         **this is an internal method**
-
         Parameters
         ----------
         level : int level
-
         Returns
         -------
         values : Index
         """
-        # TODO: the best way is to construct an Index from levels, but since constructing Index
-        # TODO: has not been implemented, will change once that is done.
         lev = self.levels[level]
         name = self.names[level]
 
-        level_values = DataFrame(index=lev).index
-
-        # TODO: fix name is None, related to Issue 971
-        if name is not None:
-            level_values.name = name
-        return level_values
+        return ks.Index(lev, name=name)
 
     def get_level_values(self, level):
         """
         Return vector of label values for requested level,
         equal to the length of the index.
-
         Parameters
         ----------
         level : int or str
             ``level`` is either the integer position of the level in the
             MultiIndex, or the name of the level.
-
         Returns
         -------
         values : Index
             Values is a level of this MultiIndex converted to
             a single :class:`Index` (or subclass thereof).
-
         Examples
         --------
-
         Create a MultiIndex:
-
         >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
         >>> mi.names = ['level_1', 'level_2']
         >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
-
         Get level values by supplying level as either integer or name:
-
         >>> kdf.index.get_level_values(0)
         Index(['a', 'b', 'c'], dtype='object', name='level_1')
         >>> kdf.index.get_level_values('level_2')
