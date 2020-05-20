@@ -4873,11 +4873,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> kser.item()
         10
         """
-        scol = self.spark_column
-        item_top_two = self._internal._sdf.select(scol).head(2)
-        if len(item_top_two) != 1:
-            raise ValueError("can only convert an array of size 1 to a Python scalar")
-        return item_top_two[0][0]
+        return self.head(2).to_pandas().item()
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
