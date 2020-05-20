@@ -2103,6 +2103,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0       21      1044
         1    59069   1048596
         2  9765645  60466196
+
+        You can also use ``np.ufunc`` as input.
+
+        >>> df.apply_batch(np.add, args=(10,))
+            A   B
+        0  11  12
+        1  13  14
+        2  15  16
         """
         # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
 
@@ -5554,6 +5562,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Replacing value by specifying column
 
         >>> df.replace('Mjolnir', 'Stormbuster', subset='weapon')
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
+
+        You can also use an iterable object that returns a list of columns,
+        such as `tuple` or `list`, as input to the `subset` parameter.
+
+        >>> df.replace('Mjolnir', 'Stormbuster', subset=('weapon',))
               name       weapon
         0   Rescue      Mark-45
         1  Hawkeye       Shield
