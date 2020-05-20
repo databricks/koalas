@@ -17,17 +17,17 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
+from databricks.koalas.missing import unsupported_function, unsupported_property, common
 
 
 def unsupported_function(method_name, deprecated=False, reason=""):
-    return _unsupported_function(
+    return __unsupported_function(
         class_name="pd.Index", method_name=method_name, deprecated=deprecated, reason=reason
     )
 
 
 def unsupported_property(property_name, deprecated=False, reason=""):
-    return _unsupported_property(
+    return __unsupported_property(
         class_name="pd.Index", property_name=property_name, deprecated=deprecated, reason=reason
     )
 
@@ -35,157 +35,157 @@ def unsupported_property(property_name, deprecated=False, reason=""):
 class _MissingPandasLikeIndex(object):
 
     # Properties
-    nbytes = unsupported_property("nbytes")
+    nbytes = _unsupported_property("nbytes")
 
     # Functions
-    argsort = unsupported_function("argsort")
-    asof_locs = unsupported_function("asof_locs")
-    delete = unsupported_function("delete")
-    factorize = unsupported_function("factorize")
-    format = unsupported_function("format")
-    get_indexer = unsupported_function("get_indexer")
-    get_indexer_for = unsupported_function("get_indexer_for")
-    get_indexer_non_unique = unsupported_function("get_indexer_non_unique")
-    get_loc = unsupported_function("get_loc")
-    get_slice_bound = unsupported_function("get_slice_bound")
-    get_value = unsupported_function("get_value")
-    groupby = unsupported_function("groupby")
-    holds_integer = unsupported_function("holds_integer")
-    insert = unsupported_function("insert")
-    intersection = unsupported_function("intersection")
-    is_ = unsupported_function("is_")
-    is_lexsorted_for_tuple = unsupported_function("is_lexsorted_for_tuple")
-    is_mixed = unsupported_function("is_mixed")
-    is_type_compatible = unsupported_function("is_type_compatible")
-    join = unsupported_function("join")
-    map = unsupported_function("map")
-    putmask = unsupported_function("putmask")
-    ravel = unsupported_function("ravel")
-    reindex = unsupported_function("reindex")
-    searchsorted = unsupported_function("searchsorted")
-    slice_indexer = unsupported_function("slice_indexer")
-    slice_locs = unsupported_function("slice_locs")
-    sortlevel = unsupported_function("sortlevel")
-    to_flat_index = unsupported_function("to_flat_index")
-    to_native_types = unsupported_function("to_native_types")
-    view = unsupported_function("view")
-    where = unsupported_function("where")
+    argsort = _unsupported_function("argsort")
+    asof_locs = _unsupported_function("asof_locs")
+    delete = _unsupported_function("delete")
+    factorize = _unsupported_function("factorize")
+    format = _unsupported_function("format")
+    get_indexer = _unsupported_function("get_indexer")
+    get_indexer_for = _unsupported_function("get_indexer_for")
+    get_indexer_non_unique = _unsupported_function("get_indexer_non_unique")
+    get_loc = _unsupported_function("get_loc")
+    get_slice_bound = _unsupported_function("get_slice_bound")
+    get_value = _unsupported_function("get_value")
+    groupby = _unsupported_function("groupby")
+    holds_integer = _unsupported_function("holds_integer")
+    insert = _unsupported_function("insert")
+    intersection = _unsupported_function("intersection")
+    is_ = _unsupported_function("is_")
+    is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
+    is_mixed = _unsupported_function("is_mixed")
+    is_type_compatible = _unsupported_function("is_type_compatible")
+    join = _unsupported_function("join")
+    map = _unsupported_function("map")
+    putmask = _unsupported_function("putmask")
+    ravel = _unsupported_function("ravel")
+    reindex = _unsupported_function("reindex")
+    searchsorted = _unsupported_function("searchsorted")
+    slice_indexer = _unsupported_function("slice_indexer")
+    slice_locs = _unsupported_function("slice_locs")
+    sortlevel = _unsupported_function("sortlevel")
+    to_flat_index = _unsupported_function("to_flat_index")
+    to_native_types = _unsupported_function("to_native_types")
+    view = _unsupported_function("view")
+    where = _unsupported_function("where")
 
     # Deprecated functions
-    get_values = unsupported_function("get_values", deprecated=True)
-    item = unsupported_function("item", deprecated=True)
-    set_value = unsupported_function("set_value")
+    get_values = _unsupported_function("get_values", deprecated=True)
+    item = _unsupported_function("item", deprecated=True)
+    set_value = _unsupported_function("set_value")
 
     # Properties we won't support.
-    array = common.array(unsupported_property)
-    duplicated = common.duplicated(unsupported_property)
+    array = common.array(_unsupported_property)
+    duplicated = common.duplicated(_unsupported_property)
 
     # Functions we won't support.
-    memory_usage = common.memory_usage(unsupported_function)
-    to_list = common.to_list(unsupported_function)
-    tolist = common.tolist(unsupported_function)
-    __iter__ = common.__iter__(unsupported_function)
+    memory_usage = common.memory_usage(_unsupported_function)
+    to_list = common.to_list(_unsupported_function)
+    tolist = common.tolist(_unsupported_function)
+    __iter__ = common.__iter__(_unsupported_function)
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
         # Deprecated properties
-        strides = unsupported_property("strides", deprecated=True)
-        data = unsupported_property("data", deprecated=True)
-        itemsize = unsupported_property("itemsize", deprecated=True)
-        base = unsupported_property("base", deprecated=True)
-        flags = unsupported_property("flags", deprecated=True)
+        strides = _unsupported_property("strides", deprecated=True)
+        data = _unsupported_property("data", deprecated=True)
+        itemsize = _unsupported_property("itemsize", deprecated=True)
+        base = _unsupported_property("base", deprecated=True)
+        flags = _unsupported_property("flags", deprecated=True)
 
         # Deprecated functions
-        get_duplicates = unsupported_function("get_duplicates", deprecated=True)
-        summary = unsupported_function("summary", deprecated=True)
-        contains = unsupported_function("contains", deprecated=True)
+        get_duplicates = _unsupported_function("get_duplicates", deprecated=True)
+        summary = _unsupported_function("summary", deprecated=True)
+        contains = _unsupported_function("contains", deprecated=True)
 
 
 class _MissingPandasLikeMultiIndex(object):
 
     # Deprecated properties
-    strides = unsupported_property("strides", deprecated=True)
-    data = unsupported_property("data", deprecated=True)
-    itemsize = unsupported_property("itemsize", deprecated=True)
+    strides = _unsupported_property("strides", deprecated=True)
+    data = _unsupported_property("data", deprecated=True)
+    itemsize = _unsupported_property("itemsize", deprecated=True)
 
     # Functions
-    argsort = unsupported_function("argsort")
-    asof_locs = unsupported_function("asof_locs")
-    delete = unsupported_function("delete")
-    equal_levels = unsupported_function("equal_levels")
-    factorize = unsupported_function("factorize")
-    format = unsupported_function("format")
-    get_indexer = unsupported_function("get_indexer")
-    get_indexer_for = unsupported_function("get_indexer_for")
-    get_indexer_non_unique = unsupported_function("get_indexer_non_unique")
-    get_loc = unsupported_function("get_loc")
-    get_loc_level = unsupported_function("get_loc_level")
-    get_locs = unsupported_function("get_locs")
-    get_slice_bound = unsupported_function("get_slice_bound")
-    get_value = unsupported_function("get_value")
-    groupby = unsupported_function("groupby")
-    holds_integer = unsupported_function("holds_integer")
-    insert = unsupported_function("insert")
-    intersection = unsupported_function("intersection")
-    is_ = unsupported_function("is_")
-    is_lexsorted = unsupported_function("is_lexsorted")
-    is_lexsorted_for_tuple = unsupported_function("is_lexsorted_for_tuple")
-    is_mixed = unsupported_function("is_mixed")
-    is_type_compatible = unsupported_function("is_type_compatible")
-    join = unsupported_function("join")
-    map = unsupported_function("map")
-    putmask = unsupported_function("putmask")
-    ravel = unsupported_function("ravel")
-    reindex = unsupported_function("reindex")
-    remove_unused_levels = unsupported_function("remove_unused_levels")
-    reorder_levels = unsupported_function("reorder_levels")
-    searchsorted = unsupported_function("searchsorted")
-    set_codes = unsupported_function("set_codes")
-    set_levels = unsupported_function("set_levels")
-    slice_indexer = unsupported_function("slice_indexer")
-    slice_locs = unsupported_function("slice_locs")
-    sortlevel = unsupported_function("sortlevel")
-    to_flat_index = unsupported_function("to_flat_index")
-    to_native_types = unsupported_function("to_native_types")
-    truncate = unsupported_function("truncate")
-    view = unsupported_function("view")
-    where = unsupported_function("where")
+    argsort = _unsupported_function("argsort")
+    asof_locs = _unsupported_function("asof_locs")
+    delete = _unsupported_function("delete")
+    equal_levels = _unsupported_function("equal_levels")
+    factorize = _unsupported_function("factorize")
+    format = _unsupported_function("format")
+    get_indexer = _unsupported_function("get_indexer")
+    get_indexer_for = _unsupported_function("get_indexer_for")
+    get_indexer_non_unique = _unsupported_function("get_indexer_non_unique")
+    get_loc = _unsupported_function("get_loc")
+    get_loc_level = _unsupported_function("get_loc_level")
+    get_locs = _unsupported_function("get_locs")
+    get_slice_bound = _unsupported_function("get_slice_bound")
+    get_value = _unsupported_function("get_value")
+    groupby = _unsupported_function("groupby")
+    holds_integer = _unsupported_function("holds_integer")
+    insert = _unsupported_function("insert")
+    intersection = _unsupported_function("intersection")
+    is_ = _unsupported_function("is_")
+    is_lexsorted = _unsupported_function("is_lexsorted")
+    is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
+    is_mixed = _unsupported_function("is_mixed")
+    is_type_compatible = _unsupported_function("is_type_compatible")
+    join = _unsupported_function("join")
+    map = _unsupported_function("map")
+    putmask = _unsupported_function("putmask")
+    ravel = _unsupported_function("ravel")
+    reindex = _unsupported_function("reindex")
+    remove_unused_levels = _unsupported_function("remove_unused_levels")
+    reorder_levels = _unsupported_function("reorder_levels")
+    searchsorted = _unsupported_function("searchsorted")
+    set_codes = _unsupported_function("set_codes")
+    set_levels = _unsupported_function("set_levels")
+    slice_indexer = _unsupported_function("slice_indexer")
+    slice_locs = _unsupported_function("slice_locs")
+    sortlevel = _unsupported_function("sortlevel")
+    to_flat_index = _unsupported_function("to_flat_index")
+    to_native_types = _unsupported_function("to_native_types")
+    truncate = _unsupported_function("truncate")
+    view = _unsupported_function("view")
+    where = _unsupported_function("where")
 
     # Deprecated functions
-    get_duplicates = unsupported_function("get_duplicates", deprecated=True)
-    get_values = unsupported_function("get_values", deprecated=True)
-    item = unsupported_function("item", deprecated=True)
-    set_value = unsupported_function("set_value", deprecated=True)
+    get_duplicates = _unsupported_function("get_duplicates", deprecated=True)
+    get_values = _unsupported_function("get_values", deprecated=True)
+    item = _unsupported_function("item", deprecated=True)
+    set_value = _unsupported_function("set_value", deprecated=True)
 
     # Functions we won't support.
-    array = common.array(unsupported_property)
-    duplicated = common.duplicated(unsupported_property)
-    codes = unsupported_property(
+    array = common.array(_unsupported_property)
+    duplicated = common.duplicated(_unsupported_property)
+    codes = _unsupported_property(
         "codes",
         reason="'codes' requires to collect all data into the driver which is against the "
         "design principle of Koalas. Alternatively, you could call 'to_pandas()' and"
         " use 'codes' property in pandas.",
     )
-    levels = unsupported_property(
+    levels = _unsupported_property(
         "levels",
         reason="'levels' requires to collect all data into the driver which is against the "
         "design principle of Koalas. Alternatively, you could call 'to_pandas()' and"
         " use 'levels' property in pandas.",
     )
-    __iter__ = common.__iter__(unsupported_function)
+    __iter__ = common.__iter__(_unsupported_function)
 
     # Properties we won't support.
-    memory_usage = common.memory_usage(unsupported_function)
-    to_list = common.to_list(unsupported_function)
-    tolist = common.tolist(unsupported_function)
+    memory_usage = common.memory_usage(_unsupported_function)
+    to_list = common.to_list(_unsupported_function)
+    tolist = common.tolist(_unsupported_function)
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
         # Deprecated properties
-        base = unsupported_property("base", deprecated=True)
-        labels = unsupported_property("labels", deprecated=True)
-        flags = unsupported_property("flags", deprecated=True)
+        base = _unsupported_property("base", deprecated=True)
+        labels = _unsupported_property("labels", deprecated=True)
+        flags = _unsupported_property("flags", deprecated=True)
 
         # Deprecated functions
-        set_labels = unsupported_function("set_labels")
-        summary = unsupported_function("summary", deprecated=True)
-        to_hierarchical = unsupported_function("to_hierarchical", deprecated=True)
-        contains = unsupported_function("contains", deprecated=True)
+        set_labels = _unsupported_function("set_labels")
+        summary = _unsupported_function("summary", deprecated=True)
+        to_hierarchical = _unsupported_function("to_hierarchical", deprecated=True)
+        contains = _unsupported_function("contains", deprecated=True)
