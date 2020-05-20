@@ -2367,6 +2367,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
+        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"
 
         def apply_func(pdf):
             pdf_or_pser = pdf.apply(func, axis=axis, args=args, **kwds)
@@ -2390,11 +2391,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 should_return_series = True
                 kdf = kser_or_kdf.to_frame()
 
-            return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
+            return_schema = kdf._internal.to_internal_spark_frame.schema
 
-            sdf = GroupBy._spark_group_map_apply(
-                self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=True
-            )
+            if should_use_map_in_pandas:
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self, apply_func, return_schema, retain_index=True
+                )
+                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                    lambda iterator: map(output_func, iterator), schema=return_schema
+                )
+            else:
+                sdf = GroupBy._spark_group_map_apply(
+                    self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=True
+                )
 
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
@@ -2423,9 +2432,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 should_return_series = True
                 return_schema = StructType([StructField("0", return_schema)])
 
-            sdf = GroupBy._spark_group_map_apply(
-                self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=False
-            )
+            if should_use_map_in_pandas:
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self, apply_func, return_schema, retain_index=False
+                )
+                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                    lambda iterator: map(output_func, iterator), schema=return_schema
+                )
+            else:
+                sdf = GroupBy._spark_group_map_apply(
+                    self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=False
+                )
 
             # Otherwise, it loses index.
             internal = InternalFrame(spark_frame=sdf, index_map=None)
