@@ -20,14 +20,14 @@ import pandas as pd
 from databricks.koalas.missing import unsupported_function, unsupported_property, common
 
 
-def unsupported_function(method_name, deprecated=False, reason=""):
-    return __unsupported_function(
+def _unsupported_function(method_name, deprecated=False, reason=""):
+    return unsupported_function(
         class_name="pd.Index", method_name=method_name, deprecated=deprecated, reason=reason
     )
 
 
-def unsupported_property(property_name, deprecated=False, reason=""):
-    return __unsupported_property(
+def _unsupported_property(property_name, deprecated=False, reason=""):
+    return unsupported_property(
         class_name="pd.Index", property_name=property_name, deprecated=deprecated, reason=reason
     )
 
