@@ -31,16 +31,16 @@ from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.missing.groupby import (
-    _MissingPandasLikeDataFrameGroupBy,
-    _MissingPandasLikeSeriesGroupBy,
+    MissingPandasLikeDataFrameGroupBy,
+    MissingPandasLikeSeriesGroupBy,
 )
-from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
+from databricks.koalas.missing.series import MissingPandasLikeSeries
 from databricks.koalas.missing.window import (
-    _MissingPandasLikeExpanding,
-    _MissingPandasLikeRolling,
-    _MissingPandasLikeExpandingGroupby,
-    _MissingPandasLikeRollingGroupby,
+    MissingPandasLikeExpanding,
+    MissingPandasLikeRolling,
+    MissingPandasLikeExpandingGroupby,
+    MissingPandasLikeRollingGroupby,
 )
 from databricks.koalas.series import Series
 from databricks.koalas.strings import StringMethods
@@ -130,15 +130,15 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
     # Missings
     for original, missing in [
         (pd.DataFrame, _MissingPandasLikeDataFrame),
-        (pd.Series, _MissingPandasLikeSeries),
-        (pd.Index, _MissingPandasLikeIndex),
-        (pd.MultiIndex, _MissingPandasLikeMultiIndex),
-        (pd.core.groupby.DataFrameGroupBy, _MissingPandasLikeDataFrameGroupBy),
-        (pd.core.groupby.SeriesGroupBy, _MissingPandasLikeSeriesGroupBy),
-        (pd.core.window.Expanding, _MissingPandasLikeExpanding),
-        (pd.core.window.Rolling, _MissingPandasLikeRolling),
-        (pd.core.window.ExpandingGroupby, _MissingPandasLikeExpandingGroupby),
-        (pd.core.window.RollingGroupby, _MissingPandasLikeRollingGroupby),
+        (pd.Series, MissingPandasLikeSeries),
+        (pd.Index, MissingPandasLikeIndex),
+        (pd.MultiIndex, MissingPandasLikeMultiIndex),
+        (pd.core.groupby.DataFrameGroupBy, MissingPandasLikeDataFrameGroupBy),
+        (pd.core.groupby.SeriesGroupBy, MissingPandasLikeSeriesGroupBy),
+        (pd.core.window.Expanding, MissingPandasLikeExpanding),
+        (pd.core.window.Rolling, MissingPandasLikeRolling),
+        (pd.core.window.ExpandingGroupby, MissingPandasLikeExpandingGroupby),
+        (pd.core.window.RollingGroupby, MissingPandasLikeRollingGroupby),
     ]:
         for name, func in inspect.getmembers(missing, inspect.isfunction):
             setattr(

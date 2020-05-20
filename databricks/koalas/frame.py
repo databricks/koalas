@@ -71,9 +71,9 @@ from databricks.koalas.utils import (
     validate_axis,
     verify_temp_column_name,
 )
-from databricks.koalas.generic import _Frame
+from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
-    _InternalFrame,
+    InternalFrame,
     HIDDEN_COLUMNS,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_INDEX_NAME_FORMAT,
@@ -303,7 +303,7 @@ if (3, 5) <= sys.version_info < (3, 7):
     GenericMeta.__getitem__ = new_getitem  # type: ignore
 
 
-class DataFrame(_Frame, Generic[T]):
+class DataFrame(Frame, Generic[T]):
     """
     Koalas DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
     internally.
@@ -379,7 +379,7 @@ class DataFrame(_Frame, Generic[T]):
     """
 
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
-        if isinstance(data, _InternalFrame):
+        if isinstance(data, InternalFrame):
             assert index is None
             assert columns is None
             assert dtype is None
@@ -390,7 +390,7 @@ class DataFrame(_Frame, Generic[T]):
             assert columns is None
             assert dtype is None
             assert not copy
-            super(DataFrame, self).__init__(_InternalFrame(spark_frame=data, index_map=None))
+            super(DataFrame, self).__init__(InternalFrame(spark_frame=data, index_map=None))
         elif isinstance(data, ks.Series):
             assert index is None
             assert columns is None
@@ -407,7 +407,7 @@ class DataFrame(_Frame, Generic[T]):
                 pdf = data
             else:
                 pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
-            super(DataFrame, self).__init__(_InternalFrame.from_pandas(pdf))
+            super(DataFrame, self).__init__(InternalFrame.from_pandas(pdf))
 
     @property
     def _sdf(self) -> spark.DataFrame:
@@ -472,7 +472,7 @@ class DataFrame(_Frame, Generic[T]):
         """
         from inspect import signature
         from databricks.koalas import Series
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if name not in ("count", "min", "max") and not numeric_only:
             raise ValueError("Disabling 'numeric_only' parameter is not supported.")
@@ -513,14 +513,14 @@ class DataFrame(_Frame, Generic[T]):
                 "compute.default_index_type", "distributed", "compute.max_rows", None
             ):
                 kdf = DataFrame(sdf)
-                internal = _InternalFrame(
+                internal = InternalFrame(
                     kdf._internal.spark_frame,
                     index_map=kdf._internal.index_map,
                     column_labels=new_column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
 
-                return _col(DataFrame(internal).transpose())
+                return first_series(DataFrame(internal).transpose())
 
         elif axis == 1:
             # Here we execute with the first 1000 to get the return type.
@@ -2103,6 +2103,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0       21      1044
         1    59069   1048596
         2  9765645  60466196
+
+        You can also use ``np.ufunc`` as input.
+
+        >>> df.apply_batch(np.add, args=(10,))
+            A   B
+        0  11  12
+        1  13  14
+        2  15  16
         """
         # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
 
@@ -2174,7 +2182,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
 
             # Otherwise, it loses index.
-            internal = _InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_map=None)
 
         return DataFrame(internal)
 
@@ -2354,7 +2362,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2   8  13
         """
         from databricks.koalas.groupby import GroupBy
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if isinstance(func, np.ufunc):
             f = func
@@ -2367,6 +2375,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
+        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"
 
         def apply_func(pdf):
             pdf_or_pser = pdf.apply(func, axis=axis, args=args, **kwds)
@@ -2390,11 +2399,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 should_return_series = True
                 kdf = kser_or_kdf.to_frame()
 
-            return_schema = kdf._internal._sdf.drop(*HIDDEN_COLUMNS).schema
+            return_schema = kdf._internal.to_internal_spark_frame.schema
 
-            sdf = GroupBy._spark_group_map_apply(
-                self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=True
-            )
+            if should_use_map_in_pandas:
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self, apply_func, return_schema, retain_index=True
+                )
+                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                    lambda iterator: map(output_func, iterator), schema=return_schema
+                )
+            else:
+                sdf = GroupBy._spark_group_map_apply(
+                    self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=True
+                )
 
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
@@ -2423,16 +2440,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 should_return_series = True
                 return_schema = StructType([StructField("0", return_schema)])
 
-            sdf = GroupBy._spark_group_map_apply(
-                self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=False
-            )
+            if should_use_map_in_pandas:
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self, apply_func, return_schema, retain_index=False
+                )
+                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                    lambda iterator: map(output_func, iterator), schema=return_schema
+                )
+            else:
+                sdf = GroupBy._spark_group_map_apply(
+                    self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=False
+                )
 
             # Otherwise, it loses index.
-            internal = _InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_map=None)
 
         result = DataFrame(internal)
         if should_return_series:
-            return _col(result)
+            return first_series(result)
         else:
             return result
 
@@ -2993,7 +3018,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         class  locomotion
         mammal walks              4          0
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if not isinstance(key, (str, tuple)):
             raise ValueError("'key' should be string or tuple that contains strings")
@@ -3029,7 +3054,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
         if len(key) == len(self._internal.index_spark_columns):
-            result = _col(DataFrame(_InternalFrame(spark_frame=sdf, index_map=None)).T)
+            result = first_series(DataFrame(InternalFrame(spark_frame=sdf, index_map=None)).T)
             result.name = key
         else:
             new_index_map = OrderedDict(
@@ -3698,7 +3723,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 new_data_scols + self._internal.data_spark_columns + list(HIDDEN_COLUMNS)
             )
 
-            sdf = _InternalFrame.attach_default_index(sdf)
+            sdf = InternalFrame.attach_default_index(sdf)
             index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
 
         if self._internal.column_labels_level > 1:
@@ -3977,7 +4002,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         B    1
         Name: 0, dtype: int64
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         axis = validate_axis(axis)
         if axis != 0:
@@ -3994,14 +4019,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             "compute.default_index_type", "distributed", "compute.max_rows", None
         ):
             kdf = DataFrame(sdf)  # type: ks.DataFrame
-            internal = _InternalFrame(
+            internal = InternalFrame(
                 spark_frame=kdf._internal.spark_frame,
                 index_map=kdf._internal.index_map,
                 column_labels=self._internal.column_labels,
                 column_label_names=self._internal.column_label_names,
             )
 
-            return _col(DataFrame(internal).transpose())
+            return first_series(DataFrame(internal).transpose())
 
     def round(self, decimals=0):
         """
@@ -4178,7 +4203,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3    False
         Name: 0, dtype: bool
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         sdf, column = self._mark_duplicates(subset, keep)
         column_label = ("0",)
@@ -4187,9 +4212,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal.index_spark_columns
             + [scol_for(sdf, column).alias(name_like_string(column_label))]
         )
-        return _col(
+        return first_series(
             DataFrame(
-                _InternalFrame(
+                InternalFrame(
                     spark_frame=sdf,
                     index_map=self._internal.index_map,
                     column_labels=[column_label],
@@ -4260,7 +4285,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             from databricks.koalas.namespace import _get_index_map
 
             index_map = _get_index_map(self, index_col)
-            internal = _InternalFrame(spark_frame=self, index_map=index_map)
+            internal = InternalFrame(spark_frame=self, index_map=index_map)
             return DataFrame(internal)
 
     def cache(self):
@@ -4306,7 +4331,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.unpersist()
         """
-        return _CachedDataFrame(self._internal)
+        return CachedDataFrame(self._internal)
 
     def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
         """
@@ -4377,7 +4402,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> df.unpersist()
         """
-        return _CachedDataFrame(self._internal, storage_level=storage_level)
+        return CachedDataFrame(self._internal, storage_level=storage_level)
 
     def hint(self, name: str, *parameters) -> "DataFrame":
         """
@@ -5543,6 +5568,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     Thor  Stormbuster
         3     Hulk        Smash
 
+        You can also use an iterable object that returns a list of columns,
+        such as `tuple` or `list`, as input to the `subset` parameter.
+
+        >>> df.replace('Mjolnir', 'Stormbuster', subset=('weapon',))
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
+
         Dict like `to_replace`
 
         >>> df = ks.DataFrame({'A': [0, 1, 2, 3, 4],
@@ -5980,7 +6015,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     column_label_names = ([None] * column_labels_level(values)) + [
                         str(columns) if len(columns) > 1 else columns[0]
                     ]
-                    internal = _InternalFrame(
+                    internal = InternalFrame(
                         spark_frame=sdf,
                         index_map=index_map,
                         column_labels=column_labels,
@@ -5994,7 +6029,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     column_label_names = ([None] * len(values[0])) + [
                         str(columns) if len(columns) > 1 else columns[0]
                     ]
-                    internal = _InternalFrame(
+                    internal = InternalFrame(
                         spark_frame=sdf,
                         index_map=index_map,
                         column_labels=column_labels,
@@ -6007,7 +6042,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_columns = [self._internal.spark_column_name_for(label) for label in index]
                 index_map = OrderedDict(zip(index_columns, index))
                 column_label_names = [str(columns) if len(columns) > 1 else columns[0]]
-                internal = _InternalFrame(
+                internal = InternalFrame(
                     spark_frame=sdf, index_map=index_map, column_label_names=column_label_names
                 )
                 return DataFrame(internal)
@@ -6022,7 +6057,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.withColumn(colname, F.lit(index_value))
                 index_map[colname] = None
             column_label_names = [str(columns) if len(columns) > 1 else columns[0]]
-            internal = _InternalFrame(
+            internal = InternalFrame(
                 spark_frame=sdf, index_map=index_map, column_label_names=column_label_names
             )
             return DataFrame(internal)
@@ -6540,7 +6575,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         return self._reduce_for_stat_function(
-            _Frame._count_expr, name="count", axis=axis, numeric_only=False
+            Frame._count_expr, name="count", axis=axis, numeric_only=False
         )
 
     def drop(
@@ -7426,7 +7461,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         selected_columns = joined_table.select(*exprs)
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=selected_columns,
             index_map=index_map if index_map else None,
             column_labels=column_labels,
@@ -8154,7 +8189,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._sdf.select(*exprs).summary(stats)
         sdf = sdf.replace("stddev", "std", subset="summary")
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict({"summary": None}),
             column_labels=column_labels,
@@ -8785,7 +8820,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dog kg     NaN     3.0
             m      4.0     NaN
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if len(self._internal.column_labels) == 0:
             return DataFrame(self._internal.with_filter(F.lit(False)))
@@ -8845,7 +8880,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             + [sdf["pairs"][name].alias(name) for name in data_columns]
         )
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict(index_map),
             column_labels=list(column_labels),
@@ -8855,7 +8890,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = DataFrame(internal)
 
         if should_returns_series:
-            return _col(kdf)
+            return first_series(kdf)
         else:
             return kdf
 
@@ -8937,7 +8972,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  NaN  3.0  NaN  NaN  4.0  NaN
         2  NaN  NaN  5.0  NaN  NaN  6.0
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if len(self._internal.index_spark_column_names) > 1:
             # The index after `reset_index()` will never be used, so use "distributed" index
@@ -9012,7 +9047,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         exploded_df = sdf.withColumn("pairs", pairs).select(existing_index_columns + columns)
 
-        return _col(DataFrame(_InternalFrame(exploded_df, index_map=OrderedDict(new_index_map))))
+        return first_series(
+            DataFrame(InternalFrame(exploded_df, index_map=OrderedDict(new_index_map)))
+        )
 
     # TODO: axis, skipna, and many arguments should be implemented.
     def all(self, axis: Union[int, str] = 0) -> bool:
@@ -10397,7 +10434,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  4   4   8
         4  5   2   7
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if isinstance(self.columns, pd.MultiIndex):
             raise ValueError("`eval` is not supported for multi-index columns")
@@ -10427,9 +10464,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # from pandas.
             self._internal = result._internal
         elif should_return_series:
-            return _col(result)
+            return first_series(result)
         elif should_return_scalar:
-            return _col(result)[0]
+            return first_series(result)[0]
         else:
             # Returns a frame
             return result
@@ -10679,7 +10716,7 @@ def _reduce_spark_multi(sdf, aggs):
     return l2
 
 
-class _CachedDataFrame(DataFrame):
+class CachedDataFrame(DataFrame):
     """
     Cached Koalas DataFrame, which corresponds to Pandas DataFrame logically, but internally
     it caches the corresponding Spark DataFrame.
@@ -10694,7 +10731,7 @@ class _CachedDataFrame(DataFrame):
             raise TypeError(
                 "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"
             )
-        super(_CachedDataFrame, self).__init__(internal)
+        super(CachedDataFrame, self).__init__(internal)
 
     def __enter__(self):
         return self

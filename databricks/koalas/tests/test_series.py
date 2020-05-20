@@ -35,7 +35,7 @@ from databricks import koalas as ks
 from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.missing.series import MissingPandasLikeSeries
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -679,7 +679,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_missing(self):
         kser = self.kser
 
-        missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeSeries, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -700,7 +700,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 getattr(kser, name)()
 
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeSeries, lambda o: isinstance(o, property)
+            MissingPandasLikeSeries, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name

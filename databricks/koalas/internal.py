@@ -64,7 +64,7 @@ NATURAL_ORDER_COLUMN_NAME = "__natural_order__"
 HIDDEN_COLUMNS = {NATURAL_ORDER_COLUMN_NAME}
 
 
-class _InternalFrame(object):
+class InternalFrame(object):
     """
     The internal immutable DataFrame which manages Spark DataFrame and column names and index
     information.
@@ -482,7 +482,7 @@ class _InternalFrame(object):
             )
 
             # Create default index.
-            spark_frame = _InternalFrame.attach_default_index(spark_frame)
+            spark_frame = InternalFrame.attach_default_index(spark_frame)
             index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
 
         if NATURAL_ORDER_COLUMN_NAME not in spark_frame.columns:
@@ -566,13 +566,13 @@ class _InternalFrame(object):
 
         It adds the default index column '__index_level_0__'.
 
-        >>> spark_frame = _InternalFrame.attach_default_index(spark_frame)
+        >>> spark_frame = InternalFrame.attach_default_index(spark_frame)
         >>> spark_frame
         DataFrame[__index_level_0__: int, id: bigint]
 
         It throws an exception if the given column name already exists.
 
-        >>> _InternalFrame.attach_default_index(spark_frame)
+        >>> InternalFrame.attach_default_index(spark_frame)
         ... # doctest: +ELLIPSIS
         Traceback (most recent call last):
           ...
@@ -593,9 +593,9 @@ class _InternalFrame(object):
             )
             return sdf.select(sequential_index.alias(index_column), *scols)
         elif default_index_type == "distributed-sequence":
-            return _InternalFrame.attach_distributed_sequence_column(sdf, column_name=index_column)
+            return InternalFrame.attach_distributed_sequence_column(sdf, column_name=index_column)
         elif default_index_type == "distributed":
-            return _InternalFrame.attach_distributed_column(sdf, column_name=index_column)
+            return InternalFrame.attach_distributed_column(sdf, column_name=index_column)
         else:
             raise ValueError(
                 "'compute.default_index_type' should be one of 'sequence',"
@@ -614,7 +614,7 @@ class _InternalFrame(object):
         This is equivalent to the column assigned when default index type 'distributed-sequence'.
 
         >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark()
-        >>> sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name="sequence")
+        >>> sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name="sequence")
         >>> sdf.sort("sequence").show()  # doctest: +NORMALIZE_WHITESPACE
         +--------+---+
         |sequence|  0|
@@ -838,7 +838,7 @@ class _InternalFrame(object):
 
     def with_new_sdf(
         self, sdf: spark.DataFrame, data_columns: Optional[List[str]] = None
-    ) -> "_InternalFrame":
+    ) -> "InternalFrame":
         """ Copy the immutable _InternalFrame with the updates by the specified Spark DataFrame.
 
         :param sdf: the new Spark DataFrame
@@ -866,7 +866,7 @@ class _InternalFrame(object):
         column_labels: Optional[List[Tuple[str, ...]]] = None,
         column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
         keep_order: bool = True,
-    ) -> "_InternalFrame":
+    ) -> "InternalFrame":
         """
         Copy the immutable _InternalFrame with the updates by the specified Spark Columns or Series.
 
@@ -950,7 +950,7 @@ class _InternalFrame(object):
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
         column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
         spark_column: Optional[Union[spark.Column, _NoValueType]] = _NoValue,
-    ) -> "_InternalFrame":
+    ) -> "InternalFrame":
         """ Copy the immutable DataFrame.
 
         :param spark_frame: the new Spark DataFrame. If None, then the original one is used.
@@ -973,7 +973,7 @@ class _InternalFrame(object):
             column_label_names = self._column_label_names
         if spark_column is _NoValue:
             spark_column = self.spark_column
-        return _InternalFrame(
+        return InternalFrame(
             spark_frame,
             index_map=index_map,
             column_labels=column_labels,
@@ -983,7 +983,7 @@ class _InternalFrame(object):
         )
 
     @staticmethod
-    def from_pandas(pdf: pd.DataFrame) -> "_InternalFrame":
+    def from_pandas(pdf: pd.DataFrame) -> "InternalFrame":
         """ Create an immutable DataFrame from pandas DataFrame.
 
         :param pdf: :class:`pd.DataFrame`
@@ -1020,7 +1020,7 @@ class _InternalFrame(object):
                 continue
             reset_index[name] = col.replace({np.nan: None})
         sdf = default_session().createDataFrame(reset_index, schema=schema)
-        return _InternalFrame(
+        return InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict(zip(index_columns, index_names)),
             column_labels=column_labels,

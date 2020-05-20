@@ -32,7 +32,7 @@ def _unsupported_property(property_name, deprecated=False, reason=""):
     )
 
 
-class _MissingPandasLikeIndex(object):
+class MissingPandasLikeIndex(object):
 
     # Properties
     nbytes = _unsupported_property("nbytes")
@@ -100,7 +100,7 @@ class _MissingPandasLikeIndex(object):
         contains = _unsupported_function("contains", deprecated=True)
 
 
-class _MissingPandasLikeMultiIndex(object):
+class MissingPandasLikeMultiIndex(object):
 
     # Deprecated properties
     strides = _unsupported_property("strides", deprecated=True)

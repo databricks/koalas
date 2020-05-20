@@ -47,8 +47,8 @@ from databricks.koalas.config import get_option, option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series, _col
+from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
+from databricks.koalas.series import Series, first_series
 from databricks.koalas.utils import (
     compare_allow_null,
     compare_disallow_null,
@@ -60,7 +60,7 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
     validate_bool_kwarg,
 )
-from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 
 
 class Index(IndexOpsMixin):
@@ -122,7 +122,7 @@ class Index(IndexOpsMixin):
         :return: the copied Index
         """
         sdf = self._internal.spark_frame.select(scol)  # type: ignore
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict(zip(sdf.columns, self._internal.index_names)),  # type: ignore
         )
@@ -633,7 +633,7 @@ class Index(IndexOpsMixin):
         sdf = self._internal.spark_frame.select(
             self._internal.index_spark_columns
         ).drop_duplicates()
-        internal = _InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
         result = DataFrame(internal).index
         return result
 
@@ -741,7 +741,7 @@ class Index(IndexOpsMixin):
         else:
             index_map = None  # type: ignore
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=index_map,
             column_labels=[name],
@@ -877,7 +877,7 @@ class Index(IndexOpsMixin):
         """
         kdf = self._kdf.copy()
         sdf = kdf._internal.spark_frame.select(self._internal.index_spark_columns).dropna()
-        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
         return DataFrame(internal).index
 
     def unique(self, level=None):
@@ -922,7 +922,7 @@ class Index(IndexOpsMixin):
         scols = [scol.alias(scol_name) for scol, scol_name in zip(scols, scol_names)]
         sdf = self._kdf._sdf.select(scols).distinct()
         return DataFrame(
-            _InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
+            InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
         ).index
 
     # TODO: add error parameter
@@ -951,7 +951,7 @@ class Index(IndexOpsMixin):
             labels = [labels]
         sdf = self._internal.spark_frame[~self._internal.index_spark_columns[0].isin(labels)]
         return Index(
-            DataFrame(_InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
+            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
         )
 
     def _validate_index_level(self, level):
@@ -1091,7 +1091,7 @@ class Index(IndexOpsMixin):
         index_map = OrderedDict(index_map[c] for c in range(0, nlevels) if c not in int_level)
         sdf = self._internal.spark_frame
         sdf = sdf.select(*index_map.keys())
-        result = _InternalFrame(spark_frame=sdf, index_map=index_map)
+        result = InternalFrame(spark_frame=sdf, index_map=index_map)
         return DataFrame(result).index
 
     def symmetric_difference(self, other, result_name=None, sort=None):
@@ -1154,7 +1154,7 @@ class Index(IndexOpsMixin):
         if sort:
             sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
 
-        internal = _InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
         result = Index(DataFrame(internal))
 
         if result_name:
@@ -1226,7 +1226,7 @@ class Index(IndexOpsMixin):
         sdf = self._internal.spark_frame
         sdf = sdf.orderBy(self._internal.index_spark_columns, ascending=ascending)
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf.select(self._internal.index_spark_columns),
             index_map=self._internal.index_map,
         )
@@ -1365,7 +1365,7 @@ class Index(IndexOpsMixin):
                 (idx_col, None) for idx_col in self._internal.index_spark_column_names
             )
 
-        internal = _InternalFrame(spark_frame=sdf_appended, index_map=index_map)
+        internal = InternalFrame(spark_frame=sdf_appended, index_map=index_map)
 
         return DataFrame(internal).index
 
@@ -1392,7 +1392,7 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal.spark_frame.select(self.spark_column)
         sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
-        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         # spark_frame here looks like below
         # +-----------------+---------------+
         # |__index_level_0__|__index_value__|
@@ -1433,7 +1433,7 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal.spark_frame.select(self.spark_column)
         sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
-        sdf = _InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
         return sdf.orderBy(self.spark_column.asc(), F.col(sequence_col).asc()).first()[0]
 
@@ -1555,7 +1555,7 @@ class Index(IndexOpsMixin):
         idx_self = self._internal.index_spark_columns
         idx_other = other._internal.index_spark_columns
         sdf_diff = sdf_self.select(idx_self).subtract(sdf_other.select(idx_other))
-        internal = _InternalFrame(spark_frame=sdf_diff, index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf_diff, index_map=self._internal.index_map)
         result = DataFrame(internal).index
         # Name(s) will be kept when only name(s) of (Multi)Index are the same.
         if isinstance(self, type(other)) and isinstance(self, ks.MultiIndex):
@@ -1656,7 +1656,7 @@ class Index(IndexOpsMixin):
             raise ValueError("negative dimensions are not allowed")
 
         sdf = self._internal.spark_frame.select(self._internal.index_spark_columns)
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf, index_map=OrderedDict(zip(sdf.columns, self._internal.index_names))
         )
         kdf = DataFrame(internal)  # type: DataFrame
@@ -1782,13 +1782,13 @@ class Index(IndexOpsMixin):
             sdf = sdf.drop_duplicates()
         if sort:
             sdf = sdf.sort(self._internal.index_spark_columns)
-        internal = _InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
         return DataFrame(internal).index
 
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeIndex, item):
-            property_or_func = getattr(_MissingPandasLikeIndex, item)
+        if hasattr(MissingPandasLikeIndex, item):
+            property_or_func = getattr(MissingPandasLikeIndex, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
@@ -1815,7 +1815,7 @@ class Index(IndexOpsMixin):
         return repr_string
 
     def __iter__(self):
-        return _MissingPandasLikeIndex.__iter__(self)
+        return MissingPandasLikeIndex.__iter__(self)
 
     def __xor__(self, other):
         return self.symmetric_difference(other)
@@ -2111,14 +2111,14 @@ class MultiIndex(Index):
 
         cond = prev.isNull() | cond
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=self._internal.spark_frame.select(
                 self._internal.index_spark_columns + [cond]
             ),
             index_map=self._internal.index_map,
         )
 
-        return _col(DataFrame(internal))
+        return first_series(DataFrame(internal))
 
     @staticmethod
     def _comparator_for_monotonic_decreasing(data_type):
@@ -2147,14 +2147,14 @@ class MultiIndex(Index):
 
         cond = prev.isNull() | cond
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=self._internal.spark_frame.select(
                 self._internal.index_spark_columns + [cond]
             ),
             index_map=self._internal.index_map,
         )
 
-        return _col(DataFrame(internal))
+        return first_series(DataFrame(internal))
 
     def to_frame(self, index=True, name=None) -> DataFrame:
         """
@@ -2242,7 +2242,7 @@ class MultiIndex(Index):
         else:
             index_map = None  # type: ignore
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=index_map,
             column_labels=name,
@@ -2390,7 +2390,7 @@ class MultiIndex(Index):
         if sort:
             sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
 
-        internal = _InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
         result = MultiIndex(DataFrame(internal))
 
         if result_name:
@@ -2455,7 +2455,7 @@ class MultiIndex(Index):
             scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
         return MultiIndex(
-            DataFrame(_InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
+            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
         )
 
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
@@ -2509,8 +2509,8 @@ class MultiIndex(Index):
         return False
 
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeMultiIndex, item):
-            property_or_func = getattr(_MissingPandasLikeMultiIndex, item)
+        if hasattr(MissingPandasLikeMultiIndex, item):
+            property_or_func = getattr(MissingPandasLikeMultiIndex, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
@@ -2642,4 +2642,4 @@ class MultiIndex(Index):
         return repr_string
 
     def __iter__(self):
-        return _MissingPandasLikeMultiIndex.__iter__(self)
+        return MissingPandasLikeMultiIndex.__iter__(self)

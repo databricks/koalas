@@ -30,7 +30,7 @@ from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 import numpy as np
 
-from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import (
     lazy_property,
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from databricks.koalas.series import Series
 
 
-class _IndexerLike(object):
+class IndexerLike(object):
     def __init__(self, kdf_or_kser):
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series
@@ -70,7 +70,7 @@ class _IndexerLike(object):
         return self._kdf_or_kser._internal
 
 
-class AtIndexer(_IndexerLike):
+class AtIndexer(IndexerLike):
     """
     Access a single value for a row/column label pair.
     If the index is not unique, all matching pairs are returned as an array.
@@ -156,7 +156,7 @@ class AtIndexer(_IndexerLike):
         )
 
 
-class iAtIndexer(_IndexerLike):
+class iAtIndexer(IndexerLike):
     """
     Access a single value for a row/column pair by integer position.
 
@@ -216,7 +216,7 @@ class iAtIndexer(_IndexerLike):
             return self._kdf_or_kser.iloc[key]
 
 
-class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
+class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
     def _select_rows(
         self, rows_sel: Any
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
@@ -465,7 +465,7 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
                 )
             )
 
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=index_map,
             column_labels=column_labels,
@@ -495,7 +495,7 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series, _col
+        from databricks.koalas.series import Series, first_series
 
         if self._is_series:
             if (isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf) or (
@@ -560,7 +560,7 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
 
             if isinstance(value, DataFrame):
                 if len(value.columns) == 1:
-                    value = _col(value)
+                    value = first_series(value)
                 else:
                     raise ValueError("Only a dataframe with one column can be assigned")
 
@@ -638,7 +638,7 @@ class _LocIndexerLike(_IndexerLike, metaclass=ABCMeta):
             self._kdf_or_kser._internal = internal
 
 
-class LocIndexer(_LocIndexerLike):
+class LocIndexer(LocIndexerLike):
     """
     Access a group of rows and columns by label(s) or a boolean Series.
 
@@ -1112,7 +1112,7 @@ class LocIndexer(_LocIndexerLike):
         return self._get_from_multiindex_column(cols_sel, missing_keys)
 
 
-class iLocIndexer(_LocIndexerLike):
+class iLocIndexer(LocIndexerLike):
     """
     Purely integer-location based indexing for selection by position.
 
@@ -1276,7 +1276,7 @@ class iLocIndexer(_LocIndexerLike):
     @lazy_property
     def _internal(self):
         internal = super(iLocIndexer, self)._internal
-        sdf = _InternalFrame.attach_distributed_sequence_column(
+        sdf = InternalFrame.attach_distributed_sequence_column(
             internal.spark_frame, column_name=self._sequence_col
         )
         return internal.copy(spark_frame=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
@@ -1490,7 +1490,7 @@ class iLocIndexer(_LocIndexerLike):
 
     def __setitem__(self, key, value):
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         super(iLocIndexer, self).__setitem__(key, value)
 
@@ -1505,7 +1505,7 @@ class iLocIndexer(_LocIndexerLike):
                 data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
                 spark_column=None,
             )
-            kser = _col(DataFrame(internal))
+            kser = first_series(DataFrame(internal))
 
             self._kdf_or_kser._internal = kser._internal
             self._kdf_or_kser._kdf = kser._kdf

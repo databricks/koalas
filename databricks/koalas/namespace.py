@@ -53,8 +53,8 @@ from databricks.koalas.utils import (
     align_diff_frames,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.series import Series, _col
+from databricks.koalas.internal import InternalFrame
+from databricks.koalas.series import Series, first_series
 
 
 __all__ = [
@@ -338,7 +338,7 @@ def read_csv(
         sdf = default_session().createDataFrame([], schema=StructType())
 
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
     if dtype is not None:
         if isinstance(dtype, dict):
@@ -526,7 +526,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     sdf = default_session().read.table(name)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_spark_io(
@@ -606,7 +606,7 @@ def read_spark_io(
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
@@ -665,7 +665,7 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
             index_map = _get_index_map(sdf, index_col)
-            return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+            return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
     return kdf
 
@@ -1136,7 +1136,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
     if columns is not None:
         if isinstance(columns, str):
             columns = [columns]
@@ -1190,7 +1190,7 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
@@ -1927,7 +1927,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     if should_return_series:
         # If all input were Series, we should return Series.
-        return _col(result_kdf)
+        return first_series(result_kdf)
     else:
         return result_kdf
 

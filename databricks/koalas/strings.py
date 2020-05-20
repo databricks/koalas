@@ -25,7 +25,7 @@ from pyspark.sql.types import StringType, BinaryType, ArrayType, LongType, MapTy
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 
-from databricks.koalas.base import _column_op
+from databricks.koalas.base import column_op
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -116,7 +116,7 @@ class StringMethods(object):
         3              swapcase
         Name: 0, dtype: object
         """
-        return _column_op(lambda c: F.lower(c))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.lower(c))(self._data).alias(self._data.name)
 
     def upper(self) -> "ks.Series":
         """
@@ -139,7 +139,7 @@ class StringMethods(object):
         3              SWAPCASE
         Name: 0, dtype: object
         """
-        return _column_op(lambda c: F.upper(c))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.upper(c))(self._data).alias(self._data.name)
 
     def swapcase(self) -> "ks.Series":
         """
@@ -1272,11 +1272,11 @@ class StringMethods(object):
         Name: 0, dtype: int64
         """
         if isinstance(self._data.spark_type, (ArrayType, MapType)):
-            return _column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
+            return column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
                 self._data.name
             )
         else:
-            return _column_op(lambda c: F.length(c).cast(LongType()))(self._data).alias(
+            return column_op(lambda c: F.length(c).cast(LongType()))(self._data).alias(
                 self._data.name
             )
 

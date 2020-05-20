@@ -22,10 +22,10 @@ from databricks.koalas.utils import name_like_string
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 from databricks.koalas.missing.window import (
-    _MissingPandasLikeRolling,
-    _MissingPandasLikeRollingGroupby,
-    _MissingPandasLikeExpanding,
-    _MissingPandasLikeExpandingGroupby,
+    MissingPandasLikeRolling,
+    MissingPandasLikeRollingGroupby,
+    MissingPandasLikeExpanding,
+    MissingPandasLikeExpandingGroupby,
 )
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -33,7 +33,7 @@ from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import scol_for
 
 
-class _RollingAndExpanding(object):
+class RollingAndExpanding(object):
     def __init__(self, window, min_periods):
         self._window = window
         # This unbounded Window is later used to handle 'min_periods' for now.
@@ -114,7 +114,7 @@ class _RollingAndExpanding(object):
         return self._apply_as_series_or_frame(var)
 
 
-class Rolling(_RollingAndExpanding):
+class Rolling(RollingAndExpanding):
     def __init__(self, kdf_or_kser, window, min_periods=None):
         from databricks.koalas import DataFrame, Series
 
@@ -142,8 +142,8 @@ class Rolling(_RollingAndExpanding):
         super(Rolling, self).__init__(window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeRolling, item):
-            property_or_func = getattr(_MissingPandasLikeRolling, item)
+        if hasattr(MissingPandasLikeRolling, item):
+            property_or_func = getattr(MissingPandasLikeRolling, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
@@ -648,8 +648,8 @@ class RollingGroupby(Rolling):
         self.kdf = self.kdf_or_kser
 
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeRollingGroupby, item):
-            property_or_func = getattr(_MissingPandasLikeRollingGroupby, item)
+        if hasattr(MissingPandasLikeRollingGroupby, item):
+            property_or_func = getattr(MissingPandasLikeRollingGroupby, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
@@ -663,7 +663,7 @@ class RollingGroupby(Rolling):
         Note that the given `func` name should be same as the API's method name.
         """
         from databricks.koalas import DataFrame
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
         from databricks.koalas.groupby import SeriesGroupBy
 
         kdf = self.kdf
@@ -718,7 +718,7 @@ class RollingGroupby(Rolling):
 
         ret = DataFrame(internal)
         if isinstance(self._groupby, SeriesGroupBy):
-            return _col(ret)
+            return first_series(ret)
         else:
             return ret
 
@@ -1036,7 +1036,7 @@ class RollingGroupby(Rolling):
         return super(RollingGroupby, self).var()
 
 
-class Expanding(_RollingAndExpanding):
+class Expanding(RollingAndExpanding):
     def __init__(self, kdf_or_kser, min_periods=1):
         from databricks.koalas import DataFrame, Series
 
@@ -1053,8 +1053,8 @@ class Expanding(_RollingAndExpanding):
         super(Expanding, self).__init__(window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeExpanding, item):
-            property_or_func = getattr(_MissingPandasLikeExpanding, item)
+        if hasattr(MissingPandasLikeExpanding, item):
+            property_or_func = getattr(MissingPandasLikeExpanding, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
@@ -1414,8 +1414,8 @@ class ExpandingGroupby(Expanding):
         self.kdf = self.kdf_or_kser
 
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeExpandingGroupby, item):
-            property_or_func = getattr(_MissingPandasLikeExpandingGroupby, item)
+        if hasattr(MissingPandasLikeExpandingGroupby, item):
+            property_or_func = getattr(MissingPandasLikeExpandingGroupby, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
