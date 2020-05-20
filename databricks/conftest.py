@@ -33,6 +33,10 @@ from databricks.koalas import utils
 
 
 shared_conf = {"spark.sql.shuffle.partitions": "4"}
+
+if os.getenv("SPARK_MASTER", None) is not None:
+    shared_conf["spark.master"] = os.getenv("SPARK_MASTER")
+
 # Initialize Spark session that should be used in doctests or unittests.
 # Delta requires Spark 2.4.2+. See
 # https://github.com/delta-io/delta#compatibility-with-apache-spark-versions.
