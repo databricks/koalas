@@ -36,7 +36,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_INDEX_NAME,
 )
 from databricks.koalas.typedef import spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
+from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
 
 
@@ -81,7 +81,7 @@ def column_op(f):
         # To cover this case, explicitly check if the argument is Koalas Series and
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
-        if all(self._kdf is col._kdf for col in cols):
+        if all(same_anchor(self, col) for col in cols):
             # Same DataFrame anchors
             args = [arg.spark_column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self.spark_column, *args)

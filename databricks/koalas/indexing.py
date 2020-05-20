@@ -36,6 +36,7 @@ from databricks.koalas.utils import (
     lazy_property,
     name_like_string,
     verify_temp_column_name,
+    same_anchor,
     scol_for,
 )
 
@@ -376,7 +377,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
         from databricks.koalas.series import Series
 
         if self._is_series:
-            if isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf:
+            if isinstance(key, Series) and not same_anchor(key, self._kdf_or_kser):
                 kdf = self._kdf_or_kser.to_frame()
                 temp_col = verify_temp_column_name(kdf, "__temp_col__")
 
@@ -400,7 +401,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 rows_sel = key
                 cols_sel = None
 
-            if isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser:
+            if isinstance(rows_sel, Series) and not same_anchor(rows_sel, self._kdf_or_kser):
                 kdf = self._kdf_or_kser.copy()
                 temp_col = verify_temp_column_name(kdf, "__temp_col__")
 
@@ -498,8 +499,8 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
         from databricks.koalas.series import Series, first_series
 
         if self._is_series:
-            if (isinstance(key, Series) and key._kdf is not self._kdf_or_kser._kdf) or (
-                isinstance(value, Series) and value._kdf is not self._kdf_or_kser._kdf
+            if (isinstance(key, Series) and not same_anchor(key, self._kdf_or_kser)) or (
+                isinstance(value, Series) and not same_anchor(value, self._kdf_or_kser)
             ):
                 kdf = self._kdf_or_kser.to_frame()
                 temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")
@@ -564,8 +565,8 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 else:
                     raise ValueError("Only a dataframe with one column can be assigned")
 
-            if (isinstance(rows_sel, Series) and rows_sel._kdf is not self._kdf_or_kser) or (
-                isinstance(value, Series) and value._kdf is not self._kdf_or_kser
+            if (isinstance(rows_sel, Series) and not same_anchor(rows_sel, self._kdf_or_kser)) or (
+                isinstance(value, Series) and not same_anchor(value, self._kdf_or_kser)
             ):
                 kdf = self._kdf_or_kser.copy()
                 temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")

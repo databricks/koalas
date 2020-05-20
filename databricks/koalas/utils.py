@@ -35,6 +35,27 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
     from databricks.koalas.frame import DataFrame
+    from databricks.koalas.series import Series
+
+
+def same_anchor(this: Union["DataFrame", "Series"], that: Union["DataFrame", "Series"]) -> bool:
+    """
+    Check if the anchors of the given DataFrame or Series are the same or not.
+    """
+    from databricks.koalas.frame import DataFrame
+    from databricks.koalas.series import Series
+
+    if isinstance(this, DataFrame):
+        this_kdf = this
+    else:
+        assert isinstance(this, Series), type(this)
+        this_kdf = this._kdf
+    if isinstance(that, DataFrame):
+        that_kdf = that
+    else:
+        assert isinstance(that, Series), type(that)
+        that_kdf = that._kdf
+    return this_kdf is that_kdf
 
 
 def combine_frames(this, *args, how="full", preserve_order_column=False):
@@ -56,14 +77,14 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(
-            arg._kdf is args[0]._kdf for arg in args
+            same_anchor(arg, args[0]) for arg in args
         ), "Currently only one different DataFrame (from given Series) is supported"
-        if this is args[0]._kdf:
+        if same_anchor(this, args[0]):
             return  # We don't need to combine. All series is in this.
         that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
-        if this is args[0]:
+        if same_anchor(this, args[0]):
             return  # We don't need to combine. `this` and `that` are same.
         that = args[0]
     else:
