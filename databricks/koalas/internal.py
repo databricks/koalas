@@ -639,34 +639,30 @@ class _InternalFrame(object):
         #         ...
         #     }
         sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
-        counts = map(
-            lambda x: (x["key"], x["count"]),
-            sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect(),
-        )
 
         # 2. Calculates cumulative sum in an order of partition id.
         #     Note that it does not matter if partition id guarantees its order or not.
         #     We just need a one-by-one sequential id.
+        counts = sdf.groupby(spark_partition_column).count()
 
-        # sort by partition key.
-        sorted_counts = sorted(counts, key=lambda x: x[0])
-        # get cumulative sum in an order of partition key.
-        cumulative_counts = [0] + list(accumulate(map(lambda count: count[1], sorted_counts)))
-        # zip it with partition key.
-        sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
+        w = Window.orderBy(spark_partition_column).rowsBetween(
+            Window.unboundedPreceding, Window.currentRow
+        )
+        cumsum = F.sum("count").over(w)
 
-        # 3. Attach offset for each partition.
-        @pandas_udf(LongType(), PandasUDFType.SCALAR)
-        def offset(id):
-            current_partition_offset = sums[id.iloc[0]]
-            return pd.Series(current_partition_offset).repeat(len(id))
+        w = Window.orderBy(spark_partition_column).rowsBetween(-1, -1)
+        lag = F.lag(cumsum, 1).over(w)
+        cumulative_counts = counts.select(
+            spark_partition_column, F.when(lag.isNull(), 0).otherwise(lag).alias(offset_column)
+        )
 
-        sdf = sdf.withColumn(offset_column, offset(spark_partition_column))
-
-        # 4. Calculate row_number in each partition.
+        # 3. Calculate row_number in each partition.
         w = Window.partitionBy(spark_partition_column).orderBy(F.monotonically_increasing_id())
         row_number = F.row_number().over(w)
         sdf = sdf.withColumn(row_number_column, row_number)
+
+        # 4. Attach offset for each partition.
+        sdf = sdf.join(F.broadcast(cumulative_counts), on=spark_partition_column)
 
         # 5. Calculate the index.
         return sdf.select(

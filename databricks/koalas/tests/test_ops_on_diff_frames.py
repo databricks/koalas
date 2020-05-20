@@ -836,6 +836,18 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
 
 
+class OpsOnDiffFramesEnabledWithDistributedSequenceTest(OpsOnDiffFramesEnabledTest):
+    @classmethod
+    def setUpClass(cls):
+        super(OpsOnDiffFramesEnabledWithDistributedSequenceTest, cls).setUpClass()
+        set_option("compute.default_index_type", "distributed-sequence")
+
+    @classmethod
+    def tearDownClass(cls):
+        reset_option("compute.default_index_type")
+        super(OpsOnDiffFramesEnabledWithDistributedSequenceTest, cls).tearDownClass()
+
+
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
