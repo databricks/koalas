@@ -34,7 +34,7 @@ from databricks.koalas import utils
 
 shared_conf = {"spark.sql.shuffle.partitions": "4"}
 
-if os.getenv("SPARK_MASTER", None) is not None:
+if os.getenv("SPARK_MASTER", "") != "":
     shared_conf["spark.master"] = os.getenv("SPARK_MASTER")
 
 # Initialize Spark session that should be used in doctests or unittests.
