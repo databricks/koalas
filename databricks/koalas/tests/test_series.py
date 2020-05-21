@@ -1595,3 +1595,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # Only support for MultiIndex
         kser = ks.Series([10, -2, 4, 7])
         self.assertRaises(ValueError, lambda: kser.unstack())
+
+    def test_item(self):
+        kser = ks.Series([10, 20])
+        self.assertRaises(ValueError, lambda: kser.item())
