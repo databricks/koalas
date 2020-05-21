@@ -47,17 +47,16 @@ def same_anchor(
     from databricks.koalas.base import IndexOpsMixin
     from databricks.koalas.frame import DataFrame
 
-    if isinstance(this, DataFrame):
-        this_kdf = this
-    else:
-        assert isinstance(this, IndexOpsMixin), type(this)
-        this_kdf = this._kdf
-    if isinstance(that, DataFrame):
-        that_kdf = that
-    else:
-        assert isinstance(that, IndexOpsMixin), type(that)
-        that_kdf = that._kdf
-    return this_kdf is that_kdf
+    assert isinstance(this, (DataFrame, IndexOpsMixin)), type(this)
+    this_internal = this._internal
+
+    assert isinstance(that, (DataFrame, IndexOpsMixin)), type(that)
+    that_internal = that._internal
+
+    return (
+        this_internal.spark_frame is that_internal.spark_frame
+        and this_internal.index_names == that_internal.index_names
+    )
 
 
 def combine_frames(this, *args, how="full", preserve_order_column=False):

@@ -2177,7 +2177,10 @@ class GroupBy(object):
         new_by_series = []
         for col_or_s in by:
             if isinstance(col_or_s, Series):
-                new_by_series.append(col_or_s)
+                if col_or_s._kdf is kdf:
+                    new_by_series.append(col_or_s)
+                else:
+                    new_by_series.append(col_or_s.rename(col_or_s.name))
             elif isinstance(col_or_s, tuple):
                 kser = kdf[col_or_s]
                 if not isinstance(kser, Series):
