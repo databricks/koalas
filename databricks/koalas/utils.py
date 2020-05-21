@@ -35,25 +35,27 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
     from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series
+    from databricks.koalas.base import IndexOpsMixin
 
 
-def same_anchor(this: Union["DataFrame", "Series"], that: Union["DataFrame", "Series"]) -> bool:
+def same_anchor(
+    this: Union["DataFrame", "IndexOpsMixin"], that: Union["DataFrame", "IndexOpsMixin"]
+) -> bool:
     """
     Check if the anchors of the given DataFrame or Series are the same or not.
     """
     from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series
+    from databricks.koalas.base import IndexOpsMixin
 
     if isinstance(this, DataFrame):
         this_kdf = this
     else:
-        assert isinstance(this, Series), type(this)
+        assert isinstance(this, IndexOpsMixin), type(this)
         this_kdf = this._kdf
     if isinstance(that, DataFrame):
         that_kdf = that
     else:
-        assert isinstance(that, Series), type(that)
+        assert isinstance(that, IndexOpsMixin), type(that)
         that_kdf = that._kdf
     return this_kdf is that_kdf
 
