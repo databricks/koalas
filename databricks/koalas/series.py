@@ -59,10 +59,11 @@ from databricks.koalas.missing.series import MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import (
-    validate_arguments_and_invoke_function,
-    scol_for,
     combine_frames,
     name_like_string,
+    same_anchor,
+    scol_for,
+    validate_arguments_and_invoke_function,
     validate_axis,
     validate_bool_kwarg,
     verify_temp_column_name,
@@ -4519,7 +4520,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
-        if self._kdf is other._kdf:
+        if same_anchor(self, other):
             this = self.name
             that = other.name
             combined = self._kdf
@@ -4532,7 +4533,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         # If `self` has missing value, use value of `other`
         cond = F.when(sdf[this].isNull(), sdf[that]).otherwise(sdf[this])
         # If `self` and `other` come from same frame, the anchor should be kept
-        if self._kdf is other._kdf:
+        if same_anchor(self, other):
             return self._with_new_scol(cond)
         index_scols = combined._internal.index_spark_columns
         sdf = sdf.select(*index_scols, cond.alias(self.name)).distinct()

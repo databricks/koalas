@@ -61,6 +61,7 @@ from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
     name_like_string,
+    same_anchor,
     scol_for,
     verify_temp_column_name,
 )
@@ -2192,7 +2193,7 @@ class DataFrameGroupBy(GroupBy):
     def _build(
         kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
     ) -> "DataFrameGroupBy":
-        if any(isinstance(col_or_s, Series) and kdf is not col_or_s._kdf for col_or_s in by):
+        if any(isinstance(col_or_s, Series) and not same_anchor(kdf, col_or_s) for col_or_s in by):
             (
                 kdf,
                 new_by_series,
@@ -2367,7 +2368,7 @@ class SeriesGroupBy(GroupBy):
     def _build(
         kser: Series, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
     ) -> "SeriesGroupBy":
-        if any(isinstance(col_or_s, Series) and kser._kdf is not col_or_s._kdf for col_or_s in by):
+        if any(isinstance(col_or_s, Series) and not same_anchor(kser, col_or_s) for col_or_s in by):
             kdf, new_by_series, _ = GroupBy._resolve_grouping_from_diff_dataframes(
                 kser.to_frame(), by
             )

@@ -67,6 +67,7 @@ from databricks.koalas.utils import (
     validate_bool_kwarg,
     column_labels_level,
     name_like_string,
+    same_anchor,
     scol_for,
     validate_axis,
     verify_temp_column_name,
@@ -598,7 +599,7 @@ class DataFrame(Frame, Generic[T]):
                 "however, got %s." % (op, type(other))
             )
 
-        if isinstance(other, DataFrame) and self is not other:
+        if isinstance(other, DataFrame) and not same_anchor(self, other):
             if self._internal.column_labels_level != other._internal.column_labels_level:
                 raise ValueError("cannot join with no overlapping index names")
 
@@ -10544,9 +10545,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __setitem__(self, key, value):
         from databricks.koalas.series import Series
 
-        if (isinstance(value, Series) and value._kdf is not self) or (
-            isinstance(value, DataFrame) and value is not self
-        ):
+        if isinstance(value, (DataFrame, Series)) and not same_anchor(value, self):
             # Different Series or DataFrames
             key = self._index_normalized_label(key)
             value = self._index_normalized_frame(value)
@@ -10653,7 +10652,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
         # TODO: is it possible to deduplicate it with '_map_series_op'?
         if all(isinstance(inp, DataFrame) for inp in inputs) and any(
-            inp is not inputs[0] for inp in inputs
+            not same_anchor(inp, inputs[0]) for inp in inputs
         ):
             # binary only
             assert len(inputs) == 2
