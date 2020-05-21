@@ -10545,9 +10545,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def __setitem__(self, key, value):
         from databricks.koalas.series import Series
 
-        if (isinstance(value, Series) and not same_anchor(value, self)) or (
-            isinstance(value, DataFrame) and not same_anchor(value, self)
-        ):
+        if isinstance(value, (DataFrame, Series)) and not same_anchor(value, self):
             # Different Series or DataFrames
             key = self._index_normalized_label(key)
             value = self._index_normalized_frame(value)
