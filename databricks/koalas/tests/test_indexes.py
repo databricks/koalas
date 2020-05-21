@@ -1235,20 +1235,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kmidx.take({1: None, 2: None}))
 
     def test_index_get_level_values(self):
-        pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index([1, 2, 3], name="ks"))
-        kdf = ks.from_pandas(pdf)
+        pidx = pd.Index([1, 2, 3], name="ks")
+        kidx = ks.from_pandas(pidx)
 
         for level in [0, "ks"]:
-            self.assert_eq(kdf.index.get_level_values(level), pdf.index.get_level_values(level))
+            self.assert_eq(kidx.get_level_values(level), pidx.get_level_values(level))
 
     def test_multiindex_get_level_values(self):
-        mi = pd.MultiIndex.from_arrays((list("abc"), list("def")))
-        mi.names = ["level_1", "level_2"]
-        pdf = pd.DataFrame({"a": [1, 2, 3]}, index=mi)
-        kdf = ks.from_pandas(pdf)
+        pmidx = pd.MultiIndex.from_tuples([("a", "d"), ("b", "e"), ("c", "f")])
+        pmidx.names = ["level_1", "level_2"]
+        kmidx = ks.from_pandas(pmidx)
 
         for level in [0, 1, "level_1", "level_2"]:
-            self.assert_eq(kdf.index.get_level_values(level), pdf.index.get_level_values(level))
+            self.assert_eq(kmidx.get_level_values(level), pmidx.get_level_values(level))
 
     def test_index_get_level_number(self):
         # name of two levels are the same, which is None

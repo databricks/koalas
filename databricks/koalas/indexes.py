@@ -60,7 +60,11 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
     validate_bool_kwarg,
 )
-from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import (
+    InternalFrame,
+    NATURAL_ORDER_COLUMN_NAME,
+    SPARK_DEFAULT_INDEX_NAME,
+)
 
 
 class Index(IndexOpsMixin):
@@ -973,24 +977,21 @@ class Index(IndexOpsMixin):
                 "Requested level ({}) does not match index name ({})".format(level, self.name)
             )
 
-    def _get_level_values(self, level):
+    def get_level_values(self, level):
         """
         Return Index if a valid level is given.
 
         Examples:
         --------
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name='ks'))
-        >>> kdf.index.get_level_values(0)
+        >>> kidx = ks.Index(['a', 'b', 'c'], name='ks')
+        >>> kidx.get_level_values(0)
         Index(['a', 'b', 'c'], dtype='object', name='ks')
 
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=pd.Index(['a', 'b', 'c'], name='ks'))
         >>> kdf.index.get_level_values('ks')
         Index(['a', 'b', 'c'], dtype='object', name='ks')
         """
         self._validate_index_level(level)
         return self
-
-    get_level_values = _get_level_values
 
     def copy(self, name=None, deep=None):
         """
@@ -2546,52 +2547,48 @@ class MultiIndex(Index):
                 )
         return level
 
-    def _get_level_values(self, level):
-        """
-        Return vector of label values for requested level,
-        equal to the length of the index
-        **this is an internal method**
-        Parameters
-        ----------
-        level : int level
-        Returns
-        -------
-        values : Index
-        """
-        lev = self.levels[level]
-        name = self.names[level]
-
-        return ks.Index(lev, name=name)
-
     def get_level_values(self, level):
         """
         Return vector of label values for requested level,
         equal to the length of the index.
+
         Parameters
         ----------
         level : int or str
             ``level`` is either the integer position of the level in the
             MultiIndex, or the name of the level.
+
         Returns
         -------
         values : Index
             Values is a level of this MultiIndex converted to
             a single :class:`Index` (or subclass thereof).
+
         Examples
         --------
+
         Create a MultiIndex:
-        >>> mi = pd.MultiIndex.from_arrays((list('abc'), list('def')))
+
+        >>> mi = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'a')])
         >>> mi.names = ['level_1', 'level_2']
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=mi)
+
         Get level values by supplying level as either integer or name:
-        >>> kdf.index.get_level_values(0)
+
+        >>> mi.get_level_values(0)
+        Index(['x', 'x', 'y'], dtype='object', name='level_2')
+
+        >>> mi.get_level_values('level_2')
         Index(['a', 'b', 'c'], dtype='object', name='level_1')
-        >>> kdf.index.get_level_values('level_2')
-        Index(['d', 'e', 'f'], dtype='object', name='level_2')
         """
         level = self._get_level_number(level)
-        values = self._get_level_values(level)
-        return values
+        index_scol_name = self._internal.index_spark_column_names[level]
+        index_name = self._internal.index_names[level]
+        scol = self._internal.index_spark_columns[level]
+        sdf = self._internal.spark_frame
+        internal = InternalFrame(
+            spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
+        )
+        return ks.DataFrame(internal).index
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
