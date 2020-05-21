@@ -4810,26 +4810,26 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1       2        5  8
         2       3        6  9
         """
+        data_column_names = []
+        data_columns = []
+        for i, (label, spark_column, column_name) in enumerate(
+            zip(
+                self._internal.column_labels,
+                self._internal.data_spark_columns,
+                self._internal.data_spark_column_names,
+            )
+        ):
+            name = str(i) if label is None else name_like_string(label)
+            data_column_names.append(name)
+            if column_name != name:
+                spark_column = spark_column.alias(name)
+            data_columns.append(spark_column)
+
         if index_col is None:
-            return self._internal.to_external_spark_frame
+            return self._internal.spark_frame.select(data_columns)
         else:
             if isinstance(index_col, str):
                 index_col = [index_col]
-
-            data_column_names = []
-            data_columns = []
-            data_columns_column_labels = zip(
-                self._internal.data_spark_column_names, self._internal.column_labels
-            )
-            # TODO: this code is similar with _InternalFrame.to_new_spark_frame. Might have to
-            #  deduplicate.
-            for i, (column, label) in enumerate(data_columns_column_labels):
-                scol = self._internal.spark_column_for(label)
-                name = str(i) if label is None else name_like_string(label)
-                data_column_names.append(name)
-                if column != name:
-                    scol = scol.alias(name)
-                data_columns.append(scol)
 
             old_index_scols = self._internal.index_spark_columns
 
@@ -4842,11 +4842,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if any(col in data_column_names for col in index_col):
                 raise ValueError("'index_col' cannot be overlapped with other columns.")
 
-            sdf = self._internal.to_internal_spark_frame
             new_index_scols = [
                 index_scol.alias(col) for index_scol, col in zip(old_index_scols, index_col)
             ]
-            return sdf.select(new_index_scols + data_columns)
+            return self._internal.spark_frame.select(new_index_scols + data_columns)
 
     def to_pandas(self):
         """
