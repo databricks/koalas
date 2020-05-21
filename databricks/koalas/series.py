@@ -40,6 +40,7 @@ from pyspark.sql.types import (
     IntegerType,
     LongType,
     NumericType,
+    StringType,
     StructType,
 )
 from pyspark.sql.window import Window
