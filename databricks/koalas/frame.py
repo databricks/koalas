@@ -46,14 +46,9 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import (
     BooleanType,
-    ByteType,
-    DecimalType,
     DoubleType,
     FloatType,
-    IntegerType,
-    LongType,
     NumericType,
-    ShortType,
     StructType,
     StructField,
 )
@@ -5708,28 +5703,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if lower is None and upper is None:
             return self
 
-        numeric_types = (
-            DecimalType,
-            DoubleType,
-            FloatType,
-            ByteType,
-            IntegerType,
-            LongType,
-            ShortType,
-        )
-
-        def op(kser):
-            if isinstance(kser.spark_type, numeric_types):
-                scol = kser.spark_column
-                if lower is not None:
-                    scol = F.when(scol < lower, lower).otherwise(scol)
-                if upper is not None:
-                    scol = F.when(scol > upper, upper).otherwise(scol)
-                return scol.alias(kser._internal.data_spark_column_names[0])
-            else:
-                return kser
-
-        return self._apply_series_op(op)
+        return self._apply_series_op(lambda kser: kser.clip(lower=lower, upper=upper))
 
     def head(self, n: int = 5) -> "DataFrame":
         """

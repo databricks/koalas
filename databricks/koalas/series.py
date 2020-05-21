@@ -37,10 +37,10 @@ from pyspark.sql.types import (
     BooleanType,
     DoubleType,
     FloatType,
-    StringType,
-    StructType,
-    LongType,
     IntegerType,
+    LongType,
+    NumericType,
+    StructType,
 )
 from pyspark.sql.window import Window
 
@@ -1726,7 +1726,23 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         instances of 'str' and 'int'" while `ks.Series(['a', 'b']).clip(0, 1)` will output the
         original Series, simply ignoring the incompatible types.
         """
-        return first_series(self.to_dataframe().clip(lower, upper))
+        if is_list_like(lower) or is_list_like(upper):
+            raise ValueError(
+                "List-like value are not supported for 'lower' and 'upper' at the " + "moment"
+            )
+
+        if lower is None and upper is None:
+            return self
+
+        if isinstance(self.spark_type, NumericType):
+            scol = self.spark_column
+            if lower is not None:
+                scol = F.when(scol < lower, lower).otherwise(scol)
+            if upper is not None:
+                scol = F.when(scol > upper, upper).otherwise(scol)
+            return self._with_new_scol(scol.alias(self._internal.data_spark_column_names[0]))
+        else:
+            return self
 
     def drop(
         self,
