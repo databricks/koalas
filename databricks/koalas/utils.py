@@ -34,8 +34,8 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
-    from databricks.koalas.frame import DataFrame
     from databricks.koalas.base import IndexOpsMixin
+    from databricks.koalas.frame import DataFrame
 
 
 def same_anchor(
@@ -44,8 +44,8 @@ def same_anchor(
     """
     Check if the anchors of the given DataFrame or Series are the same or not.
     """
-    from databricks.koalas.frame import DataFrame
     from databricks.koalas.base import IndexOpsMixin
+    from databricks.koalas.frame import DataFrame
 
     if isinstance(this, DataFrame):
         this_kdf = this
