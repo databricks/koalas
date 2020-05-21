@@ -55,7 +55,7 @@ def same_anchor(
 
     return (
         this_internal.spark_frame is that_internal.spark_frame
-        and this_internal.index_names == that_internal.index_names
+        and this_internal.index_map == that_internal.index_map
     )
 
 
