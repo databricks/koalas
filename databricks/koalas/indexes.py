@@ -987,7 +987,7 @@ class Index(IndexOpsMixin):
         >>> kidx.get_level_values(0)
         Index(['a', 'b', 'c'], dtype='object', name='ks')
 
-        >>> kdf.index.get_level_values('ks')
+        >>> kidx.get_level_values('ks')
         Index(['a', 'b', 'c'], dtype='object', name='ks')
         """
         self._validate_index_level(level)
@@ -2575,10 +2575,10 @@ class MultiIndex(Index):
         Get level values by supplying level as either integer or name:
 
         >>> mi.get_level_values(0)
-        Index(['x', 'x', 'y'], dtype='object', name='level_2')
+        Index(['x', 'x', 'y'], dtype='object', name='level_1')
 
         >>> mi.get_level_values('level_2')
-        Index(['a', 'b', 'c'], dtype='object', name='level_1')
+        Index(['a', 'b', 'a'], dtype='object', name='level_2')
         """
         level = self._get_level_number(level)
         index_scol_name = self._internal.index_spark_column_names[level]
