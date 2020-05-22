@@ -56,6 +56,7 @@ from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import option_context, get_option
+from databricks.koalas.spark import SparkFrameMethods, CachedSparkFrameMethods
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
@@ -687,6 +688,9 @@ class DataFrame(Frame, Generic[T]):
 
     # create accessor for plot
     plot = CachedAccessor("plot", KoalasFramePlotMethods)
+
+    # create accessor for Spark related methods.
+    spark = CachedAccessor("spark", SparkFrameMethods)
 
     def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
@@ -2159,9 +2163,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     # TODO: Remove this API when Koalas 2.0.0.
     def map_in_pandas(self, func):
         warnings.warn(
-            "map_in_pandas is deprecated as of DataFrame.apply_batch. "
+            "DataFrame.map_in_pandas is deprecated as of DataFrame.apply_batch. "
             "Please use the API instead.",
-            DeprecationWarning,
+            FutureWarning,
         )
         return self.apply_batch(func)
 
@@ -2570,7 +2574,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
                 kser = self._kser_for(input_label)
                 applied.append(
-                    kser._with_new_scol(scol=pudf(kser.spark_column)).rename(input_label)
+                    kser._with_new_scol(scol=pudf(kser.spark.column)).rename(input_label)
                 )
 
             internal = self._internal.with_new_columns(applied)
@@ -2738,7 +2742,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kser = kdf_or_kser
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
-                    returnType=kser.spark_type,
+                    returnType=kser.spark.type,
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._internal.spark_columns
@@ -3215,10 +3219,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label in self._internal.column_labels:
             data_spark_columns.append(
                 F.when(
-                    kdf[tmp_cond_col_name(name_like_string(label))].spark_column,
+                    kdf[tmp_cond_col_name(name_like_string(label))].spark.column,
                     kdf._internal.spark_column_for(label),
                 )
-                .otherwise(kdf[tmp_other_col_name(name_like_string(label))].spark_column)
+                .otherwise(kdf[tmp_other_col_name(name_like_string(label))].spark.column)
                 .alias(kdf._internal.spark_column_name_for(label))
             )
 
@@ -4073,7 +4077,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         def op(kser):
             label = kser._internal.column_labels[0]
             if label in decimals:
-                return F.round(kser.spark_column, decimals[label]).alias(
+                return F.round(kser.spark.column, decimals[label]).alias(
                     kser._internal.data_spark_column_names[0]
                 )
             else:
@@ -4260,154 +4264,34 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     def cache(self):
-        """
-        Yields and caches the current DataFrame.
+        warnings.warn(
+            "DataFrame.cache is deprecated as of DataFrame.spark.cache. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.cache()
 
-        The Koalas DataFrame is yielded as a protected resource and its corresponding
-        data is cached which gets uncached after execution goes of the context.
-
-        If you want to specify the StorageLevel manually, use :meth:`DataFrame.persist`
-
-        See Also
-        --------
-        DataFrame.persist
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
-        ...                   columns=['dogs', 'cats'])
-        >>> df
-           dogs  cats
-        0   0.2   0.3
-        1   0.0   0.6
-        2   0.6   0.0
-        3   0.2   0.1
-
-        >>> with df.cache() as cached_df:
-        ...     print(cached_df.count())
-        ...
-        dogs    4
-        cats    4
-        Name: 0, dtype: int64
-
-        >>> df = df.cache()
-        >>> df.to_pandas().mean(axis=1)
-        0    0.25
-        1    0.30
-        2    0.30
-        3    0.15
-        dtype: float64
-
-        To uncache the dataframe, use `unpersist` function
-
-        >>> df.unpersist()
-        """
-        return CachedDataFrame(self._internal)
+    cache.__doc__ = SparkFrameMethods.cache.__doc__
 
     def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
-        """
-        Yields and caches the current DataFrame with a specific StorageLevel.
-        If a StogeLevel is not given, the `MEMORY_AND_DISK` level is used by default like PySpark.
+        warnings.warn(
+            "DataFrame.persist is deprecated as of DataFrame.spark.persist. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.persist(storage_level)
 
-        The Koalas DataFrame is yielded as a protected resource and its corresponding
-        data is cached which gets uncached after execution goes of the context.
-
-        See Also
-        --------
-        DataFrame.cache
-
-        Examples
-        --------
-        >>> import pyspark
-        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
-        ...                   columns=['dogs', 'cats'])
-        >>> df
-           dogs  cats
-        0   0.2   0.3
-        1   0.0   0.6
-        2   0.6   0.0
-        3   0.2   0.1
-
-        Set the StorageLevel to `MEMORY_ONLY`.
-
-        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
-        ...     print(cached_df.storage_level)
-        ...     print(cached_df.count())
-        ...
-        Memory Serialized 1x Replicated
-        dogs    4
-        cats    4
-        Name: 0, dtype: int64
-
-        Set the StorageLevel to `DISK_ONLY`.
-
-        >>> with df.persist(pyspark.StorageLevel.DISK_ONLY) as cached_df:
-        ...     print(cached_df.storage_level)
-        ...     print(cached_df.count())
-        ...
-        Disk Serialized 1x Replicated
-        dogs    4
-        cats    4
-        Name: 0, dtype: int64
-
-        If a StorageLevel is not given, it uses `MEMORY_AND_DISK` by default.
-
-        >>> with df.persist() as cached_df:
-        ...     print(cached_df.storage_level)
-        ...     print(cached_df.count())
-        ...
-        Disk Memory Serialized 1x Replicated
-        dogs    4
-        cats    4
-        Name: 0, dtype: int64
-
-        >>> df = df.persist()
-        >>> df.to_pandas().mean(axis=1)
-        0    0.25
-        1    0.30
-        2    0.30
-        3    0.15
-        dtype: float64
-
-        To uncache the dataframe, use `unpersist` function
-
-        >>> df.unpersist()
-        """
-        return CachedDataFrame(self._internal, storage_level=storage_level)
+    persist.__doc__ = SparkFrameMethods.persist.__doc__
 
     def hint(self, name: str, *parameters) -> "DataFrame":
-        """
-        Specifies some hint on the current DataFrame.
+        warnings.warn(
+            "DataFrame.hint is deprecated as of DataFrame.spark.hint. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.hint(name, *parameters)
 
-        Parameters
-        ----------
-        name : A name of the hint.
-        parameters : Optional parameters.
-
-        Returns
-        -------
-        ret : DataFrame with the hint.
-
-        See Also
-        --------
-        broadcast : Marks a DataFrame as small enough for use in broadcast joins.
-
-        Examples
-        --------
-        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
-        ...                     'value': [1, 2, 3, 5]},
-        ...                    columns=['lkey', 'value'])
-        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
-        ...                     'value': [5, 6, 7, 8]},
-        ...                    columns=['rkey', 'value'])
-        >>> merged = df1.merge(df2.hint("broadcast"), left_on='lkey', right_on='rkey')
-        >>> merged.explain()  # doctest: +ELLIPSIS
-        == Physical Plan ==
-        ...
-        ...BroadcastHashJoin...
-        ...
-        """
-        return DataFrame(self._internal.with_new_sdf(self._sdf.hint(name, *parameters)))
+    hint.__doc__ = SparkFrameMethods.hint.__doc__
 
     def to_table(
         self,
@@ -4418,65 +4302,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
-        """
-        Write the DataFrame into a Spark table.
+        return self.spark.to_table(name, format, mode, partition_cols, index_col, **options)
 
-        Parameters
-        ----------
-        name : str, required
-            Table name in Spark.
-        format : string, optional
-            Specifies the output data source format. Some common ones are:
-
-            - 'delta'
-            - 'parquet'
-            - 'orc'
-            - 'json'
-            - 'csv'
-
-        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default
-            'overwrite'. Specifies the behavior of the save operation when the table exists
-            already.
-
-            - 'append': Append the new data to existing data.
-            - 'overwrite': Overwrite existing data.
-            - 'ignore': Silently ignore this operation if data already exists.
-            - 'error' or 'errorifexists': Throw an exception if data already exists.
-
-        partition_cols : str or list of str, optional, default None
-            Names of partitioning columns
-        index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. The index name
-            in Koalas is ignored. By default, the index is always lost.
-        options
-            Additional options passed directly to Spark.
-
-        See Also
-        --------
-        read_table
-        DataFrame.to_spark_io
-        DataFrame.to_parquet
-
-        Examples
-        --------
-        >>> df = ks.DataFrame(dict(
-        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
-        ...    country=['KR', 'US', 'JP'],
-        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
-        >>> df
-                         date country  code
-        0 2012-01-31 12:00:00      KR     1
-        1 2012-02-29 12:00:00      US     2
-        2 2012-03-31 12:00:00      JP     3
-
-        >>> df.to_table('%s.my_table' % db, partition_cols='date')
-        """
-        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")  # type: ignore
-
-        self.to_spark(index_col=index_col).write.saveAsTable(
-            name=name, format=format, mode=mode, partitionBy=partition_cols, **options
-        )
+    to_table.__doc__ = SparkFrameMethods.cache.__doc__
 
     def to_delta(
         self,
@@ -4635,172 +4463,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
-        """Write the DataFrame out to a Spark data source.
+        return self.spark.to_spark_io(path, format, mode, partition_cols, index_col, **options)
 
-        Parameters
-        ----------
-        path : string, optional
-            Path to the data source.
-        format : string, optional
-            Specifies the output data source format. Some common ones are:
-
-            - 'delta'
-            - 'parquet'
-            - 'orc'
-            - 'json'
-            - 'csv'
-        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'}, default
-            'overwrite'. Specifies the behavior of the save operation when data already.
-
-            - 'append': Append the new data to existing data.
-            - 'overwrite': Overwrite existing data.
-            - 'ignore': Silently ignore this operation if data already exists.
-            - 'error' or 'errorifexists': Throw an exception if data already exists.
-        partition_cols : str or list of str, optional
-            Names of partitioning columns
-        index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. The index name
-            in Koalas is ignored. By default, the index is always lost.
-        options : dict
-            All other options passed directly into Spark's data source.
-
-        See Also
-        --------
-        read_spark_io
-        DataFrame.to_delta
-        DataFrame.to_parquet
-        DataFrame.to_table
-
-        Examples
-        --------
-        >>> df = ks.DataFrame(dict(
-        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
-        ...    country=['KR', 'US', 'JP'],
-        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
-        >>> df
-                         date country  code
-        0 2012-01-31 12:00:00      KR     1
-        1 2012-02-29 12:00:00      US     2
-        2 2012-03-31 12:00:00      JP     3
-
-        >>> df.to_spark_io(path='%s/to_spark_io/foo.json' % path, format='json')
-        """
-        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
-            options = options.get("options")  # type: ignore
-
-        self.to_spark(index_col=index_col).write.save(
-            path=path, format=format, mode=mode, partitionBy=partition_cols, **options
-        )
+    to_spark_io.__doc__ = SparkFrameMethods.to_spark_io.__doc__
 
     def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
-        """
-        Return the current DataFrame as a Spark DataFrame.
+        return self.spark.frame(index_col)
 
-        Parameters
-        ----------
-        index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. The index name
-            in Koalas is ignored. By default, the index is always lost.
-
-        See Also
-        --------
-        DataFrame.to_koalas
-
-        Examples
-        --------
-        By default, this method loses the index as below.
-
-        >>> df = ks.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'c': [7, 8, 9]})
-        >>> df.to_spark().show()  # doctest: +NORMALIZE_WHITESPACE
-        +---+---+---+
-        |  a|  b|  c|
-        +---+---+---+
-        |  1|  4|  7|
-        |  2|  5|  8|
-        |  3|  6|  9|
-        +---+---+---+
-
-        If `index_col` is set, it keeps the index column as specified.
-
-        >>> df.to_spark(index_col="index").show()  # doctest: +NORMALIZE_WHITESPACE
-        +-----+---+---+---+
-        |index|  a|  b|  c|
-        +-----+---+---+---+
-        |    0|  1|  4|  7|
-        |    1|  2|  5|  8|
-        |    2|  3|  6|  9|
-        +-----+---+---+---+
-
-        Keeping index column is useful when you want to call some Spark APIs and
-        convert it back to Koalas DataFrame without creating a default index, which
-        can affect performance.
-
-        >>> spark_df = df.to_spark(index_col="index")
-        >>> spark_df = spark_df.filter("a == 2")
-        >>> spark_df.to_koalas(index_col="index")  # doctest: +NORMALIZE_WHITESPACE
-               a  b  c
-        index
-        1      2  5  8
-
-        In case of multi-index, specify a list to `index_col`.
-
-        >>> new_df = df.set_index("a", append=True)
-        >>> new_spark_df = new_df.to_spark(index_col=["index_1", "index_2"])
-        >>> new_spark_df.show()  # doctest: +NORMALIZE_WHITESPACE
-        +-------+-------+---+---+
-        |index_1|index_2|  b|  c|
-        +-------+-------+---+---+
-        |      0|      1|  4|  7|
-        |      1|      2|  5|  8|
-        |      2|      3|  6|  9|
-        +-------+-------+---+---+
-
-        Likewise, can be converted to back to Koalas DataFrame.
-
-        >>> new_spark_df.to_koalas(
-        ...     index_col=["index_1", "index_2"])  # doctest: +NORMALIZE_WHITESPACE
-                         b  c
-        index_1 index_2
-        0       1        4  7
-        1       2        5  8
-        2       3        6  9
-        """
-        data_column_names = []
-        data_columns = []
-        for i, (label, spark_column, column_name) in enumerate(
-            zip(
-                self._internal.column_labels,
-                self._internal.data_spark_columns,
-                self._internal.data_spark_column_names,
-            )
-        ):
-            name = str(i) if label is None else name_like_string(label)
-            data_column_names.append(name)
-            if column_name != name:
-                spark_column = spark_column.alias(name)
-            data_columns.append(spark_column)
-
-        if index_col is None:
-            return self._internal.spark_frame.select(data_columns)
-        else:
-            if isinstance(index_col, str):
-                index_col = [index_col]
-
-            old_index_scols = self._internal.index_spark_columns
-
-            if len(index_col) != len(old_index_scols):
-                raise ValueError(
-                    "length of index columns is %s; however, the length of the given "
-                    "'index_col' is %s." % (len(old_index_scols), len(index_col))
-                )
-
-            if any(col in data_column_names for col in index_col):
-                raise ValueError("'index_col' cannot be overlapped with other columns.")
-
-            new_index_scols = [
-                index_scol.alias(col) for index_scol, col in zip(old_index_scols, index_col)
-            ]
-            return self._internal.spark_frame.select(new_index_scols + data_columns)
+    to_spark.__doc__ = SparkFrameMethods.__doc__
 
     def to_pandas(self):
         """
@@ -4898,7 +4568,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         pairs = {
             (k if isinstance(k, tuple) else (k,)): (
-                v.spark_column
+                v.spark.column
                 if isinstance(v, Series)
                 else v
                 if isinstance(v, spark.Column)
@@ -5204,7 +4874,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             cnt = reduce(
                 lambda x, y: x + y,
                 [
-                    F.when(self._kser_for(label).notna().spark_column, 1).otherwise(0)
+                    F.when(self._kser_for(label).notna().spark.column, 1).otherwise(0)
                     for label in labels
                 ],
                 F.lit(0),
@@ -6230,74 +5900,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
     def spark_schema(self, index_col: Optional[Union[str, List[str]]] = None):
-        """
-        Returns the underlying Spark schema.
+        warnings.warn(
+            "DataFrame.spark_schema is deprecated as of DataFrame.spark.schema. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.schema(index_col)
 
-        Returns
-        -------
-        pyspark.sql.types.StructType
-            The underlying Spark schema.
-
-        Parameters
-        ----------
-        index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. The index name
-            in Koalas is ignored. By default, the index is always lost.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'a': list('abc'),
-        ...                    'b': list(range(1, 4)),
-        ...                    'c': np.arange(3, 6).astype('i1'),
-        ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
-        ...                    'e': [True, False, True],
-        ...                    'f': pd.date_range('20130101', periods=3)},
-        ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
-        >>> df.spark_schema().simpleString()
-        'struct<a:string,b:bigint,c:tinyint,d:double,e:boolean,f:timestamp>'
-        >>> df.spark_schema(index_col='index').simpleString()
-        'struct<index:bigint,a:string,b:bigint,c:tinyint,d:double,e:boolean,f:timestamp>'
-        """
-        return self.to_spark(index_col).schema
+    spark_schema.__doc__ = SparkFrameMethods.schema.__doc__
 
     def print_schema(self, index_col: Optional[Union[str, List[str]]] = None):
-        """
-        Prints out the underlying Spark schema in the tree format.
+        warnings.warn(
+            "DataFrame.print_schema is deprecated as of DataFrame.spark.print_schema. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.print_schema(index_col)
 
-        Parameters
-        ----------
-        index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. The index name
-            in Koalas is ignored. By default, the index is always lost.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'a': list('abc'),
-        ...                    'b': list(range(1, 4)),
-        ...                    'c': np.arange(3, 6).astype('i1'),
-        ...                    'd': np.arange(4.0, 7.0, dtype='float64'),
-        ...                    'e': [True, False, True],
-        ...                    'f': pd.date_range('20130101', periods=3)},
-        ...                   columns=['a', 'b', 'c', 'd', 'e', 'f'])
-        >>> df.print_schema()  # doctest: +NORMALIZE_WHITESPACE
-        root
-         |-- a: string (nullable = false)
-         |-- b: long (nullable = false)
-         |-- c: byte (nullable = false)
-         |-- d: double (nullable = false)
-         |-- e: boolean (nullable = false)
-         |-- f: timestamp (nullable = false)
-        >>> df.print_schema(index_col='index')  # doctest: +NORMALIZE_WHITESPACE
-        root
-         |-- index: long (nullable = false)
-         |-- a: string (nullable = false)
-         |-- b: long (nullable = false)
-         |-- c: byte (nullable = false)
-         |-- d: double (nullable = false)
-         |-- e: boolean (nullable = false)
-         |-- f: timestamp (nullable = false)
-        """
-        self.to_spark(index_col).printSchema()
+    print_schema.__doc__ = SparkFrameMethods.print_schema.__doc__
 
     def select_dtypes(self, include=None, exclude=None):
         """
@@ -6766,7 +6386,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "The column %s is not unique. For a multi-index, the label must be a tuple "
                     "with elements corresponding to each level." % name_like_string(colname)
                 )
-            new_by.append(ser.spark_column)
+            new_by.append(ser.spark.column)
 
         return self._sort(by=new_by, ascending=ascending, inplace=inplace, na_position=na_position)
 
@@ -8428,7 +8048,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_column = self._internal.index_spark_column_names[0]
 
         kser = ks.Series(list(index))
-        labels = kser._internal._sdf.select(kser.spark_column.alias(index_column))
+        labels = kser._internal._sdf.select(kser.spark.column.alias(index_column))
 
         joined_df = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).join(
             labels, on=index_column, how="right"
@@ -9669,8 +9289,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
 
         def op(kser):
-            prev_row = F.lag(kser.spark_column, periods).over(window)
-            return ((kser.spark_column - prev_row) / prev_row).alias(
+            prev_row = F.lag(kser.spark.column, periods).over(window)
+            return ((kser.spark.column - prev_row) / prev_row).alias(
                 kser._internal.data_spark_column_names[0]
             )
 
@@ -10168,62 +9788,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None):
-        """
-        Prints the underlying (logical and physical) Spark plans to the console for debugging
-        purpose.
+        warnings.warn(
+            "DataFrame.explain is deprecated as of DataFrame.spark.explain. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.explain(extended, mode)
 
-        Parameters
-        ----------
-        extended : boolean, default ``False``.
-            If ``False``, prints only the physical plan.
-        mode : string, default ``None``.
-            The expected output format of plans.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({'id': range(10)})
-        >>> df.explain()  # doctest: +ELLIPSIS
-        == Physical Plan ==
-        ...
-
-        >>> df.explain(True)  # doctest: +ELLIPSIS
-        == Parsed Logical Plan ==
-        ...
-        == Analyzed Logical Plan ==
-        ...
-        == Optimized Logical Plan ==
-        ...
-        == Physical Plan ==
-        ...
-
-        >>> df.explain(mode="extended")  # doctest: +ELLIPSIS
-        == Parsed Logical Plan ==
-        ...
-        == Analyzed Logical Plan ==
-        ...
-        == Optimized Logical Plan ==
-        ...
-        == Physical Plan ==
-        ...
-        """
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
-            if mode is not None:
-                if extended is not None:
-                    raise Exception("extended and mode can not be specified simultaneously")
-                elif mode == "simple":
-                    extended = False
-                elif mode == "extended":
-                    extended = True
-                else:
-                    raise ValueError(
-                        "Unknown explain mode: {}. Accepted explain modes are "
-                        "'simple', 'extended'.".format(mode)
-                    )
-            if extended is None:
-                extended = False
-            self._internal.to_internal_spark_frame.explain(extended)
-        else:
-            self._internal.to_internal_spark_frame.explain(extended, mode)
+    explain.__doc__ = SparkFrameMethods.explain.__doc__
 
     def take(self, indices, axis=0, **kwargs):
         """
@@ -10686,51 +10258,26 @@ class CachedDataFrame(DataFrame):
     def __exit__(self, exception_type, exception_value, traceback):
         self.unpersist()
 
+    # create accessor for Spark related methods.
+    spark = CachedAccessor("spark", CachedSparkFrameMethods)
+
     @property
     def storage_level(self):
-        """
-        Return the storage level of this cache.
+        warnings.warn(
+            "DataFrame.storage_level is deprecated as of DataFrame.spark.storage_level. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.storage_level
 
-        Examples
-        --------
-        >>> import pyspark
-        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
-        ...                   columns=['dogs', 'cats'])
-        >>> df
-           dogs  cats
-        0   0.2   0.3
-        1   0.0   0.6
-        2   0.6   0.0
-        3   0.2   0.1
-
-        >>> with df.cache() as cached_df:
-        ...     print(cached_df.storage_level)
-        ...
-        Disk Memory Deserialized 1x Replicated
-
-        Set the StorageLevel to `MEMORY_ONLY`.
-
-        >>> with df.persist(pyspark.StorageLevel.MEMORY_ONLY) as cached_df:
-        ...     print(cached_df.storage_level)
-        ...
-        Memory Serialized 1x Replicated
-        """
-        return self._cached.storageLevel
+    storage_level.__doc__ = CachedSparkFrameMethods.storage_level.__doc__
 
     def unpersist(self):
-        """
-        The `unpersist` function is used to uncache the Koalas DataFrame when it
-        is not used with `with` statement.
+        warnings.warn(
+            "DataFrame.unpersist is deprecated as of DataFrame.spark.unpersist. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.unpersist()
 
-        Examples
-        --------
-        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
-        ...                   columns=['dogs', 'cats'])
-        >>> df = df.cache()
-
-        To uncache the dataframe, use `unpersist` function
-
-        >>> df.unpersist()
-        """
-        if self._cached.is_cached:
-            self._cached.unpersist()
+    unpersist.__doc__ = CachedSparkFrameMethods.unpersist.__doc__

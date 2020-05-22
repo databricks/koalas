@@ -116,7 +116,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected = ks.DataFrame(pdf)
 
             # Write out partitioned by one column
-            expected.to_table("test_table", mode="overwrite", partition_cols="i32")
+            expected.spark.to_table("test_table", mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
             actual = ks.read_table("test_table")[self.test_column_order]
