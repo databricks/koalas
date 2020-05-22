@@ -599,25 +599,45 @@ class DataFrame(Frame, Generic[T]):
                 "however, got %s." % (op, type(other))
             )
 
-        if isinstance(other, DataFrame) and not same_anchor(self, other):
+        if isinstance(other, DataFrame):
             if self._internal.column_labels_level != other._internal.column_labels_level:
                 raise ValueError("cannot join with no overlapping index names")
 
-            # Different DataFrames
-            def apply_op(kdf, this_column_labels, that_column_labels):
-                for this_label, that_label in zip(this_column_labels, that_column_labels):
-                    yield (
-                        getattr(kdf._kser_for(this_label), op)(kdf._kser_for(that_label)),
-                        this_label,
-                    )
+            if not same_anchor(self, other):
+                # Different DataFrames
+                def apply_op(kdf, this_column_labels, that_column_labels):
+                    for this_label, that_label in zip(this_column_labels, that_column_labels):
+                        yield (
+                            getattr(kdf._kser_for(this_label), op)(kdf._kser_for(that_label)),
+                            this_label,
+                        )
 
-            return align_diff_frames(apply_op, self, other, fillna=True, how="full")
-        else:
-            # DataFrame and Series
-            if isinstance(other, DataFrame):
-                return self._apply_series_op(lambda kser: getattr(kser, op)(other[kser.name]))
+                return align_diff_frames(apply_op, self, other, fillna=True, how="full")
             else:
-                return self._apply_series_op(lambda kser: getattr(kser, op)(other))
+                applied = []
+                column_labels = []
+                for label in self._internal.column_labels:
+                    if label in other._internal.column_labels:
+                        applied.append(getattr(self._kser_for(label), op)(other._kser_for(label)))
+                    else:
+                        applied.append(
+                            F.lit(None)
+                            .cast(self._internal.spark_type_for(label))
+                            .alias(name_like_string(label))
+                        )
+                    column_labels.append(label)
+                for label in other._internal.column_labels:
+                    if label not in column_labels:
+                        applied.append(
+                            F.lit(None)
+                            .cast(other._internal.spark_type_for(label))
+                            .alias(name_like_string(label))
+                        )
+                        column_labels.append(label)
+                internal = self._internal.with_new_columns(applied, column_labels)
+                return DataFrame(internal)
+        else:
+            return self._apply_series_op(lambda kser: getattr(kser, op)(other))
 
     def __add__(self, other):
         return self._map_series_op("add", other)

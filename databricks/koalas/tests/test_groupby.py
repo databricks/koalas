@@ -237,18 +237,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                 almost=almost,
                             )
 
-                kkey, pkey = (kdf.b + 1, pdf.b + 1)
-                with self.subTest(as_index=as_index, func=func, key=pkey):
-                    self.assert_eq(
-                        sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
-                        sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
-                        almost=almost,
-                    )
-                    self.assert_eq(
-                        sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
-                        sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
-                        almost=almost,
-                    )
+                for kkey, pkey in [(kdf.b + 1, pdf.b + 1), (kdf.copy().b, pdf.copy().b)]:
+                    with self.subTest(as_index=as_index, func=func, key=pkey):
+                        self.assert_eq(
+                            sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
+                            sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
+                            almost=almost,
+                        )
+                        self.assert_eq(
+                            sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
+                            sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
+                            almost=almost,
+                        )
 
             for almost, func in funcs:
                 for i in [0, 4, 7]:
@@ -265,7 +265,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                         )
 
         for almost, func in funcs:
-            for kkey, pkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
+            for kkey, pkey in [
+                (kdf.b, pdf.b),
+                (kdf.b + 1, pdf.b + 1),
+                (kdf.copy().b, pdf.copy().b),
+            ]:
                 with self.subTest(func=func, key=pkey):
                     self.assert_eq(
                         getattr(kdf.a.groupby(kkey), func)().sort_index(),
@@ -330,28 +334,32 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             sort(pdf.groupby(pkey, as_index=True).agg(["sum"]).reset_index()),
                         )
 
-            kkey, pkey = (kdf.A + 1, pdf.A + 1)
-            with self.subTest(as_index=as_index, key=pkey):
-                self.assert_eq(
-                    sort(kdf.groupby(kkey, as_index=as_index).agg("sum")),
-                    sort(pdf.groupby(pkey, as_index=as_index).agg("sum")),
-                )
-                self.assert_eq(
-                    sort(kdf.groupby(kkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
-                    sort(pdf.groupby(pkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
-                )
-                self.assert_eq(
-                    sort(
-                        kdf.groupby(kkey, as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
-                    ),
-                    sort(
-                        pdf.groupby(pkey, as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
-                    ),
-                )
-                self.assert_eq(
-                    sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
-                    sort(pdf.groupby(pkey, as_index=as_index).agg(["sum"])),
-                )
+            for kkey, pkey in [(kdf.A + 1, pdf.A + 1), (kdf.copy().A, pdf.copy().A)]:
+                with self.subTest(as_index=as_index, key=pkey):
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg("sum")),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg("sum")),
+                    )
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                    )
+                    self.assert_eq(
+                        sort(
+                            kdf.groupby(kkey, as_index=as_index).agg(
+                                {"B": ["min", "max"], "C": "sum"}
+                            )
+                        ),
+                        sort(
+                            pdf.groupby(pkey, as_index=as_index).agg(
+                                {"B": ["min", "max"], "C": "sum"}
+                            )
+                        ),
+                    )
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg(["sum"])),
+                    )
 
         expected_error_message = (
             r"aggs must be a dict mapping from column name \(string or "

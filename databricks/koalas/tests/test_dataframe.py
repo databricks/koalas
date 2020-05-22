@@ -1392,6 +1392,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
     def test_binary_operators(self):
+        pdf = pd.DataFrame(
+            {"A": [0, 2, 4], "B": [4, 2, 0], "X": [-1, 10, 0]}, index=np.random.rand(3)
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf + kdf.copy(), pdf + pdf.copy())
+
         self.assertRaisesRegex(
             ValueError,
             "it comes from a different dataframe",
