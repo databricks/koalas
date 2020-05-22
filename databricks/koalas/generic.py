@@ -305,6 +305,7 @@ class Frame(object):
 
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
+    # We can drop it once our minimal pandas version becomes 1.0.0.
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.

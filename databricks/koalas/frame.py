@@ -2156,6 +2156,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
+    # TODO: Remove this API when Koalas 2.0.0.
     def map_in_pandas(self, func):
         warnings.warn(
             "map_in_pandas is deprecated as of DataFrame.apply_batch. "
