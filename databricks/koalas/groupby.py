@@ -2175,12 +2175,13 @@ class GroupBy(object):
     @staticmethod
     def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]) -> List[Series]:
         new_by_series = []
-        for col_or_s in by:
+        for i, col_or_s in enumerate(by):
             if isinstance(col_or_s, Series):
                 if col_or_s._kdf is kdf:
                     new_by_series.append(col_or_s)
                 else:
-                    new_by_series.append(col_or_s.rename(col_or_s.name))
+                    # Rename to distinguish the key from a different DataFrame.
+                    new_by_series.append(col_or_s.rename("__tmp_groupkey_{}__".format(i)))
             elif isinstance(col_or_s, tuple):
                 kser = kdf[col_or_s]
                 if not isinstance(kser, Series):
