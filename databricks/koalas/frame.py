@@ -10475,10 +10475,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         sdf = sdf.withColumn(column, F.explode_outer(sdf[column]))
-        index_scol_names = self._internal.index_spark_column_names
         internal = _InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict((index_scol_name, None) for index_scol_name in index_scol_names),
+            index_map=self._internal.index_map,
+            column_labels=self._internal.column_labels,
+            column_label_names=self._internal.column_label_names,
         )
         return DataFrame(internal)
 
