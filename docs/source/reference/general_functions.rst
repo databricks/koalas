@@ -47,10 +47,3 @@ Top-level dealing with datetimelike
 
    to_datetime
 
-
-Integration with Spark and pandas
----------------------------------
-.. autosummary::
-   :toctree: api/
-
-   pandas_wraps
