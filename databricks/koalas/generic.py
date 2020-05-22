@@ -2112,6 +2112,62 @@ class Frame(object):
 
         return result.copy() if copy else result
 
+    def to_markdown(self, buf=None, mode=None):
+        """
+        Print Series or DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            Series or DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> kser = ks.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        >>> print(kser.to_markdown())  # doctest: +SKIP
+        |    | animal   |
+        |---:|:---------|
+        |  0 | elk      |
+        |  1 | pig      |
+        |  2 | dog      |
+        |  3 | quetzal  |
+
+        >>> kdf = ks.DataFrame(
+        ...     data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]}
+        ... )
+        >>> print(kdf.to_markdown())  # doctest: +SKIP
+        |    | animal_1   | animal_2   |
+        |---:|:-----------|:-----------|
+        |  0 | elk        | dog        |
+        |  1 | pig        | quetzal    |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kser_or_kdf = self
+        internal_pandas = kser_or_kdf._to_internal_pandas()
+        return validate_arguments_and_invoke_function(
+            internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
+        )
+
     @property
     def at(self):
         return AtIndexer(self)

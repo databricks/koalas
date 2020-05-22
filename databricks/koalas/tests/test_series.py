@@ -1576,6 +1576,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser.shape, kser.shape)
 
+    def test_to_markdown(self):
+        pser = pd.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        kser = ks.from_pandas(pser)
+
+        # `to_markdown()` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assertRaises(NotImplementedError, lambda: kser.to_markdown())
+        else:
+            self.assert_eq(pser.to_markdown(), kser.to_markdown())
+
     def test_unstack(self):
         pser = pd.Series(
             [10, -2, 4, 7],
