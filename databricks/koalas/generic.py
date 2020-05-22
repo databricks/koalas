@@ -2140,6 +2140,12 @@ class Frame(object):
         """Alias of `to_pandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
 
+    def __bool__(self):
+        raise ValueError(
+            "The truth value of a {0} is ambiguous. "
+            "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
+        )
+
     @staticmethod
     def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
         # Special handle floating point types because Spark's count treats nan as a valid value,

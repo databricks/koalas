@@ -503,10 +503,11 @@ def name_like_string(name: Union[str, Tuple]) -> str:
 
 def validate_axis(axis=0, none_axis=0):
     """ Check the given axis is valid. """
-    if axis not in (0, 1, "index", "columns", None):
-        raise ValueError("No axis named {0}".format(axis))
     # convert to numeric axis
-    return {None: none_axis, "index": 0, "columns": 1}.get(axis, axis)
+    axis = {None: none_axis, "index": 0, "columns": 1}.get(axis, axis)
+    if axis not in (none_axis, 0, 1):
+        raise ValueError("No axis named {0}".format(axis))
+    return axis
 
 
 def validate_bool_kwarg(value, arg_name):
