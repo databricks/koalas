@@ -66,11 +66,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf["b"] > 2], pdf[pdf["b"] > 2])
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
         self.assert_eq(kdf.a, pdf.a)
-        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
-        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
-        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
-
-        assert repr(kdf)
+        self.assert_eq(kdf.b.mean(), pdf.b.mean())
+        self.assert_eq(kdf.b.var(), pdf.b.var())
+        self.assert_eq(kdf.b.std(), pdf.b.std())
 
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])

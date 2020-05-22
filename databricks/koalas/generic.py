@@ -2192,10 +2192,6 @@ class Frame(object):
 
     loc.__doc__ = LocIndexer.__doc__
 
-    def compute(self):
-        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
-
     def __bool__(self):
         raise ValueError(
             "The truth value of a {0} is ambiguous. "
