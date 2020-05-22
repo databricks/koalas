@@ -70,6 +70,7 @@ Indexing, iteration
    DataFrame.iteritems
    DataFrame.iterrows
    DataFrame.keys
+   DataFrame.pop
    DataFrame.xs
    DataFrame.get
    DataFrame.where
@@ -116,6 +117,8 @@ Function application, GroupBy & Window
    DataFrame.agg
    DataFrame.aggregate
    DataFrame.groupby
+   DataFrame.rolling
+   DataFrame.expanding
    DataFrame.transform
    DataFrame.transform_batch
    DataFrame.map_in_pandas
@@ -165,8 +168,10 @@ Reindexing / Selection / Label manipulation
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.duplicated
+   DataFrame.equals
    DataFrame.filter
    DataFrame.head
+   DataFrame.rename
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.take
@@ -183,6 +188,7 @@ Missing data handling
 
    DataFrame.dropna
    DataFrame.fillna
+   DataFrame.replace
    DataFrame.bfill
    DataFrame.ffill
 
@@ -280,6 +286,6 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.line
    DataFrame.plot.pie
    DataFrame.plot.scatter
-   DataFrame.plot.kde
    DataFrame.plot.density
    DataFrame.hist
+   DataFrame.kde

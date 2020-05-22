@@ -34,7 +34,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
-from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import (
     name_like_string,
     scol_for,
@@ -44,13 +44,13 @@ from databricks.koalas.utils import (
 from databricks.koalas.window import Rolling, Expanding
 
 
-class _Frame(object):
+class Frame(object):
     """
     The base class for both DataFrame and Series.
     """
 
-    def __init__(self, internal: _InternalFrame):
-        self._internal = internal  # type: _InternalFrame
+    def __init__(self, internal: InternalFrame):
+        self._internal = internal  # type: InternalFrame
 
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
@@ -382,11 +382,11 @@ class _Frame(object):
         ...                    'col2': [4, 5, 6]},
         ...                   columns=['category', 'col1', 'col2'])
         >>> def keep_category_a(df):
-        ...    return df[df['category'] == 'A']
+        ...     return df[df['category'] == 'A']
         >>> def add_one(df, column):
-        ...    return df.assign(col3=df[column] + 1)
+        ...     return df.assign(col3=df[column] + 1)
         >>> def multiply(df, column1, column2):
-        ...    return df.assign(col4=df[column1] * df[column2])
+        ...     return df.assign(col4=df[column1] * df[column2])
 
 
         instead of writing
@@ -1706,11 +1706,11 @@ class _Frame(object):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series, _col
+        from databricks.koalas.series import Series, first_series
 
         kdf_or_kser = self
         if isinstance(kdf_or_kser, Series):
-            kser = _col(kdf_or_kser.to_frame())
+            kser = first_series(kdf_or_kser.to_frame())
             return kser._reduce_for_stat_function(
                 lambda _: F.expr(
                     "approx_percentile(`%s`, 0.5, %s)"
@@ -1728,7 +1728,7 @@ class _Frame(object):
         sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_spark_column_names])
 
         # Attach a dummy column for index to avoid default index.
-        sdf = _InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
+        sdf = InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
 
         # This is expected to be small so it's fine to transpose.
         return (
@@ -1955,13 +1955,13 @@ class _Frame(object):
             axis = validate_axis(axis)
 
         if isinstance(self, ks.DataFrame):
-            from databricks.koalas.series import _col
+            from databricks.koalas.series import first_series
 
             is_squeezable = len(self.columns[:2]) == 1
             # If DataFrame has multiple columns, there is no change.
             if not is_squeezable:
                 return self
-            series_from_column = _col(self)
+            series_from_column = first_series(self)
             has_single_value = len(series_from_column.head(2)) == 1
             # If DataFrame has only a single value, use pandas API directly.
             if has_single_value:
@@ -2090,7 +2090,7 @@ class _Frame(object):
         e    50
         Name: 0, dtype: int64
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         axis = validate_axis(axis)
         indexes = self.index
@@ -2103,7 +2103,7 @@ class _Frame(object):
             raise ValueError("Truncate: %s must be after %s" % (after, before))
 
         if isinstance(self, ks.Series):
-            result = _col(self.to_frame().loc[before:after])
+            result = first_series(self.to_frame().loc[before:after])
         elif isinstance(self, ks.DataFrame):
             if axis == 0:
                 result = self.loc[before:after]
@@ -2139,6 +2139,12 @@ class _Frame(object):
     def compute(self):
         """Alias of `to_pandas()` to mimic dask for easily porting tests."""
         return self.toPandas()
+
+    def __bool__(self):
+        raise ValueError(
+            "The truth value of a {0} is ambiguous. "
+            "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
+        )
 
     @staticmethod
     def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:

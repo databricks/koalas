@@ -31,7 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.frame import _CachedDataFrame
+from databricks.koalas.frame import CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -415,7 +415,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark().columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "x", "y"])
 
         columns = pdf.columns
         columns.name = "lvl_1"
@@ -443,14 +444,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark().columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "x", "y"])
 
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark().columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "(A, 0)", "(B, 1)"])
 
         columns.names = ["lvl_1", "lvl_2"]
 
@@ -458,7 +461,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns.names, ["lvl_1", "lvl_2"])
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark().columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "(A, 0)", "(B, 1)"])
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -1387,11 +1391,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Assert lower and upper
         self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
 
+        pdf["clip"] = pdf.A.clip(lower=1, upper=3)
+        kdf["clip"] = kdf.A.clip(lower=1, upper=3)
+        self.assert_eq(kdf, pdf)
+
         # Assert behavior on string values
         str_kdf = ks.DataFrame({"A": ["a", "b", "c"]}, index=np.random.rand(3))
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
     def test_binary_operators(self):
+        pdf = pd.DataFrame(
+            {"A": [0, 2, 4], "B": [4, 2, 0], "X": [-1, 10, 0]}, index=np.random.rand(3)
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf + kdf.copy(), pdf + pdf.copy())
+
         self.assertRaisesRegex(
             ValueError,
             "it comes from a different dataframe",
@@ -1434,12 +1449,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_add_suffix(self):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [3, 4, 5, 6]}, index=np.random.rand(4))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.add_suffix("_col"), kdf.add_suffix("_col"))
+        self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
         pdf.columns = columns
         kdf.columns = columns
-        self.assert_eq(pdf.add_suffix("_col"), kdf.add_suffix("_col"))
+        self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
     def test_join(self):
         # check basic function
@@ -3293,7 +3308,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         with kdf.cache() as cached_df:
-            self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+            self.assert_eq(isinstance(cached_df, CachedDataFrame), True)
             self.assert_eq(
                 repr(cached_df.storage_level), repr(StorageLevel(True, True, False, True))
             )
@@ -3312,7 +3327,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         for storage_level in storage_levels:
             with kdf.persist(storage_level) as cached_df:
-                self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+                self.assert_eq(isinstance(cached_df, CachedDataFrame), True)
                 self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
 
         self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))

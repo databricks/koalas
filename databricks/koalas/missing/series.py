@@ -17,84 +17,79 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property, common
+from databricks.koalas.missing import unsupported_function, unsupported_property, common
 
 
-def unsupported_function(method_name, deprecated=False, reason=""):
-    return _unsupported_function(
+def _unsupported_function(method_name, deprecated=False, reason=""):
+    return unsupported_function(
         class_name="pd.Series", method_name=method_name, deprecated=deprecated, reason=reason
     )
 
 
-def unsupported_property(property_name, deprecated=False, reason=""):
-    return _unsupported_property(
+def _unsupported_property(property_name, deprecated=False, reason=""):
+    return unsupported_property(
         class_name="pd.Series", property_name=property_name, deprecated=deprecated, reason=reason
     )
 
 
-class _MissingPandasLikeSeries(object):
+class MissingPandasLikeSeries(object):
 
     # Functions
-    align = unsupported_function("align")
-    argsort = unsupported_function("argsort")
-    asfreq = unsupported_function("asfreq")
-    at_time = unsupported_function("at_time")
-    autocorr = unsupported_function("autocorr")
-    between_time = unsupported_function("between_time")
-    bfill = unsupported_function("bfill")
-    combine = unsupported_function("combine")
-    cov = unsupported_function("cov")
-    divmod = unsupported_function("divmod")
-    droplevel = unsupported_function("droplevel")
-    ewm = unsupported_function("ewm")
-    factorize = unsupported_function("factorize")
-    ffill = unsupported_function("ffill")
-    filter = unsupported_function("filter")
-    first = unsupported_function("first")
-    infer_objects = unsupported_function("infer_objects")
-    interpolate = unsupported_function("interpolate")
-    item = unsupported_function("item")
-    items = unsupported_function("items")
-    iteritems = unsupported_function("iteritems")
-    last = unsupported_function("last")
-    last_valid_index = unsupported_function("last_valid_index")
-    mad = unsupported_function("mad")
-    prod = unsupported_function("prod")
-    product = unsupported_function("product")
-    rdivmod = unsupported_function("rdivmod")
-    reindex = unsupported_function("reindex")
-    reindex_like = unsupported_function("reindex_like")
-    rename_axis = unsupported_function("rename_axis")
-    reorder_levels = unsupported_function("reorder_levels")
-    resample = unsupported_function("resample")
-    searchsorted = unsupported_function("searchsorted")
-    sem = unsupported_function("sem")
-    set_axis = unsupported_function("set_axis")
-    slice_shift = unsupported_function("slice_shift")
-    swapaxes = unsupported_function("swapaxes")
-    swaplevel = unsupported_function("swaplevel")
-    tail = unsupported_function("tail")
-    to_hdf = unsupported_function("to_hdf")
-    to_period = unsupported_function("to_period")
-    to_sql = unsupported_function("to_sql")
-    to_timestamp = unsupported_function("to_timestamp")
-    tshift = unsupported_function("tshift")
-    tz_convert = unsupported_function("tz_convert")
-    tz_localize = unsupported_function("tz_localize")
-    unstack = unsupported_function("unstack")
-    view = unsupported_function("view")
+    align = _unsupported_function("align")
+    argsort = _unsupported_function("argsort")
+    asfreq = _unsupported_function("asfreq")
+    at_time = _unsupported_function("at_time")
+    autocorr = _unsupported_function("autocorr")
+    between_time = _unsupported_function("between_time")
+    bfill = _unsupported_function("bfill")
+    combine = _unsupported_function("combine")
+    cov = _unsupported_function("cov")
+    droplevel = _unsupported_function("droplevel")
+    ewm = _unsupported_function("ewm")
+    factorize = _unsupported_function("factorize")
+    ffill = _unsupported_function("ffill")
+    filter = _unsupported_function("filter")
+    first = _unsupported_function("first")
+    infer_objects = _unsupported_function("infer_objects")
+    interpolate = _unsupported_function("interpolate")
+    items = _unsupported_function("items")
+    iteritems = _unsupported_function("iteritems")
+    last = _unsupported_function("last")
+    last_valid_index = _unsupported_function("last_valid_index")
+    prod = _unsupported_function("prod")
+    product = _unsupported_function("product")
+    reindex = _unsupported_function("reindex")
+    reindex_like = _unsupported_function("reindex_like")
+    rename_axis = _unsupported_function("rename_axis")
+    reorder_levels = _unsupported_function("reorder_levels")
+    resample = _unsupported_function("resample")
+    searchsorted = _unsupported_function("searchsorted")
+    sem = _unsupported_function("sem")
+    set_axis = _unsupported_function("set_axis")
+    slice_shift = _unsupported_function("slice_shift")
+    swapaxes = _unsupported_function("swapaxes")
+    swaplevel = _unsupported_function("swaplevel")
+    tail = _unsupported_function("tail")
+    to_hdf = _unsupported_function("to_hdf")
+    to_period = _unsupported_function("to_period")
+    to_sql = _unsupported_function("to_sql")
+    to_timestamp = _unsupported_function("to_timestamp")
+    tshift = _unsupported_function("tshift")
+    tz_convert = _unsupported_function("tz_convert")
+    tz_localize = _unsupported_function("tz_localize")
+    view = _unsupported_function("view")
 
     # Deprecated functions
-    convert_objects = unsupported_function("convert_objects", deprecated=True)
-    nonzero = unsupported_function("nonzero", deprecated=True)
-    reindex_axis = unsupported_function("reindex_axis", deprecated=True)
-    select = unsupported_function("select", deprecated=True)
-    get_values = unsupported_function("get_values", deprecated=True)
+    convert_objects = _unsupported_function("convert_objects", deprecated=True)
+    nonzero = _unsupported_function("nonzero", deprecated=True)
+    reindex_axis = _unsupported_function("reindex_axis", deprecated=True)
+    select = _unsupported_function("select", deprecated=True)
+    get_values = _unsupported_function("get_values", deprecated=True)
 
     # Properties we won't support.
-    array = common.array(unsupported_property)
-    duplicated = common.duplicated(unsupported_property)
-    nbytes = unsupported_property(
+    array = common.array(_unsupported_property)
+    duplicated = common.duplicated(_unsupported_property)
+    nbytes = _unsupported_property(
         "nbytes",
         reason="'nbytes' requires to compute whole dataset. You can calculate manually it, "
         "with its 'itemsize', by explicitly executing its count. Use Spark's web UI "
@@ -102,11 +97,11 @@ class _MissingPandasLikeSeries(object):
     )
 
     # Functions we won't support.
-    memory_usage = common.memory_usage(unsupported_function)
-    to_pickle = common.to_pickle(unsupported_function)
-    to_xarray = common.to_xarray(unsupported_function)
-    __iter__ = common.__iter__(unsupported_function)
-    ravel = unsupported_function(
+    memory_usage = common.memory_usage(_unsupported_function)
+    to_pickle = common.to_pickle(_unsupported_function)
+    to_xarray = common.to_xarray(_unsupported_function)
+    __iter__ = common.__iter__(_unsupported_function)
+    ravel = _unsupported_function(
         "ravel",
         reason="If you want to collect your flattened underlying data as an NumPy array, "
         "use 'to_numpy().ravel()' instead.",
@@ -114,40 +109,40 @@ class _MissingPandasLikeSeries(object):
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
         # Deprecated properties
-        blocks = unsupported_property("blocks", deprecated=True)
-        ftypes = unsupported_property("ftypes", deprecated=True)
-        ftype = unsupported_property("ftype", deprecated=True)
-        is_copy = unsupported_property("is_copy", deprecated=True)
-        ix = unsupported_property("ix", deprecated=True)
-        asobject = unsupported_property("asobject", deprecated=True)
-        strides = unsupported_property("strides", deprecated=True)
-        imag = unsupported_property("imag", deprecated=True)
-        itemsize = unsupported_property("itemsize", deprecated=True)
-        data = unsupported_property("data", deprecated=True)
-        base = unsupported_property("base", deprecated=True)
-        flags = unsupported_property("flags", deprecated=True)
+        blocks = _unsupported_property("blocks", deprecated=True)
+        ftypes = _unsupported_property("ftypes", deprecated=True)
+        ftype = _unsupported_property("ftype", deprecated=True)
+        is_copy = _unsupported_property("is_copy", deprecated=True)
+        ix = _unsupported_property("ix", deprecated=True)
+        asobject = _unsupported_property("asobject", deprecated=True)
+        strides = _unsupported_property("strides", deprecated=True)
+        imag = _unsupported_property("imag", deprecated=True)
+        itemsize = _unsupported_property("itemsize", deprecated=True)
+        data = _unsupported_property("data", deprecated=True)
+        base = _unsupported_property("base", deprecated=True)
+        flags = _unsupported_property("flags", deprecated=True)
 
         # Deprecated functions
-        as_blocks = unsupported_function("as_blocks", deprecated=True)
-        as_matrix = unsupported_function("as_matrix", deprecated=True)
-        clip_lower = unsupported_function("clip_lower", deprecated=True)
-        clip_upper = unsupported_function("clip_upper", deprecated=True)
-        compress = unsupported_function("compress", deprecated=True)
-        get_ftype_counts = unsupported_function("get_ftype_counts", deprecated=True)
-        get_value = unsupported_function("get_value", deprecated=True)
-        set_value = unsupported_function("set_value", deprecated=True)
-        valid = unsupported_function("valid", deprecated=True)
-        to_dense = unsupported_function("to_dense", deprecated=True)
-        to_sparse = unsupported_function("to_sparse", deprecated=True)
-        to_msgpack = unsupported_function("to_msgpack", deprecated=True)
-        compound = unsupported_function("compound", deprecated=True)
-        put = unsupported_function("put", deprecated=True)
-        ptp = unsupported_function("ptp", deprecated=True)
-        argmax = unsupported_function("argmax", deprecated=True)
-        argmin = unsupported_function("argmin", deprecated=True)
+        as_blocks = _unsupported_function("as_blocks", deprecated=True)
+        as_matrix = _unsupported_function("as_matrix", deprecated=True)
+        clip_lower = _unsupported_function("clip_lower", deprecated=True)
+        clip_upper = _unsupported_function("clip_upper", deprecated=True)
+        compress = _unsupported_function("compress", deprecated=True)
+        get_ftype_counts = _unsupported_function("get_ftype_counts", deprecated=True)
+        get_value = _unsupported_function("get_value", deprecated=True)
+        set_value = _unsupported_function("set_value", deprecated=True)
+        valid = _unsupported_function("valid", deprecated=True)
+        to_dense = _unsupported_function("to_dense", deprecated=True)
+        to_sparse = _unsupported_function("to_sparse", deprecated=True)
+        to_msgpack = _unsupported_function("to_msgpack", deprecated=True)
+        compound = _unsupported_function("compound", deprecated=True)
+        put = _unsupported_function("put", deprecated=True)
+        ptp = _unsupported_function("ptp", deprecated=True)
+        argmax = _unsupported_function("argmax", deprecated=True)
+        argmin = _unsupported_function("argmin", deprecated=True)
 
         # Functions we won't support.
-        real = unsupported_property(
+        real = _unsupported_property(
             "real",
             reason="If you want to collect your data as an NumPy array, use 'to_numpy()' instead.",
         )

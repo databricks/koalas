@@ -24,7 +24,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, TimestampType, LongType
 
-from databricks.koalas.base import _column_op
+from databricks.koalas.base import column_op
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -47,7 +47,7 @@ class DatetimeMethods(object):
         """
         # TODO: Hit a weird exception
         # syntax error in attribute name: `to_date(`start_date`)` with alias
-        return _column_op(F.to_date)(self._data).alias(self._data.name)
+        return column_op(F.to_date)(self._data).alias(self._data.name)
 
     @property
     def time(self) -> "ks.Series":
@@ -62,21 +62,21 @@ class DatetimeMethods(object):
         """
         The year of the datetime.
         """
-        return _column_op(lambda c: F.year(c).cast(LongType()))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.year(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
     def month(self) -> "ks.Series":
         """
         The month of the timestamp as January = 1 December = 12.
         """
-        return _column_op(lambda c: F.month(c).cast(LongType()))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.month(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
     def day(self) -> "ks.Series":
         """
         The days of the datetime.
         """
-        return _column_op(lambda c: F.dayofmonth(c).cast(LongType()))(self._data).alias(
+        return column_op(lambda c: F.dayofmonth(c).cast(LongType()))(self._data).alias(
             self._data.name
         )
 
@@ -85,21 +85,21 @@ class DatetimeMethods(object):
         """
         The hours of the datetime.
         """
-        return _column_op(lambda c: F.hour(c).cast(LongType()))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.hour(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
     def minute(self) -> "ks.Series":
         """
         The minutes of the datetime.
         """
-        return _column_op(lambda c: F.minute(c).cast(LongType()))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.minute(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
     def second(self) -> "ks.Series":
         """
         The seconds of the datetime.
         """
-        return _column_op(lambda c: F.second(c).cast(LongType()))(self._data).alias(self._data.name)
+        return column_op(lambda c: F.second(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
     def microsecond(self) -> "ks.Series":
@@ -121,7 +121,7 @@ class DatetimeMethods(object):
         """
         The week ordinal of the year.
         """
-        return _column_op(lambda c: F.weekofyear(c).cast(LongType()))(self._data).alias(
+        return column_op(lambda c: F.weekofyear(c).cast(LongType()))(self._data).alias(
             self._data.name
         )
 

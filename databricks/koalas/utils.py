@@ -34,7 +34,29 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
+    from databricks.koalas.base import IndexOpsMixin
     from databricks.koalas.frame import DataFrame
+
+
+def same_anchor(
+    this: Union["DataFrame", "IndexOpsMixin"], that: Union["DataFrame", "IndexOpsMixin"]
+) -> bool:
+    """
+    Check if the anchors of the given DataFrame or Series are the same or not.
+    """
+    from databricks.koalas.base import IndexOpsMixin
+    from databricks.koalas.frame import DataFrame
+
+    assert isinstance(this, (DataFrame, IndexOpsMixin)), type(this)
+    this_internal = this._internal
+
+    assert isinstance(that, (DataFrame, IndexOpsMixin)), type(that)
+    that_internal = that._internal
+
+    return (
+        this_internal.spark_frame is that_internal.spark_frame
+        and this_internal.index_map == that_internal.index_map
+    )
 
 
 def combine_frames(this, *args, how="full", preserve_order_column=False):
@@ -56,14 +78,14 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(
-            arg._kdf is args[0]._kdf for arg in args
+            same_anchor(arg, args[0]) for arg in args
         ), "Currently only one different DataFrame (from given Series) is supported"
-        if this is args[0]._kdf:
+        if same_anchor(this, args[0]):
             return  # We don't need to combine. All series is in this.
         that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
-        if this is args[0]:
+        if same_anchor(this, args[0]):
             return  # We don't need to combine. `this` and `that` are same.
         that = args[0]
     else:
@@ -427,7 +449,7 @@ def lazy_property(fn):
 
     @property
     @functools.wraps(fn)
-    def _lazy_property(self):
+    def wrapped_lazy_property(self):
         if not hasattr(self, attr_name):
             setattr(self, attr_name, fn(self))
         return getattr(self, attr_name)
@@ -436,9 +458,7 @@ def lazy_property(fn):
         if hasattr(self, attr_name):
             delattr(self, attr_name)
 
-    _lazy_property = _lazy_property.deleter(deleter)
-
-    return _lazy_property
+    return wrapped_lazy_property.deleter(deleter)
 
 
 def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
@@ -483,10 +503,11 @@ def name_like_string(name: Union[str, Tuple]) -> str:
 
 def validate_axis(axis=0, none_axis=0):
     """ Check the given axis is valid. """
-    if axis not in (0, 1, "index", "columns", None):
-        raise ValueError("No axis named {0}".format(axis))
     # convert to numeric axis
-    return {None: none_axis, "index": 0, "columns": 1}.get(axis, axis)
+    axis = {None: none_axis, "index": 0, "columns": 1}.get(axis, axis)
+    if axis not in (none_axis, 0, 1):
+        raise ValueError("No axis named {0}".format(axis))
+    return axis
 
 
 def validate_bool_kwarg(value, arg_name):
