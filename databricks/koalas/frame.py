@@ -10515,7 +10515,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         sdf = sdf.withColumn(column, F.explode_outer(sdf[column]))
-        internal = _InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_map=self._internal.index_map,
             column_labels=self._internal.column_labels,
