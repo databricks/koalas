@@ -1580,14 +1580,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(
             [10, -2, 4, 7],
             index=pd.MultiIndex.from_tuples(
-                [("one", "a", "z"), ("one", "b", "x"), ("two", "a", "c"), ("two", "b", "v")]
+                [("one", "a", "z"), ("one", "b", "x"), ("two", "a", "c"), ("two", "b", "v")],
+                names=["A", "B", "C"],
             ),
         )
         kser = ks.from_pandas(pser)
 
         levels = [-3, -2, -1, 0, 1, 2]
         for level in levels:
-            self.assert_eq(pser.unstack(level=level), kser.unstack(level=level).sort_index())
+            pandas_result = pser.unstack(level=level)
+            koalas_result = kser.unstack(level=level).sort_index()
+            self.assert_eq(pandas_result, koalas_result)
+            self.assert_eq(pandas_result.index.names, koalas_result.index.names)
+            self.assert_eq(pandas_result.columns.names, koalas_result.columns.names)
+
+        # non-numeric datatypes
+        pser = pd.Series(
+            list("abcd"), index=pd.MultiIndex.from_product([["one", "two"], ["a", "b"]])
+        )
+        kser = ks.from_pandas(pser)
+
+        levels = [-2, -1, 0, 1]
+        for level in levels:
+            pandas_result = pser.unstack(level=level)
+            koalas_result = kser.unstack(level=level).sort_index()
+            self.assert_eq(pandas_result, koalas_result)
+            self.assert_eq(pandas_result.index.names, koalas_result.index.names)
+            self.assert_eq(pandas_result.columns.names, koalas_result.columns.names)
 
         # Exceeding the range of level
         self.assertRaises(IndexError, lambda: kser.unstack(level=3))
