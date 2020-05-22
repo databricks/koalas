@@ -1387,6 +1387,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Assert lower and upper
         self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
 
+        pdf["clip"] = pdf.A.clip(lower=1, upper=3)
+        kdf["clip"] = kdf.A.clip(lower=1, upper=3)
+        self.assert_eq(kdf, pdf)
+
         # Assert behavior on string values
         str_kdf = ks.DataFrame({"A": ["a", "b", "c"]}, index=np.random.rand(3))
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
