@@ -22,7 +22,6 @@ import inspect
 from collections import Iterable, OrderedDict
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
-from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
