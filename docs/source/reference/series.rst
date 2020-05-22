@@ -126,6 +126,7 @@ Computations / Descriptive Stats
    Series.cumprod
    Series.describe
    Series.kurt
+   Series.mad
    Series.max
    Series.mean
    Series.min
@@ -192,6 +193,7 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+   Series.unstack
    Series.repeat
    Series.squeeze
 

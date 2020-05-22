@@ -26,11 +26,11 @@ from databricks import koalas as ks
 from databricks.koalas.config import option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.groupby import (
-    _MissingPandasLikeDataFrameGroupBy,
-    _MissingPandasLikeSeriesGroupBy,
+    MissingPandasLikeDataFrameGroupBy,
+    MissingPandasLikeSeriesGroupBy,
 )
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
-from databricks.koalas.groupby import _is_multi_agg_with_relabel
+from databricks.koalas.groupby import is_multi_agg_with_relabel
 
 
 class GroupByTest(ReusedSQLTestCase, TestUtils):
@@ -237,18 +237,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                                 almost=almost,
                             )
 
-                kkey, pkey = (kdf.b + 1, pdf.b + 1)
-                with self.subTest(as_index=as_index, func=func, key=pkey):
-                    self.assert_eq(
-                        sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
-                        sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
-                        almost=almost,
-                    )
-                    self.assert_eq(
-                        sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
-                        sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
-                        almost=almost,
-                    )
+                for kkey, pkey in [(kdf.b + 1, pdf.b + 1), (kdf.copy().b, pdf.copy().b)]:
+                    with self.subTest(as_index=as_index, func=func, key=pkey):
+                        self.assert_eq(
+                            sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
+                            sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
+                            almost=almost,
+                        )
+                        self.assert_eq(
+                            sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
+                            sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
+                            almost=almost,
+                        )
 
             for almost, func in funcs:
                 for i in [0, 4, 7]:
@@ -265,7 +265,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                         )
 
         for almost, func in funcs:
-            for kkey, pkey in [(kdf.b, pdf.b), (kdf.b + 1, pdf.b + 1)]:
+            for kkey, pkey in [
+                (kdf.b, pdf.b),
+                (kdf.b + 1, pdf.b + 1),
+                (kdf.copy().b, pdf.copy().b),
+            ]:
                 with self.subTest(func=func, key=pkey):
                     self.assert_eq(
                         getattr(kdf.a.groupby(kkey), func)().sort_index(),
@@ -330,28 +334,32 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             sort(pdf.groupby(pkey, as_index=True).agg(["sum"]).reset_index()),
                         )
 
-            kkey, pkey = (kdf.A + 1, pdf.A + 1)
-            with self.subTest(as_index=as_index, key=pkey):
-                self.assert_eq(
-                    sort(kdf.groupby(kkey, as_index=as_index).agg("sum")),
-                    sort(pdf.groupby(pkey, as_index=as_index).agg("sum")),
-                )
-                self.assert_eq(
-                    sort(kdf.groupby(kkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
-                    sort(pdf.groupby(pkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
-                )
-                self.assert_eq(
-                    sort(
-                        kdf.groupby(kkey, as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
-                    ),
-                    sort(
-                        pdf.groupby(pkey, as_index=as_index).agg({"B": ["min", "max"], "C": "sum"})
-                    ),
-                )
-                self.assert_eq(
-                    sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
-                    sort(pdf.groupby(pkey, as_index=as_index).agg(["sum"])),
-                )
+            for kkey, pkey in [(kdf.A + 1, pdf.A + 1), (kdf.copy().A, pdf.copy().A)]:
+                with self.subTest(as_index=as_index, key=pkey):
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg("sum")),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg("sum")),
+                    )
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg({"B": "min", "C": "sum"})),
+                    )
+                    self.assert_eq(
+                        sort(
+                            kdf.groupby(kkey, as_index=as_index).agg(
+                                {"B": ["min", "max"], "C": "sum"}
+                            )
+                        ),
+                        sort(
+                            pdf.groupby(pkey, as_index=as_index).agg(
+                                {"B": ["min", "max"], "C": "sum"}
+                            )
+                        ),
+                    )
+                    self.assert_eq(
+                        sort(kdf.groupby(kkey, as_index=as_index).agg(["sum"])),
+                        sort(pdf.groupby(pkey, as_index=as_index).agg(["sum"])),
+                    )
 
         expected_error_message = (
             r"aggs must be a dict mapping from column name \(string or "
@@ -1814,7 +1822,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # DataFrameGroupBy functions
         missing_functions = inspect.getmembers(
-            _MissingPandasLikeDataFrameGroupBy, inspect.isfunction
+            MissingPandasLikeDataFrameGroupBy, inspect.isfunction
         )
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
@@ -1836,7 +1844,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 getattr(kdf.groupby("a"), name)()
 
         # SeriesGroupBy functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeSeriesGroupBy, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeSeriesGroupBy, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -1858,7 +1866,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # DataFrameGroupBy properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeDataFrameGroupBy, lambda o: isinstance(o, property)
+            MissingPandasLikeDataFrameGroupBy, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -1884,7 +1892,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # SeriesGroupBy properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeSeriesGroupBy, lambda o: isinstance(o, property)
+            MissingPandasLikeSeriesGroupBy, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -1911,5 +1919,5 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     @staticmethod
     def test_is_multi_agg_with_relabel():
 
-        assert _is_multi_agg_with_relabel(a="max") is False
-        assert _is_multi_agg_with_relabel(a_min=("a", "max"), a_max=("a", "min")) is True
+        assert is_multi_agg_with_relabel(a="max") is False
+        assert is_multi_agg_with_relabel(a_min=("a", "max"), a_max=("a", "min")) is True

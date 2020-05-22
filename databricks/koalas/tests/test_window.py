@@ -19,10 +19,10 @@ import inspect
 from databricks import koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.window import (
-    _MissingPandasLikeExpanding,
-    _MissingPandasLikeRolling,
-    _MissingPandasLikeExpandingGroupby,
-    _MissingPandasLikeRollingGroupby,
+    MissingPandasLikeExpanding,
+    MissingPandasLikeRolling,
+    MissingPandasLikeExpandingGroupby,
+    MissingPandasLikeRollingGroupby,
 )
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
@@ -32,7 +32,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.DataFrame({"a": [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
         # Expanding functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeExpanding, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeExpanding, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -64,7 +64,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
                 getattr(kdf.a.expanding(1), name)()  # Series
 
         # Rolling functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeRolling, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeRolling, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -95,7 +95,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
 
         # Expanding properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeExpanding, lambda o: isinstance(o, property)
+            MissingPandasLikeExpanding, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -131,7 +131,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
 
         # Rolling properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeRolling, lambda o: isinstance(o, property)
+            MissingPandasLikeRolling, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -169,7 +169,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
 
         # Expanding functions
         missing_functions = inspect.getmembers(
-            _MissingPandasLikeExpandingGroupby, inspect.isfunction
+            MissingPandasLikeExpandingGroupby, inspect.isfunction
         )
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
@@ -202,7 +202,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
                 getattr(kdf.a.groupby(kdf.a).expanding(1), name)()  # Series
 
         # Rolling functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeRollingGroupby, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeRollingGroupby, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -233,7 +233,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
 
         # Expanding properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeExpandingGroupby, lambda o: isinstance(o, property)
+            MissingPandasLikeExpandingGroupby, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -269,7 +269,7 @@ class ExpandingRollingTest(ReusedSQLTestCase, TestUtils):
 
         # Rolling properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeRollingGroupby, lambda o: isinstance(o, property)
+            MissingPandasLikeRollingGroupby, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name

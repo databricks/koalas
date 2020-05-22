@@ -364,6 +364,14 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = self.pdf
 
         self.assert_eq(kdf.loc[kdf.a % 2 == 0], pdf.loc[pdf.a % 2 == 0])
+        self.assert_eq(kdf.loc[kdf.a % 2 == 0, "a"], pdf.loc[pdf.a % 2 == 0, "a"])
+        self.assert_eq(kdf.loc[kdf.a % 2 == 0, ["a"]], pdf.loc[pdf.a % 2 == 0, ["a"]])
+        self.assert_eq(kdf.a.loc[kdf.a % 2 == 0], pdf.a.loc[pdf.a % 2 == 0])
+
+        self.assert_eq(kdf.loc[kdf.copy().a % 2 == 0], pdf.loc[pdf.copy().a % 2 == 0])
+        self.assert_eq(kdf.loc[kdf.copy().a % 2 == 0, "a"], pdf.loc[pdf.copy().a % 2 == 0, "a"])
+        self.assert_eq(kdf.loc[kdf.copy().a % 2 == 0, ["a"]], pdf.loc[pdf.copy().a % 2 == 0, ["a"]])
+        self.assert_eq(kdf.a.loc[kdf.copy().a % 2 == 0], pdf.a.loc[pdf.copy().a % 2 == 0])
 
     def test_loc_noindex(self):
         kdf = self.kdf
