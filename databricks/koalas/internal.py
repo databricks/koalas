@@ -121,8 +121,6 @@ class InternalFrame(object):
 
     * `index_map` is zipped pairs of `index_spark_column_names` and `index_names`
 
-    * `to_external_spark_frame` represents Spark DataFrame derived by the metadata.
-
     * `to_internal_spark_frame` represents Spark DataFrame derived by the metadata. Includes index.
 
     * `to_pandas_frame` represents pandas DataFrame derived by the metadata
@@ -156,15 +154,6 @@ class InternalFrame(object):
     |                2|  3|  7| 11| 15| 19|
     |                3|  4|  8| 12| 16| 20|
     +-----------------+---+---+---+---+---+
-    >>> internal.to_external_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
-    +---+---+---+---+---+
-    |  A|  B|  C|  D|  E|
-    +---+---+---+---+---+
-    |  1|  5|  9| 13| 17|
-    |  2|  6| 10| 14| 18|
-    |  3|  7| 11| 15| 19|
-    |  4|  8| 12| 16| 20|
-    +---+---+---+---+---+
     >>> internal.to_pandas_frame
        A  B   C   D   E
     0  1  5   9  13  17
@@ -229,31 +218,6 @@ class InternalFrame(object):
     2  6  10  14  18
     3  7  11  15  19
     4  8  12  16  20
-
-    The `to_external_spark_frame` will drop the index columns:
-
-    >>> internal.to_external_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
-    +---+---+---+---+
-    |  B|  C|  D|  E|
-    +---+---+---+---+
-    |  5|  9| 13| 17|
-    |  6| 10| 14| 18|
-    |  7| 11| 15| 19|
-    |  8| 12| 16| 20|
-    +---+---+---+---+
-
-    but if `drop=False`, the columns will still remain in `to_external_spark_frame`:
-
-    >>> kdf.set_index("A", drop=False)._internal.to_external_spark_frame.show()
-    ... # doctest: +NORMALIZE_WHITESPACE
-    +---+---+---+---+---+
-    |  A|  B|  C|  D|  E|
-    +---+---+---+---+---+
-    |  1|  5|  9| 13| 17|
-    |  2|  6| 10| 14| 18|
-    |  3|  7| 11| 15| 19|
-    |  4|  8| 12| 16| 20|
-    +---+---+---+---+---+
 
     In case that index becomes a multi index as below:
 
@@ -777,19 +741,6 @@ class InternalFrame(object):
                     spark_column = spark_column.alias(name)
                 data_columns.append(spark_column)
         return self.spark_frame.select(index_spark_columns + data_columns)
-
-    @lazy_property
-    def to_external_spark_frame(self) -> spark.DataFrame:
-        """ Return as new Spark DataFrame. """
-        data_columns = []
-        for i, (label, spark_column, column_name) in enumerate(
-            zip(self.column_labels, self.data_spark_columns, self.data_spark_column_names)
-        ):
-            name = str(i) if label is None else name_like_string(label)
-            if column_name != name:
-                spark_column = spark_column.alias(name)
-            data_columns.append(spark_column)
-        return self.spark_frame.select(data_columns)
 
     @lazy_property
     def to_pandas_frame(self) -> pd.DataFrame:
