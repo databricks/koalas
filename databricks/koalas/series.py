@@ -4538,26 +4538,28 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
         if same_anchor(self, other):
-            this = self.name
-            that = other.name
+            this = self._internal.spark_column
+            that = other._internal.spark_column
             combined = self._kdf
         else:
-            this = "__this_{}".format(self.name)
-            that = "__that_{}".format(other.name)
             with option_context("compute.ops_on_diff_frames", True):
                 combined = combine_frames(self.to_frame(), other)
-        sdf = combined._sdf
+            this = combined["this"][self.name]._internal.spark_column
+            that = combined["that"][other.name]._internal.spark_column
         # If `self` has missing value, use value of `other`
-        cond = F.when(sdf[this].isNull(), sdf[that]).otherwise(sdf[this])
+        cond = F.when(this.isNull(), that).otherwise(this)
         # If `self` and `other` come from same frame, the anchor should be kept
         if same_anchor(self, other):
             return self._with_new_scol(cond)
         index_scols = combined._internal.index_spark_columns
-        sdf = sdf.select(*index_scols, cond.alias(self.name)).distinct()
+        sdf = combined._internal.spark_frame.select(
+            *index_scols, cond.alias(self._internal.data_spark_column_names[0])
+        ).distinct()
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=self._internal.index_map,
             column_labels=self._internal.column_labels,
+            data_spark_columns=[scol_for(sdf, self._internal.data_spark_column_names[0])],
             column_label_names=self._internal.column_label_names,
         )
         return first_series(ks.DataFrame(internal))

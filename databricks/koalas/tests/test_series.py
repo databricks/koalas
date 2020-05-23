@@ -1301,13 +1301,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = kser2.to_pandas()
 
         self.assert_eq(
-            repr(kser1.combine_first(kser2).sort_index()),
-            repr(pser1.combine_first(pser2).sort_index()),
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
         with self.assertRaisesRegex(
             ValueError, "`combine_first` only allows `Series` for parameter `other`"
         ):
             kser1.combine_first(50)
+
+        kser1.name = ("X", "A")
+        kser2.name = ("Y", "B")
+        pser1.name = ("X", "A")
+        pser2.name = ("Y", "B")
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
 
         # MultiIndex
         midx1 = pd.MultiIndex(
@@ -1324,8 +1331,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = kser2.to_pandas()
 
         self.assert_eq(
-            repr(kser1.combine_first(kser2).sort_index()),
-            repr(pser1.combine_first(pser2).sort_index()),
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
         # Series come from same DataFrame
@@ -1341,8 +1347,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = kser2.to_pandas()
 
         self.assert_eq(
-            repr(kser1.combine_first(kser2).sort_index()),
-            repr(pser1.combine_first(pser2).sort_index()),
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+
+        kser1.name = ("X", "A")
+        kser2.name = ("Y", "B")
+        pser1.name = ("X", "A")
+        pser2.name = ("Y", "B")
+
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
     def test_udt(self):
