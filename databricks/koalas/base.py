@@ -368,14 +368,16 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).hasnans
         False
 
+        >>> (ks.Series([1.0, 2.0, np.nan]) + 1).hasnans
+        True
+
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._internal._sdf.select(self.spark_column)
-        col = self.spark_column
+        sdf = self._internal.spark_frame
+        scol = self.spark_column
 
-        ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
-        return ret
+        return sdf.select(F.max(scol.isNull() | F.isnan(scol))).collect()[0][0]
 
     @property
     def is_monotonic(self):
