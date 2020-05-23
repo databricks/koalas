@@ -28,11 +28,11 @@ import numpy as np
 import pandas as pd
 
 from pyspark import sql as spark
+from pyspark.sql import functions as F
 from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas import functions as F
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import (
@@ -1720,7 +1720,7 @@ class Frame(object):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         return self._reduce_for_stat_function(
-            lambda scol: F.approx_percentile(scol, 0.5, accuracy),
+            lambda scol: F.percentile_approx(scol, 0.5, accuracy),
             name="median",
             numeric_only=numeric_only,
             axis=axis,

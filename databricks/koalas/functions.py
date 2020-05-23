@@ -13,10 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from pyspark.sql.functions import *
+from pyspark import SparkContext
+from pyspark.sql.column import Column, _to_java_column, _to_seq, _create_column_from_literal
 
 
-def approx_percentile(col, percentage, accuracy=10000):
+__all__ = ["percentile_approx"]
+
+
+def percentile_approx(col, percentage, accuracy=10000):
     """
     Returns the approximate percentile value of numeric column col at the given percentage.
     The value of percentage must be between 0.0 and 1.0.
@@ -32,9 +36,6 @@ def approx_percentile(col, percentage, accuracy=10000):
 
     Ported from Spark 3.1.
     """
-    from pyspark import SparkContext
-    from pyspark.sql.column import Column, _to_java_column, _to_seq, _create_column_from_literal
-
     sc = SparkContext._active_spark_context
 
     if isinstance(percentage, (list, tuple)):
@@ -55,12 +56,10 @@ def approx_percentile(col, percentage, accuracy=10000):
         else _create_column_from_literal(accuracy)
     )
 
-    return _call_udf(sc, "approx_percentile", _to_java_column(col), percentage, accuracy)
+    return _call_udf(sc, "percentile_approx", _to_java_column(col), percentage, accuracy)
 
 
 def _call_udf(sc, name, *cols):
-    from pyspark.sql.column import Column
-
     return Column(sc._jvm.functions.callUDF(name, _make_arguments(sc, *cols)))
 
 

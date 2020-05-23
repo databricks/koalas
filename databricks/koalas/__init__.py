@@ -106,6 +106,13 @@ def _auto_patch():
     import os
     import logging
 
+    from pyspark.sql import dataframe as df, functions as F
+    from databricks.koalas import functions
+
+    for name in functions.__all__:
+        if not hasattr(F, name):
+            setattr(F, name, getattr(functions, name))
+
     # Attach a usage logger.
     logger_module = os.getenv("KOALAS_USAGE_LOGGER", None)
     if logger_module is not None:
@@ -131,8 +138,6 @@ def _auto_patch():
             "Patching spark automatically. You can disable it by setting "
             "SPARK_KOALAS_AUTOPATCH=false in your environment"
         )
-
-        from pyspark.sql import dataframe as df
 
         df.DataFrame.to_koalas = DataFrame.to_koalas
 

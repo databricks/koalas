@@ -31,7 +31,7 @@ from pandas.api.types import is_list_like
 
 from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 from pyspark import sql as spark
-from pyspark.sql import Column
+from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     BooleanType,
@@ -46,7 +46,6 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas import functions as F
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
@@ -3131,7 +3130,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # +--------------------------------+
             # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
             # +--------------------------------+
-            percentile_col = F.approx_percentile(self._internal.spark_column, quantiles, accuracy)
+            percentile_col = F.percentile_approx(self._internal.spark_column, quantiles, accuracy)
             sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
 
             internal_index_column = SPARK_DEFAULT_INDEX_NAME
@@ -3168,7 +3167,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return DataFrame(internal)[value_column].rename(self.name)
         else:
             return self._reduce_for_stat_function(
-                lambda scol: F.approx_percentile(scol, q, accuracy), name="quantile"
+                lambda scol: F.percentile_approx(scol, q, accuracy), name="quantile"
             )
 
     # TODO: add axis, numeric_only, pct, na_option parameter
