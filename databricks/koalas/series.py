@@ -31,7 +31,7 @@ from pandas.api.types import is_list_like
 
 from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column
+from pyspark.sql import Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     BooleanType,
@@ -46,6 +46,7 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas import functions as F
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
@@ -3088,10 +3089,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.quantile(.5)
         3
 
+        >>> (s + 1).quantile(.5)
+        4
+
         >>> s.quantile([.25, .5, .75])
         0.25    2
         0.5     3
         0.75    4
+        Name: 0, dtype: int64
+
+        >>> (s + 1).quantile([.25, .5, .75])
+        0.25    3
+        0.5     4
+        0.75    5
         Name: 0, dtype: int64
         """
         if not isinstance(accuracy, int):
@@ -3121,12 +3131,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # +--------------------------------+
             # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
             # +--------------------------------+
-            sdf = self._internal._sdf
-            args = ", ".join(map(str, quantiles))
-            percentile_col = F.expr(
-                "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy)
-            )
-            sdf = sdf.select(percentile_col.alias("percentiles"))
+            percentile_col = F.approx_percentile(self._internal.spark_column, quantiles, accuracy)
+            sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
 
             internal_index_column = SPARK_DEFAULT_INDEX_NAME
             value_column = "value"
@@ -3162,8 +3168,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return DataFrame(internal)[value_column].rename(self.name)
         else:
             return self._reduce_for_stat_function(
-                lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)),
-                name="median",
+                lambda scol: F.approx_percentile(scol, q, accuracy), name="quantile"
             )
 
     # TODO: add axis, numeric_only, pct, na_option parameter
@@ -5017,21 +5022,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
-        col_sdf = self.spark_column
-        col_type = self.spark_type
-        if isinstance(col_type, BooleanType) and sfun.__name__ not in ("min", "max"):
+        scol = self.spark_column
+        spark_type = self.spark_type
+        if isinstance(spark_type, BooleanType) and sfun.__name__ not in ("min", "max"):
             # Stat functions cannot be used with boolean values by default
             # Thus, cast to integer (true to 1 and false to 0)
             # Exclude the min and max methods though since those work with booleans
-            col_sdf = col_sdf.cast("integer")
+            scol = scol.cast("integer")
         if num_args == 1:
             # Only pass in the column if sfun accepts only one arg
-            col_sdf = sfun(col_sdf)
+            scol = sfun(scol)
         else:  # must be 2
             assert num_args == 2
             # Pass in both the column and its data type if sfun accepts two args
-            col_sdf = sfun(col_sdf, col_type)
-        return unpack_scalar(self._internal._sdf.select(col_sdf))
+            scol = sfun(scol, spark_type)
+        return unpack_scalar(self._internal.spark_frame.select(scol))
 
     def __len__(self):
         return len(self.to_dataframe())
