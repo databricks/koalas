@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Optional, Union, List
 import pyspark
 from pyspark import StorageLevel
 from pyspark.sql import Column
+from pyspark.sql import DataFrame as SparkDataFrame
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -676,6 +677,69 @@ class SparkFrameMethods(object):
             self._kdf._internal.to_internal_spark_frame.explain(extended)
         else:
             self._kdf._internal.to_internal_spark_frame.explain(extended, mode)
+
+    def apply(self, func, index_col=None):
+        """
+        Applies a function that takes and returns a Spark DataFrame. It allows natively
+        apply a Spark function and column APIs with the Spark column internally used
+        in Series or Index.
+
+        .. note:: set `index_col` and keep the column named as so in the output Spark
+            DataFrame to avoid using the default index to prevent performance penalty.
+            If you omit `index_col`, it will use default index which is potentially
+            expensive in general.
+
+        .. note:: it will lose column labels. This is a synonym of
+            ``func(kdf.to_spark(index_col)).to_koalas(index_col)``.
+
+        Parameters
+        ----------
+        func : function
+            Function to apply the function against the data by using Spark DataFrame.
+
+        Returns
+        -------
+        DataFrame
+
+        Raises
+        ------
+        ValueError : If the output from the function is not a Spark DataFrame.
+
+        Examples
+        --------
+        >>> from databricks import koalas as ks
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, columns=["a", "b"])
+        >>> kdf
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> kdf.spark.apply(
+        ...     lambda sdf: sdf.selectExpr("a + b as c", "index"), index_col="index")
+        ... # doctest: +NORMALIZE_WHITESPACE
+               c
+        index
+        0      5
+        1      7
+        2      9
+
+        The case below ends up with using the default index, which should be avoided
+        if possible.
+
+        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count())
+           a  count
+        0  1      1
+        1  3      1
+        2  2      1
+        """
+        output = func(self.frame(index_col))
+        if not isinstance(output, SparkDataFrame):
+            raise ValueError(
+                "The output of the function [%s] should be of a "
+                "pyspark.sql.DataFrame; however, got [%s]." % (func, type(output))
+            )
+        return output.to_koalas(index_col)
 
 
 class CachedSparkFrameMethods(SparkFrameMethods):
