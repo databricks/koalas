@@ -56,9 +56,9 @@ class SparkIndexOpsMethods(object):
 
     def transform(self, func):
         """
-        Applies a function that takes and returns a Spark column. It allows natively
+        Applies a function that takes and returns a Spark column. It allows to natively
         apply a Spark function and column APIs with the Spark column internally used
-        in Series or Index.
+        in Series or Index. The output length of the Spark column should be same as input's.
 
         .. note:: It requires to have the same input and output length; therefore,
             the aggregate Spark functions such as count does not work.
@@ -117,6 +117,76 @@ class SparkIndexOpsMethods(object):
         # `df1.a.spark.transform(lambda _: F.col("non-existent"))`.
         new_ser._internal.to_internal_spark_frame
         return new_ser
+
+    def apply(self, func):
+        """
+        Applies a function that takes and returns a Spark column. It allows to natively
+        apply a Spark function and column APIs with the Spark column internally used
+        in Series or Index.
+
+        .. note:: It forces to lose the index and end up with using default index. It is
+            preferred to use :meth:`Series.spark.transform` or `:meth:`DataFrame.spark.apply`
+            with specifying the `inedx_col`.
+
+        .. note:: It does not require to have the same length of the input and output.
+            However, it requires to create a new DataFrame internally which will require
+            to set `compute.ops_on_diff_frames` to compute even with the same origin
+            DataFrame that is expensive, whereas :meth:`Series.spark.transform` does not
+            require it.
+
+        Parameters
+        ----------
+        func : function
+            Function to apply the function against the data by using Spark columns.
+
+        Returns
+        -------
+        Series
+
+        Raises
+        ------
+        ValueError : If the output from the function is not a Spark column.
+
+        Examples
+        --------
+        >>> from databricks import koalas as ks
+        >>> from pyspark.sql.functions import count, lit
+        >>> df = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, columns=["a", "b"])
+        >>> df
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> df.a.spark.apply(lambda c: count(c))
+        0    3
+        Name: a, dtype: int64
+
+        >>> df.a.spark.apply(lambda c: c + df.b.spark.column)
+        0    5
+        1    7
+        2    9
+        Name: a, dtype: int64
+        """
+        from databricks.koalas import Index, DataFrame, Series
+        from databricks.koalas.series import first_series
+        from databricks.koalas.internal import HIDDEN_COLUMNS
+
+        if isinstance(self._data, Index):
+            raise NotImplementedError("Index does not support spark.apply yet.")
+        output = func(self._data.spark.column)
+        if not isinstance(output, Column):
+            raise ValueError(
+                "The output of the function [%s] should be of a "
+                "pyspark.sql.Column; however, got [%s]." % (func, type(output))
+            )
+        assert isinstance(self._data, Series)
+
+        sdf = self._data._internal.spark_frame.drop(*HIDDEN_COLUMNS).select(output)
+        # Lose index.
+        kdf = DataFrame(sdf)
+        kdf.columns = [self._data.name]
+        return first_series(kdf)
 
 
 class SparkFrameMethods(object):
