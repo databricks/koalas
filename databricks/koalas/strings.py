@@ -35,8 +35,8 @@ class StringMethods(object):
     """String methods for Koalas Series"""
 
     def __init__(self, series: "ks.Series"):
-        if not isinstance(series.spark_type, (StringType, BinaryType, ArrayType)):
-            raise ValueError("Cannot call StringMethods on type {}".format(series.spark_type))
+        if not isinstance(series.spark.data_type, (StringType, BinaryType, ArrayType)):
+            raise ValueError("Cannot call StringMethods on type {}".format(series.spark.data_type))
         self._data = series
         self.name = self._data.name
 
@@ -1148,7 +1148,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        return self._data._with_new_scol(scol=pudf(self._data.spark_column)).rename(self.name)
+        return self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
 
     def index(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1271,7 +1271,7 @@ class StringMethods(object):
         1    0
         Name: 0, dtype: int64
         """
-        if isinstance(self._data.spark_type, (ArrayType, MapType)):
+        if isinstance(self._data.spark.data_type, (ArrayType, MapType)):
             return column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
                 self._data.name
             )
@@ -2001,7 +2001,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark_column)).rename(self.name)
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
 
         if expand:
             kdf = kser.to_frame()
@@ -2135,7 +2135,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark_column)).rename(self.name)
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
 
         if expand:
             kdf = kser.to_frame()
