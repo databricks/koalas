@@ -39,7 +39,7 @@ class SparkIndexOpsMethods(object):
         self._data = data
 
     @property
-    def type(self):
+    def data_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self._data._internal.spark_type_for(self._data._internal.column_labels[0])
 
@@ -110,7 +110,12 @@ class SparkIndexOpsMethods(object):
                 "The output of the function [%s] should be of a "
                 "pyspark.sql.Column; however, got [%s]." % (func, type(output))
             )
-        return self._data._with_new_scol(scol=func(self._data.spark.column)).rename(self._data.name)
+        new_ser = self._data._with_new_scol(scol=output).rename(self._data.name)
+        # Trigger the resolution so it throws an exception if anything does wrong
+        # within the function, for example,
+        # `df1.a.spark.transform(lambda _: F.col("non-existent"))`.
+        new_ser._internal.to_internal_spark_frame
+        return new_ser
 
 
 class SparkFrameMethods(object):

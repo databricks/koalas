@@ -109,7 +109,7 @@ in Spark. These can be accessed by ``Index.spark.<function/property>``.
 .. autosummary::
    :toctree: api/
 
-   Index.spark.type
+   Index.spark.data_type
    Index.spark.column
    Index.spark.transform
 
@@ -248,7 +248,7 @@ in Spark. These can be accessed by ``MultiIndex.spark.<function/property>``.
 .. autosummary::
    :toctree: api/
 
-   MultiIndex.spark.type
+   MultiIndex.spark.data_type
    MultiIndex.spark.column
    MultiIndex.spark.transform
 

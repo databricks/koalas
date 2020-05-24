@@ -109,7 +109,7 @@ def numpy_column_op(f):
         new_args = []
         for arg in args:
             # TODO: This is a quick hack to support NumPy type. We should revisit this.
-            if isinstance(self.spark.type, LongType) and isinstance(arg, np.timedelta64):
+            if isinstance(self.spark.data_type, LongType) and isinstance(arg, np.timedelta64):
                 new_args.append(float(arg / np.timedelta64(1, "s")))
             else:
                 new_args.append(arg)
@@ -152,9 +152,9 @@ class IndexOpsMixin(object):
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other):
-        if isinstance(self.spark.type, StringType):
+        if isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
-            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.type, StringType):
+            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
                 return column_op(F.concat)(self, other)
             # Handle df['col'] + 'literal'
             elif isinstance(other, str):
@@ -167,12 +167,12 @@ class IndexOpsMixin(object):
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
         # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-        if isinstance(other, IndexOpsMixin) and isinstance(self.spark.type, TimestampType):
-            if not isinstance(other.spark.type, TimestampType):
+        if isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, TimestampType):
+            if not isinstance(other.spark.data_type, TimestampType):
                 raise TypeError("datetime subtraction can only be applied to datetime series.")
             return self.astype("bigint") - other.astype("bigint")
-        elif isinstance(other, IndexOpsMixin) and isinstance(self.spark.type, DateType):
-            if not isinstance(other.spark.type, DateType):
+        elif isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, DateType):
+            if not isinstance(other.spark.data_type, DateType):
                 raise TypeError("date subtraction can only be applied to date series.")
             return column_op(F.datediff)(self, other)
         else:
@@ -215,7 +215,7 @@ class IndexOpsMixin(object):
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
-        if isinstance(self.spark.type, StringType) and isinstance(other, str):
+        if isinstance(self.spark.data_type, StringType) and isinstance(other, str):
             return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
         else:
             return column_op(Column.__radd__)(self, other)
@@ -335,7 +335,7 @@ class IndexOpsMixin(object):
         >>> s.rename("a").to_frame().set_index("a").index.dtype
         dtype('<M8[ns]')
         """
-        return spark_type_to_pandas_dtype(self.spark.type)
+        return spark_type_to_pandas_dtype(self.spark.data_type)
 
     @property
     def empty(self):

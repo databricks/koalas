@@ -35,8 +35,8 @@ class StringMethods(object):
     """String methods for Koalas Series"""
 
     def __init__(self, series: "ks.Series"):
-        if not isinstance(series.spark.type, (StringType, BinaryType, ArrayType)):
-            raise ValueError("Cannot call StringMethods on type {}".format(series.spark.type))
+        if not isinstance(series.spark.data_type, (StringType, BinaryType, ArrayType)):
+            raise ValueError("Cannot call StringMethods on type {}".format(series.spark.data_type))
         self._data = series
         self.name = self._data.name
 
@@ -1271,7 +1271,7 @@ class StringMethods(object):
         1    0
         Name: 0, dtype: int64
         """
-        if isinstance(self._data.spark.type, (ArrayType, MapType)):
+        if isinstance(self._data.spark.data_type, (ArrayType, MapType)):
             return column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
                 self._data.name
             )

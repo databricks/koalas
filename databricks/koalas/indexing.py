@@ -834,7 +834,7 @@ class LocIndexer(LocIndexerLike):
     def _select_rows_by_series(
         self, rows_sel: "Series"
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
-        assert isinstance(rows_sel.spark.type, BooleanType), rows_sel.spark.type
+        assert isinstance(rows_sel.spark.data_type, BooleanType), rows_sel.spark.data_type
         return rows_sel.spark.column, None, None
 
     def _select_rows_by_spark_column(
@@ -855,7 +855,7 @@ class LocIndexer(LocIndexerLike):
             sdf = self._internal.spark_frame
             index = self._kdf_or_kser.index
             index_column = index.to_series()
-            index_data_type = index_column.spark.type
+            index_data_type = index_column.spark.data_type
             start = rows_sel.start
             stop = rows_sel.stop
 
@@ -912,7 +912,7 @@ class LocIndexer(LocIndexerLike):
             return reduce(lambda x, y: x & y, cond), None, None
         else:
             index = self._kdf_or_kser.index
-            index_data_type = [f.dataType for f in index.to_series().spark.type]
+            index_data_type = [f.dataType for f in index.to_series().spark.data_type]
 
             start = rows_sel.start
             if start is not None:
@@ -974,7 +974,7 @@ class LocIndexer(LocIndexerLike):
             return F.lit(False), None, None
         elif len(self._internal.index_spark_column_names) == 1:
             index_column = self._kdf_or_kser.index.to_series()
-            index_data_type = index_column.spark.type
+            index_data_type = index_column.spark.data_type
             if len(rows_sel) == 1:
                 return (
                     index_column.spark.column == F.lit(rows_sel[0]).cast(index_data_type),

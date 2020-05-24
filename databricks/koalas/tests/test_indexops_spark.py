@@ -15,6 +15,8 @@
 #
 
 import pandas as pd
+from pyspark.sql.utils import AnalysisException
+from pyspark.sql import functions as F
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
@@ -34,6 +36,9 @@ class SparkIndexOpsMethodsTest(ReusedSQLTestCase, SQLTestUtils):
             ValueError, "The output of the function.* pyspark.sql.Column.*int"
         ):
             self.kser.spark.transform(lambda scol: 1)
+
+        with self.assertRaisesRegex(AnalysisException, "cannot resolve.*non-existent.*"):
+            self.kser.spark.transform(lambda scol: F.col("non-existent"))
 
     def test_multiindex_transform_negative(self):
         with self.assertRaisesRegex(

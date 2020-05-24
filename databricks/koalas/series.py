@@ -303,10 +303,6 @@ T = TypeVar("T")
 str_type = str
 
 
-class SparkMethods(object):
-    pass
-
-
 class Series(Frame, IndexOpsMixin, Generic[T]):
     """
     Koalas Series that corresponds to Pandas Series logically. This holds Spark Column
@@ -399,13 +395,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     @property
     def spark_type(self):
         warnings.warn(
-            "Series.spark_type is deprecated as of Series.spark.type. "
+            "Series.spark_type is deprecated as of Series.spark.data_type. "
             "Please use the API instead.",
             FutureWarning,
         )
-        return self.spark.type
+        return self.spark.data_type
 
-    spark_type.__doc__ = SparkIndexOpsMethods.type.__doc__
+    spark_type.__doc__ = SparkIndexOpsMethods.data_type.__doc__
 
     # Arithmetic Operators
     def add(self, other):
@@ -924,7 +920,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if isinstance(arg, dict):
             is_start = True
             # In case dictionary is empty.
-            current = F.when(F.lit(False), F.lit(None).cast(self.spark.type))
+            current = F.when(F.lit(False), F.lit(None).cast(self.spark.data_type))
 
             for to_replace, value in arg.items():
                 if is_start:
@@ -938,7 +934,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 del arg[np._NoValue]  # Remove in case it's set in defaultdict.
                 current = current.otherwise(F.lit(tmp_val))
             else:
-                current = current.otherwise(F.lit(None).cast(self.spark.type))
+                current = current.otherwise(F.lit(None).cast(self.spark.data_type))
             return self._with_new_scol(current).rename(self.name)
         else:
             return self.apply(arg)
@@ -980,11 +976,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
         if isinstance(spark_type, BooleanType):
-            if isinstance(self.spark.type, StringType):
+            if isinstance(self.spark.data_type, StringType):
                 scol = F.when(self.spark.column.isNull(), F.lit(False)).otherwise(
                     F.length(self.spark.column) > 0
                 )
-            elif isinstance(self.spark.type, (FloatType, DoubleType)):
+            elif isinstance(self.spark.data_type, (FloatType, DoubleType)):
                 scol = F.when(
                     self.spark.column.isNull() | F.isnan(self.spark.column), F.lit(True)
                 ).otherwise(self.spark.column.cast(spark_type))
@@ -1745,7 +1741,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if lower is None and upper is None:
             return self
 
-        if isinstance(self.spark.type, NumericType):
+        if isinstance(self.spark.data_type, NumericType):
             scol = self.spark.column
             if lower is not None:
                 scol = F.when(scol < lower, lower).otherwise(scol)
@@ -2714,7 +2710,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.apply(func, *args, **kwds)
             kser = Series(transformed)
-            return self._transform_batch(apply_each, kser.spark.type)
+            return self._transform_batch(apply_each, kser.spark.data_type)
         else:
             sig_return = infer_return_type(func)
             if not isinstance(sig_return, ScalarType):
@@ -3021,7 +3017,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.transform(func)
             kser = Series(transformed)
-            spark_return_type = kser.spark.type
+            spark_return_type = kser.spark.data_type
         else:
             spark_return_type = return_schema
 
@@ -4987,7 +4983,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         from pyspark.sql.functions import pandas_udf
 
         def cumprod(scol):
-            @pandas_udf(returnType=self.spark.type)
+            @pandas_udf(returnType=self.spark.data_type)
             def negative_check(s):
                 assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
                     "values should be bigger than 0: %s" % s
@@ -5029,7 +5025,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
         col_sdf = self.spark.column
-        col_type = self.spark.type
+        col_type = self.spark.data_type
         if isinstance(col_type, BooleanType) and sfun.__name__ not in ("min", "max"):
             # Stat functions cannot be used with boolean values by default
             # Thus, cast to integer (true to 1 and false to 0)
@@ -5050,7 +5046,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def __getitem__(self, key):
         try:
             if (isinstance(key, slice) and any(type(n) == int for n in [key.start, key.stop])) or (
-                type(key) == int and not isinstance(self.index.spark.type, (IntegerType, LongType))
+                type(key) == int
+                and not isinstance(self.index.spark.data_type, (IntegerType, LongType))
             ):
                 # Seems like pandas Series always uses int as positional search when slicing
                 # with ints, searches based on index values when the value is int.
@@ -5104,10 +5101,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return pser.to_string(name=self.name, dtype=self.dtype)
 
     def __dir__(self):
-        if not isinstance(self.spark.type, StructType):
+        if not isinstance(self.spark.data_type, StructType):
             fields = []
         else:
-            fields = [f for f in self.spark.type.fieldNames() if " " not in f]
+            fields = [f for f in self.spark.data_type.fieldNames() if " " not in f]
         return super(Series, self).__dir__() + fields
 
     def __iter__(self):

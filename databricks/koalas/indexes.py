@@ -420,7 +420,7 @@ class Index(IndexOpsMixin):
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.to_series().spark.type
+        return self.to_series().spark.data_type
 
     @property
     def has_duplicates(self) -> bool:

@@ -34,8 +34,10 @@ class DatetimeMethods(object):
     """Date/Time methods for Koalas Series"""
 
     def __init__(self, series: "ks.Series"):
-        if not isinstance(series.spark.type, (DateType, TimestampType)):
-            raise ValueError("Cannot call DatetimeMethods on type {}".format(series.spark.type))
+        if not isinstance(series.spark.data_type, (DateType, TimestampType)):
+            raise ValueError(
+                "Cannot call DatetimeMethods on type {}".format(series.spark.data_type)
+            )
         self._data = series
 
     # Properties

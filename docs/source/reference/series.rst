@@ -222,7 +222,7 @@ in Spark. These can be accessed by ``Series.spark.<function/property>``.
 .. autosummary::
    :toctree: api/
 
-   Series.spark.type
+   Series.spark.data_type
    Series.spark.column
    Series.spark.transform
 

@@ -2067,7 +2067,7 @@ class GroupBy(object):
         if len(agg_columns) > 0:
             stat_exprs = []
             for kser, c in zip(agg_columns, agg_columns_scols):
-                spark_type = kser.spark.type
+                spark_type = kser.spark.data_type
                 name = kser._internal.data_spark_column_names[0]
                 label = kser._internal.column_labels[0]
                 # TODO: we should have a function that takes dataframes and converts the numeric
@@ -2330,7 +2330,7 @@ class DataFrameGroupBy(GroupBy):
 
         """
         for col in self._agg_columns:
-            if isinstance(col.spark.type, StringType):
+            if isinstance(col.spark.data_type, StringType):
                 raise NotImplementedError(
                     "DataFrameGroupBy.describe() doesn't support for string type for now"
                 )

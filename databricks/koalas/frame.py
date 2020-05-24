@@ -2742,7 +2742,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kser = kdf_or_kser
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
-                    returnType=kser.spark.type,
+                    returnType=kser.spark.data_type,
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._internal.spark_columns

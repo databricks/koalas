@@ -889,7 +889,7 @@ class InternalFrame(object):
         from databricks.koalas.series import Series
 
         if isinstance(pred, Series):
-            assert isinstance(pred.spark.type, BooleanType), pred.spark.type
+            assert isinstance(pred.spark.data_type, BooleanType), pred.spark.data_type
             pred = pred.spark.column
         else:
             spark_type = self.spark_frame.select(pred).schema[0].dataType
