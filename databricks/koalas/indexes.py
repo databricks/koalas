@@ -2521,30 +2521,29 @@ class MultiIndex(Index):
     def _get_level_number(self, level):
         """
         Return the level number if a valid level is given.
-        **this is an internal method**
         """
         count = self.names.count(level)
         if (count > 1) and not isinstance(level, int):
             raise ValueError("The name %s occurs multiple times, use a level number" % level)
-        try:
+        if level in self.names:
             level = self.names.index(level)
-        except ValueError:
-            if not isinstance(level, int):
-                raise KeyError("Level %s not found" % str(level))
-            elif level < 0:
-                level += self.nlevels
-                if level < 0:
-                    orig_level = level - self.nlevels
-                    raise IndexError(
-                        "Too many levels: Index has only %d "
-                        "levels, %d is not a valid level number" % (self.nlevels, orig_level)
-                    )
-            # Note: levels are zero-based
-            elif level >= self.nlevels:
+        elif isinstance(level, int):
+            nlevels = self.nlevels
+            if level >= nlevels:
                 raise IndexError(
-                    "Too many levels: Index has only %d levels, "
-                    "not %d" % (self.nlevels, level + 1)
+                    "Too many levels: Index has only %d "
+                    "levels, %d is not a valid level number" % (nlevels, level)
                 )
+            if level < 0:
+                if (level + nlevels) < 0:
+                    raise IndexError(
+                        "Too many levels: Index has only %d levels, "
+                        "not %d" % (nlevels, level + 1)
+                    )
+                level = level + nlevels
+        else:
+            raise KeyError("Level %s not found" % str(level))
+
         return level
 
     def get_level_values(self, level):
