@@ -3607,3 +3607,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertEqual(actual, expected)
         finally:
             sys.stdout = prev
+
+    def test_mad(self):
+        pdf = pd.DataFrame(
+            {"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+        with self.assertRaises(ValueError):
+            kdf.mad(axis=2)
+
+        with option_context("compute.shortcut_limit", 1):
+            self.assert_eq(kdf.mad(), pdf.mad())
+            self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))

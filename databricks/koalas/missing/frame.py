@@ -56,7 +56,6 @@ class _MissingPandasLikeDataFrame(object):
     last = _unsupported_function("last")
     last_valid_index = _unsupported_function("last_valid_index")
     lookup = _unsupported_function("lookup")
-    mad = _unsupported_function("mad")
     mode = _unsupported_function("mode")
     prod = _unsupported_function("prod")
     product = _unsupported_function("product")

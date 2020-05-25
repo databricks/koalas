@@ -10049,6 +10049,64 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.copy(spark_frame=sdf, data_spark_columns=data_scols)
         return DataFrame(internal)
 
+    def mad(self, axis=0):
+        """
+        Return the mean absolute deviation of values.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        >>> df.mad()
+        a    0.666667
+        b    0.066667
+        Name: 0, dtype: float64
+
+        >>> df.mad(axis=1)
+        0    0.45
+        1    0.90
+        2    1.35
+        3     NaN
+        Name: 0, dtype: float64
+        """
+        from databricks.koalas import Series
+
+        axis = validate_axis(axis)
+
+        # Here we execute with the first 1000 to get the return type.
+        # If the records were less than 1000, it uses pandas API directly for a shortcut.
+        limit = get_option("compute.shortcut_limit")
+        pdf = self.head(limit + 1)._to_internal_pandas()
+        pser = pdf.mad(axis=axis)
+        if len(pdf) <= limit:
+            return Series(pser)
+
+        if axis == 0:
+            mean_kdf = self._reduce_for_stat_function(F.mean, name="mean", axis=0)
+
+            return self._reduce_for_stat_function(
+                lambda col_sdf: F.avg(F.abs(col_sdf - mean_kdf[col_sdf._jc.toString()])),
+                name="mad",
+                axis=0,
+            )
+
+        elif axis == 1:
+
+            @pandas_udf(returnType=as_spark_type(pser.dtype.type))
+            def calculate_columns_axis(*cols):
+                return pd.concat(cols, axis=1).mad(axis=1)
+
+            df = self._sdf.select(
+                calculate_columns_axis(*self._internal.data_spark_columns).alias("0")
+            )
+            return DataFrame(df)["0"]
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
