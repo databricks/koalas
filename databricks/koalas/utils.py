@@ -130,13 +130,13 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         joined_df = joined_df.select(
             merged_index_scols
             + [
-                this[label].spark_column.alias(
+                this[label].spark.column.alias(
                     "__this_%s" % this._internal.spark_column_name_for(label)
                 )
                 for label in this._internal.column_labels
             ]
             + [
-                that[label].spark_column.alias(
+                that[label].spark.column.alias(
                     "__that_%s" % that._internal.spark_column_name_for(label)
                 )
                 for label in that._internal.column_labels
@@ -288,7 +288,7 @@ def align_diff_frames(
         kser_set, column_labels_applied = zip(
             *resolve_func(combined, this_columns_to_apply, that_columns_to_apply)
         )
-        columns_applied = [c.spark_column for c in kser_set]
+        columns_applied = [c.spark.column for c in kser_set]
         column_labels_applied = list(column_labels_applied)
     else:
         columns_applied = []

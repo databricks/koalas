@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
 import unittest
+from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -66,11 +66,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf["b"] > 2], pdf[pdf["b"] > 2])
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
         self.assert_eq(kdf.a, pdf.a)
-        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
-        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
-        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
-
-        assert repr(kdf)
+        self.assert_eq(kdf.b.mean(), pdf.b.mean())
+        self.assert_eq(kdf.b.var(), pdf.b.var())
+        self.assert_eq(kdf.b.std(), pdf.b.std())
 
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
@@ -3479,3 +3477,133 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Truncate: B must be after C"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.truncate("C", "B", axis=1)
+
+    def test_explode(self):
+        pdf = pd.DataFrame({"A": [[-1.0, np.nan], [0.0, np.inf], [1.0, -np.inf]], "B": 1})
+        pdf.index.name = "index"
+        pdf.columns.name = "columns"
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode("A")
+            expected_result2 = pdf.explode("B")
+        else:
+            expected_result1 = pd.DataFrame(
+                {"A": [-1, np.nan, 0, np.inf, 1, -np.inf], "B": [1, 1, 1, 1, 1, 1]},
+                index=pd.Index([0, 0, 1, 1, 2, 2]),
+            )
+            expected_result2 = pdf
+            expected_result1.index.name = "index"
+            expected_result1.columns.name = "columns"
+
+        self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
+        self.assert_eq(kdf.explode("A").index.name, expected_result1.index.name)
+        self.assert_eq(kdf.explode("A").columns.name, expected_result1.columns.name)
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+        # MultiIndex
+        midx = pd.MultiIndex.from_tuples(
+            [("x", "a"), ("x", "b"), ("y", "c")], names=["index1", "index2"]
+        )
+        pdf.index = midx
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode("A")
+            expected_result2 = pdf.explode("B")
+        else:
+            midx = pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "a"), ("x", "b"), ("x", "b"), ("y", "c"), ("y", "c")],
+                names=["index1", "index2"],
+            )
+            expected_result1.index = midx
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
+        self.assert_eq(kdf.explode("A").index.names, expected_result1.index.names)
+        self.assert_eq(kdf.explode("A").columns.name, expected_result1.columns.name)
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X")], names=["column1", "column2"])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode(("A", "Z"))
+            expected_result2 = pdf.explode(("B", "X"))
+        else:
+            expected_result1.columns = columns
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode(("A", "Z")), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode(("B", "X"))), repr(expected_result2))
+        self.assert_eq(kdf.explode(("A", "Z")).index.names, expected_result1.index.names)
+        self.assert_eq(kdf.explode(("A", "Z")).columns.names, expected_result1.columns.names)
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+    def test_spark_schema(self):
+        kdf = ks.DataFrame(
+            {
+                "a": list("abc"),
+                "b": list(range(1, 4)),
+                "c": np.arange(3, 6).astype("i1"),
+                "d": np.arange(4.0, 7.0, dtype="float64"),
+                "e": [True, False, True],
+                "f": pd.date_range("20130101", periods=3),
+            },
+            columns=["a", "b", "c", "d", "e", "f"],
+        )
+        self.assertEqual(kdf.spark_schema(), kdf.spark.schema())
+        self.assertEqual(kdf.spark_schema("index"), kdf.spark.schema("index"))
+
+    def test_print_schema(self):
+        kdf = ks.DataFrame(
+            {"a": list("abc"), "b": list(range(1, 4)), "c": np.arange(3, 6).astype("i1")},
+            columns=["a", "b", "c"],
+        )
+
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            kdf.print_schema()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            kdf.spark.print_schema()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev
+
+    def test_explain_hint(self):
+        kdf1 = ks.DataFrame(
+            {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]}, columns=["lkey", "value"]
+        )
+        kdf2 = ks.DataFrame(
+            {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]}, columns=["rkey", "value"]
+        )
+        merged = kdf1.merge(kdf2.hint("broadcast"), left_on="lkey", right_on="rkey")
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            merged.explain()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            merged.spark.explain()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev

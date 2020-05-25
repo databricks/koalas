@@ -19,6 +19,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 import re
 import inspect
+import warnings
 from collections import Iterable, OrderedDict
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
@@ -29,6 +30,7 @@ from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
 
+from databricks.koalas.spark import SparkIndexOpsMethods
 from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -392,10 +394,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     @property
     def spark_type(self):
-        """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self._internal.spark_type_for(self._internal.column_labels[0])
+        warnings.warn(
+            "Series.spark_type is deprecated as of Series.spark.data_type. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.data_type
 
-    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
+    spark_type.__doc__ = SparkIndexOpsMethods.data_type.__doc__
 
     # Arithmetic Operators
     def add(self, other):
@@ -914,21 +920,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if isinstance(arg, dict):
             is_start = True
             # In case dictionary is empty.
-            current = F.when(F.lit(False), F.lit(None).cast(self.spark_type))
+            current = F.when(F.lit(False), F.lit(None).cast(self.spark.data_type))
 
             for to_replace, value in arg.items():
                 if is_start:
-                    current = F.when(self.spark_column == F.lit(to_replace), value)
+                    current = F.when(self.spark.column == F.lit(to_replace), value)
                     is_start = False
                 else:
-                    current = current.when(self.spark_column == F.lit(to_replace), value)
+                    current = current.when(self.spark.column == F.lit(to_replace), value)
 
             if hasattr(arg, "__missing__"):
                 tmp_val = arg[np._NoValue]
                 del arg[np._NoValue]  # Remove in case it's set in defaultdict.
                 current = current.otherwise(F.lit(tmp_val))
             else:
-                current = current.otherwise(F.lit(None).cast(self.spark_type))
+                current = current.otherwise(F.lit(None).cast(self.spark.data_type))
             return self._with_new_scol(current).rename(self.name)
         else:
             return self.apply(arg)
@@ -970,20 +976,20 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
         if isinstance(spark_type, BooleanType):
-            if isinstance(self.spark_type, StringType):
-                scol = F.when(self.spark_column.isNull(), F.lit(False)).otherwise(
-                    F.length(self.spark_column) > 0
+            if isinstance(self.spark.data_type, StringType):
+                scol = F.when(self.spark.column.isNull(), F.lit(False)).otherwise(
+                    F.length(self.spark.column) > 0
                 )
-            elif isinstance(self.spark_type, (FloatType, DoubleType)):
+            elif isinstance(self.spark.data_type, (FloatType, DoubleType)):
                 scol = F.when(
-                    self.spark_column.isNull() | F.isnan(self.spark_column), F.lit(True)
-                ).otherwise(self.spark_column.cast(spark_type))
+                    self.spark.column.isNull() | F.isnan(self.spark.column), F.lit(True)
+                ).otherwise(self.spark.column.cast(spark_type))
             else:
-                scol = F.when(self.spark_column.isNull(), F.lit(False)).otherwise(
-                    self.spark_column.cast(spark_type)
+                scol = F.when(self.spark.column.isNull(), F.lit(False)).otherwise(
+                    self.spark.column.cast(spark_type)
                 )
         else:
-            scol = self.spark_column.cast(spark_type)
+            scol = self.spark.column.cast(spark_type)
         return self._with_new_scol(scol)
 
     def alias(self, name):
@@ -1045,9 +1051,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: my_name, dtype: int64
         """
         if index is None:
-            scol = self.spark_column
+            scol = self.spark.column
         else:
-            scol = self.spark_column.alias(name_like_string(index))
+            scol = self.spark.column.alias(name_like_string(index))
         internal = self._internal.copy(  # type: ignore
             spark_column=scol,
             column_labels=[index if index is None or isinstance(index, tuple) else (index,)],
@@ -1084,7 +1090,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3, None]).is_unique
         True
         """
-        scol = self.spark_column
+        scol = self.spark.column
 
         # Here we check:
         #   1. the distinct count without nulls and count without nulls for non-null values
@@ -1606,7 +1612,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 return self
 
         column_name = self.name
-        scol = self.spark_column
+        scol = self.spark.column
 
         if value is not None:
             if not isinstance(value, (float, int, str, bool)):
@@ -1735,8 +1741,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if lower is None and upper is None:
             return self
 
-        if isinstance(self.spark_type, NumericType):
-            scol = self.spark_column
+        if isinstance(self.spark.data_type, NumericType):
+            scol = self.spark.column
             if lower is not None:
                 scol = F.when(scol < lower, lower).otherwise(scol)
             if upper is not None:
@@ -1985,7 +1991,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         ...  3
         Name: (x, a), dtype: int64
         """
-        sdf = self._internal.spark_frame.select(self.spark_column).distinct()
+        sdf = self._internal.spark_frame.select(self.spark.column).distinct()
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=None,
@@ -2704,7 +2710,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.apply(func, *args, **kwds)
             kser = Series(transformed)
-            return self._transform_batch(apply_each, kser.spark_type)
+            return self._transform_batch(apply_each, kser.spark.data_type)
         else:
             sig_return = infer_return_type(func)
             if not isinstance(sig_return, ScalarType):
@@ -3011,12 +3017,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.transform(func)
             kser = Series(transformed)
-            spark_return_type = kser.spark_type
+            spark_return_type = kser.spark.data_type
         else:
             spark_return_type = return_schema
 
         pudf = pandas_udf(func, returnType=spark_return_type, functionType=PandasUDFType.SCALAR)
-        return self._with_new_scol(scol=pudf(self.spark_column)).rename(self.name)
+        return self._with_new_scol(scol=pudf(self.spark.column)).rename(self.name)
 
     def round(self, decimals=0):
         """
@@ -3055,7 +3061,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(decimals, int):
             raise ValueError("decimals must be an integer")
         column_name = self.name
-        scol = F.round(self.spark_column, decimals)
+        scol = F.round(self.spark.column, decimals)
         return self._with_new_scol(scol).rename(column_name)
 
     # TODO: add 'interpolation' parameter.
@@ -3381,7 +3387,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             .orderBy(NATURAL_ORDER_COLUMN_NAME)
             .rowsBetween(-periods, -periods)
         )
-        scol = self.spark_column - F.lag(self.spark_column, periods).over(window)
+        scol = self.spark.column - F.lag(self.spark.column, periods).over(window)
         return self._with_new_scol(scol).rename(self.name)
 
     def idxmax(self, skipna=True):
@@ -3466,7 +3472,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3
         """
         sdf = self._internal.spark_frame
-        scol = self.spark_column
+        scol = self.spark.column
         index_scols = self._internal.index_spark_columns
         # desc_nulls_(last|first) is used via Py4J directly because
         # it's not supported in Spark 2.3.
@@ -3574,7 +3580,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         10
         """
         sdf = self._internal._sdf
-        scol = self.spark_column
+        scol = self.spark.column
         index_scols = self._internal.index_spark_columns
         # asc_nulls_(last|first)is used via Py4J directly because
         # it's not supported in Spark 2.3.
@@ -4079,17 +4085,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if isinstance(to_replace, dict):
             is_start = True
             if len(to_replace) == 0:
-                current = self.spark_column
+                current = self.spark.column
             else:
                 for to_replace_, value in to_replace.items():
                     if is_start:
-                        current = F.when(self.spark_column == F.lit(to_replace_), value)
+                        current = F.when(self.spark.column == F.lit(to_replace_), value)
                         is_start = False
                     else:
-                        current = current.when(self.spark_column == F.lit(to_replace_), value)
-                current = current.otherwise(self.spark_column)
+                        current = current.when(self.spark.column == F.lit(to_replace_), value)
+                current = current.otherwise(self.spark.column)
         else:
-            current = F.when(self.spark_column.isin(to_replace), value).otherwise(self.spark_column)
+            current = F.when(self.spark.column.isin(to_replace), value).otherwise(self.spark.column)
 
         return self._with_new_scol(current)
 
@@ -4274,10 +4280,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # +-----------------+---+----------------+-----------------+
             condition = (
                 F.when(
-                    kdf[tmp_cond_col].spark_column,
-                    kdf[self._internal.column_labels[0]].spark_column,
+                    kdf[tmp_cond_col].spark.column,
+                    kdf[self._internal.column_labels[0]].spark.column,
                 )
-                .otherwise(kdf[tmp_other_col].spark_column)
+                .otherwise(kdf[tmp_other_col].spark.column)
                 .alias(self._internal.data_spark_column_names[0])
             )
 
@@ -4287,9 +4293,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return first_series(DataFrame(internal))
         else:
             if isinstance(other, Series):
-                other = other.spark_column
+                other = other.spark.column
             condition = (
-                F.when(cond.spark_column, self.spark_column)
+                F.when(cond.spark.column, self.spark.column)
                 .otherwise(other)
                 .alias(self._internal.data_spark_column_names[0])
             )
@@ -4764,7 +4770,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             where = [where]
         sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
-        cond = [F.max(F.when(index_scol <= index, self.spark_column)) for index in where]
+        cond = [F.max(F.when(index_scol <= index, self.spark.column)) for index in where]
         sdf = sdf.select(cond)
         if not should_return_series:
             result = sdf.head()[0]
@@ -4866,12 +4872,18 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal.spark_frame
         index_scol_names = self._internal.index_spark_column_names.copy()
         pivot_col = index_scol_names.pop(level)
-        data_scol_name = self._internal.data_spark_column_names[0]
+        scol = self.spark.column
+        index_map = OrderedDict(
+            (index_scol_name, self._internal.index_map[index_scol_name])
+            for index_scol_name in index_scol_names
+        )
+        column_label_names = self._internal.index_map[pivot_col]
+        if column_label_names is not None:
+            column_label_names = [name_like_string(column_label_names)]
 
-        sdf = sdf.groupby(index_scol_names).pivot(pivot_col).sum(data_scol_name)
+        sdf = sdf.groupby(index_scol_names).pivot(pivot_col).agg(F.first(scol))
         internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=OrderedDict((index_scol_name, None) for index_scol_name in index_scol_names),
+            spark_frame=sdf, index_map=index_map, column_label_names=column_label_names
         )
         return DataFrame(internal)
 
@@ -4935,9 +4947,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             scol = F.when(
                 # Manually sets nulls given the column defined above.
-                self.spark_column.isNull(),
+                self.spark.column.isNull(),
                 F.lit(None),
-            ).otherwise(func(self.spark_column).over(window))
+            ).otherwise(func(self.spark.column).over(window))
         else:
             # Here, we use two Windows.
             # One for real data.
@@ -4970,10 +4982,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # 4  5.0  9.0
             scol = F.when(
                 # By going through with max, it sets True after the first time it meets null.
-                F.max(self.spark_column.isNull()).over(window),
+                F.max(self.spark.column.isNull()).over(window),
                 # Manually sets nulls given the column defined above.
                 F.lit(None),
-            ).otherwise(func(self.spark_column).over(window))
+            ).otherwise(func(self.spark.column).over(window))
 
         return self._with_new_scol(scol).rename(self.name)
 
@@ -4981,7 +4993,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         from pyspark.sql.functions import pandas_udf
 
         def cumprod(scol):
-            @pandas_udf(returnType=self.spark_type)
+            @pandas_udf(returnType=self.spark.data_type)
             def negative_check(s):
                 assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
                     "values should be bigger than 0: %s" % s
@@ -4991,13 +5003,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return F.sum(F.log(negative_check(scol)))
 
         kser = self._cum(cumprod, skipna, part_cols)
-        return kser._with_new_scol(F.exp(kser.spark_column)).rename(self.name)
+        return kser._with_new_scol(F.exp(kser.spark.column)).rename(self.name)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
     # ----------------------------------------------------------------------
     dt = CachedAccessor("dt", DatetimeMethods)
     str = CachedAccessor("str", StringMethods)
+    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
 
     # ----------------------------------------------------------------------
 
@@ -5021,8 +5034,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
-        scol = self.spark_column
-        spark_type = self.spark_type
+        scol = self.spark.column
+        spark_type = self.spark.data_type
         if isinstance(spark_type, BooleanType) and sfun.__name__ not in ("min", "max"):
             # Stat functions cannot be used with boolean values by default
             # Thus, cast to integer (true to 1 and false to 0)
@@ -5043,7 +5056,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def __getitem__(self, key):
         try:
             if (isinstance(key, slice) and any(type(n) == int for n in [key.start, key.stop])) or (
-                type(key) == int and not isinstance(self.index.spark_type, (IntegerType, LongType))
+                type(key) == int
+                and not isinstance(self.index.spark.data_type, (IntegerType, LongType))
             ):
                 # Seems like pandas Series always uses int as positional search when slicing
                 # with ints, searches based on index values when the value is int.
@@ -5097,17 +5111,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return pser.to_string(name=self.name, dtype=self.dtype)
 
     def __dir__(self):
-        if not isinstance(self.spark_type, StructType):
+        if not isinstance(self.spark.data_type, StructType):
             fields = []
         else:
-            fields = [f for f in self.spark_type.fieldNames() if " " not in f]
+            fields = [f for f in self.spark.data_type.fieldNames() if " " not in f]
         return super(Series, self).__dir__() + fields
 
     def __iter__(self):
         return MissingPandasLikeSeries.__iter__(self)
 
     def _equals(self, other: "Series") -> bool:
-        return self.spark_column._jc.equals(other.spark_column._jc)
+        return self.spark.column._jc.equals(other.spark.column._jc)
 
 
 def unpack_scalar(sdf):

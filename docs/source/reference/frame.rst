@@ -33,14 +33,6 @@ Attributes and underlying data
    DataFrame.select_dtypes
    DataFrame.values
 
-Underlying Spark schema
------------------------
-.. autosummary::
-   :toctree: api/
-
-   DataFrame.spark_schema
-   DataFrame.print_schema
-
 Conversion
 ----------
 .. autosummary::
@@ -206,6 +198,7 @@ Reshaping, sorting, transposing
    DataFrame.stack
    DataFrame.unstack
    DataFrame.melt
+   DataFrame.explode
    DataFrame.squeeze
    DataFrame.T
    DataFrame.transpose
@@ -230,14 +223,6 @@ Time series-related
 
    DataFrame.shift
    DataFrame.first_valid_index
-
-Cache
--------------------------------
-.. autosummary::
-   :toctree: api/
-
-   DataFrame.cache
-   DataFrame.persist
 
 Serialization / IO / Conversion
 -------------------------------
@@ -268,12 +253,30 @@ Serialization / IO / Conversion
 
 .. _api.dataframe.plot:
 
+Spark-related
+-------------
+``DataFrame.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.spark.schema
+   DataFrame.spark.print_schema
+   DataFrame.spark.frame
+   DataFrame.spark.cache
+   DataFrame.spark.persist
+   DataFrame.spark.hint
+   DataFrame.spark.to_table
+   DataFrame.spark.to_spark_io
+   DataFrame.spark.explain
+   DataFrame.spark.apply
+
 Plotting
 -------------------------------
 ``DataFrame.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
 
-.. currentmodule:: databricks.koalas.frame
 .. autosummary::
    :toctree: api/
 

@@ -1395,7 +1395,7 @@ class Frame(object):
         """
         # TODO: The first example above should not have "Name: 0".
         return self._apply_series_op(
-            lambda kser: kser._with_new_scol(F.abs(kser.spark_column)).rename(kser.name)
+            lambda kser: kser._with_new_scol(F.abs(kser.spark.column)).rename(kser.name)
         )
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
@@ -2171,10 +2171,6 @@ class Frame(object):
         return LocIndexer(self)
 
     loc.__doc__ = LocIndexer.__doc__
-
-    def compute(self):
-        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
 
     def __bool__(self):
         raise ValueError(
