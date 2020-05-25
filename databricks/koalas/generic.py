@@ -305,6 +305,7 @@ class Frame(object):
 
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
+    # We can drop it once our minimal pandas version becomes 1.0.0.
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
@@ -1394,7 +1395,7 @@ class Frame(object):
         """
         # TODO: The first example above should not have "Name: 0".
         return self._apply_series_op(
-            lambda kser: kser._with_new_scol(F.abs(kser.spark_column)).rename(kser.name)
+            lambda kser: kser._with_new_scol(F.abs(kser.spark.column)).rename(kser.name)
         )
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
@@ -2112,6 +2113,62 @@ class Frame(object):
 
         return result.copy() if copy else result
 
+    def to_markdown(self, buf=None, mode=None):
+        """
+        Print Series or DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            Series or DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> kser = ks.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        >>> print(kser.to_markdown())  # doctest: +SKIP
+        |    | animal   |
+        |---:|:---------|
+        |  0 | elk      |
+        |  1 | pig      |
+        |  2 | dog      |
+        |  3 | quetzal  |
+
+        >>> kdf = ks.DataFrame(
+        ...     data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]}
+        ... )
+        >>> print(kdf.to_markdown())  # doctest: +SKIP
+        |    | animal_1   | animal_2   |
+        |---:|:-----------|:-----------|
+        |  0 | elk        | dog        |
+        |  1 | pig        | quetzal    |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kser_or_kdf = self
+        internal_pandas = kser_or_kdf._to_internal_pandas()
+        return validate_arguments_and_invoke_function(
+            internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
+        )
+
     @property
     def at(self):
         return AtIndexer(self)
@@ -2135,10 +2192,6 @@ class Frame(object):
         return LocIndexer(self)
 
     loc.__doc__ = LocIndexer.__doc__
-
-    def compute(self):
-        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
 
     def __bool__(self):
         raise ValueError(

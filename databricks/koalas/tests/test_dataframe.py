@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
 import unittest
+from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -66,11 +66,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf["b"] > 2], pdf[pdf["b"] > 2])
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
         self.assert_eq(kdf.a, pdf.a)
-        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
-        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
-        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
-
-        assert repr(kdf)
+        self.assert_eq(kdf.b.mean(), pdf.b.mean())
+        self.assert_eq(kdf.b.var(), pdf.b.var())
+        self.assert_eq(kdf.b.std(), pdf.b.std())
 
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
@@ -3548,3 +3546,64 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.explode(("A", "Z")).columns.names, expected_result1.columns.names)
 
         self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+    def test_spark_schema(self):
+        kdf = ks.DataFrame(
+            {
+                "a": list("abc"),
+                "b": list(range(1, 4)),
+                "c": np.arange(3, 6).astype("i1"),
+                "d": np.arange(4.0, 7.0, dtype="float64"),
+                "e": [True, False, True],
+                "f": pd.date_range("20130101", periods=3),
+            },
+            columns=["a", "b", "c", "d", "e", "f"],
+        )
+        self.assertEqual(kdf.spark_schema(), kdf.spark.schema())
+        self.assertEqual(kdf.spark_schema("index"), kdf.spark.schema("index"))
+
+    def test_print_schema(self):
+        kdf = ks.DataFrame(
+            {"a": list("abc"), "b": list(range(1, 4)), "c": np.arange(3, 6).astype("i1")},
+            columns=["a", "b", "c"],
+        )
+
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            kdf.print_schema()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            kdf.spark.print_schema()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev
+
+    def test_explain_hint(self):
+        kdf1 = ks.DataFrame(
+            {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]}, columns=["lkey", "value"]
+        )
+        kdf2 = ks.DataFrame(
+            {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]}, columns=["rkey", "value"]
+        )
+        merged = kdf1.merge(kdf2.hint("broadcast"), left_on="lkey", right_on="rkey")
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            merged.explain()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            merged.spark.explain()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev

@@ -838,17 +838,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.add_suffix("_item"), kser.add_suffix("_item"))
 
-    def test_pandas_wraps(self):
-        # This test checks the return column name of `isna()`. Previously it returned the column
-        # name as its internal expression which contains, for instance, '`f(x)`' in the middle of
-        # column name which currently cannot be recognized in PySpark.
-        @ks.pandas_wraps
-        def f(x) -> ks.Series[int]:
-            return 2 * x
-
-        df = ks.DataFrame({"x": [1, None]})
-        self.assert_eq(f(df["x"]).isna(), pd.Series([False, True]).rename("f(x)"))
-
     def test_hist(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],}, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10]
@@ -1575,6 +1564,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = kser.to_pandas()
 
         self.assert_eq(pser.shape, kser.shape)
+
+    def test_to_markdown(self):
+        pser = pd.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        kser = ks.from_pandas(pser)
+
+        # `to_markdown()` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assertRaises(NotImplementedError, lambda: kser.to_markdown())
+        else:
+            self.assert_eq(pser.to_markdown(), kser.to_markdown())
 
     def test_unstack(self):
         pser = pd.Series(

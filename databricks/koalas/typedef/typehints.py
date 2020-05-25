@@ -75,29 +75,6 @@ class UnknownType(object):
         return "UnknownType[{}]".format(self.tpe)
 
 
-def _to_stype(tpe) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
-    if isinstance(tpe, str):
-        # This type hint can happen when given hints are string to avoid forward reference.
-        tpe = resolve_string_type_hint(tpe)
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.Series:
-        inner = as_spark_type(tpe.__args__[0])
-        return SeriesType(inner)
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
-        tuple_type = tpe.__args__[0]
-        if hasattr(tuple_type, "__tuple_params__"):
-            # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
-            # See https://github.com/python/cpython/blob/v3.5.2/Lib/typing.py
-            parameters = getattr(tuple_type, "__tuple_params__")
-        else:
-            parameters = getattr(tuple_type, "__args__")
-        return DataFrameType([as_spark_type(t) for t in parameters])
-    inner = as_spark_type(tpe)
-    if inner is None:
-        return UnknownType(tpe)
-    else:
-        return ScalarType(inner)
-
-
 def as_spark_type(tpe) -> types.DataType:
     """
     Given a python type, returns the equivalent spark type.
@@ -164,9 +141,7 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
         return from_arrow_type(pa.from_numpy_dtype(dt))
 
 
-def infer_return_type(
-    f, return_col=None, return_scalar=None
-) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
+def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
     """
     >>> def func() -> int:
     ...    pass
@@ -209,26 +184,24 @@ def infer_return_type(
     StructType(List(StructField(c0,FloatType,true)))
     """
     spec = getfullargspec(f)
-    return_sig = spec.annotations.get("return", None)
-
-    if not (return_col or return_sig or return_scalar):
-        raise ValueError(
-            "Missing type information. It should either be provided as an argument to "
-            "pandas_wraps, or as a python typing hint"
-        )
-    if return_col is not None:
-        if isinstance(return_col, ks.Series):
-            return _to_stype(return_col)
-        inner = as_spark_type(return_col)
+    tpe = spec.annotations.get("return", None)
+    if isinstance(tpe, str):
+        # This type hint can happen when given hints are string to avoid forward reference.
+        tpe = resolve_string_type_hint(tpe)
+    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.Series:
+        inner = as_spark_type(tpe.__args__[0])
         return SeriesType(inner)
-    if return_scalar is not None:
-        if isinstance(return_scalar, ks.Series):
-            raise ValueError(
-                "Column return type {}, you should use 'return_col' to specify"
-                " it.".format(return_scalar)
-            )
-        inner = as_spark_type(return_scalar)
+    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
+        tuple_type = tpe.__args__[0]
+        if hasattr(tuple_type, "__tuple_params__"):
+            # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
+            # See https://github.com/python/cpython/blob/v3.5.2/Lib/typing.py
+            parameters = getattr(tuple_type, "__tuple_params__")
+        else:
+            parameters = getattr(tuple_type, "__args__")
+        return DataFrameType([as_spark_type(t) for t in parameters])
+    inner = as_spark_type(tpe)
+    if inner is None:
+        return UnknownType(tpe)
+    else:
         return ScalarType(inner)
-    if return_sig is not None:
-        return _to_stype(return_sig)
-    assert False

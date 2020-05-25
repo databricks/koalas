@@ -81,11 +81,11 @@ class GroupBy(object):
 
     @property
     def _groupkeys_scols(self):
-        return [s.spark_column for s in self._groupkeys]
+        return [s.spark.column for s in self._groupkeys]
 
     @property
     def _agg_columns_scols(self):
-        return [s.spark_column for s in self._agg_columns]
+        return [s.spark.column for s in self._agg_columns]
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to Pandas' for now.
@@ -242,7 +242,7 @@ class GroupBy(object):
     def _spark_groupby(kdf, func, groupkeys=()):
         sdf = kdf._sdf
         groupkey_scols = [
-            s.spark_column.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(groupkeys)
+            s.spark.column.alias(SPARK_INDEX_NAME_FORMAT(i)) for i, s in enumerate(groupkeys)
         ]
         multi_aggs = any(isinstance(v, list) for v in func.values())
         reordered = []
@@ -2067,7 +2067,7 @@ class GroupBy(object):
         if len(agg_columns) > 0:
             stat_exprs = []
             for kser, c in zip(agg_columns, agg_columns_scols):
-                spark_type = kser.spark_type
+                spark_type = kser.spark.data_type
                 name = kser._internal.data_spark_column_names[0]
                 label = kser._internal.column_labels[0]
                 # TODO: we should have a function that takes dataframes and converts the numeric
@@ -2122,7 +2122,7 @@ class GroupBy(object):
         for i, col_or_s in enumerate(by):
             if isinstance(col_or_s, Series):
                 if any(
-                    col_or_s.spark_column._jc.equals(scol._jc)
+                    col_or_s.spark.column._jc.equals(scol._jc)
                     for scol in kdf._internal.data_spark_columns
                 ):
                     column_labels.append(col_or_s._internal.column_labels[0])
@@ -2330,7 +2330,7 @@ class DataFrameGroupBy(GroupBy):
 
         """
         for col in self._agg_columns:
-            if isinstance(col.spark_type, StringType):
+            if isinstance(col.spark.data_type, StringType):
                 raise NotImplementedError(
                     "DataFrameGroupBy.describe() doesn't support for string type for now"
                 )
