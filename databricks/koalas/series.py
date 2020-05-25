@@ -4863,18 +4863,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         index_scol_names = self._internal.index_spark_column_names.copy()
         pivot_col = index_scol_names.pop(level)
         scol = self.spark_column
-        index_map = self._internal.index_map
+        index_map = OrderedDict(
+            (index_scol_name, self._internal.index_map[index_scol_name])
+            for index_scol_name in index_scol_names
+        )
+        column_label_names = self._internal.index_map[pivot_col]
+        if column_label_names is not None:
+            column_label_names = [name_like_string(column_label_names)]
 
         sdf = sdf.groupby(index_scol_names).pivot(pivot_col).agg(F.first(scol))
         internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=OrderedDict(
-                (index_scol_name, index_map[index_scol_name])
-                for index_scol_name in index_scol_names
-            ),
-            column_label_names=[index_map[pivot_col][0]]
-            if index_map[pivot_col] is not None
-            else None,
+            spark_frame=sdf, index_map=index_map, column_label_names=column_label_names
         )
         return DataFrame(internal)
 
