@@ -10032,8 +10032,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3.0  1
         2  4.0  1
         """
-        if isinstance(column, tuple) or is_scalar(column):
-            spark_type = self[column].spark_type
+        if isinstance(column, (tuple, str)):
+            spark_type = self[column].spark.data_type
             if not isinstance(spark_type, ArrayType):
                 return self
             column = name_like_string(column)
@@ -10042,12 +10042,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         sdf = self._sdf
         sdf = sdf.withColumn(column, F.explode_outer(sdf[column]))
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=self._internal.index_map,
-            column_labels=self._internal.column_labels,
-            column_label_names=self._internal.column_label_names,
-        )
+        data_scols = [
+            scol_for(sdf, data_scol_name)
+            for data_scol_name in self._internal.data_spark_column_names
+        ]
+        internal = self._internal.copy(spark_frame=sdf, data_spark_columns=data_scols)
         return DataFrame(internal)
 
     def _to_internal_pandas(self):
