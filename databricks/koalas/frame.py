@@ -57,7 +57,8 @@ from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import option_context, get_option
-from databricks.koalas.spark import SparkFrameMethods, CachedSparkFrameMethods
+from databricks.koalas.spark import functions as SF
+from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFrameMethods
 from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     align_diff_frames,
@@ -9641,7 +9642,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal.data_spark_columns, self._internal.data_spark_column_names
         ):
             percentile_cols.append(
-                F.percentile_approx(scol, quantiles, accuracy).alias(column_name)
+                SF.percentile_approx(scol, quantiles, accuracy).alias(column_name)
             )
 
         sdf = self._internal.spark_frame.select(percentile_cols)

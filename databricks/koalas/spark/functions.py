@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+"""
+Additional Spark functions used in Koalas.
+"""
+
 from pyspark import SparkContext
 from pyspark.sql.column import Column, _to_java_column, _to_seq, _create_column_from_literal
 

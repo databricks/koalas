@@ -30,8 +30,6 @@ from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
 
-from databricks.koalas.spark import SparkIndexOpsMethods
-from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -72,7 +70,10 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
 )
 from databricks.koalas.datetimes import DatetimeMethods
+from databricks.koalas.spark import functions as SF
+from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.strings import StringMethods
+from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -3136,7 +3137,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # +--------------------------------+
             # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
             # +--------------------------------+
-            percentile_col = F.percentile_approx(self._internal.spark_column, quantiles, accuracy)
+            percentile_col = SF.percentile_approx(self._internal.spark_column, quantiles, accuracy)
             sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
 
             internal_index_column = SPARK_DEFAULT_INDEX_NAME
@@ -3173,7 +3174,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return DataFrame(internal)[value_column].rename(self.name)
         else:
             return self._reduce_for_stat_function(
-                lambda scol: F.percentile_approx(scol, q, accuracy), name="quantile"
+                lambda scol: SF.percentile_approx(scol, q, accuracy), name="quantile"
             )
 
     # TODO: add axis, numeric_only, pct, na_option parameter

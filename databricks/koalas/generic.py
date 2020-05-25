@@ -35,6 +35,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.spark import functions as SF
 from databricks.koalas.utils import (
     name_like_string,
     scol_for,
@@ -1720,7 +1721,7 @@ class Frame(object):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         return self._reduce_for_stat_function(
-            lambda scol: F.percentile_approx(scol, 0.5, accuracy),
+            lambda scol: SF.percentile_approx(scol, 0.5, accuracy),
             name="median",
             numeric_only=numeric_only,
             axis=axis,
