@@ -3609,9 +3609,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             sys.stdout = prev
 
     def test_mad(self):
-        pdf = pd.DataFrame(
-            {"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]}
-        )
+        pdf = pd.DataFrame({"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]})
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.mad(), pdf.mad())
