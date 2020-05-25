@@ -1343,9 +1343,9 @@ class Index(IndexOpsMixin):
         loc = [int(item) for item in loc]
         loc = [item if item >= 0 else length + item for item in loc]
 
-        # we need temporal column such like '__index_value_0__'
+        # we need a temporary column such as '__index_value_0__'
         # since 'InternalFrame.attach_default_index' will be failed
-        # when if self._scol has name of '__index_level_0__'
+        # when self._scol has name of '__index_level_0__'
         index_value_column_format = "__index_value_{}__"
 
         sdf = self._internal._sdf
@@ -1362,7 +1362,7 @@ class Index(IndexOpsMixin):
         sdf = sdf.select(index_value_columns)
 
         sdf = InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
-        # sdf here looks like below
+        # sdf here looks as below
         # +-----------------+-----------------+-----------------+-----------------+
         # |__index_level_0__|__index_value_0__|__index_value_1__|__index_value_2__|
         # +-----------------+-----------------+-----------------+-----------------+
@@ -1374,7 +1374,7 @@ class Index(IndexOpsMixin):
         # delete rows which are matched with given `loc`
         sdf = sdf.where(~F.col(SPARK_INDEX_NAME_FORMAT(0)).isin(loc))
         sdf = sdf.select(index_value_column_names)
-        # sdf here looks like below, we should alias them back to origin spark column names
+        # sdf here looks as below, we should alias them back to origin spark column names
         # +-----------------+-----------------+-----------------+
         # |__index_value_0__|__index_value_1__|__index_value_2__|
         # +-----------------+-----------------+-----------------+
