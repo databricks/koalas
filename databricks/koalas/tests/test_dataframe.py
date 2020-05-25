@@ -3478,6 +3478,75 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, msg):
             kdf.truncate("C", "B", axis=1)
 
+    def test_explode(self):
+        pdf = pd.DataFrame({"A": [[-1.0, np.nan], [0.0, np.inf], [1.0, -np.inf]], "B": 1})
+        pdf.index.name = "index"
+        pdf.columns.name = "columns"
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode("A")
+            expected_result2 = pdf.explode("B")
+        else:
+            expected_result1 = pd.DataFrame(
+                {"A": [-1, np.nan, 0, np.inf, 1, -np.inf], "B": [1, 1, 1, 1, 1, 1]},
+                index=pd.Index([0, 0, 1, 1, 2, 2]),
+            )
+            expected_result2 = pdf
+            expected_result1.index.name = "index"
+            expected_result1.columns.name = "columns"
+
+        self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
+        self.assert_eq(kdf.explode("A").index.name, expected_result1.index.name)
+        self.assert_eq(kdf.explode("A").columns.name, expected_result1.columns.name)
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+        # MultiIndex
+        midx = pd.MultiIndex.from_tuples(
+            [("x", "a"), ("x", "b"), ("y", "c")], names=["index1", "index2"]
+        )
+        pdf.index = midx
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode("A")
+            expected_result2 = pdf.explode("B")
+        else:
+            midx = pd.MultiIndex.from_tuples(
+                [("x", "a"), ("x", "a"), ("x", "b"), ("x", "b"), ("y", "c"), ("y", "c")],
+                names=["index1", "index2"],
+            )
+            expected_result1.index = midx
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
+        self.assert_eq(kdf.explode("A").index.names, expected_result1.index.names)
+        self.assert_eq(kdf.explode("A").columns.name, expected_result1.columns.name)
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X")], names=["column1", "column2"])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
+            expected_result1 = pdf.explode(("A", "Z"))
+            expected_result2 = pdf.explode(("B", "X"))
+        else:
+            expected_result1.columns = columns
+            expected_result2 = pdf
+
+        self.assert_eq(kdf.explode(("A", "Z")), expected_result1, almost=True)
+        self.assert_eq(repr(kdf.explode(("B", "X"))), repr(expected_result2))
+        self.assert_eq(kdf.explode(("A", "Z")).index.names, expected_result1.index.names)
+        self.assert_eq(kdf.explode(("A", "Z")).columns.names, expected_result1.columns.names)
+
+        self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+
     def test_spark_schema(self):
         kdf = ks.DataFrame(
             {
