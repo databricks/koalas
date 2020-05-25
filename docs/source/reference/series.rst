@@ -23,7 +23,6 @@ Attributes
    Series.dtypes
    Series.ndim
    Series.name
-   Series.spark_type
    Series.shape
    Series.axes
    Series.size
@@ -31,7 +30,6 @@ Attributes
    Series.T
    Series.hasnans
    Series.values
-   Series.spark_column
 
 Conversion
 ----------
@@ -216,6 +214,18 @@ Time series-related
    Series.shift
    Series.first_valid_index
 
+Spark-related
+-------------
+``Series.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``Series.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.spark.data_type
+   Series.spark.column
+   Series.spark.transform
+
 Accessors
 ---------
 
@@ -228,7 +238,6 @@ Data Type                    Accessor
 ========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
 String    :ref:`str <api.series.str>`
-Plot      :ref:`plot <api.series.plot>`
 ========= ===========================
 
 .. _api.series.dt:
@@ -243,7 +252,6 @@ These can be accessed like ``Series.dt.<property>``.
 Datetime Properties
 ~~~~~~~~~~~~~~~~~~~
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -274,7 +282,6 @@ Datetime Properties
 Datetime Methods
 ~~~~~~~~~~~~~~~~
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -295,7 +302,6 @@ String Handling
 strings and apply several methods to it. These can be accessed
 like ``Series.str.<function/property>``.
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -352,14 +358,11 @@ like ``Series.str.<function/property>``.
    Series.str.wrap
    Series.str.zfill
 
-.. _api.series.plot:
-
 Plotting
 -------------------------------
 ``Series.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``Series.plot.<kind>``.
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -373,11 +376,6 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot.line
    Series.plot.pie
    Series.plot.kde
-
-.. currentmodule:: databricks.koalas
-.. autosummary::
-   :toctree: api/
-
    Series.hist
 
 Serialization / IO / Conversion
