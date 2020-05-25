@@ -4868,7 +4868,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = self._internal.spark_frame
         index_scol_names = self._internal.index_spark_column_names.copy()
         pivot_col = index_scol_names.pop(level)
-        scol = self.spark_column
+        scol = self.spark.column
         index_map = OrderedDict(
             (index_scol_name, self._internal.index_map[index_scol_name])
             for index_scol_name in index_scol_names
