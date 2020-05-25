@@ -2324,7 +2324,7 @@ def broadcast(obj):
     ...                     'value': [5, 6, 7, 8]},
     ...                    columns=['rkey', 'value'])
     >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
-    >>> merged.explain()  # doctest: +ELLIPSIS
+    >>> merged.spark.explain()  # doctest: +ELLIPSIS
     == Physical Plan ==
     ...
     ...BroadcastHashJoin...

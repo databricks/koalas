@@ -73,7 +73,6 @@ elif "ARROW_PRE_0_15_IPC_FORMAT" in os.environ:
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.typedef import pandas_wraps
 from databricks.koalas.config import get_option, set_option, reset_option, options
 from databricks.koalas.groupby import NamedAgg
 
@@ -87,7 +86,6 @@ __all__ = [
     "Series",
     "Index",
     "MultiIndex",
-    "pandas_wraps",
     "sql",
     "range",
     "concat",

@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
 import unittest
+from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -66,11 +66,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf["b"] > 2], pdf[pdf["b"] > 2])
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
         self.assert_eq(kdf.a, pdf.a)
-        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
-        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
-        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
-
-        assert repr(kdf)
+        self.assert_eq(kdf.b.mean(), pdf.b.mean())
+        self.assert_eq(kdf.b.var(), pdf.b.var())
+        self.assert_eq(kdf.b.std(), pdf.b.std())
 
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
@@ -415,7 +413,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark().columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "x", "y"])
 
         columns = pdf.columns
         columns.name = "lvl_1"
@@ -443,14 +442,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark().columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "x", "y"])
 
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark().columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "(A, 0)", "(B, 1)"])
 
         columns.names = ["lvl_1", "lvl_2"]
 
@@ -458,7 +459,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns.names, ["lvl_1", "lvl_2"])
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark().columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "(A, 0)", "(B, 1)"])
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -3475,3 +3477,64 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "Truncate: B must be after C"
         with self.assertRaisesRegex(ValueError, msg):
             kdf.truncate("C", "B", axis=1)
+
+    def test_spark_schema(self):
+        kdf = ks.DataFrame(
+            {
+                "a": list("abc"),
+                "b": list(range(1, 4)),
+                "c": np.arange(3, 6).astype("i1"),
+                "d": np.arange(4.0, 7.0, dtype="float64"),
+                "e": [True, False, True],
+                "f": pd.date_range("20130101", periods=3),
+            },
+            columns=["a", "b", "c", "d", "e", "f"],
+        )
+        self.assertEqual(kdf.spark_schema(), kdf.spark.schema())
+        self.assertEqual(kdf.spark_schema("index"), kdf.spark.schema("index"))
+
+    def test_print_schema(self):
+        kdf = ks.DataFrame(
+            {"a": list("abc"), "b": list(range(1, 4)), "c": np.arange(3, 6).astype("i1")},
+            columns=["a", "b", "c"],
+        )
+
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            kdf.print_schema()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            kdf.spark.print_schema()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev
+
+    def test_explain_hint(self):
+        kdf1 = ks.DataFrame(
+            {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]}, columns=["lkey", "value"]
+        )
+        kdf2 = ks.DataFrame(
+            {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]}, columns=["rkey", "value"]
+        )
+        merged = kdf1.merge(kdf2.hint("broadcast"), left_on="lkey", right_on="rkey")
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            merged.explain()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            merged.spark.explain()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev

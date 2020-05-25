@@ -48,7 +48,7 @@ If you are interested in performance tuning, please see also `Tuning Spark <http
 Check execution plans
 ---------------------
 
-Expensive operations can be predicted by leveraging PySpark API `DataFrame.explain()`
+Expensive operations can be predicted by leveraging PySpark API `DataFrame.spark.explain()`
 before the actual computation since Koalas is based on lazy execution. For example, see below.
 
 .. code-block:: python
@@ -56,7 +56,7 @@ before the actual computation since Koalas is based on lazy execution. For examp
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)})
    >>> kdf = kdf[kdf.id > 5]
-   >>> kdf.explain()
+   >>> kdf.spark.explain()
    == Physical Plan ==
    *(1) Filter (id#1L > 5)
    +- *(1) Scan ExistingRDD[__index_level_0__#0L,id#1L]
@@ -80,7 +80,7 @@ and exchange the data across multiple nodes via networks. See the example below.
 
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)}).sort_values(by="id")
-   >>> kdf.explain()
+   >>> kdf.spark.explain()
    == Physical Plan ==
    *(2) Sort [id#9L ASC NULLS LAST], true, 0
    +- Exchange rangepartitioning(id#9L ASC NULLS LAST, 200), true, [id=#18]
@@ -102,7 +102,7 @@ Such APIs should be avoided very large dataset.
 
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)})
-   >>> kdf.rank().explain()
+   >>> kdf.rank().spark.explain()
    == Physical Plan ==
    *(4) Project [__index_level_0__#16L, id#24]
    +- Window [avg(cast(_w0#26 as bigint)) windowspecdefinition(id#17L, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS id#24], [id#17L]
