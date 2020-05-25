@@ -62,6 +62,7 @@ Indexing, iteration
    DataFrame.iteritems
    DataFrame.iterrows
    DataFrame.keys
+   DataFrame.pop
    DataFrame.xs
    DataFrame.get
    DataFrame.where
@@ -103,11 +104,15 @@ Function application, GroupBy & Window
 
    DataFrame.apply
    DataFrame.applymap
+   DataFrame.apply_batch
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
    DataFrame.groupby
+   DataFrame.rolling
+   DataFrame.expanding
    DataFrame.transform
+   DataFrame.transform_batch
    DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
@@ -155,13 +160,16 @@ Reindexing / Selection / Label manipulation
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.duplicated
+   DataFrame.equals
    DataFrame.filter
    DataFrame.head
+   DataFrame.rename
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.take
    DataFrame.isin
    DataFrame.sample
+   DataFrame.truncate
 
 .. _api.dataframe.missing:
 
@@ -172,6 +180,7 @@ Missing data handling
 
    DataFrame.dropna
    DataFrame.fillna
+   DataFrame.replace
    DataFrame.bfill
    DataFrame.ffill
 
@@ -214,14 +223,6 @@ Time series-related
    DataFrame.shift
    DataFrame.first_valid_index
 
-Cache
--------------------------------
-.. autosummary::
-   :toctree: api/
-
-   DataFrame.cache
-   DataFrame.persist
-
 Serialization / IO / Conversion
 -------------------------------
 .. autosummary::
@@ -251,12 +252,29 @@ Serialization / IO / Conversion
 
 .. _api.dataframe.plot:
 
+Spark-related
+-------------
+``DataFrame.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.spark.schema
+   DataFrame.spark.print_schema
+   DataFrame.spark.frame
+   DataFrame.spark.cache
+   DataFrame.spark.persist
+   DataFrame.spark.hint
+   DataFrame.spark.to_table
+   DataFrame.spark.to_spark_io
+   DataFrame.spark.explain
+
 Plotting
 -------------------------------
 ``DataFrame.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
 
-.. currentmodule:: databricks.koalas.frame
 .. autosummary::
    :toctree: api/
 
@@ -268,6 +286,6 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.line
    DataFrame.plot.pie
    DataFrame.plot.scatter
-   DataFrame.plot.kde
    DataFrame.plot.density
    DataFrame.hist
+   DataFrame.kde

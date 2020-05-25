@@ -48,7 +48,7 @@ If you are interested in performance tuning, please see also `Tuning Spark <http
 Check execution plans
 ---------------------
 
-Expensive operations can be predicted by leveraging PySpark API `DataFrame.explain()`
+Expensive operations can be predicted by leveraging PySpark API `DataFrame.spark.explain()`
 before the actual computation since Koalas is based on lazy execution. For example, see below.
 
 .. code-block:: python
@@ -56,7 +56,7 @@ before the actual computation since Koalas is based on lazy execution. For examp
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)})
    >>> kdf = kdf[kdf.id > 5]
-   >>> kdf.explain()
+   >>> kdf.spark.explain()
    == Physical Plan ==
    *(1) Filter (id#1L > 5)
    +- *(1) Scan ExistingRDD[__index_level_0__#0L,id#1L]
@@ -80,7 +80,7 @@ and exchange the data across multiple nodes via networks. See the example below.
 
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)}).sort_values(by="id")
-   >>> kdf.explain()
+   >>> kdf.spark.explain()
    == Physical Plan ==
    *(2) Sort [id#9L ASC NULLS LAST], true, 0
    +- Exchange rangepartitioning(id#9L ASC NULLS LAST, 200), true, [id=#18]
@@ -102,7 +102,7 @@ Such APIs should be avoided very large dataset.
 
    >>> import databricks.koalas as ks
    >>> kdf = ks.DataFrame({'id': range(10)})
-   >>> kdf.rank().explain()
+   >>> kdf.rank().spark.explain()
    == Physical Plan ==
    *(4) Project [__index_level_0__#16L, id#24]
    +- Window [avg(cast(_w0#26 as bigint)) windowspecdefinition(id#17L, specifiedwindowframe(RowFrame, unboundedpreceding$(), unboundedfollowing$())) AS id#24], [id#17L]
@@ -169,4 +169,83 @@ It internally performs a join operation which can be expensive in general, which
 this operation should be avoided.
 
 See `Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.
+
+
+Use Koalas APIs directly whenever possible
+------------------------------------------
+
+Although Koalas has most of the pandas-equivalent APIs, there are several APIs not implemented yet or explicitly unsupported.
+
+As an example, Koalas does not implement ``__iter__()`` to prevent users from collecting all data into the client (driver) side from the whole cluster.
+Unfortunately, many external APIs such as Python built-in functions such as min, max, sum, etc. require the given argument to be iterable.
+In case of pandas, it works properly out of the box as below:
+
+.. code-block:: python
+
+   >>> import pandas as pd
+   >>> max(pd.Series([1, 2, 3]))
+   3
+   >>> min(pd.Series([1, 2, 3]))
+   1
+   >>> sum(pd.Series([1, 2, 3]))
+   6
+
+pandas dataset lives in the single machine, and is naturally iterable locally within the same machine.
+However, Koalas dataset lives across multiple machines, and they are computed in a distributed manner.
+It is difficult to be locally iterable and it is very likely users collect the entire data into the client side without knowing it.
+Therefore, it is best to stick to using Koalas APIs.
+The examples above can be converted as below:
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> ks.Series([1, 2, 3]).max()
+   3
+   >>> ks.Series([1, 2, 3]).min()
+   1
+   >>> ks.Series([1, 2, 3]).sum()
+   6
+
+Another common pattern from pandas users might be to rely on list comprehension or generator expression.
+However, it also assumes the dataset is locally iterable under the hood.
+Therefore, it works seamlessly in pandas as below:
+
+.. code-block:: python
+
+   >>> import pandas as pd
+   >>> data = []
+   >>> countries = ['London', 'New York', 'Helsinki']
+   >>> pser = pd.Series([20., 21., 12.], index=countries)
+   >>> for temperature in pser:
+   ...     assert temperature > 0
+   ...     if temperature > 1000:
+   ...         temperature = None
+   ...     data.append(temperature ** 2)
+   ...
+   >>> pd.Series(data, index=countries)
+   London      400.0
+   New York    441.0
+   Helsinki    144.0
+   dtype: float64
+
+However, for Koalas it does not work as the same reason above.
+The example above can be also changed to directly using Koalas APIs as below:
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> import numpy as np
+   >>> countries = ['London', 'New York', 'Helsinki']
+   >>> kser = ks.Series([20., 21., 12.], index=countries)
+   >>> def square(temperature) -> np.float64:
+   ...     assert temperature > 0
+   ...     if temperature > 1000:
+   ...         temperature = None
+   ...     return temperature ** 2
+   ...
+   >>> kser.apply(square)
+   London      400.0
+   New York    441.0
+   Helsinki    144.0
+   Name: 0, dtype: float64
 

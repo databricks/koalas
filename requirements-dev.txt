@@ -1,14 +1,11 @@
 # Dependencies in Koalas. When you update don't forget to update setup.py and install.rst in docs.
 pandas>=0.23.2
-pyarrow>=0.10,<0.15
+pyarrow>=0.10
 matplotlib>=3.0.0
 numpy>=1.14
 
 # Optional dependencies in Koalas.
 mlflow>=1.0
-
-# Dependency issues
-protobuf<3.9.0
 
 # Documentation build
 sphinx
@@ -21,7 +18,7 @@ ipython
 mypy
 flake8
 
-# Code formatter
+# Code formatter. Only support Python 3.6+
 black==19.10b0
 
 # Test

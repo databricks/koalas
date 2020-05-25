@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/databricks/koalas/master/Koalas-logo.png" width="140"/>
+  <img src="https://raw.githubusercontent.com/databricks/koalas/master/icons/koalas-logo.png" width="140"/>
 </p>
 
 <p align="center">
@@ -45,14 +45,24 @@ conda install koalas -c conda-forge
 
 You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
 
-If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below, for the regular Databricks Runtime.
+If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below for the regular Databricks Runtime,
 
 ```python
 dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
+or using `conda` with `--no-deps` option for Databricks Runtime for Machine Learning 6.0 and above, which provides all the required libraries.
+
+```sh
+%sh
+conda install koalas -c conda-forge --no-deps
+```
+
 Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
+
+Lastly, note that if your PyArrow version is 0.15+ and your PySpark version is lower than 3.0, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
+Koalas will try its best to set it for you but it is impossible to set it if there is a Spark context already launched.
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:
 
@@ -90,14 +100,6 @@ See [FAQ](https://koalas.readthedocs.io/en/latest/user_guide/faq.html) in the of
 See [Best Practices](https://koalas.readthedocs.io/en/latest/user_guide/best_practices.html) in the official documentation.
 
 
-## Koalas talks
+## Koalas Talks and Blogs
 
-See [Koalas talks](https://koalas.readthedocs.io/en/latest/getting_started/videos.html) in the official documentation.
-
-- [Reducing Time-To-Insight for Virgin Hyperloop's Data](https://databricks.com/p/webinar/reducing-time-to-insight-for-hyperloop-data) - Webinar @ Databricks (Mar 27, 2020)
-- [Pandas vs Koalas: The Ultimate Showdown](https://pyvideo.org/pydata-new-york-city-2019/pandas-vs-koalas-the-ultimate-showdown.html) - PyData New York 2019 (Nov 4, 2019)
-- [New Developments in the Open Source Ecosystem: Apache Spark 3.0, Delta Lake, and Koalas](https://databricks.com/session_eu19/new-developments-in-the-open-source-ecosystem-apache-spark-3-0-delta-lake-and-koalas) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
-- [Koalas: Making an Easy Transition from Pandas to Apache Spark](https://databricks.com/session_eu19/koalas-making-an-easy-transition-from-pandas-to-apache-spark) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
-- [Koalas: Pandas on Apache Spark](https://databricks.com/session_eu19/koalas-pandas-on-apache-spark) - Spark + AI Summit Europe 2019 (Oct 16, 2019)
-- [Koalas Easy Transition from pandas to Apache Spark](https://www.youtube.com/watch?v=cMDLoGkidEE) - PyBay 2019 (Aug 17, 2019)
-- [Official Announcement of Koalas Open Source Project](https://databricks.com/session/official-announcement-of-koalas-open-source-project) - Spark + AI Summit 2019 (Apr 24, 2019)
+See [Koalas Talks and Blogs](https://koalas.readthedocs.io/en/latest/getting_started/videos_blogs.html) in the official documentation.

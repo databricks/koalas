@@ -102,6 +102,18 @@ Conversion
    Index.to_frame
    Index.to_numpy
 
+Spark-related
+-------------
+``Index.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``Index.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Index.spark.data_type
+   Index.spark.column
+   Index.spark.transform
+
 Sorting
 ~~~~~~~
 .. autosummary::
@@ -229,6 +241,18 @@ MultiIndex Conversion
    MultiIndex.to_series
    MultiIndex.to_frame
    MultiIndex.to_numpy
+
+MultiIndex Spark-related
+------------------------
+``MultiIndex.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``MultiIndex.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   MultiIndex.spark.data_type
+   MultiIndex.spark.column
+   MultiIndex.spark.transform
 
 MultiIndex Sorting
 ~~~~~~~~~~~~~~~~~~

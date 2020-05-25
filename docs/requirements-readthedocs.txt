@@ -1,2 +1,4 @@
-# Dependencies for Read the Docs.
+# For Read the docs. Only support Python 3.6+ and PIP.
 install-jdk
+git+https://github.com/pandas-dev/pydata-sphinx-theme.git@master
+sphinx>=3.0.0

@@ -40,15 +40,15 @@ setup(
     name='koalas',
     version=VERSION,
     packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing',
-              'databricks.koalas.usage_logging'],
+              'databricks.koalas.usage_logging', 'databricks.koalas.typedef'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
         'mlflow': ['mlflow>=1.0'],
     },
-    python_requires='>=3.5',
+    python_requires='>=3.5,<3.8',
     install_requires=[
         'pandas>=0.23.2',
-        'pyarrow>=0.10,<0.15',
+        'pyarrow>=0.10',
         'numpy>=1.14',
         'matplotlib>=3.0.0',
     ],

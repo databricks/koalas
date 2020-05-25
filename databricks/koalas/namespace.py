@@ -53,9 +53,8 @@ from databricks.koalas.utils import (
     align_diff_frames,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.typedef import pandas_wraps
-from databricks.koalas.series import Series, _col
+from databricks.koalas.internal import InternalFrame
+from databricks.koalas.series import Series, first_series
 
 
 __all__ = [
@@ -339,7 +338,7 @@ def read_csv(
         sdf = default_session().createDataFrame([], schema=StructType())
 
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
     if dtype is not None:
         if isinstance(dtype, dict):
@@ -527,7 +526,7 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     sdf = default_session().read.table(name)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_spark_io(
@@ -607,7 +606,7 @@ def read_spark_io(
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
     index_map = _get_index_map(sdf, index_col)
 
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
@@ -666,7 +665,7 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
             index_map = _get_index_map(sdf, index_col)
-            return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+            return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
     return kdf
 
@@ -1137,7 +1136,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
     if columns is not None:
         if isinstance(columns, str):
             columns = [columns]
@@ -1191,7 +1190,7 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.options(**options)
     sdf = reader.format("jdbc").load()
     index_map = _get_index_map(sdf, index_col)
-    return DataFrame(_InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
@@ -1315,7 +1314,7 @@ def to_datetime(
     >>> ks.to_datetime(df)
     0   2015-02-04
     1   2016-03-05
-    Name: _to_datetime2(arg_day=day, arg_month=month, arg_year=year), dtype: datetime64[ns]
+    Name: 0, dtype: datetime64[ns]
 
     If a date does not meet the `timestamp limitations
     <http://pandas.pydata.org/pandas-docs/stable/timeseries.html
@@ -1365,37 +1364,24 @@ def to_datetime(
     >>> ks.to_datetime([1, 2, 3], unit='D', origin=pd.Timestamp('1960-01-01'))
     DatetimeIndex(['1960-01-02', '1960-01-03', '1960-01-04'], dtype='datetime64[ns]', freq=None)
     """
+
+    def pandas_to_datetime(pser_or_pdf) -> Series[np.datetime64]:
+        if isinstance(pser_or_pdf, pd.DataFrame):
+            pser_or_pdf = pser_or_pdf[["year", "month", "day"]]
+        return pd.to_datetime(
+            pser_or_pdf,
+            errors=errors,
+            format=format,
+            unit=unit,
+            infer_datetime_format=infer_datetime_format,
+            origin=origin,
+        )
+
     if isinstance(arg, Series):
-        return _to_datetime1(
-            arg,
-            errors=errors,
-            format=format,
-            unit=unit,
-            infer_datetime_format=infer_datetime_format,
-            origin=origin,
-        )
+        return arg.transform_batch(pandas_to_datetime)
     if isinstance(arg, DataFrame):
-        return _to_datetime2(
-            arg_year=arg["year"],
-            arg_month=arg["month"],
-            arg_day=arg["day"],
-            errors=errors,
-            format=format,
-            unit=unit,
-            infer_datetime_format=infer_datetime_format,
-            origin=origin,
-        )
-    if isinstance(arg, dict):
-        return _to_datetime2(
-            arg_year=arg["year"],
-            arg_month=arg["month"],
-            arg_day=arg["day"],
-            errors=errors,
-            format=format,
-            unit=unit,
-            infer_datetime_format=infer_datetime_format,
-            origin=origin,
-        )
+        kdf = arg[["year", "month", "day"]]
+        return kdf.transform_batch(pandas_to_datetime)
     return pd.to_datetime(
         arg,
         errors=errors,
@@ -1590,6 +1576,8 @@ def get_dummies(
             "Length of 'prefix' ({}) did not match the length of "
             "the columns being encoded ({}).".format(len(prefix), len(column_labels))
         )
+    elif isinstance(prefix, dict):
+        prefix = [prefix[column_label[0]] for column_label in column_labels]
 
     all_values = _reduce_spark_multi(
         kdf._sdf, [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels]
@@ -1939,7 +1927,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     if should_return_series:
         # If all input were Series, we should return Series.
-        return _col(result_kdf)
+        return first_series(result_kdf)
     else:
         return result_kdf
 
@@ -2325,59 +2313,26 @@ def broadcast(obj):
     DataFrame.merge : Merge DataFrame objects with a database-style join.
     DataFrame.join : Join columns of another DataFrame.
     DataFrame.update : Modify in place using non-NA values from another DataFrame.
+    DataFrame.hint : Specifies some hint on the current DataFrame.
 
     Examples
     --------
-        >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
-        ...                     'value': [1, 2, 3, 5]},
-        ...                    columns=['lkey', 'value'])
-        >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
-        ...                     'value': [5, 6, 7, 8]},
-        ...                    columns=['rkey', 'value'])
-        >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
-        >>> merged.explain()  # doctest: +ELLIPSIS
-        == Physical Plan ==
-        ...
-        ...BroadcastHashJoin...
-        ...
+    >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [1, 2, 3, 5]},
+    ...                    columns=['lkey', 'value'])
+    >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
+    ...                     'value': [5, 6, 7, 8]},
+    ...                    columns=['rkey', 'value'])
+    >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+    >>> merged.spark.explain()  # doctest: +ELLIPSIS
+    == Physical Plan ==
+    ...
+    ...BroadcastHashJoin...
+    ...
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._sdf)))
-
-
-# @pandas_wraps(return_col=np.datetime64)
-@pandas_wraps
-def _to_datetime1(
-    arg, errors, format, unit, infer_datetime_format, origin
-) -> Series[np.datetime64]:
-    return pd.to_datetime(
-        arg,
-        errors=errors,
-        format=format,
-        unit=unit,
-        infer_datetime_format=infer_datetime_format,
-        origin=origin,
-    )
-
-
-# @pandas_wraps(return_col=np.datetime64)
-@pandas_wraps
-def _to_datetime2(
-    arg_year, arg_month, arg_day, errors, format, unit, infer_datetime_format, origin
-) -> Series[np.datetime64]:
-    arg = dict(year=arg_year, month=arg_month, day=arg_day)
-    for key in arg:
-        if arg[key] is None:
-            del arg[key]
-    return pd.to_datetime(
-        arg,
-        errors=errors,
-        format=format,
-        unit=unit,
-        infer_datetime_format=infer_datetime_format,
-        origin=origin,
-    )
 
 
 def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):

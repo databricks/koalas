@@ -143,8 +143,8 @@ def load_model(model_uri, predict_type="infer") -> PythonModelWrapper:
     >>> with mlflow.start_run():
     ...     lr = LinearRegression()
     ...     lr.fit(train_x, train_y)
-    ...     mlflow.sklearn.log_model(lr, "model")  # doctest: +NORMALIZE_WHITESPACE
-    LinearRegression(copy_X=True, fit_intercept=True, n_jobs=None, normalize=False)
+    ...     mlflow.sklearn.log_model(lr, "model")
+    LinearRegression(...)
 
     Now that our model is logged using MLflow, we load it back and apply it on a Koalas dataframe:
 

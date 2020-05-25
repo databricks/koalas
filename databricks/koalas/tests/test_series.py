@@ -35,7 +35,7 @@ from databricks import koalas as ks
 from databricks.koalas import Series
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.series import _MissingPandasLikeSeries
+from databricks.koalas.missing.series import MissingPandasLikeSeries
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -211,6 +211,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.fillna(0), pser.fillna(0))
 
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser, pser)
+
+        # test considering series does not have NA/NaN values
         kser.fillna(0, inplace=True)
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
@@ -674,7 +679,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_missing(self):
         kser = self.kser
 
-        missing_functions = inspect.getmembers(_MissingPandasLikeSeries, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeSeries, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -695,7 +700,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 getattr(kser, name)()
 
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeSeries, lambda o: isinstance(o, property)
+            MissingPandasLikeSeries, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -832,17 +837,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.add_suffix("_item"), kser.add_suffix("_item"))
-
-    def test_pandas_wraps(self):
-        # This test checks the return column name of `isna()`. Previously it returned the column
-        # name as its internal expression which contains, for instance, '`f(x)`' in the middle of
-        # column name which currently cannot be recognized in PySpark.
-        @ks.pandas_wraps
-        def f(x) -> ks.Series[int]:
-            return 2 * x
-
-        df = ks.DataFrame({"x": [1, None]})
-        self.assert_eq(f(df["x"]).isna(), pd.Series([False, True]).rename("f(x)"))
 
     def test_hist(self):
         pdf = pd.DataFrame(
@@ -1025,6 +1019,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_astype(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(int), pser.astype(int))
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series(["hi", "hi ", " ", " \t", "", None], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
+
+        pser = pd.Series([True, False, None], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(bool), pser.astype(bool))
+
         with self.assertRaisesRegex(ValueError, "Type int63 not understood"):
             kser.astype("int63")
 
@@ -1373,6 +1387,56 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.take({1, 2}))
         self.assertRaises(ValueError, lambda: kser.take({1: None, 2: None}))
 
+    def test_divmod(self):
+        pser = pd.Series([100, None, 300, None, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(kser.divmod(-100)), repr(pser.divmod(-100)))
+            self.assert_eq(repr(kser.divmod(100)), repr(pser.divmod(100)))
+        elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            expected_result = repr((pser.floordiv(-100), pser.mod(-100)))
+            self.assert_eq(repr(kser.divmod(-100)), expected_result)
+            expected_result = repr((pser.floordiv(100), pser.mod(100)))
+            self.assert_eq(repr(kser.divmod(100)), expected_result)
+
+    def test_rdivmod(self):
+        pser = pd.Series([100, None, 300, None, 500], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(kser.rdivmod(-100)), repr(pser.rdivmod(-100)))
+            self.assert_eq(repr(kser.rdivmod(100)), repr(pser.rdivmod(100)))
+        elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            expected_result = repr((pser.rfloordiv(-100), pser.rmod(-100)))
+            self.assert_eq(repr(kser.rdivmod(-100)), expected_result)
+            expected_result = repr((pser.rfloordiv(100), pser.rmod(100)))
+            self.assert_eq(repr(kser.rdivmod(100)), expected_result)
+
+    def test_mod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(kser.mod(-150)), repr(pser.mod(-150)))
+        self.assert_eq(repr(kser.mod(0)), repr(pser.mod(0)))
+        self.assert_eq(repr(kser.mod(150)), repr(pser.mod(150)))
+
+        pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(repr(kdf.a.mod(kdf.b)), repr(pdf.a.mod(pdf.b).rename("a")))
+
+    def test_rmod(self):
+        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(kser.rmod(-150)), repr(pser.rmod(-150)))
+        self.assert_eq(repr(kser.rmod(0)), repr(pser.rmod(0)))
+        self.assert_eq(repr(kser.rmod(150)), repr(pser.rmod(150)))
+
+        pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(repr(kdf.a.rmod(kdf.b)), repr(pdf.a.rmod(pdf.b).rename("a")))
+
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
         kser = ks.from_pandas(pser)
@@ -1422,3 +1486,115 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([90, 91, 85], index=midx)
         pser = kser.to_pandas()
         self.assert_eq(kser.squeeze(), pser.squeeze())
+
+    def test_div_zero_and_nan(self):
+        pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(repr(pser.div(0)), repr(kser.div(0)))
+        self.assert_eq(repr(pser.truediv(0)), repr(kser.truediv(0)))
+        self.assert_eq(repr(pser / 0), repr(kser / 0))
+        self.assert_eq(repr(pser.div(np.nan)), repr(kser.div(np.nan)))
+        self.assert_eq(repr(pser.truediv(np.nan)), repr(kser.truediv(np.nan)))
+        self.assert_eq(repr(pser / np.nan), repr(kser / np.nan))
+
+        # floordiv has different behavior in pandas > 1.0.0 when divide by 0
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(repr(pser.floordiv(0)), repr(kser.floordiv(0)))
+            self.assert_eq(repr(pser // 0), repr(kser // 0))
+        else:
+            result = pd.Series(
+                [np.inf, np.nan, -np.inf, np.nan, np.inf, -np.inf, np.inf, -np.inf], name="Koalas"
+            )
+            self.assert_eq(repr(kser.floordiv(0)), repr(result))
+            self.assert_eq(repr(kser // 0), repr(result))
+        self.assert_eq(repr(pser.floordiv(np.nan)), repr(kser.floordiv(np.nan)))
+
+    def test_mad(self):
+        pser = pd.Series([1, 2, 3, 4], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pser = pd.Series([None, -2, 5, 10, 50, np.nan, -20], name="Koalas")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2"), ("c", "1")]
+        )
+        pser = pd.Series([1, 2, 3, 4, 5], name="Koalas")
+        pser.index = pmidx
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "1"), ("a", "2"), ("b", "1"), ("b", "2"), ("c", "1")]
+        )
+        pser = pd.Series([None, -2, 5, 50, np.nan], name="Koalas")
+        pser.index = pmidx
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.mad(), kser.mad())
+
+    def test_to_frame(self):
+        kser = ks.Series(["a", "b", "c"])
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.to_frame(name="a"), kser.to_frame(name="a"))
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series(["a", "b", "c"], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.to_frame(name="a"), kser.to_frame(name="a"))
+
+    def test_shape(self):
+        kser = ks.Series(["a", "b", "c"])
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.shape, kser.shape)
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kser = ks.Series(["a", "b", "c"], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(pser.shape, kser.shape)
+
+    def test_to_markdown(self):
+        pser = pd.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        kser = ks.from_pandas(pser)
+
+        # `to_markdown()` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            self.assertRaises(NotImplementedError, lambda: kser.to_markdown())
+        else:
+            self.assert_eq(pser.to_markdown(), kser.to_markdown())
+
+    def test_unstack(self):
+        pser = pd.Series(
+            [10, -2, 4, 7],
+            index=pd.MultiIndex.from_tuples(
+                [("one", "a", "z"), ("one", "b", "x"), ("two", "a", "c"), ("two", "b", "v")]
+            ),
+        )
+        kser = ks.from_pandas(pser)
+
+        levels = [-3, -2, -1, 0, 1, 2]
+        for level in levels:
+            self.assert_eq(pser.unstack(level=level), kser.unstack(level=level).sort_index())
+
+        # Exceeding the range of level
+        self.assertRaises(IndexError, lambda: kser.unstack(level=3))
+        self.assertRaises(IndexError, lambda: kser.unstack(level=-4))
+        # Only support for MultiIndex
+        kser = ks.Series([10, -2, 4, 7])
+        self.assertRaises(ValueError, lambda: kser.unstack())
+
+    def test_item(self):
+        kser = ks.Series([10, 20])
+        self.assertRaises(ValueError, lambda: kser.item())

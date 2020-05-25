@@ -34,24 +34,23 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
-from databricks.koalas.internal import _InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.utils import (
-    validate_arguments_and_invoke_function,
-    scol_for,
-    validate_axis,
-    align_diff_frames,
     name_like_string,
+    scol_for,
+    validate_arguments_and_invoke_function,
+    validate_axis,
 )
 from databricks.koalas.window import Rolling, Expanding
 
 
-class _Frame(object):
+class Frame(object):
     """
     The base class for both DataFrame and Series.
     """
 
-    def __init__(self, internal: _InternalFrame):
-        self._internal = internal  # type: _InternalFrame
+    def __init__(self, internal: InternalFrame):
+        self._internal = internal  # type: InternalFrame
 
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
@@ -306,6 +305,7 @@ class _Frame(object):
 
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
+    # We can drop it once our minimal pandas version becomes 1.0.0.
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
@@ -383,11 +383,11 @@ class _Frame(object):
         ...                    'col2': [4, 5, 6]},
         ...                   columns=['category', 'col1', 'col2'])
         >>> def keep_category_a(df):
-        ...    return df[df['category'] == 'A']
+        ...     return df[df['category'] == 'A']
         >>> def add_one(df, column):
-        ...    return df.assign(col3=df[column] + 1)
+        ...     return df.assign(col3=df[column] + 1)
         >>> def multiply(df, column1, column2):
-        ...    return df.assign(col4=df[column1] * df[column2])
+        ...     return df.assign(col4=df[column1] * df[column2])
 
 
         instead of writing
@@ -1395,7 +1395,7 @@ class _Frame(object):
         """
         # TODO: The first example above should not have "Name: 0".
         return self._apply_series_op(
-            lambda kser: kser._with_new_scol(F.abs(kser._scol)).rename(kser.name)
+            lambda kser: kser._with_new_scol(F.abs(kser.spark.column)).rename(kser.name)
         )
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
@@ -1460,15 +1460,14 @@ class _Frame(object):
         """
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
-        df_or_s = self
         if isinstance(by, ks.DataFrame):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         elif isinstance(by, str):
-            if isinstance(df_or_s, ks.Series):
+            if isinstance(self, ks.Series):
                 raise KeyError(by)
             by = [(by,)]
         elif isinstance(by, tuple):
-            if isinstance(df_or_s, ks.Series):
+            if isinstance(self, ks.Series):
                 for key in by:
                     if isinstance(key, str):
                         raise KeyError(key)
@@ -1479,7 +1478,7 @@ class _Frame(object):
         elif isinstance(by, ks.Series):
             by = [by]
         elif isinstance(by, Iterable):
-            if isinstance(df_or_s, ks.Series):
+            if isinstance(self, ks.Series):
                 for key in by:
                     if isinstance(key, str):
                         raise KeyError(key)
@@ -1492,60 +1491,14 @@ class _Frame(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        if isinstance(df_or_s, ks.DataFrame):
-            df = df_or_s  # type: ks.DataFrame
-
-            # This is to match the output with pandas'. Pandas seems returning different results
-            # when given series is from different dataframes. It only applies when as_index is
-            # False.
-            should_drop_index = any(
-                isinstance(col_or_s, ks.Series) and df is not col_or_s._kdf for col_or_s in by
-            )
-
-            kdf, col_by = self._resolve_grouping_series(by)
-            return DataFrameGroupBy(
-                kdf, col_by, as_index=as_index, should_drop_index=should_drop_index
-            )
-        if isinstance(df_or_s, ks.Series):
-            col = df_or_s  # type: ks.Series
-            _, col_by = self._resolve_grouping_series(by)
-            return SeriesGroupBy(col, col_by, as_index=as_index)
-        raise TypeError(
-            "Constructor expects DataFrame or Series; however, " "got [%s]" % (df_or_s,)
-        )
-
-    def _resolve_grouping_series(self, by):
-        should_use_name = False
-        if isinstance(self, ks.Series):
-            kdf = self._kdf
+        if isinstance(self, ks.DataFrame):
+            return DataFrameGroupBy._build(self, by, as_index=as_index)
+        elif isinstance(self, ks.Series):
+            return SeriesGroupBy._build(self, by, as_index=as_index)
         else:
-            kdf = self
-        for col_or_s in by:
-            if isinstance(col_or_s, ks.Series) and kdf is not col_or_s._kdf:
-
-                def assign_columns(kdf, this_column_labels, that_column_labels):
-                    raise NotImplementedError(
-                        "Duplicated labels with groupby() and "
-                        "'compute.ops_on_diff_frames' option are not supported currently "
-                        "Please use unique labels in series and frames."
-                    )
-
-                kdf = align_diff_frames(assign_columns, kdf, col_or_s, fillna=False, how="inner")
-                # Should use name to search series because now the anchor is different
-                should_use_name = True
-
-        new_by_series = []
-        for col_or_s in by:
-            if isinstance(col_or_s, ks.Series) and should_use_name:
-                new_by_series.append(kdf[col_or_s.name])
-            elif isinstance(col_or_s, ks.Series):
-                new_by_series.append(col_or_s)
-            elif isinstance(col_or_s, tuple):
-                new_by_series.append(kdf[col_or_s])
-            else:
-                raise ValueError(col_or_s)
-
-        return kdf, new_by_series
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
 
     def bool(self):
         """
@@ -1754,11 +1707,11 @@ class _Frame(object):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series, _col
+        from databricks.koalas.series import Series, first_series
 
         kdf_or_kser = self
         if isinstance(kdf_or_kser, Series):
-            kser = _col(kdf_or_kser.to_frame())
+            kser = first_series(kdf_or_kser.to_frame())
             return kser._reduce_for_stat_function(
                 lambda _: F.expr(
                     "approx_percentile(`%s`, 0.5, %s)"
@@ -1776,7 +1729,7 @@ class _Frame(object):
         sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_spark_column_names])
 
         # Attach a dummy column for index to avoid default index.
-        sdf = _InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
+        sdf = InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
 
         # This is expected to be small so it's fine to transpose.
         return (
@@ -2003,13 +1956,13 @@ class _Frame(object):
             axis = validate_axis(axis)
 
         if isinstance(self, ks.DataFrame):
-            from databricks.koalas.series import _col
+            from databricks.koalas.series import first_series
 
             is_squeezable = len(self.columns[:2]) == 1
             # If DataFrame has multiple columns, there is no change.
             if not is_squeezable:
                 return self
-            series_from_column = _col(self)
+            series_from_column = first_series(self)
             has_single_value = len(series_from_column.head(2)) == 1
             # If DataFrame has only a single value, use pandas API directly.
             if has_single_value:
@@ -2026,6 +1979,195 @@ class _Frame(object):
             self_top_two = self.head(2)
             has_single_value = len(self_top_two) == 1
             return self_top_two[0] if has_single_value else self
+
+    def truncate(self, before=None, after=None, axis=None, copy=True):
+        """
+        Truncate a Series or DataFrame before and after some index value.
+
+        This is a useful shorthand for boolean indexing based on index
+        values above or below certain thresholds.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        before : date, str, int
+            Truncate all rows before this index value.
+        after : date, str, int
+            Truncate all rows after this index value.
+        axis : {0 or 'index', 1 or 'columns'}, optional
+            Axis to truncate. Truncates the index (rows) by default.
+        copy : bool, default is True,
+            Return a copy of the truncated section.
+
+        Returns
+        -------
+        type of caller
+            The truncated Series or DataFrame.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by label.
+        DataFrame.iloc : Select a subset of a DataFrame by position.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': ['a', 'b', 'c', 'd', 'e'],
+        ...                    'B': ['f', 'g', 'h', 'i', 'j'],
+        ...                    'C': ['k', 'l', 'm', 'n', 'o']},
+        ...                   index=[1, 2, 3, 4, 5])
+        >>> df
+           A  B  C
+        1  a  f  k
+        2  b  g  l
+        3  c  h  m
+        4  d  i  n
+        5  e  j  o
+
+        >>> df.truncate(before=2, after=4)
+           A  B  C
+        2  b  g  l
+        3  c  h  m
+        4  d  i  n
+
+        The columns of a DataFrame can be truncated.
+
+        >>> df.truncate(before="A", after="B", axis="columns")
+           A  B
+        1  a  f
+        2  b  g
+        3  c  h
+        4  d  i
+        5  e  j
+
+        For Series, only rows can be truncated.
+
+        >>> df['A'].truncate(before=2, after=4)
+        2    b
+        3    c
+        4    d
+        Name: A, dtype: object
+
+        A Series has index that sorted integers.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=[1, 2, 3, 4, 5, 6, 7])
+        >>> s
+        1    10
+        2    20
+        3    30
+        4    40
+        5    50
+        6    60
+        7    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate(2, 5)
+        2    20
+        3    30
+        4    40
+        5    50
+        Name: 0, dtype: int64
+
+        A Series has index that sorted strings.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        >>> s
+        a    10
+        b    20
+        c    30
+        d    40
+        e    50
+        f    60
+        g    70
+        Name: 0, dtype: int64
+
+        >>> s.truncate('b', 'e')
+        b    20
+        c    30
+        d    40
+        e    50
+        Name: 0, dtype: int64
+        """
+        from databricks.koalas.series import first_series
+
+        axis = validate_axis(axis)
+        indexes = self.index
+        indexes_increasing = indexes.is_monotonic_increasing
+        if not indexes_increasing and not indexes.is_monotonic_decreasing:
+            raise ValueError("truncate requires a sorted index")
+        if (before is None) and (after is None):
+            return self.copy() if copy else self
+        if (before is not None and after is not None) and before > after:
+            raise ValueError("Truncate: %s must be after %s" % (after, before))
+
+        if isinstance(self, ks.Series):
+            result = first_series(self.to_frame().loc[before:after])
+        elif isinstance(self, ks.DataFrame):
+            if axis == 0:
+                result = self.loc[before:after]
+            elif axis == 1:
+                result = self.loc[:, before:after]
+
+        return result.copy() if copy else result
+
+    def to_markdown(self, buf=None, mode=None):
+        """
+        Print Series or DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting Pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            Series or DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> kser = ks.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        >>> print(kser.to_markdown())  # doctest: +SKIP
+        |    | animal   |
+        |---:|:---------|
+        |  0 | elk      |
+        |  1 | pig      |
+        |  2 | dog      |
+        |  3 | quetzal  |
+
+        >>> kdf = ks.DataFrame(
+        ...     data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]}
+        ... )
+        >>> print(kdf.to_markdown())  # doctest: +SKIP
+        |    | animal_1   | animal_2   |
+        |---:|:-----------|:-----------|
+        |  0 | elk        | dog        |
+        |  1 | pig        | quetzal    |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kser_or_kdf = self
+        internal_pandas = kser_or_kdf._to_internal_pandas()
+        return validate_arguments_and_invoke_function(
+            internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
+        )
 
     @property
     def at(self):
@@ -2051,9 +2193,11 @@ class _Frame(object):
 
     loc.__doc__ = LocIndexer.__doc__
 
-    def compute(self):
-        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
+    def __bool__(self):
+        raise ValueError(
+            "The truth value of a {0} is ambiguous. "
+            "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
+        )
 
     @staticmethod
     def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:

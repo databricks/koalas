@@ -17,7 +17,11 @@ from collections import OrderedDict
 
 import pandas as pd
 
-from databricks.koalas.internal import _InternalFrame, SPARK_DEFAULT_INDEX_NAME
+from databricks.koalas.internal import (
+    InternalFrame,
+    SPARK_DEFAULT_INDEX_NAME,
+    SPARK_INDEX_NAME_FORMAT,
+)
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
 
@@ -25,7 +29,7 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_from_pandas(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
 
-        internal = _InternalFrame.from_pandas(pdf)
+        internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
         self.assert_eq(internal.index_map, OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}))
@@ -39,11 +43,12 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # multi-index
         pdf.set_index("a", append=True, inplace=True)
 
-        internal = _InternalFrame.from_pandas(pdf)
+        internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
         self.assert_eq(
-            internal.index_map, OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None), ("a", ("a",))])
+            internal.index_map,
+            OrderedDict([(SPARK_INDEX_NAME_FORMAT(0), None), (SPARK_INDEX_NAME_FORMAT(1), ("a",))]),
         )
         self.assert_eq(internal.column_labels, [("b",)])
         self.assert_eq(internal.data_spark_column_names, ["b"])
@@ -54,11 +59,12 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # multi-index columns
         pdf.columns = pd.MultiIndex.from_tuples([("x", "b")])
 
-        internal = _InternalFrame.from_pandas(pdf)
+        internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
         self.assert_eq(
-            internal.index_map, OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None), ("a", ("a",))])
+            internal.index_map,
+            OrderedDict([(SPARK_INDEX_NAME_FORMAT(0), None), (SPARK_INDEX_NAME_FORMAT(1), ("a",))]),
         )
         self.assert_eq(internal.column_labels, [("x", "b")])
         self.assert_eq(internal.data_spark_column_names, ["(x, b)"])

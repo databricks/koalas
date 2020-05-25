@@ -27,7 +27,7 @@ from pyspark.ml.feature import Bucketizer
 from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 
-from databricks.koalas.missing import _unsupported_function
+from databricks.koalas.missing import unsupported_function
 from databricks.koalas.config import get_option
 
 
@@ -73,7 +73,7 @@ class TopNPlot:
         if isinstance(data, (Series, DataFrame)):
             data = data.head(max_rows + 1).to_pandas()
         else:
-            ValueError("Only DataFrame and Series are supported for plotting.")
+            raise ValueError("Only DataFrame and Series are supported for plotting.")
 
         self.partial = False
         if len(data) > max_rows:
@@ -113,7 +113,7 @@ class SampledPlot:
             sampled = data._sdf.sample(fraction=self.fraction)
             return DataFrame(data._internal.with_new_sdf(sampled)).to_pandas()
         else:
-            ValueError("Only DataFrame and Series are supported for plotting.")
+            raise ValueError("Only DataFrame and Series are supported for plotting.")
 
     def set_result_text(self, ax):
         assert hasattr(self, "fraction")
@@ -171,7 +171,7 @@ class KoalasBoxPlot(BoxPlot):
         zorder=None,
         precision=None,
     ):
-        def _update_dict(dictionary, rc_name, properties):
+        def update_dict(dictionary, rc_name, properties):
             """ Loads properties in the dictionary from rc file if not already
             in the dictionary"""
             rc_str = "boxplot.{0}.{1}"
@@ -195,12 +195,12 @@ class KoalasBoxPlot(BoxPlot):
         ]
         default_props = ["color", "linewidth", "linestyle"]
 
-        boxprops = _update_dict(boxprops, "boxprops", default_props)
-        whiskerprops = _update_dict(whiskerprops, "whiskerprops", default_props)
-        capprops = _update_dict(capprops, "capprops", default_props)
-        medianprops = _update_dict(medianprops, "medianprops", default_props)
-        meanprops = _update_dict(meanprops, "meanprops", default_props)
-        flierprops = _update_dict(flierprops, "flierprops", flier_props)
+        boxprops = update_dict(boxprops, "boxprops", default_props)
+        whiskerprops = update_dict(whiskerprops, "whiskerprops", default_props)
+        capprops = update_dict(capprops, "capprops", default_props)
+        medianprops = update_dict(medianprops, "medianprops", default_props)
+        meanprops = update_dict(meanprops, "meanprops", default_props)
+        flierprops = update_dict(flierprops, "flierprops", flier_props)
 
         if patch_artist:
             boxprops["linestyle"] = "solid"
@@ -1916,10 +1916,10 @@ class KoalasFramePlotMethods(PandasObject):
         return self(kind="barh", x=x, y=y, **kwargs)
 
     def hexbin(self, **kwds):
-        return _unsupported_function(class_name="pd.DataFrame", method_name="hexbin")()
+        return unsupported_function(class_name="pd.DataFrame", method_name="hexbin")()
 
     def box(self, **kwds):
-        return _unsupported_function(class_name="pd.DataFrame", method_name="box")()
+        return unsupported_function(class_name="pd.DataFrame", method_name="box")()
 
     def hist(self, bins=10, **kwds):
         """

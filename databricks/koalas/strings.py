@@ -17,13 +17,15 @@
 """
 String functions on Koalas Series
 """
-from typing import TYPE_CHECKING
+from typing import Union, TYPE_CHECKING
 
 import numpy as np
 
-from pyspark.sql.types import StringType, BinaryType, BooleanType, IntegerType, ArrayType, LongType
+from pyspark.sql.types import StringType, BinaryType, ArrayType, LongType, MapType
+from pyspark.sql import functions as F
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 
-from databricks.koalas.base import _wrap_accessor_pandas
+from databricks.koalas.base import column_op
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -33,8 +35,8 @@ class StringMethods(object):
     """String methods for Koalas Series"""
 
     def __init__(self, series: "ks.Series"):
-        if not isinstance(series.spark_type, (StringType, BinaryType, ArrayType)):
-            raise ValueError("Cannot call StringMethods on type {}".format(series.spark_type))
+        if not isinstance(series.spark.data_type, (StringType, BinaryType, ArrayType)):
+            raise ValueError("Cannot call StringMethods on type {}".format(series.spark.data_type))
         self._data = series
         self.name = self._data.name
 
@@ -60,9 +62,11 @@ class StringMethods(object):
         3              Swapcase
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.capitalize(), StringType()).alias(
-            self.name
-        )
+
+        def pandas_capitalize(s) -> "ks.Series[str]":
+            return s.str.capitalize()
+
+        return self._data.transform_batch(pandas_capitalize)
 
     def title(self) -> "ks.Series":
         """
@@ -85,7 +89,11 @@ class StringMethods(object):
         3              Swapcase
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.title(), StringType()).alias(self.name)
+
+        def pandas_title(s) -> "ks.Series[str]":
+            return s.str.title()
+
+        return self._data.transform_batch(pandas_title)
 
     def lower(self) -> "ks.Series":
         """
@@ -108,7 +116,7 @@ class StringMethods(object):
         3              swapcase
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.lower(), StringType()).alias(self.name)
+        return column_op(lambda c: F.lower(c))(self._data).alias(self._data.name)
 
     def upper(self) -> "ks.Series":
         """
@@ -131,7 +139,7 @@ class StringMethods(object):
         3              SWAPCASE
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.upper(), StringType()).alias(self.name)
+        return column_op(lambda c: F.upper(c))(self._data).alias(self._data.name)
 
     def swapcase(self) -> "ks.Series":
         """
@@ -154,9 +162,11 @@ class StringMethods(object):
         3              sWaPcAsE
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.swapcase(), StringType()).alias(
-            self.name
-        )
+
+        def pandas_swapcase(s) -> "ks.Series[str]":
+            return s.str.swapcase()
+
+        return self._data.transform_batch(pandas_swapcase)
 
     def startswith(self, pattern, na=None) -> "ks.Series":
         """
@@ -203,9 +213,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.startswith(pattern, na), BooleanType()
-        ).alias(self.name)
+
+        def pandas_startswith(s) -> "ks.Series[bool]":
+            return s.str.startswith(pattern, na)
+
+        return self._data.transform_batch(pandas_startswith)
 
     def endswith(self, pattern, na=None) -> "ks.Series":
         """
@@ -252,9 +264,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.endswith(pattern, na), BooleanType()
-        ).alias(self.name)
+
+        def pandas_endswith(s) -> "ks.Series[bool]":
+            return s.str.endswith(pattern, na)
+
+        return self._data.transform_batch(pandas_endswith)
 
     def strip(self, to_strip=None) -> "ks.Series":
         """
@@ -302,9 +316,11 @@ class StringMethods(object):
         2      None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.strip(to_strip), StringType()).alias(
-            self.name
-        )
+
+        def pandas_strip(s) -> "ks.Series[str]":
+            return s.str.strip(to_strip)
+
+        return self._data.transform_batch(pandas_strip)
 
     def lstrip(self, to_strip=None) -> "ks.Series":
         """
@@ -340,9 +356,11 @@ class StringMethods(object):
         2       None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.lstrip(to_strip), StringType()).alias(
-            self.name
-        )
+
+        def pandas_lstrip(s) -> "ks.Series[str]":
+            return s.str.lstrip(to_strip)
+
+        return self._data.transform_batch(pandas_lstrip)
 
     def rstrip(self, to_strip=None) -> "ks.Series":
         """
@@ -378,9 +396,11 @@ class StringMethods(object):
         2      None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.rstrip(to_strip), StringType()).alias(
-            self.name
-        )
+
+        def pandas_rstrip(s) -> "ks.Series[str]":
+            return s.str.rstrip(to_strip)
+
+        return self._data.transform_batch(pandas_rstrip)
 
     def get(self, i) -> "ks.Series":
         """
@@ -430,7 +450,11 @@ class StringMethods(object):
         1    None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.get(i), StringType()).alias(self.name)
+
+        def pandas_get(s) -> "ks.Series[str]":
+            return s.str.get(i)
+
+        return self._data.transform_batch(pandas_get)
 
     def isalnum(self) -> "ks.Series":
         """
@@ -462,9 +486,11 @@ class StringMethods(object):
         2    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isalnum(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isalnum(s) -> "ks.Series[bool]":
+            return s.str.isalnum()
+
+        return self._data.transform_batch(pandas_isalnum)
 
     def isalpha(self) -> "ks.Series":
         """
@@ -485,9 +511,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isalpha(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isalpha(s) -> "ks.Series[bool]":
+            return s.str.isalpha()
+
+        return self._data.transform_batch(pandas_isalpha)
 
     def isdigit(self) -> "ks.Series":
         """
@@ -533,9 +561,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isdigit(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isdigit(s) -> "ks.Series[bool]":
+            return s.str.isdigit()
+
+        return self._data.transform_batch(pandas_isdigit)
 
     def isspace(self) -> "ks.Series":
         """
@@ -554,9 +584,11 @@ class StringMethods(object):
         2    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isspace(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isspace(s) -> "ks.Series[bool]":
+            return s.str.isspace()
+
+        return self._data.transform_batch(pandas_isspace)
 
     def islower(self) -> "ks.Series":
         """
@@ -576,9 +608,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.islower(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isspace(s) -> "ks.Series[bool]":
+            return s.str.islower()
+
+        return self._data.transform_batch(pandas_isspace)
 
     def isupper(self) -> "ks.Series":
         """
@@ -598,9 +632,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isupper(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isspace(s) -> "ks.Series[bool]":
+            return s.str.isupper()
+
+        return self._data.transform_batch(pandas_isspace)
 
     def istitle(self) -> "ks.Series":
         """
@@ -626,9 +662,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.istitle(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_istitle(s) -> "ks.Series[bool]":
+            return s.str.istitle()
+
+        return self._data.transform_batch(pandas_istitle)
 
     def isnumeric(self) -> "ks.Series":
         """
@@ -682,9 +720,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isnumeric(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isnumeric(s) -> "ks.Series[bool]":
+            return s.str.isnumeric()
+
+        return self._data.transform_batch(pandas_isnumeric)
 
     def isdecimal(self) -> "ks.Series":
         """
@@ -730,9 +770,11 @@ class StringMethods(object):
         3    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.isdecimal(), BooleanType()).alias(
-            self.name
-        )
+
+        def pandas_isdecimal(s) -> "ks.Series[bool]":
+            return s.str.isdecimal()
+
+        return self._data.transform_batch(pandas_isdecimal)
 
     def cat(self, others=None, sep=None, na_rep=None, join=None) -> "ks.Series":
         """
@@ -770,9 +812,11 @@ class StringMethods(object):
         1    --tiger---
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.center(width, fillchar), StringType()
-        ).alias(self.name)
+
+        def pandas_center(s) -> "ks.Series[str]":
+            return s.str.center(width, fillchar)
+
+        return self._data.transform_batch(pandas_center)
 
     def contains(self, pat, case=True, flags=0, na=None, regex=True) -> "ks.Series":
         """
@@ -885,9 +929,11 @@ class StringMethods(object):
         4    False
         Name: 0, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.contains(pat, case, flags, na, regex), BooleanType()
-        ).alias(self.name)
+
+        def pandas_contains(s) -> "ks.Series[bool]":
+            return s.str.contains(pat, case, flags, na, regex)
+
+        return self._data.transform_batch(pandas_contains)
 
     def count(self, pat, flags=0) -> "ks.Series":
         """
@@ -933,9 +979,11 @@ class StringMethods(object):
         5    0
         Name: 0, dtype: int32
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.count(pat, flags), IntegerType()).alias(
-            self.name
-        )
+
+        def pandas_count(s) -> "ks.Series[int]":
+            return s.str.count(pat, flags)
+
+        return self._data.transform_batch(pandas_count)
 
     def decode(self, encoding, errors="strict") -> "ks.Series":
         """
@@ -1010,9 +1058,11 @@ class StringMethods(object):
         2   -1
         Name: 0, dtype: int32
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.find(sub, start, end), IntegerType()
-        ).alias(self.name)
+
+        def pandas_find(s) -> "ks.Series[int]":
+            return s.str.find(sub, start, end)
+
+        return self._data.transform_batch(pandas_find)
 
     def findall(self, pat, flags=0) -> "ks.Series":
         """
@@ -1092,9 +1142,13 @@ class StringMethods(object):
         2    [b, b]
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.findall(pat, flags), ArrayType(StringType(), containsNull=True)
-        ).alias(self.name)
+        # type hint does not support to specify array type yet.
+        pudf = pandas_udf(
+            lambda s: s.str.findall(pat, flags),
+            returnType=ArrayType(StringType(), containsNull=True),
+            functionType=PandasUDFType.SCALAR,
+        )
+        return self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
 
     def index(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1133,9 +1187,11 @@ class StringMethods(object):
 
         >>> s.str.index('a', start=2) # doctest: +SKIP
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.index(sub, start, end), LongType()
-        ).alias(self.name)
+
+        def pandas_index(s) -> "ks.Series[np.int64]":
+            return s.str.index(sub, start, end)
+
+        return self._data.transform_batch(pandas_index)
 
     def join(self, sep) -> "ks.Series":
         """
@@ -1156,9 +1212,16 @@ class StringMethods(object):
             Series with list entries concatenated by intervening occurrences of
             the delimiter.
 
+        See Also
+        --------
+        str.split : Split strings around given separator/delimiter.
+        str.rsplit : Splits string around given separator/delimiter,
+            starting from the right.
+
         Examples
         --------
         Example with a list that contains a None element.
+
         >>> s = ks.Series([['lion', 'elephant', 'zebra'],
         ...                ['cat', None, 'dog']])
         >>> s
@@ -1167,12 +1230,17 @@ class StringMethods(object):
         Name: 0, dtype: object
 
         Join all lists using a ‘-‘. The list containing None will produce None.
+
         >>> s.str.join('-')
         0    lion-elephant-zebra
         1                   None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.join(sep), StringType()).alias(self.name)
+
+        def pandas_join(s) -> "ks.Series[str]":
+            return s.str.join(sep)
+
+        return self._data.transform_batch(pandas_join)
 
     def len(self) -> "ks.Series":
         """
@@ -1203,7 +1271,14 @@ class StringMethods(object):
         1    0
         Name: 0, dtype: int64
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.len(), LongType()).alias(self.name)
+        if isinstance(self._data.spark.data_type, (ArrayType, MapType)):
+            return column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
+                self._data.name
+            )
+        else:
+            return column_op(lambda c: F.length(c).cast(LongType()))(self._data).alias(
+                self._data.name
+            )
 
     def ljust(self, width, fillchar=" ") -> "ks.Series":
         """
@@ -1235,9 +1310,11 @@ class StringMethods(object):
         1    tiger-----
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.ljust(width, fillchar), StringType()
-        ).alias(self.name)
+
+        def pandas_ljust(s) -> "ks.Series[str]":
+            return s.str.ljust(width, fillchar)
+
+        return self._data.transform_batch(pandas_ljust)
 
     def match(self, pat, case=True, flags=0, na=np.NaN) -> "ks.Series":
         """
@@ -1299,9 +1376,11 @@ class StringMethods(object):
         4     None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.match(pat, case, flags, na), BooleanType()
-        ).alias(self.name)
+
+        def pandas_match(s) -> "ks.Series[bool]":
+            return s.str.match(pat, case, flags, na)
+
+        return self._data.transform_batch(pandas_match)
 
     def normalize(self, form) -> "ks.Series":
         """
@@ -1320,9 +1399,11 @@ class StringMethods(object):
         Series of objects
             A Series of normalized strings.
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.normalize(form), StringType()).alias(
-            self.name
-        )
+
+        def pandas_normalize(s) -> "ks.Series[str]":
+            return s.str.normalize(form)
+
+        return self._data.transform_batch(pandas_normalize)
 
     def pad(self, width, side="left", fillchar=" ") -> "ks.Series":
         """
@@ -1366,9 +1447,11 @@ class StringMethods(object):
         1    --tiger---
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.pad(width, side, fillchar), StringType()
-        ).alias(self.name)
+
+        def pandas_pad(s) -> "ks.Series[str]":
+            return s.str.pad(width, side, fillchar)
+
+        return self._data.transform_batch(pandas_pad)
 
     def partition(self, sep=" ", expand=True) -> "ks.Series":
         """
@@ -1412,9 +1495,10 @@ class StringMethods(object):
         if not isinstance(repeats, int):
             raise ValueError("repeats expects an int parameter")
 
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.repeat(repeats=repeats), StringType()
-        ).alias(self.name)
+        def pandas_repeat(s) -> "ks.Series[str]":
+            return s.str.repeat(repeats=repeats)
+
+        return self._data.transform_batch(pandas_repeat)
 
     def replace(self, pat, repl, n=-1, case=None, flags=0, regex=True) -> "ks.Series":
         """
@@ -1504,11 +1588,11 @@ class StringMethods(object):
         2    None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.str.replace(pat, repl, n=n, case=case, flags=flags, regex=regex),
-            StringType(),
-        ).alias(self.name)
+
+        def pandas_replace(s) -> "ks.Series[str]":
+            return s.str.replace(pat, repl, n=n, case=case, flags=flags, regex=regex)
+
+        return self._data.transform_batch(pandas_replace)
 
     def rfind(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1559,9 +1643,11 @@ class StringMethods(object):
         2   -1
         Name: 0, dtype: int32
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.rfind(sub, start, end), IntegerType()
-        ).alias(self.name)
+
+        def pandas_rfind(s) -> "ks.Series[int]":
+            return s.str.rfind(sub, start, end)
+
+        return self._data.transform_batch(pandas_rfind)
 
     def rindex(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1600,9 +1686,11 @@ class StringMethods(object):
 
         >>> s.str.rindex('a', start=2) # doctest: +SKIP
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.rindex(sub, start, end), LongType()
-        ).alias(self.name)
+
+        def pandas_rindex(s) -> "ks.Series[np.int64]":
+            return s.str.rindex(sub, start, end)
+
+        return self._data.transform_batch(pandas_rindex)
 
     def rjust(self, width, fillchar=" ") -> "ks.Series":
         """
@@ -1639,9 +1727,11 @@ class StringMethods(object):
         1    -----tiger
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.rjust(width, fillchar), StringType()
-        ).alias(self.name)
+
+        def pandas_rjust(s) -> "ks.Series[str]":
+            return s.str.rjust(width, fillchar)
+
+        return self._data.transform_batch(pandas_rjust)
 
     def rpartition(self, sep=" ", expand=True) -> "ks.Series":
         """
@@ -1700,9 +1790,11 @@ class StringMethods(object):
         2    cm
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.slice(start, stop, step), StringType()
-        ).alias(self.name)
+
+        def pandas_slice(s) -> "ks.Series[str]":
+            return s.str.slice(start, stop, step)
+
+        return self._data.transform_batch(pandas_slice)
 
     def slice_replace(self, start=None, stop=None, repl=None) -> "ks.Series":
         """
@@ -1772,11 +1864,13 @@ class StringMethods(object):
         4    aXde
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.slice_replace(start, stop, repl), StringType()
-        ).alias(self.name)
 
-    def split(self, pat=None, n=-1, expand=False) -> "ks.Series":
+        def pandas_slice_replace(s) -> "ks.Series[str]":
+            return s.str.slice_replace(start, stop, repl)
+
+        return self._data.transform_batch(pandas_slice_replace)
+
+    def split(self, pat=None, n=-1, expand=False) -> Union["ks.Series", "ks.DataFrame"]:
         """
         Split strings around given separator/delimiter.
 
@@ -1791,13 +1885,38 @@ class StringMethods(object):
         n : int, default -1 (all)
             Limit number of splits in output. None, 0 and -1 will be
             interpreted as return all splits.
-        expand : bool, currently only False supported
+        expand : bool, default False
             Expand the splitted strings into separate columns.
+
+            * If ``True``, `n` must be a positive integer, and return DataFrame expanding
+              dimensionality.
+            * If ``False``, return Series, containing lists of strings.
 
         Returns
         -------
-        Series of object
-            Series with split strings.
+        Series, DataFrame
+            Type matches caller unless `expand=True` (see Notes).
+
+        See Also
+        --------
+        str.rsplit : Splits string around given separator/delimiter,
+            starting from the right.
+        str.join : Join lists contained as elements in the Series/Index
+            with passed delimiter.
+
+        Notes
+        -----
+        The handling of the `n` keyword depends on the number of found splits:
+
+        - If found splits > `n`,  make first `n` splits only
+        - If found splits <= `n`, make all splits
+        - If for a certain row the number of found splits < `n`,
+          append `None` for padding up to `n` if ``expand=True``
+
+        If using ``expand=True``, Series callers return DataFrame objects with `n + 1` columns.
+
+        .. note:: Even if `n` is much larger than found splits, the number of columns does NOT
+            shrink unlike pandas.
 
         Examples
         --------
@@ -1843,15 +1962,58 @@ class StringMethods(object):
         1    [https:, , docs.python.org, 3, tutorial, index...
         2                                                 None
         Name: 0, dtype: object
+
+        When using ``expand=True``, the split elements will expand out into
+        separate columns. If NaN is present, it is propagated throughout
+        the columns during the split.
+
+        >>> s.str.split(n=4, expand=True)
+                                                       0     1     2        3         4
+        0                                           this    is     a  regular  sentence
+        1  https://docs.python.org/3/tutorial/index.html  None  None     None      None
+        2                                           None  None  None     None      None
+
+        For slightly more complex use cases like splitting the html document name
+        from a url, a combination of parameter settings can be used.
+
+        >>> s.str.rsplit("/", n=1, expand=True)
+                                            0           1
+        0          this is a regular sentence        None
+        1  https://docs.python.org/3/tutorial  index.html
+        2                                None        None
+
+        Remember to escape special characters when explicitly using regular
+        expressions.
+
+        >>> s = ks.Series(["1+1=2"])
+        >>> s.str.split(r"\\+|=", n=2, expand=True)
+           0  1  2
+        0  1  1  2
         """
+        from databricks.koalas.frame import DataFrame
+
+        if expand and n <= 0:
+            raise NotImplementedError("expand=True is currently only supported with n > 0.")
+
+        # type hint does not support to specify array type yet.
+        pudf = pandas_udf(
+            lambda s: s.str.split(pat, n),
+            returnType=ArrayType(StringType(), containsNull=True),
+            functionType=PandasUDFType.SCALAR,
+        )
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+
         if expand:
-            raise NotImplementedError("expand=True is currently not supported.")
+            kdf = kser.to_frame()
+            scol = kdf._internal.data_spark_columns[0]
+            spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
+            column_labels = [(str(i),) for i in range(n + 1)]
+            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            return DataFrame(internal)
+        else:
+            return kser
 
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.split(pat, n, expand), ArrayType(StringType(), containsNull=True)
-        ).alias(self.name)
-
-    def rsplit(self, pat=None, n=-1, expand=False) -> "ks.Series":
+    def rsplit(self, pat=None, n=-1, expand=False) -> Union["ks.Series", "ks.DataFrame"]:
         """
         Split strings around given separator/delimiter.
 
@@ -1866,13 +2028,37 @@ class StringMethods(object):
         n : int, default -1 (all)
             Limit number of splits in output. None, 0 and -1 will be
             interpreted as return all splits.
-        expand : bool, currently only False supported
+        expand : bool, default False
             Expand the splitted strings into separate columns.
+
+            * If ``True``, `n` must be a positive integer, and return DataFrame expanding
+              dimensionality.
+            * If ``False``, return Series, containing lists of strings.
 
         Returns
         -------
-        Series of object
-            Series with split strings.
+        Series, DataFrame
+            Type matches caller unless `expand=True` (see Notes).
+
+        See Also
+        --------
+        str.split : Split strings around given separator/delimiter.
+        str.join : Join lists contained as elements in the Series/Index
+            with passed delimiter.
+
+        Notes
+        -----
+        The handling of the `n` keyword depends on the number of found splits:
+
+        - If found splits > `n`,  make first `n` splits only
+        - If found splits <= `n`, make all splits
+        - If for a certain row the number of found splits < `n`,
+          append `None` for padding up to `n` if ``expand=True``
+
+        If using ``expand=True``, Series callers return DataFrame objects with `n + 1` columns.
+
+        .. note:: Even if `n` is much larger than found splits, the number of columns does NOT
+            shrink unlike pandas.
 
         Examples
         --------
@@ -1910,13 +2096,56 @@ class StringMethods(object):
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
         Name: 0, dtype: object
-        """
-        if expand:
-            raise NotImplementedError("expand=True is currently not supported.")
 
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.rsplit(pat, n, expand), ArrayType(StringType(), containsNull=True)
-        ).alias(self.name)
+        When using ``expand=True``, the split elements will expand out into
+        separate columns. If NaN is present, it is propagated throughout
+        the columns during the split.
+
+        >>> s.str.split(n=4, expand=True)
+                                                       0     1     2        3         4
+        0                                           this    is     a  regular  sentence
+        1  https://docs.python.org/3/tutorial/index.html  None  None     None      None
+        2                                           None  None  None     None      None
+
+        For slightly more complex use cases like splitting the html document name
+        from a url, a combination of parameter settings can be used.
+
+        >>> s.str.rsplit("/", n=1, expand=True)
+                                            0           1
+        0          this is a regular sentence        None
+        1  https://docs.python.org/3/tutorial  index.html
+        2                                None        None
+
+        Remember to escape special characters when explicitly using regular
+        expressions.
+
+        >>> s = ks.Series(["1+1=2"])
+        >>> s.str.split(r"\\+|=", n=2, expand=True)
+           0  1  2
+        0  1  1  2
+        """
+        from databricks.koalas.frame import DataFrame
+
+        if expand and n <= 0:
+            raise NotImplementedError("expand=True is currently only supported with n > 0.")
+
+        # type hint does not support to specify array type yet.
+        pudf = pandas_udf(
+            lambda s: s.str.rsplit(pat, n),
+            returnType=ArrayType(StringType(), containsNull=True),
+            functionType=PandasUDFType.SCALAR,
+        )
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+
+        if expand:
+            kdf = kser.to_frame()
+            scol = kdf._internal.data_spark_columns[0]
+            spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
+            column_labels = [(str(i),) for i in range(n + 1)]
+            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            return DataFrame(internal)
+        else:
+            return kser
 
     def translate(self, table) -> "ks.Series":
         """
@@ -1946,9 +2175,11 @@ class StringMethods(object):
         2    bYrd
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.translate(table), StringType()).alias(
-            self.name
-        )
+
+        def pandas_translate(s) -> "ks.Series[str]":
+            return s.str.translate(table)
+
+        return self._data.transform_batch(pandas_translate)
 
     def wrap(self, width, **kwargs) -> "ks.Series":
         """
@@ -1995,9 +2226,11 @@ class StringMethods(object):
         1    another line\\nto be\\nwrapped
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.str.wrap(width, **kwargs), StringType()
-        ).alias(self.name)
+
+        def pandas_wrap(s) -> "ks.Series[str]":
+            return s.str.wrap(width, **kwargs)
+
+        return self._data.transform_batch(pandas_wrap)
 
     def zfill(self, width) -> "ks.Series":
         """
@@ -2043,9 +2276,11 @@ class StringMethods(object):
         3    None
         Name: 0, dtype: object
         """
-        return _wrap_accessor_pandas(self, lambda x: x.str.zfill(width), StringType()).alias(
-            self.name
-        )
+
+        def pandas_zfill(s) -> "ks.Series[str]":
+            return s.str.zfill(width)
+
+        return self._data.transform_batch(pandas_zfill)
 
     def get_dummies(self, sep="|"):
         """

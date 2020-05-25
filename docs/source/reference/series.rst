@@ -19,14 +19,10 @@ Attributes
    :toctree: api/
 
    Series.index
-
-.. autosummary::
-   :toctree: api/
-
    Series.dtype
    Series.dtypes
+   Series.ndim
    Series.name
-   Series.spark_type
    Series.shape
    Series.axes
    Series.size
@@ -55,6 +51,7 @@ Indexing, iteration
    Series.iloc
    Series.keys
    Series.pop
+   Series.item
    Series.xs
    Series.get
 
@@ -80,6 +77,8 @@ Binary operator functions
    Series.rmod
    Series.floordiv
    Series.rfloordiv
+   Series.divmod
+   Series.rdivmod
    Series.combine_first
    Series.lt
    Series.gt
@@ -97,8 +96,12 @@ Function application, GroupBy & Window
    Series.apply
    Series.agg
    Series.aggregate
+   Series.transform
+   Series.transform_batch
    Series.map
    Series.groupby
+   Series.rolling
+   Series.expanding
    Series.pipe
 
 .. _api.series.stats:
@@ -121,6 +124,7 @@ Computations / Descriptive Stats
    Series.cumprod
    Series.describe
    Series.kurt
+   Series.mad
    Series.max
    Series.mean
    Series.min
@@ -129,6 +133,7 @@ Computations / Descriptive Stats
    Series.nsmallest
    Series.pct_change
    Series.nunique
+   Series.is_unique
    Series.quantile
    Series.rank
    Series.skew
@@ -151,6 +156,8 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.drop
+   Series.drop_duplicates
+   Series.equals
    Series.add_prefix
    Series.add_suffix
    Series.head
@@ -184,6 +191,7 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+   Series.unstack
    Series.repeat
    Series.squeeze
 
@@ -206,6 +214,18 @@ Time series-related
    Series.shift
    Series.first_valid_index
 
+Spark-related
+-------------
+``Series.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``Series.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.spark.data_type
+   Series.spark.column
+   Series.spark.transform
+
 Accessors
 ---------
 
@@ -218,7 +238,6 @@ Data Type                    Accessor
 ========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
 String    :ref:`str <api.series.str>`
-Plot      :ref:`plot <api.series.plot>`
 ========= ===========================
 
 .. _api.series.dt:
@@ -233,7 +252,6 @@ These can be accessed like ``Series.dt.<property>``.
 Datetime Properties
 ~~~~~~~~~~~~~~~~~~~
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -264,7 +282,6 @@ Datetime Properties
 Datetime Methods
 ~~~~~~~~~~~~~~~~
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -285,7 +302,6 @@ String Handling
 strings and apply several methods to it. These can be accessed
 like ``Series.str.<function/property>``.
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -342,14 +358,11 @@ like ``Series.str.<function/property>``.
    Series.str.wrap
    Series.str.zfill
 
-.. _api.series.plot:
-
 Plotting
 -------------------------------
 ``Series.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``Series.plot.<kind>``.
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -363,11 +376,6 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot.line
    Series.plot.pie
    Series.plot.kde
-
-.. currentmodule:: databricks.koalas
-.. autosummary::
-   :toctree: api/
-
    Series.hist
 
 Serialization / IO / Conversion
@@ -382,6 +390,7 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+   Series.to_markdown
    Series.to_json
    Series.to_csv
    Series.to_excel

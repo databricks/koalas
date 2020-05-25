@@ -20,23 +20,25 @@ Base and utility classes for Koalas objects.
 from collections import OrderedDict
 from functools import wraps, partial
 from typing import Union, Callable, Any
+import warnings
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
-from pyspark import sql as spark
-from pyspark.sql import functions as F, Window
-from pyspark.sql.types import DoubleType, FloatType, LongType, StringType, TimestampType
+from pandas.core.accessor import CachedAccessor
+from pyspark.sql import functions as F, Window, Column
+from pyspark.sql.types import DateType, DoubleType, FloatType, LongType, StringType, TimestampType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
 from databricks.koalas.internal import (
-    _InternalFrame,
+    InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
-from databricks.koalas.typedef import pandas_wraps, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, scol_for, validate_axis
+from databricks.koalas.spark import SparkIndexOpsMethods
+from databricks.koalas.typedef import spark_type_to_pandas_dtype
+from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
 
 
@@ -45,25 +47,25 @@ def booleanize_null(left_scol, scol, f):
     Booleanize Null in Spark Column
     """
     comp_ops = [
-        getattr(spark.Column, "__{}__".format(comp_op))
+        getattr(Column, "__{}__".format(comp_op))
         for comp_op in ["eq", "ne", "lt", "le", "ge", "gt"]
     ]
 
     if f in comp_ops:
         # if `f` is "!=", fill null with True otherwise False
-        filler = f == spark.Column.__ne__
+        filler = f == Column.__ne__
         scol = F.when(scol.isNull(), filler).otherwise(scol)
 
-    elif f == spark.Column.__or__:
+    elif f == Column.__or__:
         scol = F.when(left_scol.isNull() | scol.isNull(), False).otherwise(scol)
 
-    elif f == spark.Column.__and__:
+    elif f == Column.__and__:
         scol = F.when(scol.isNull(), False).otherwise(scol)
 
     return scol
 
 
-def _column_op(f):
+def column_op(f):
     """
     A decorator that wraps APIs taking/returning Spark Column so that Koalas Series can be
     supported too. If this decorator is used for the `f` function that takes Spark Column and
@@ -81,11 +83,11 @@ def _column_op(f):
         # To cover this case, explicitly check if the argument is Koalas Series and
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
-        if all(self._kdf is col._kdf for col in cols):
+        if all(same_anchor(self, col) for col in cols):
             # Same DataFrame anchors
-            args = [arg._scol if isinstance(arg, IndexOpsMixin) else arg for arg in args]
-            scol = f(self._scol, *args)
-            scol = booleanize_null(self._scol, scol, f)
+            args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
+            scol = f(self.spark.column, *args)
+            scol = booleanize_null(self.spark.column, scol, f)
 
             return self._with_new_scol(scol)
         else:
@@ -99,7 +101,7 @@ def _column_op(f):
     return wrapper
 
 
-def _numpy_column_op(f):
+def numpy_column_op(f):
     @wraps(f)
     def wrapper(self, *args):
         # PySpark does not support NumPy type out of the box. For now, we convert NumPy types
@@ -107,30 +109,13 @@ def _numpy_column_op(f):
         new_args = []
         for arg in args:
             # TODO: This is a quick hack to support NumPy type. We should revisit this.
-            if isinstance(self.spark_type, LongType) and isinstance(arg, np.timedelta64):
+            if isinstance(self.spark.data_type, LongType) and isinstance(arg, np.timedelta64):
                 new_args.append(float(arg / np.timedelta64(1, "s")))
             else:
                 new_args.append(arg)
-        return _column_op(f)(self, *new_args)
+        return column_op(f)(self, *new_args)
 
     return wrapper
-
-
-def _wrap_accessor_spark(accessor, fn, return_type=None):
-    """
-    Wrap an accessor property or method, e.g., Series.dt.date with a spark function.
-    """
-    if return_type:
-        return _column_op(lambda col: fn(col).cast(return_type))(accessor._data)
-    else:
-        return _column_op(fn)(accessor._data)
-
-
-def _wrap_accessor_pandas(accessor, fn, return_type):
-    """
-    Wrap an accessor property or method, e.g, Series.dt.date with a pandas function.
-    """
-    return pandas_wraps(fn, return_col=return_type)(accessor._data)
 
 
 class IndexOpsMixin(object):
@@ -138,97 +123,177 @@ class IndexOpsMixin(object):
 
     Assuming there are following attributes or properties and function.
 
-    :ivar _scol: Spark Column instance
-    :type _scol: pyspark.Column
     :ivar _kdf: Parent's Koalas DataFrame
     :type _kdf: ks.DataFrame
-
-    :ivar spark_type: Spark data type
-    :type spark_type: spark.types.DataType
+    :ivar spark: Spark-related features
+    :type spark: SparkIndexOpsMethods
     """
 
-    def __init__(self, internal: _InternalFrame, kdf):
+    def __init__(self, internal: InternalFrame, kdf):
         assert internal is not None
         assert kdf is not None and isinstance(kdf, DataFrame)
-        self._internal = internal  # type: _InternalFrame
+        self._internal = internal  # type: InternalFrame
         self._kdf = kdf
 
+    spark = CachedAccessor("spark", SparkIndexOpsMethods)
+
     @property
-    def _scol(self):
-        return self._internal.spark_column
+    def spark_column(self):
+        warnings.warn(
+            "Series.spark_column is deprecated as of Series.spark.column. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.column
+
+    spark_column.__doc__ = SparkIndexOpsMethods.column.__doc__
 
     # arithmetic operators
-    __neg__ = _column_op(spark.Column.__neg__)
+    __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other):
-        if isinstance(self.spark_type, StringType):
+        if isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
-            if isinstance(other, IndexOpsMixin) and isinstance(other.spark_type, StringType):
-                return _column_op(F.concat)(self, other)
+            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
+                return column_op(F.concat)(self, other)
             # Handle df['col'] + 'literal'
             elif isinstance(other, str):
-                return _column_op(F.concat)(self, F.lit(other))
+                return column_op(F.concat)(self, F.lit(other))
             else:
                 raise TypeError("string addition can only be applied to string series or literals.")
         else:
-            return _column_op(spark.Column.__add__)(self, other)
+            return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
         # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-        if isinstance(other, IndexOpsMixin) and isinstance(self.spark_type, TimestampType):
-            if not isinstance(other.spark_type, TimestampType):
+        if isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, TimestampType):
+            if not isinstance(other.spark.data_type, TimestampType):
                 raise TypeError("datetime subtraction can only be applied to datetime series.")
             return self.astype("bigint") - other.astype("bigint")
+        elif isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, DateType):
+            if not isinstance(other.spark.data_type, DateType):
+                raise TypeError("date subtraction can only be applied to date series.")
+            return column_op(F.datediff)(self, other)
         else:
-            return _column_op(spark.Column.__sub__)(self, other)
+            return column_op(Column.__sub__)(self, other)
 
-    __mul__ = _column_op(spark.Column.__mul__)
-    __div__ = _numpy_column_op(spark.Column.__div__)
-    __truediv__ = _numpy_column_op(spark.Column.__truediv__)
-    __mod__ = _column_op(spark.Column.__mod__)
+    __mul__ = column_op(Column.__mul__)
+
+    def __truediv__(self, other):
+        """
+        __truediv__ has different behaviour between pandas and PySpark for several cases.
+        1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
+
+        +-------------------------------------------+
+        | dividend (divisor: 0) | PySpark |  pandas |
+        |-----------------------|---------|---------|
+        |         np.inf        |   null  |  np.inf |
+        |        -np.inf        |   null  | -np.inf |
+        |           10          |   null  |  np.inf |
+        |          -10          |   null  | -np.inf |
+        +-----------------------|---------|---------+
+        """
+
+        def truediv(left, right):
+            return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
+                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                    F.lit(np.inf).__div__(left)
+                )
+            )
+
+        return numpy_column_op(truediv)(self, other)
+
+    def __mod__(self, other):
+        def mod(left, right):
+            return ((left % right) + right) % right
+
+        return column_op(mod)(self, other)
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
-        if isinstance(self.spark_type, StringType) and isinstance(other, str):
-            return self._with_new_scol(F.concat(F.lit(other), self._scol))
+        if isinstance(self.spark.data_type, StringType) and isinstance(other, str):
+            return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
         else:
-            return _column_op(spark.Column.__radd__)(self, other)
+            return column_op(Column.__radd__)(self, other)
 
-    __rsub__ = _column_op(spark.Column.__rsub__)
-    __rmul__ = _column_op(spark.Column.__rmul__)
-    __rdiv__ = _numpy_column_op(spark.Column.__rdiv__)
-    __rtruediv__ = _numpy_column_op(spark.Column.__rtruediv__)
+    __rsub__ = column_op(Column.__rsub__)
+    __rmul__ = column_op(Column.__rmul__)
+
+    def __rtruediv__(self, other):
+        def rtruediv(left, right):
+            return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
+                F.lit(right).__truediv__(left)
+            )
+
+        return numpy_column_op(rtruediv)(self, other)
 
     def __floordiv__(self, other):
-        return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__div__)(self, other)._scol)
-        )
+        """
+        __floordiv__ has different behaviour between pandas and PySpark for several cases.
+        1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
+        2. When divide positive number by zero, PySpark returns null whereas pandas returns np.inf
+        3. When divide -np.inf by zero, PySpark returns null whereas pandas returns -np.inf
+        4. When divide negative number by zero, PySpark returns null whereas pandas returns -np.inf
+
+        +-------------------------------------------+
+        | dividend (divisor: 0) | PySpark |  pandas |
+        |-----------------------|---------|---------|
+        |         np.inf        |   null  |  np.inf |
+        |        -np.inf        |   null  | -np.inf |
+        |           10          |   null  |  np.inf |
+        |          -10          |   null  | -np.inf |
+        +-----------------------|---------|---------+
+        """
+
+        def floordiv(left, right):
+            return F.when(F.lit(right is np.nan), np.nan).otherwise(
+                F.when(
+                    F.lit(right != 0) | F.lit(right).isNull(), F.floor(left.__div__(right))
+                ).otherwise(
+                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                        F.lit(np.inf).__div__(left)
+                    )
+                )
+            )
+
+        return numpy_column_op(floordiv)(self, other)
 
     def __rfloordiv__(self, other):
-        return self._with_new_scol(
-            F.floor(_numpy_column_op(spark.Column.__rdiv__)(self, other)._scol)
-        )
+        def rfloordiv(left, right):
+            return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
+                F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
+            )
 
-    __rmod__ = _column_op(spark.Column.__rmod__)
-    __pow__ = _column_op(spark.Column.__pow__)
-    __rpow__ = _column_op(spark.Column.__rpow__)
+        return numpy_column_op(rfloordiv)(self, other)
+
+    def __rmod__(self, other):
+        def rmod(left, right):
+            return ((right % left) + left) % left
+
+        return column_op(rmod)(self, other)
+
+    __pow__ = column_op(Column.__pow__)
+    __rpow__ = column_op(Column.__rpow__)
 
     # comparison operators
-    __eq__ = _column_op(spark.Column.__eq__)
-    __ne__ = _column_op(spark.Column.__ne__)
-    __lt__ = _column_op(spark.Column.__lt__)
-    __le__ = _column_op(spark.Column.__le__)
-    __ge__ = _column_op(spark.Column.__ge__)
-    __gt__ = _column_op(spark.Column.__gt__)
+    __eq__ = column_op(Column.__eq__)
+    __ne__ = column_op(Column.__ne__)
+    __lt__ = column_op(Column.__lt__)
+    __le__ = column_op(Column.__le__)
+    __ge__ = column_op(Column.__ge__)
+    __gt__ = column_op(Column.__gt__)
 
     # `and`, `or`, `not` cannot be overloaded in Python,
     # so use bitwise operators as boolean operators
-    __and__ = _column_op(spark.Column.__and__)
-    __or__ = _column_op(spark.Column.__or__)
-    __invert__ = _column_op(spark.Column.__invert__)
-    __rand__ = _column_op(spark.Column.__rand__)
-    __ror__ = _column_op(spark.Column.__ror__)
+    __and__ = column_op(Column.__and__)
+    __or__ = column_op(Column.__or__)
+    __invert__ = column_op(Column.__invert__)
+    __rand__ = column_op(Column.__rand__)
+    __ror__ = column_op(Column.__ror__)
 
     # NDArray Compat
     def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
@@ -270,7 +335,7 @@ class IndexOpsMixin(object):
         >>> s.rename("a").to_frame().set_index("a").index.dtype
         dtype('<M8[ns]')
         """
-        return spark_type_to_pandas_dtype(self.spark_type)
+        return spark_type_to_pandas_dtype(self.spark.data_type)
 
     @property
     def empty(self):
@@ -308,8 +373,8 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._internal._sdf.select(self._scol)
-        col = self._scol
+        sdf = self._internal._sdf.select(self.spark.column)
+        col = self.spark.column
 
         ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
         return ret
@@ -489,7 +554,7 @@ class IndexOpsMixin(object):
                     "__partition_id"
                 ),  # Make sure we use the same partition id in the whole job.
                 F.col(NATURAL_ORDER_COLUMN_NAME),
-                self._scol.alias("__origin"),
+                self.spark.column.alias("__origin"),
             )
             .select(
                 F.col("__partition_id"),
@@ -607,7 +672,7 @@ class IndexOpsMixin(object):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return self._with_new_scol(self._scol.cast(spark_type))
+        return self._with_new_scol(self.spark.column.cast(spark_type))
 
     def isin(self, values):
         """
@@ -659,7 +724,7 @@ class IndexOpsMixin(object):
                 " to isin(), you passed a [{values_type}]".format(values_type=type(values).__name__)
             )
 
-        return self._with_new_scol(self._scol.isin(list(values))).rename(self.name)
+        return self._with_new_scol(self.spark.column.isin(list(values))).rename(self.name)
 
     def isnull(self):
         """
@@ -693,9 +758,11 @@ class IndexOpsMixin(object):
         if isinstance(self, MultiIndex):
             raise NotImplementedError("isna is not defined for MultiIndex")
         if isinstance(self.spark_type, (FloatType, DoubleType)):
-            return self._with_new_scol(self._scol.isNull() | F.isnan(self._scol)).rename(self.name)
+            return self._with_new_scol(
+                self.spark.column.isNull() | F.isnan(self.spark.column)
+            ).rename(self.name)
         else:
-            return self._with_new_scol(self._scol.isNull()).rename(self.name)
+            return self._with_new_scol(self.spark.column.isNull()).rename(self.name)
 
     isna = isnull
 
@@ -791,7 +858,7 @@ class IndexOpsMixin(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        sdf = self._internal._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self.spark.column)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -854,7 +921,7 @@ class IndexOpsMixin(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        sdf = self._internal._sdf.select(self._scol)
+        sdf = self._internal._sdf.select(self.spark.column)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -921,7 +988,7 @@ class IndexOpsMixin(object):
         if not isinstance(periods, int):
             raise ValueError("periods should be an int; however, got [%s]" % type(periods))
 
-        col = self._scol
+        col = self.spark.column
         window = (
             Window.partitionBy(*part_cols)
             .orderBy(NATURAL_ORDER_COLUMN_NAME)
@@ -1081,15 +1148,15 @@ class IndexOpsMixin(object):
         3    1
         Name: koalas, dtype: int64
         """
-        from databricks.koalas.series import _col
+        from databricks.koalas.series import first_series
 
         if bins is not None:
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            sdf_dropna = self._internal._sdf.select(self._scol).dropna()
+            sdf_dropna = self._internal._sdf.select(self.spark.column).dropna()
         else:
-            sdf_dropna = self._internal._sdf.select(self._scol)
+            sdf_dropna = self._internal._sdf.select(self.spark.column)
         index_name = SPARK_DEFAULT_INDEX_NAME
         column_name = self._internal.data_spark_column_names[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
@@ -1105,13 +1172,13 @@ class IndexOpsMixin(object):
 
         column_labels = self._internal.column_labels
         if (column_labels[0] is None) or (None in column_labels[0]):
-            internal = _InternalFrame(
+            internal = InternalFrame(
                 spark_frame=sdf,
                 index_map=OrderedDict({index_name: None}),
                 data_spark_columns=[scol_for(sdf, "count")],
             )
         else:
-            internal = _InternalFrame(
+            internal = InternalFrame(
                 spark_frame=sdf,
                 index_map=OrderedDict({index_name: None}),
                 column_labels=column_labels,
@@ -1119,7 +1186,7 @@ class IndexOpsMixin(object):
                 column_label_names=self._internal.column_label_names,
             )
 
-        return _col(DataFrame(internal))
+        return first_series(DataFrame(internal))
 
     def nunique(self, dropna: bool = True, approx: bool = False, rsd: float = 0.05) -> int:
         """
@@ -1179,13 +1246,13 @@ class IndexOpsMixin(object):
         colname = self._internal.data_spark_column_names[0]
         count_fn = partial(F.approx_count_distinct, rsd=rsd) if approx else F.countDistinct
         if dropna:
-            return count_fn(self._scol).alias(colname)
+            return count_fn(self.spark.column).alias(colname)
         else:
             return (
-                count_fn(self._scol)
-                + F.when(F.count(F.when(self._scol.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(
-                    0
-                )
+                count_fn(self.spark.column)
+                + F.when(
+                    F.count(F.when(self.spark.column.isNull(), 1).otherwise(None)) >= 1, 1
+                ).otherwise(0)
             ).alias(colname)
 
     def take(self, indices):

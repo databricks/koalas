@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 
-from databricks.koalas.missing import _unsupported_function, _unsupported_property
+from databricks.koalas.missing import unsupported_function, unsupported_property
 
 
-def unsupported_function(method_name, deprecated=False, reason=""):
-    return _unsupported_function(
+def _unsupported_function(method_name, deprecated=False, reason=""):
+    return unsupported_function(
         class_name="pd.groupby.GroupBy",
         method_name=method_name,
         deprecated=deprecated,
@@ -26,8 +26,8 @@ def unsupported_function(method_name, deprecated=False, reason=""):
     )
 
 
-def unsupported_property(property_name, deprecated=False, reason=""):
-    return _unsupported_property(
+def _unsupported_property(property_name, deprecated=False, reason=""):
+    return unsupported_property(
         class_name="pd.groupby.GroupBy",
         property_name=property_name,
         deprecated=deprecated,
@@ -35,78 +35,76 @@ def unsupported_property(property_name, deprecated=False, reason=""):
     )
 
 
-class _MissingPandasLikeDataFrameGroupBy(object):
+class MissingPandasLikeDataFrameGroupBy(object):
 
     # Properties
-    corr = unsupported_property("corr")
-    corrwith = unsupported_property("corrwith")
-    cov = unsupported_property("cov")
-    dtypes = unsupported_property("dtypes")
-    groups = unsupported_property("groups")
-    hist = unsupported_property("hist")
-    indices = unsupported_property("indices")
-    mad = unsupported_property("mad")
-    ngroups = unsupported_property("ngroups")
-    plot = unsupported_property("plot")
-    quantile = unsupported_property("quantile")
-    skew = unsupported_property("skew")
-    tshift = unsupported_property("tshift")
+    corr = _unsupported_property("corr")
+    corrwith = _unsupported_property("corrwith")
+    cov = _unsupported_property("cov")
+    dtypes = _unsupported_property("dtypes")
+    groups = _unsupported_property("groups")
+    hist = _unsupported_property("hist")
+    indices = _unsupported_property("indices")
+    mad = _unsupported_property("mad")
+    ngroups = _unsupported_property("ngroups")
+    plot = _unsupported_property("plot")
+    quantile = _unsupported_property("quantile")
+    skew = _unsupported_property("skew")
+    tshift = _unsupported_property("tshift")
 
     # Deprecated properties
-    take = unsupported_property("take", deprecated=True)
+    take = _unsupported_property("take", deprecated=True)
 
     # Functions
-    boxplot = unsupported_function("boxplot")
-    cumcount = unsupported_function("cumcount")
-    get_group = unsupported_function("get_group")
-    median = unsupported_function("median")
-    ngroup = unsupported_function("ngroup")
-    nth = unsupported_function("nth")
-    ohlc = unsupported_function("ohlc")
-    pct_change = unsupported_function("pct_change")
-    pipe = unsupported_function("pipe")
-    prod = unsupported_function("prod")
-    resample = unsupported_function("resample")
-    sem = unsupported_function("sem")
-    tail = unsupported_function("tail")
+    boxplot = _unsupported_function("boxplot")
+    cumcount = _unsupported_function("cumcount")
+    get_group = _unsupported_function("get_group")
+    median = _unsupported_function("median")
+    ngroup = _unsupported_function("ngroup")
+    nth = _unsupported_function("nth")
+    ohlc = _unsupported_function("ohlc")
+    pct_change = _unsupported_function("pct_change")
+    pipe = _unsupported_function("pipe")
+    prod = _unsupported_function("prod")
+    resample = _unsupported_function("resample")
+    sem = _unsupported_function("sem")
+    tail = _unsupported_function("tail")
 
 
-class _MissingPandasLikeSeriesGroupBy(object):
+class MissingPandasLikeSeriesGroupBy(object):
 
     # Properties
-    corr = unsupported_property("corr")
-    cov = unsupported_property("cov")
-    dtype = unsupported_property("dtype")
-    groups = unsupported_property("groups")
-    hist = unsupported_property("hist")
-    indices = unsupported_property("indices")
-    is_monotonic_decreasing = unsupported_property("is_monotonic_decreasing")
-    is_monotonic_increasing = unsupported_property("is_monotonic_increasing")
-    mad = unsupported_property("mad")
-    ngroups = unsupported_property("ngroups")
-    plot = unsupported_property("plot")
-    quantile = unsupported_property("quantile")
-    skew = unsupported_property("skew")
-    tshift = unsupported_property("tshift")
-    unique = unsupported_property("unique")
+    corr = _unsupported_property("corr")
+    cov = _unsupported_property("cov")
+    dtype = _unsupported_property("dtype")
+    groups = _unsupported_property("groups")
+    hist = _unsupported_property("hist")
+    indices = _unsupported_property("indices")
+    is_monotonic_decreasing = _unsupported_property("is_monotonic_decreasing")
+    is_monotonic_increasing = _unsupported_property("is_monotonic_increasing")
+    mad = _unsupported_property("mad")
+    ngroups = _unsupported_property("ngroups")
+    plot = _unsupported_property("plot")
+    quantile = _unsupported_property("quantile")
+    skew = _unsupported_property("skew")
+    tshift = _unsupported_property("tshift")
 
     # Deprecated properties
-    take = unsupported_property("take", deprecated=True)
+    take = _unsupported_property("take", deprecated=True)
 
     # Functions
-    agg = unsupported_function("agg")
-    aggregate = unsupported_function("aggregate")
-    cumcount = unsupported_function("cumcount")
-    describe = unsupported_function("describe")
-    filter = unsupported_function("filter")
-    get_group = unsupported_function("get_group")
-    median = unsupported_function("median")
-    ngroup = unsupported_function("ngroup")
-    nth = unsupported_function("nth")
-    ohlc = unsupported_function("ohlc")
-    pct_change = unsupported_function("pct_change")
-    pipe = unsupported_function("pipe")
-    prod = unsupported_function("prod")
-    resample = unsupported_function("resample")
-    sem = unsupported_function("sem")
-    tail = unsupported_function("tail")
+    agg = _unsupported_function("agg")
+    aggregate = _unsupported_function("aggregate")
+    cumcount = _unsupported_function("cumcount")
+    describe = _unsupported_function("describe")
+    get_group = _unsupported_function("get_group")
+    median = _unsupported_function("median")
+    ngroup = _unsupported_function("ngroup")
+    nth = _unsupported_function("nth")
+    ohlc = _unsupported_function("ohlc")
+    pct_change = _unsupported_function("pct_change")
+    pipe = _unsupported_function("pipe")
+    prod = _unsupported_function("prod")
+    resample = _unsupported_function("resample")
+    sem = _unsupported_function("sem")
+    tail = _unsupported_function("tail")

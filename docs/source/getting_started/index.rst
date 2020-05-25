@@ -6,5 +6,5 @@ Getting started
 
    install
    10min
-   videos
+   videos_blogs
 

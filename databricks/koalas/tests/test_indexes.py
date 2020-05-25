@@ -23,7 +23,7 @@ import pyspark
 
 import databricks.koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
+from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
@@ -332,7 +332,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
 
         # Index functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeIndex, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeIndex, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -353,7 +353,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 getattr(kdf.set_index("a").index, name)()
 
         # MultiIndex functions
-        missing_functions = inspect.getmembers(_MissingPandasLikeMultiIndex, inspect.isfunction)
+        missing_functions = inspect.getmembers(MissingPandasLikeMultiIndex, inspect.isfunction)
         unsupported_functions = [
             name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
         ]
@@ -375,7 +375,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         # Index properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeIndex, lambda o: isinstance(o, property)
+            MissingPandasLikeIndex, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name
@@ -402,7 +402,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         # MultiIndex properties
         missing_properties = inspect.getmembers(
-            _MissingPandasLikeMultiIndex, lambda o: isinstance(o, property)
+            MissingPandasLikeMultiIndex, lambda o: isinstance(o, property)
         )
         unsupported_properties = [
             name

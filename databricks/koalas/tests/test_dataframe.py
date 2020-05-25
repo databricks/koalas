@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
 import sys
 import unittest
+from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.frame import _CachedDataFrame
+from databricks.koalas.frame import CachedDataFrame
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -66,11 +66,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[kdf["b"] > 2], pdf[pdf["b"] > 2])
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
         self.assert_eq(kdf.a, pdf.a)
-        self.assert_eq(kdf.compute().b.mean(), pdf.b.mean())
-        self.assert_eq(np.allclose(kdf.compute().b.var(), pdf.b.var()), True)
-        self.assert_eq(np.allclose(kdf.compute().b.std(), pdf.b.std()), True)
-
-        assert repr(kdf)
+        self.assert_eq(kdf.b.mean(), pdf.b.mean())
+        self.assert_eq(kdf.b.var(), pdf.b.var())
+        self.assert_eq(kdf.b.std(), pdf.b.std())
 
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
@@ -169,6 +167,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         for (pdf_k, pdf_v), (kdf_k, kdf_v) in zip(pdf.iterrows(), kdf.iterrows()):
             self.assert_eq(pdf_k, kdf_k)
             self.assert_eq(pdf_v, kdf_v)
+
+    def test_reset_index(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=np.random.rand(3))
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
+
+        pdf.index.name = "a"
+        kdf.index.name = "a"
+
+        with self.assertRaisesRegex(ValueError, "cannot insert a, already exists"):
+            kdf.reset_index()
+
+        self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
 
     def test_reset_index_with_default_index_types(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=np.random.rand(3))
@@ -400,7 +413,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark().columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "x", "y"])
 
         columns = pdf.columns
         columns.name = "lvl_1"
@@ -428,14 +442,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["x", "y"]))
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["x", "y"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark().columns, ["x", "y"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "x", "y"])
 
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(kdf.columns, columns)
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark().columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "(A, 0)", "(B, 1)"])
 
         columns.names = ["lvl_1", "lvl_2"]
 
@@ -443,7 +459,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns.names, ["lvl_1", "lvl_2"])
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf._internal.data_spark_column_names, ["(A, 0)", "(B, 1)"])
-        self.assert_eq(kdf._internal.to_external_spark_frame.columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark().columns, ["(A, 0)", "(B, 1)"])
+        self.assert_eq(kdf.to_spark(index_col="index").columns, ["index", "(A, 0)", "(B, 1)"])
 
     def test_rename_dataframe(self):
         kdf1 = ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -1372,11 +1389,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Assert lower and upper
         self.assert_eq(kdf.clip(1, 3), pdf.clip(1, 3))
 
+        pdf["clip"] = pdf.A.clip(lower=1, upper=3)
+        kdf["clip"] = kdf.A.clip(lower=1, upper=3)
+        self.assert_eq(kdf, pdf)
+
         # Assert behavior on string values
         str_kdf = ks.DataFrame({"A": ["a", "b", "c"]}, index=np.random.rand(3))
         self.assert_eq(str_kdf.clip(1, 3), str_kdf)
 
     def test_binary_operators(self):
+        pdf = pd.DataFrame(
+            {"A": [0, 2, 4], "B": [4, 2, 0], "X": [-1, 10, 0]}, index=np.random.rand(3)
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf + kdf.copy(), pdf + pdf.copy())
+
         self.assertRaisesRegex(
             ValueError,
             "it comes from a different dataframe",
@@ -1419,12 +1447,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_add_suffix(self):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [3, 4, 5, 6]}, index=np.random.rand(4))
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.add_suffix("_col"), kdf.add_suffix("_col"))
+        self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
         pdf.columns = columns
         kdf.columns = columns
-        self.assert_eq(pdf.add_suffix("_col"), kdf.add_suffix("_col"))
+        self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
     def test_join(self):
         # check basic function
@@ -2733,10 +2761,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.transform(lambda x: x + 1).sort_index(), pdf.transform(lambda x: x + 1).sort_index()
         )
+        self.assert_eq(
+            kdf.transform(lambda x, y: x + y, y=2).sort_index(),
+            pdf.transform(lambda x, y: x + y, y=2).sort_index(),
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.transform(lambda x: x + 1).sort_index(),
                 pdf.transform(lambda x: x + 1).sort_index(),
+            )
+            self.assert_eq(
+                kdf.transform(lambda x, y: x + y, y=1).sort_index(),
+                pdf.transform(lambda x, y: x + y, y=1).sort_index(),
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
@@ -2771,9 +2807,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.apply(lambda x: x + 1).sort_index(), pdf.apply(lambda x: x + 1).sort_index()
         )
+        self.assert_eq(
+            kdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+            pdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+        )
+        self.assert_eq(
+            kdf.apply(lambda x, b: x + b, b=1).sort_index(),
+            pdf.apply(lambda x, b: x + b, b=1).sort_index(),
+        )
+
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.apply(lambda x: x + 1).sort_index(), pdf.apply(lambda x: x + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+                pdf.apply(lambda x, b: x + b, args=(1,)).sort_index(),
+            )
+            self.assert_eq(
+                kdf.apply(lambda x, b: x + b, b=1).sort_index(),
+                pdf.apply(lambda x, b: x + b, b=1).sort_index(),
             )
 
         # returning a Series
@@ -2781,10 +2834,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.apply(lambda x: len(x), axis=1).sort_index(),
             pdf.apply(lambda x: len(x), axis=1).sort_index(),
         )
+        self.assert_eq(
+            kdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
+            pdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
                 kdf.apply(lambda x: len(x), axis=1).sort_index(),
                 pdf.apply(lambda x: len(x), axis=1).sort_index(),
+            )
+            self.assert_eq(
+                kdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
+                pdf.apply(lambda x, c: len(x) + c, axis=1, c=100).sort_index(),
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
@@ -2828,7 +2889,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 pdf.apply(lambda x: len(x), axis=1).sort_index(),
             )
 
-    def test_map_in_pandas(self):
+    def test_apply_batch(self):
         pdf = pd.DataFrame(
             {
                 "a": [1, 2, 3, 4, 5, 6] * 100,
@@ -2840,33 +2901,135 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.DataFrame(pdf)
 
-        self.assert_eq(kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index())
+        self.assert_eq(kdf.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index())
+        self.assert_eq(
+            kdf.apply_batch(lambda pdf, a: pdf + a, args=(1,)).sort_index(), (pdf + 1).sort_index()
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
-                kdf.map_in_pandas(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+                kdf.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.apply_batch(lambda pdf, b: pdf + b, b=1).sort_index(), (pdf + 1).sort_index()
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
-            kdf.map_in_pandas(1)
+            kdf.apply_batch(1)
 
         with self.assertRaisesRegex(TypeError, "The given function.*frame as its type hints"):
 
             def f2(_) -> ks.Series[int]:
                 pass
 
-            kdf.map_in_pandas(f2)
+            kdf.apply_batch(f2)
 
         with self.assertRaisesRegex(ValueError, "The given function should return a frame"):
-            kdf.map_in_pandas(lambda pdf: 1)
+            kdf.apply_batch(lambda pdf: 1)
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(kdf.map_in_pandas(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+        self.assert_eq(kdf.apply_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
         with option_context("compute.shortcut_limit", 500):
-            self.assert_eq(kdf.map_in_pandas(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+            self.assert_eq(kdf.apply_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+
+    def test_transform_batch(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 100,
+                "b": [1.0, 1.0, 2.0, 3.0, 5.0, 8.0] * 100,
+                "c": [1, 4, 9, 16, 25, 36] * 100,
+            },
+            columns=["a", "b", "c"],
+            index=np.random.rand(600),
+        )
+        kdf = ks.DataFrame(pdf)
+
+        self.assert_eq(
+            kdf.transform_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+        )
+        self.assert_eq(
+            kdf.transform_batch(lambda pdf: pdf.c + 1).sort_index(), (pdf.c + 1).sort_index()
+        )
+        self.assert_eq(
+            kdf.transform_batch(lambda pdf, a: pdf + a, 1).sort_index(), (pdf + 1).sort_index()
+        )
+        self.assert_eq(
+            kdf.transform_batch(lambda pdf, a: pdf.c + a, a=1).sort_index(),
+            (pdf.c + 1).sort_index(),
+        )
+
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(
+                kdf.transform_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.transform_batch(lambda pdf: pdf.b + 1).sort_index(), (pdf.b + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.transform_batch(lambda pdf, a: pdf + a, 1).sort_index(), (pdf + 1).sort_index()
+            )
+            self.assert_eq(
+                kdf.transform_batch(lambda pdf, a: pdf.c + a, a=1).sort_index(),
+                (pdf.c + 1).sort_index(),
+            )
+
+        with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
+            kdf.transform_batch(1)
+
+        with self.assertRaisesRegex(ValueError, "The given function should return a frame"):
+            kdf.transform_batch(lambda pdf: 1)
+
+        with self.assertRaisesRegex(
+            ValueError, "transform_batch cannot produce aggregated results"
+        ):
+            kdf.transform_batch(lambda pdf: pd.Series(1))
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.transform_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+        with option_context("compute.shortcut_limit", 500):
+            self.assert_eq(
+                kdf.transform_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
+            )
+
+    def test_transform_batch_same_anchor(self):
+        kdf = ks.range(10)
+        kdf["d"] = kdf.transform_batch(lambda pdf: pdf.id + 1)
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
+
+        kdf = ks.range(10)
+        kdf["d"] = kdf.id.transform_batch(lambda ser: ser + 1)
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
+
+        kdf = ks.range(10)
+
+        def plus_one(pdf) -> ks.Series[np.int64]:
+            return pdf.id + 1
+
+        kdf["d"] = kdf.transform_batch(plus_one)
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
+
+        kdf = ks.range(10)
+
+        def plus_one(ser) -> ks.Series[np.int64]:
+            return ser + 1
+
+        kdf["d"] = kdf.id.transform_batch(plus_one)
+        self.assert_eq(
+            kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
+        )
 
     def test_empty_timestamp(self):
         pdf = pd.DataFrame(
@@ -3143,7 +3306,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         with kdf.cache() as cached_df:
-            self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+            self.assert_eq(isinstance(cached_df, CachedDataFrame), True)
             self.assert_eq(
                 repr(cached_df.storage_level), repr(StorageLevel(True, True, False, True))
             )
@@ -3162,7 +3325,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         for storage_level in storage_levels:
             with kdf.persist(storage_level) as cached_df:
-                self.assert_eq(isinstance(cached_df, _CachedDataFrame), True)
+                self.assert_eq(isinstance(cached_df, CachedDataFrame), True)
                 self.assert_eq(repr(cached_df.storage_level), repr(storage_level))
 
         self.assertRaises(TypeError, lambda: kdf.persist("DISK_ONLY"))
@@ -3204,3 +3367,174 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
         for axis in axises:
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
+
+    def test_rfloordiv(self):
+        pdf = pd.DataFrame(
+            {"angles": [0, 3, 4], "degrees": [360, 180, 360]},
+            index=["circle", "triangle", "rectangle"],
+            columns=["angles", "degrees"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0") and LooseVersion(
+            pd.__version__
+        ) >= LooseVersion("0.24.0"):
+            expected_result = pd.DataFrame(
+                {"angles": [np.inf, 3.0, 2.0], "degrees": [0.0, 0.0, 0.0]},
+                index=["circle", "triangle", "rectangle"],
+                columns=["angles", "degrees"],
+            )
+        else:
+            expected_result = pdf.rfloordiv(10)
+
+        self.assert_eq(kdf.rfloordiv(10), expected_result)
+
+    def test_truncate(self):
+        pdf1 = pd.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, -20, -1, 0, 400, 550, 1000],
+        )
+        kdf1 = ks.from_pandas(pdf1)
+        pdf2 = pd.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[1000, 550, 400, 0, -1, -20, -500],
+        )
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(kdf1.truncate(), pdf1.truncate())
+        self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
+        self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
+        self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
+        self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        self.assert_eq(kdf2.truncate(0, 550), pdf2.truncate(0, 550))
+        self.assert_eq(kdf2.truncate(0, 550, copy=False), pdf2.truncate(0, 550, copy=False))
+        # axis = 1
+        self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
+        self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
+        self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
+        self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
+        self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
+        self.assert_eq(
+            kdf1.truncate("B", "C", copy=False, axis=1), pdf1.truncate("B", "C", copy=False, axis=1)
+        )
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "Z")])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        pdf2.columns = columns
+        kdf2.columns = columns
+
+        self.assert_eq(kdf1.truncate(), pdf1.truncate())
+        self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
+        self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
+        self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
+        self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        self.assert_eq(kdf2.truncate(0, 550), pdf2.truncate(0, 550))
+        self.assert_eq(kdf2.truncate(0, 550, copy=False), pdf2.truncate(0, 550, copy=False))
+        # axis = 1
+        self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
+        self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
+        self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
+        self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
+        self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
+        self.assert_eq(
+            kdf1.truncate("B", "C", copy=False, axis=1), pdf1.truncate("B", "C", copy=False, axis=1)
+        )
+
+        # Exceptions
+        kdf = ks.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, 100, 400, 0, -1, 550, -20],
+        )
+        msg = "truncate requires a sorted index"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.truncate()
+
+        kdf = ks.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, -20, -1, 0, 400, 550, 1000],
+        )
+        msg = "Truncate: -20 must be after 400"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.truncate(400, -20)
+        msg = "Truncate: B must be after C"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.truncate("C", "B", axis=1)
+
+    def test_spark_schema(self):
+        kdf = ks.DataFrame(
+            {
+                "a": list("abc"),
+                "b": list(range(1, 4)),
+                "c": np.arange(3, 6).astype("i1"),
+                "d": np.arange(4.0, 7.0, dtype="float64"),
+                "e": [True, False, True],
+                "f": pd.date_range("20130101", periods=3),
+            },
+            columns=["a", "b", "c", "d", "e", "f"],
+        )
+        self.assertEqual(kdf.spark_schema(), kdf.spark.schema())
+        self.assertEqual(kdf.spark_schema("index"), kdf.spark.schema("index"))
+
+    def test_print_schema(self):
+        kdf = ks.DataFrame(
+            {"a": list("abc"), "b": list(range(1, 4)), "c": np.arange(3, 6).astype("i1")},
+            columns=["a", "b", "c"],
+        )
+
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            kdf.print_schema()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            kdf.spark.print_schema()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev
+
+    def test_explain_hint(self):
+        kdf1 = ks.DataFrame(
+            {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]}, columns=["lkey", "value"]
+        )
+        kdf2 = ks.DataFrame(
+            {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]}, columns=["rkey", "value"]
+        )
+        merged = kdf1.merge(kdf2.hint("broadcast"), left_on="lkey", right_on="rkey")
+        prev = sys.stdout
+        try:
+            out = StringIO()
+            sys.stdout = out
+            merged.explain()
+            actual = out.getvalue().strip()
+
+            out = StringIO()
+            sys.stdout = out
+            merged.spark.explain()
+            expected = out.getvalue().strip()
+
+            self.assertEqual(actual, expected)
+        finally:
+            sys.stdout = prev
