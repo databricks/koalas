@@ -10076,17 +10076,46 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: float64
         """
         from databricks.koalas import Series
+        from databricks.koalas.series import first_series
 
         axis = validate_axis(axis)
 
         if axis == 0:
-            mean_kdf = self._reduce_for_stat_function(F.mean, name="mean", axis=0)
+            exprs = []
+            new_column_labels = []
+            for label in self._internal.column_labels:
+                col_sdf = self._internal.spark_column_for(label)
+                col_type = self._internal.spark_type_for(label)
 
-            return self._reduce_for_stat_function(
-                lambda col_sdf: F.avg(F.abs(col_sdf - mean_kdf[col_sdf._jc.toString()])),
-                name="mad",
-                axis=0,
-            )
+                if isinstance(col_type, BooleanType):
+                    col_sdf = col_sdf.cast("integer")
+
+                label_str = name_like_string(label)
+
+                col_sdf = F.avg(
+                    F.abs(
+                        col_sdf
+                        - self._sdf.select(F.avg(col_sdf).alias(label_str)).first()[label_str]
+                    )
+                )
+
+                exprs.append(col_sdf.alias(name_like_string(label)))
+                new_column_labels.append(label)
+
+            sdf = self._sdf.select(exprs)
+
+            with ks.option_context(
+                "compute.default_index_type", "distributed", "compute.max_rows", None
+            ):
+                kdf = DataFrame(sdf)
+                internal = InternalFrame(
+                    kdf._internal.spark_frame,
+                    index_map=kdf._internal.index_map,
+                    column_labels=new_column_labels,
+                    column_label_names=self._internal.column_label_names,
+                )
+
+                return first_series(DataFrame(internal).transpose())
 
         elif axis == 1:
             limit = get_option("compute.shortcut_limit")
