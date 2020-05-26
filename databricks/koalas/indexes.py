@@ -64,6 +64,7 @@ from databricks.koalas.internal import (
     InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
+    SPARK_INDEX_NAME_FORMAT,
 )
 
 
@@ -1312,6 +1313,102 @@ class Index(IndexOpsMixin):
         result = tuple(max_row[0])
 
         return result if len(result) > 1 else result[0]
+
+    def delete(self, loc):
+        """
+        Make new Index with passed location(-s) deleted.
+
+        .. note:: this API can be pretty expensive since it is based on
+             a global sequence internally.
+
+        Returns
+        -------
+        new_index : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10])
+        >>> kidx
+        Int64Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10], dtype='int64')
+
+        >>> kidx.delete(0).sort_values()
+        Int64Index([2, 2, 2, 4, 4, 4, 8, 9, 10, 10, 10], dtype='int64')
+
+        >>> kidx.delete([0, 1, 2, 3, 10, 11]).sort_values()
+        Int64Index([2, 2, 2, 4, 4, 4], dtype='int64')
+
+        MultiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'y', 2),
+                    ('c', 'z', 3)],
+                   )
+
+        >>> kidx.delete([0, 2]).sort_values()  # doctest: +SKIP
+        MultiIndex([('b', 'y', 2)],
+                   )
+        """
+        length = len(self)
+        if not is_list_like(loc):
+            if not isinstance(self, str) and abs(loc) >= length:
+                raise IndexError(
+                    "index {} is out of bounds for axis 0 with size {}".format(loc, length)
+                )
+            loc = [loc]
+        loc = [int(item) for item in loc]
+        loc = [item if item >= 0 else length + item for item in loc]
+
+        # we need a temporary column such as '__index_value_0__'
+        # since 'InternalFrame.attach_default_index' will be failed
+        # when self._scol has name of '__index_level_0__'
+        index_value_column_format = "__index_value_{}__"
+
+        sdf = self._internal._sdf
+        index_value_column_names = [
+            verify_temp_column_name(sdf, index_value_column_format.format(i))
+            for i in range(len(self._internal.index_spark_columns))
+        ]
+        index_value_columns = [
+            index_scol.alias(index_vcol_name)
+            for index_scol, index_vcol_name in zip(
+                self._internal.index_spark_columns, index_value_column_names
+            )
+        ]
+        sdf = sdf.select(index_value_columns)
+
+        sdf = InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
+        # sdf here looks as below
+        # +-----------------+-----------------+-----------------+-----------------+
+        # |__index_level_0__|__index_value_0__|__index_value_1__|__index_value_2__|
+        # +-----------------+-----------------+-----------------+-----------------+
+        # |                0|                a|                x|                1|
+        # |                1|                b|                y|                2|
+        # |                2|                c|                z|                3|
+        # +-----------------+-----------------+-----------------+-----------------+
+
+        # delete rows which are matched with given `loc`
+        sdf = sdf.where(~F.col(SPARK_INDEX_NAME_FORMAT(0)).isin(loc))
+        sdf = sdf.select(index_value_column_names)
+        # sdf here looks as below, we should alias them back to origin spark column names
+        # +-----------------+-----------------+-----------------+
+        # |__index_value_0__|__index_value_1__|__index_value_2__|
+        # +-----------------+-----------------+-----------------+
+        # |                c|                z|                3|
+        # +-----------------+-----------------+-----------------+
+        index_origin_columns = [
+            F.col(index_vcol_name).alias(index_scol_name)
+            for index_vcol_name, index_scol_name in zip(
+                index_value_column_names, self._internal.index_spark_column_names
+            )
+        ]
+
+        internal = InternalFrame(
+            spark_frame=sdf.select(index_origin_columns), index_map=self._internal.index_map,
+        )
+
+        return DataFrame(internal).index
 
     def append(self, other):
         """

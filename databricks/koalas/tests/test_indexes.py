@@ -725,6 +725,30 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(len(pidx), len(kidx))
 
+    def test_delete(self):
+        pidx = pd.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
+        kidx = ks.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
+
+        self.assert_eq(pidx.delete(5).sort_values(), kidx.delete(5).sort_values())
+        self.assert_eq(pidx.delete(-5).sort_values(), kidx.delete(-5).sort_values())
+        self.assert_eq(pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values())
+        self.assert_eq(
+            pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
+        )
+
+        with self.assertRaisesRegex(IndexError, "index 10 is out of bounds for axis 0 with size 9"):
+            kidx.delete(10)
+
+        pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
+        kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
+
+        self.assert_eq(pidx.delete(1).sort_values(), kidx.delete(1).sort_values())
+        self.assert_eq(pidx.delete(-1).sort_values(), kidx.delete(-1).sort_values())
+        self.assert_eq(pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values())
+        self.assert_eq(
+            pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
+        )
+
     def test_append(self):
         # Index
         pidx = pd.Index(range(10000))

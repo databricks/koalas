@@ -46,6 +46,7 @@ Modifying and computations
    Index.argmin
    Index.argmax
    Index.copy
+   Index.delete
    Index.equals
    Index.identical
    Index.is_boolean
@@ -212,6 +213,7 @@ MultiIndex Modifying and computations
    MultiIndex.identical
    MultiIndex.drop
    MultiIndex.copy
+   MultiIndex.delete
    MultiIndex.rename
    MultiIndex.repeat
    MultiIndex.take
