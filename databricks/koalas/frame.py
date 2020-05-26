@@ -10079,14 +10079,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         axis = validate_axis(axis)
 
-        # Here we execute with the first 1000 to get the return type.
-        # If the records were less than 1000, it uses pandas API directly for a shortcut.
-        limit = get_option("compute.shortcut_limit")
-        pdf = self.head(limit + 1)._to_internal_pandas()
-        pser = pdf.mad(axis=axis)
-        if len(pdf) <= limit:
-            return Series(pser)
-
         if axis == 0:
             mean_kdf = self._reduce_for_stat_function(F.mean, name="mean", axis=0)
 
@@ -10097,6 +10089,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
 
         elif axis == 1:
+            limit = get_option("compute.shortcut_limit")
+            pdf = self.head(limit + 1)._to_internal_pandas()
+            pser = pdf.mad(axis=axis)
+            if len(pdf) <= limit:
+                return Series(pser)
 
             @pandas_udf(returnType=as_spark_type(pser.dtype.type))
             def calculate_columns_axis(*cols):
