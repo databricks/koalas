@@ -10099,7 +10099,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     )
                 )
 
-                exprs.append(col_sdf.alias(name_like_string(label)))
+                exprs.append(col_sdf.alias(label_str))
                 new_column_labels.append(label)
 
             sdf = self._sdf.select(exprs)
