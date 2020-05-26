@@ -3536,14 +3536,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("0.25.0"):
             expected_result1 = pdf.explode(("A", "Z"))
             expected_result2 = pdf.explode(("B", "X"))
+            expected_result3 = pdf.A.explode("Z")
         else:
             expected_result1.columns = columns
             expected_result2 = pdf
+            expected_result3 = pd.DataFrame({"Z": [-1, np.nan, 0, np.inf, 1, -np.inf]}, index=midx)
+            expected_result3.index.name = "index"
+            expected_result3.columns.name = "column2"
 
         self.assert_eq(kdf.explode(("A", "Z")), expected_result1, almost=True)
         self.assert_eq(repr(kdf.explode(("B", "X"))), repr(expected_result2))
         self.assert_eq(kdf.explode(("A", "Z")).index.names, expected_result1.index.names)
         self.assert_eq(kdf.explode(("A", "Z")).columns.names, expected_result1.columns.names)
+
+        self.assert_eq(kdf.A.explode("Z"), expected_result3, almost=True)
 
         self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
         self.assertRaises(ValueError, lambda: kdf.explode("A"))
