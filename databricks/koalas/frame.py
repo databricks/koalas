@@ -10032,21 +10032,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3.0  1
         2  4.0  1
         """
-        if isinstance(column, (tuple, str)):
-            spark_type = self[column].spark.data_type
-            if not isinstance(spark_type, ArrayType):
-                return self
-            column = name_like_string(column)
-        else:
+        from databricks.koalas.series import Series
+
+        if not isinstance(column, (tuple, str)):
             raise ValueError("column must be a scalar")
 
-        sdf = self._sdf
-        sdf = sdf.withColumn(column, F.explode_outer(sdf[column]))
-        data_scols = [
-            scol_for(sdf, data_scol_name)
-            for data_scol_name in self._internal.data_spark_column_names
-        ]
-        internal = self._internal.copy(spark_frame=sdf, data_spark_columns=data_scols)
+        kser = self[column]
+        if not isinstance(kser, Series):
+            raise ValueError(
+                "The column %s is not unique. For a multi-index, the label must be a tuple "
+                "with elements corresponding to each level." % name_like_string(column)
+            )
+        if not isinstance(kser.spark.data_type, ArrayType):
+            return self
+
+        sdf = self._sdf.withColumn(
+            kser._internal.data_spark_column_names[0], F.explode_outer(kser.spark.column)
+        )
+
+        internal = self._internal.with_new_sdf(sdf)
         return DataFrame(internal)
 
     def _to_internal_pandas(self):

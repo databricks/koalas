@@ -3492,9 +3492,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 {"A": [-1, np.nan, 0, np.inf, 1, -np.inf], "B": [1, 1, 1, 1, 1, 1]},
                 index=pd.Index([0, 0, 1, 1, 2, 2]),
             )
-            expected_result2 = pdf
             expected_result1.index.name = "index"
             expected_result1.columns.name = "columns"
+            expected_result2 = pdf
 
         self.assert_eq(kdf.explode("A"), expected_result1, almost=True)
         self.assert_eq(repr(kdf.explode("B")), repr(expected_result2))
@@ -3546,6 +3546,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.explode(("A", "Z")).columns.names, expected_result1.columns.names)
 
         self.assertRaises(ValueError, lambda: kdf.explode(["A", "B"]))
+        self.assertRaises(ValueError, lambda: kdf.explode("A"))
 
     def test_spark_schema(self):
         kdf = ks.DataFrame(
