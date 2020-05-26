@@ -20,7 +20,8 @@ A wrapper for GroupedData to behave similar to pandas GroupBy.
 
 import sys
 import inspect
-from collections import Callable, OrderedDict, namedtuple
+from collections import OrderedDict, namedtuple
+from collections.abc import Callable
 from distutils.version import LooseVersion
 from functools import partial
 from itertools import product
