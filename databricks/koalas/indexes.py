@@ -60,7 +60,11 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
     validate_bool_kwarg,
 )
-from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import (
+    InternalFrame,
+    NATURAL_ORDER_COLUMN_NAME,
+    SPARK_DEFAULT_INDEX_NAME,
+)
 
 
 class Index(IndexOpsMixin):
@@ -972,6 +976,22 @@ class Index(IndexOpsMixin):
             raise KeyError(
                 "Requested level ({}) does not match index name ({})".format(level, self.name)
             )
+
+    def get_level_values(self, level):
+        """
+        Return Index if a valid level is given.
+
+        Examples:
+        --------
+        >>> kidx = ks.Index(['a', 'b', 'c'], name='ks')
+        >>> kidx.get_level_values(0)
+        Index(['a', 'b', 'c'], dtype='object', name='ks')
+
+        >>> kidx.get_level_values('ks')
+        Index(['a', 'b', 'c'], dtype='object', name='ks')
+        """
+        self._validate_index_level(level)
+        return self
 
     def copy(self, name=None, deep=None):
         """
@@ -2503,6 +2523,77 @@ class MultiIndex(Index):
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
+
+    def _get_level_number(self, level):
+        """
+        Return the level number if a valid level is given.
+        """
+        count = self.names.count(level)
+        if (count > 1) and not isinstance(level, int):
+            raise ValueError("The name %s occurs multiple times, use a level number" % level)
+        if level in self.names:
+            level = self.names.index(level)
+        elif isinstance(level, int):
+            nlevels = self.nlevels
+            if level >= nlevels:
+                raise IndexError(
+                    "Too many levels: Index has only %d "
+                    "levels, %d is not a valid level number" % (nlevels, level)
+                )
+            if level < 0:
+                if (level + nlevels) < 0:
+                    raise IndexError(
+                        "Too many levels: Index has only %d levels, "
+                        "not %d" % (nlevels, level + 1)
+                    )
+                level = level + nlevels
+        else:
+            raise KeyError("Level %s not found" % str(level))
+
+        return level
+
+    def get_level_values(self, level):
+        """
+        Return vector of label values for requested level,
+        equal to the length of the index.
+
+        Parameters
+        ----------
+        level : int or str
+            ``level`` is either the integer position of the level in the
+            MultiIndex, or the name of the level.
+
+        Returns
+        -------
+        values : Index
+            Values is a level of this MultiIndex converted to
+            a single :class:`Index` (or subclass thereof).
+
+        Examples
+        --------
+
+        Create a MultiIndex:
+
+        >>> mi = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'a')])
+        >>> mi.names = ['level_1', 'level_2']
+
+        Get level values by supplying level as either integer or name:
+
+        >>> mi.get_level_values(0)
+        Index(['x', 'x', 'y'], dtype='object', name='level_1')
+
+        >>> mi.get_level_values('level_2')
+        Index(['a', 'b', 'a'], dtype='object', name='level_2')
+        """
+        level = self._get_level_number(level)
+        index_scol_name = self._internal.index_spark_column_names[level]
+        index_name = self._internal.index_names[level]
+        scol = self._internal.index_spark_columns[level]
+        sdf = self._internal.spark_frame
+        internal = InternalFrame(
+            spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
+        )
+        return ks.DataFrame(internal).index
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
