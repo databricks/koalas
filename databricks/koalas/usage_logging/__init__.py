@@ -43,6 +43,11 @@ from databricks.koalas.missing.window import (
     MissingPandasLikeRollingGroupby,
 )
 from databricks.koalas.series import Series
+from databricks.koalas.spark.accessors import (
+    CachedSparkFrameMethods,
+    SparkFrameMethods,
+    SparkIndexOpsMethods,
+)
 from databricks.koalas.strings import StringMethods
 from databricks.koalas.window import Expanding, ExpandingGroupby, Rolling, RollingGroupby
 
@@ -80,6 +85,9 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         ExpandingGroupby,
         Rolling,
         RollingGroupby,
+        CachedSparkFrameMethods,
+        SparkFrameMethods,
+        SparkIndexOpsMethods,
     ]
 
     try:
