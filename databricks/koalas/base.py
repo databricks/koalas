@@ -36,7 +36,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
-from databricks.koalas.spark import SparkIndexOpsMethods
+from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
@@ -370,14 +370,16 @@ class IndexOpsMixin(object):
         >>> ks.Series([1, 2, 3]).hasnans
         False
 
+        >>> (ks.Series([1.0, 2.0, np.nan]) + 1).hasnans
+        True
+
         >>> ks.Series([1, 2, 3]).rename("a").to_frame().set_index("a").index.hasnans
         False
         """
-        sdf = self._internal._sdf.select(self.spark.column)
-        col = self.spark.column
+        sdf = self._internal.spark_frame
+        scol = self.spark.column
 
-        ret = sdf.select(F.max(col.isNull() | F.isnan(col))).collect()[0][0]
-        return ret
+        return sdf.select(F.max(scol.isNull() | F.isnan(scol))).collect()[0][0]
 
     @property
     def is_monotonic(self):

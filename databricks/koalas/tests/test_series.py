@@ -1301,13 +1301,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = kser2.to_pandas()
 
         self.assert_eq(
-            repr(kser1.combine_first(kser2).sort_index()),
-            repr(pser1.combine_first(pser2).sort_index()),
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
         with self.assertRaisesRegex(
             ValueError, "`combine_first` only allows `Series` for parameter `other`"
         ):
             kser1.combine_first(50)
+
+        kser1.name = ("X", "A")
+        kser2.name = ("Y", "B")
+        pser1.name = ("X", "A")
+        pser2.name = ("Y", "B")
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
 
         # MultiIndex
         midx1 = pd.MultiIndex(
@@ -1324,8 +1331,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = kser2.to_pandas()
 
         self.assert_eq(
-            repr(kser1.combine_first(kser2).sort_index()),
-            repr(pser1.combine_first(pser2).sort_index()),
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
         # Series come from same DataFrame
@@ -1341,8 +1347,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = kser2.to_pandas()
 
         self.assert_eq(
-            repr(kser1.combine_first(kser2).sort_index()),
-            repr(pser1.combine_first(pser2).sort_index()),
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+
+        kser1.name = ("X", "A")
+        kser2.name = ("Y", "B")
+        pser1.name = ("X", "A")
+        pser2.name = ("Y", "B")
+
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
     def test_udt(self):
@@ -1579,14 +1593,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(
             [10, -2, 4, 7],
             index=pd.MultiIndex.from_tuples(
-                [("one", "a", "z"), ("one", "b", "x"), ("two", "a", "c"), ("two", "b", "v")]
+                [("one", "a", "z"), ("one", "b", "x"), ("two", "a", "c"), ("two", "b", "v")],
+                names=["A", "B", "C"],
             ),
         )
         kser = ks.from_pandas(pser)
 
         levels = [-3, -2, -1, 0, 1, 2]
         for level in levels:
-            self.assert_eq(pser.unstack(level=level), kser.unstack(level=level).sort_index())
+            pandas_result = pser.unstack(level=level)
+            koalas_result = kser.unstack(level=level).sort_index()
+            self.assert_eq(pandas_result, koalas_result)
+            self.assert_eq(pandas_result.index.names, koalas_result.index.names)
+            self.assert_eq(pandas_result.columns.names, koalas_result.columns.names)
+
+        # non-numeric datatypes
+        pser = pd.Series(
+            list("abcd"), index=pd.MultiIndex.from_product([["one", "two"], ["a", "b"]])
+        )
+        kser = ks.from_pandas(pser)
+
+        levels = [-2, -1, 0, 1]
+        for level in levels:
+            pandas_result = pser.unstack(level=level)
+            koalas_result = kser.unstack(level=level).sort_index()
+            self.assert_eq(pandas_result, koalas_result)
+            self.assert_eq(pandas_result.index.names, koalas_result.index.names)
+            self.assert_eq(pandas_result.columns.names, koalas_result.columns.names)
 
         # Exceeding the range of level
         self.assertRaises(IndexError, lambda: kser.unstack(level=3))

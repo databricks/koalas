@@ -18,7 +18,7 @@
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 import warnings
-from collections import Counter, OrderedDict
+from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
@@ -35,6 +35,7 @@ from pyspark.sql.types import DataType, DoubleType, FloatType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.spark import functions as SF
 from databricks.koalas.utils import (
     name_like_string,
     scol_for,
@@ -1633,7 +1634,7 @@ class Frame(object):
 
         return first_valid_idx
 
-    def median(self, accuracy=10000):
+    def median(self, axis=None, numeric_only=True, accuracy=10000):
         """
         Return the median of the values for the requested axis.
 
@@ -1643,6 +1644,11 @@ class Frame(object):
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
         accuracy : int, optional
             Default accuracy of approximation. Larger value means better accuracy.
             The relative error can be deduced by 1.0 / accuracy.
@@ -1654,14 +1660,14 @@ class Frame(object):
         Examples
         --------
         >>> df = ks.DataFrame({
-        ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
+        ...     'a': [24., 21., 25., 33., 26.], 'b': [1., 2., 3., 4., 5.]}, columns=['a', 'b'])
         >>> df
-              a  b
-        0  24.0  1
-        1  21.0  2
-        2  25.0  3
-        3  33.0  4
-        4  26.0  5
+              a    b
+        0  24.0  1.0
+        1  21.0  2.0
+        2  25.0  3.0
+        3  33.0  4.0
+        4  26.0  5.0
 
         On a DataFrame:
 
@@ -1681,19 +1687,27 @@ class Frame(object):
 
         >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
         >>> df
-              x  y
-              a  b
-        0  24.0  1
-        1  21.0  2
-        2  25.0  3
-        3  33.0  4
-        4  26.0  5
+              x    y
+              a    b
+        0  24.0  1.0
+        1  21.0  2.0
+        2  25.0  3.0
+        3  33.0  4.0
+        4  26.0  5.0
 
         On a DataFrame:
 
         >>> df.median()
         x  a    25.0
         y  b     3.0
+        Name: 0, dtype: float64
+
+        >>> df.median(axis=1)
+        0    12.5
+        1    11.5
+        2    14.0
+        3    18.5
+        4    15.5
         Name: 0, dtype: float64
 
         On a Series:
@@ -1706,45 +1720,11 @@ class Frame(object):
         if not isinstance(accuracy, int):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series, first_series
-
-        kdf_or_kser = self
-        if isinstance(kdf_or_kser, Series):
-            kser = first_series(kdf_or_kser.to_frame())
-            return kser._reduce_for_stat_function(
-                lambda _: F.expr(
-                    "approx_percentile(`%s`, 0.5, %s)"
-                    % (kser._internal.data_spark_column_names[0], accuracy)
-                ),
-                name="median",
-            )
-        assert isinstance(kdf_or_kser, DataFrame)
-
-        # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
-        # to get a column name from Spark column but we need it to pass it through `expr`.
-        kdf = kdf_or_kser
-        sdf = kdf._sdf.select(kdf._internal.spark_columns)
-        median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_spark_column_names])
-
-        # Attach a dummy column for index to avoid default index.
-        sdf = InternalFrame.attach_distributed_column(sdf, "__DUMMY__")
-
-        # This is expected to be small so it's fine to transpose.
-        return (
-            DataFrame(
-                kdf._internal.copy(
-                    spark_frame=sdf,
-                    index_map=OrderedDict({"__DUMMY__": None}),
-                    data_spark_columns=[
-                        scol_for(sdf, col) for col in kdf._internal.data_spark_column_names
-                    ],
-                )
-            )
-            ._to_internal_pandas()
-            .transpose()
-            .iloc[:, 0]
+        return self._reduce_for_stat_function(
+            lambda scol: SF.percentile_approx(scol, 0.5, accuracy),
+            name="median",
+            numeric_only=numeric_only,
+            axis=axis,
         )
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.

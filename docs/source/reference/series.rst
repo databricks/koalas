@@ -225,6 +225,7 @@ in Spark. These can be accessed by ``Series.spark.<function/property>``.
    Series.spark.data_type
    Series.spark.column
    Series.spark.transform
+   Series.spark.apply
 
 Accessors
 ---------

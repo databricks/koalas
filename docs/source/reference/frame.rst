@@ -198,6 +198,7 @@ Reshaping, sorting, transposing
    DataFrame.stack
    DataFrame.unstack
    DataFrame.melt
+   DataFrame.explode
    DataFrame.squeeze
    DataFrame.T
    DataFrame.transpose
@@ -269,6 +270,7 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.to_table
    DataFrame.spark.to_spark_io
    DataFrame.spark.explain
+   DataFrame.spark.apply
 
 Plotting
 -------------------------------
