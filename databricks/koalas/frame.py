@@ -4306,7 +4306,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     ):
         return self.spark.to_table(name, format, mode, partition_cols, index_col, **options)
 
-    to_table.__doc__ = SparkFrameMethods.cache.__doc__
+    to_table.__doc__ = SparkFrameMethods.to_table.__doc__
 
     def to_delta(
         self,
