@@ -30,8 +30,6 @@ from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
 
-from databricks.koalas.spark import SparkIndexOpsMethods
-from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -72,7 +70,10 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
 )
 from databricks.koalas.datetimes import DatetimeMethods
+from databricks.koalas.spark import functions as SF
+from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.strings import StringMethods
+from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -3094,10 +3095,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.quantile(.5)
         3
 
+        >>> (s + 1).quantile(.5)
+        4
+
         >>> s.quantile([.25, .5, .75])
         0.25    2
         0.5     3
         0.75    4
+        Name: 0, dtype: int64
+
+        >>> (s + 1).quantile([.25, .5, .75])
+        0.25    3
+        0.5     4
+        0.75    5
         Name: 0, dtype: int64
         """
         if not isinstance(accuracy, int):
@@ -3127,12 +3137,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # +--------------------------------+
             # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
             # +--------------------------------+
-            sdf = self._internal._sdf
-            args = ", ".join(map(str, quantiles))
-            percentile_col = F.expr(
-                "approx_percentile(`%s`, array(%s), %s)" % (self.name, args, accuracy)
-            )
-            sdf = sdf.select(percentile_col.alias("percentiles"))
+            percentile_col = SF.percentile_approx(self._internal.spark_column, quantiles, accuracy)
+            sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
 
             internal_index_column = SPARK_DEFAULT_INDEX_NAME
             value_column = "value"
@@ -3168,8 +3174,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return DataFrame(internal)[value_column].rename(self.name)
         else:
             return self._reduce_for_stat_function(
-                lambda _: F.expr("approx_percentile(`%s`, %s, %s)" % (self.name, q, accuracy)),
-                name="median",
+                lambda scol: SF.percentile_approx(scol, q, accuracy), name="quantile"
             )
 
     # TODO: add axis, numeric_only, pct, na_option parameter
@@ -5032,21 +5037,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
-        col_sdf = self.spark.column
-        col_type = self.spark.data_type
-        if isinstance(col_type, BooleanType) and sfun.__name__ not in ("min", "max"):
+        scol = self.spark.column
+        spark_type = self.spark.data_type
+        if isinstance(spark_type, BooleanType) and sfun.__name__ not in ("min", "max"):
             # Stat functions cannot be used with boolean values by default
             # Thus, cast to integer (true to 1 and false to 0)
             # Exclude the min and max methods though since those work with booleans
-            col_sdf = col_sdf.cast("integer")
+            scol = scol.cast("integer")
         if num_args == 1:
             # Only pass in the column if sfun accepts only one arg
-            col_sdf = sfun(col_sdf)
+            scol = sfun(scol)
         else:  # must be 2
             assert num_args == 2
             # Pass in both the column and its data type if sfun accepts two args
-            col_sdf = sfun(col_sdf, col_type)
-        return unpack_scalar(self._internal._sdf.select(col_sdf))
+            scol = sfun(scol, spark_type)
+        return unpack_scalar(self._internal.spark_frame.select(scol))
 
     def __len__(self):
         return len(self.to_dataframe())

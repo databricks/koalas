@@ -36,7 +36,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
-from databricks.koalas.spark import SparkIndexOpsMethods
+from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
