@@ -3618,10 +3618,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(ValueError):
             kdf.mad(axis=2)
 
-        with option_context("compute.shortcut_limit", 1):
-            self.assert_eq(kdf.mad(), pdf.mad())
-            self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
-
         # MultiIndex columns
         columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y")])
         pdf.columns = columns
