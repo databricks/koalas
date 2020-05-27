@@ -10082,7 +10082,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if axis == 0:
             exprs = []
-            new_column_labels = []
             for label in self._internal.column_labels:
                 col_sdf = self._internal.spark_column_for(label)
                 col_type = self._internal.spark_type_for(label)
@@ -10100,7 +10099,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
 
                 exprs.append(col_sdf.alias(label_str))
-                new_column_labels.append(label)
 
             sdf = self._sdf.select(exprs)
 
@@ -10111,13 +10109,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 internal = InternalFrame(
                     kdf._internal.spark_frame,
                     index_map=kdf._internal.index_map,
-                    column_labels=new_column_labels,
+                    column_labels=self._internal.column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
 
                 return first_series(DataFrame(internal).transpose())
 
         elif axis == 1:
+
             @pandas_udf(returnType=DoubleType())
             def calculate_columns_axis(*cols):
                 return pd.concat(cols, axis=1).mad(axis=1)
