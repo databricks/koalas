@@ -5238,9 +5238,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(value) != len(to_replace):
                 raise ValueError("Length of to_replace and value must be same")
 
-        subset = [
-            self._internal.spark_column_name_for(label) for label in self._internal.column_labels
-        ]
+        subset = self._internal.data_spark_column_names
 
         sdf = self._sdf
         if (
