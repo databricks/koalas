@@ -10118,13 +10118,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return first_series(DataFrame(internal).transpose())
 
         elif axis == 1:
-            limit = get_option("compute.shortcut_limit")
-            pdf = self.head(limit + 1)._to_internal_pandas()
-            pser = pdf.mad(axis=axis)
-            if len(pdf) <= limit:
-                return Series(pser)
-
-            @pandas_udf(returnType=as_spark_type(pser.dtype.type))
+            @pandas_udf(returnType=DoubleType())
             def calculate_columns_axis(*cols):
                 return pd.concat(cols, axis=1).mad(axis=1)
 
