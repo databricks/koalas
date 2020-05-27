@@ -2677,6 +2677,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.filter(items=[("aa", 1), ("bd", 2)], axis=0).sort_index(),
         )
 
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+            kdf.filter(items=[["aa", 1], ("bd", 2)], axis=0)
+
+        with self.assertRaisesRegex(ValueError, "The item should not be empty."):
+            kdf.filter(items=[(), ("bd", 2)], axis=0)
+
         self.assert_eq(kdf.filter(like="b", axis=0), pdf.filter(like="b", axis=0))
 
         self.assert_eq(kdf.filter(regex="b.*", axis=0), pdf.filter(regex="b.*", axis=0))

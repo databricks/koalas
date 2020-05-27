@@ -9337,21 +9337,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                             col = col | (index_scols[0] == F.lit(item))
                 elif len(index_scols) > 1:
                     # for multi-index
-                    cols = []
                     col = None
                     for item in items:
+                        if not isinstance(item, (tuple)):
+                            raise TypeError("Unsupported type {}".format(type(item)))
+                        if not item:
+                            raise ValueError("The item should not be empty.")
+                        midx_col = None
                         for i, element in enumerate(item):
-                            if col is None:
-                                col = index_scols[i] == F.lit(element)
+                            if midx_col is None:
+                                midx_col = index_scols[i] == F.lit(element)
                             else:
-                                col = col & (index_scols[i] == F.lit(element))
-                        cols.append(col)
-                        col = None
-                    for c in cols:
+                                midx_col = midx_col & (index_scols[i] == F.lit(element))
                         if col is None:
-                            col = c
+                            col = midx_col
                         else:
-                            col = col | c
+                            col = col | midx_col
                 else:
                     raise ValueError("Single or multi index must be specified.")
                 return DataFrame(self._internal.with_filter(col))
