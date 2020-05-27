@@ -155,6 +155,11 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
         self.assert_eq(
+            getattr(kdf.b.groupby(kdf.a).expanding(2), f)().sort_index(),
+            getattr(pdf.b.groupby(pdf.a).expanding(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
             getattr(kdf.groupby(kdf.a)["b"].expanding(2), f)().sort_index(),
             getattr(pdf.groupby(pdf.a)["b"].expanding(2), f)().sort_index(),
             almost=True,
@@ -232,6 +237,11 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
                 almost=True,
             )
             expected_result = pd.Series([None, None, 2.0, None], index=midx, name="b")
+            self.assert_eq(
+                kdf.b.groupby(kdf.a).expanding(2).count().sort_index(),
+                expected_result.sort_index(),
+                almost=True,
+            )
             self.assert_eq(
                 kdf.groupby(kdf.a)["b"].expanding(2).count().sort_index(),
                 expected_result.sort_index(),

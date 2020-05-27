@@ -118,6 +118,11 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
         self.assert_eq(
+            getattr(kdf.b.groupby(kdf.a).rolling(2), f)().sort_index(),
+            getattr(pdf.b.groupby(pdf.a).rolling(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
             getattr(kdf.groupby(kdf.a)["b"].rolling(2), f)().sort_index(),
             getattr(pdf.groupby(pdf.a)["b"].rolling(2), f)().sort_index(),
             almost=True,
