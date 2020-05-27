@@ -10118,10 +10118,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def calculate_columns_axis(*cols):
                 return pd.concat(cols, axis=1).mad(axis=1)
 
-            df = self._sdf.select(
-                calculate_columns_axis(*self._internal.data_spark_columns).alias("0")
+            internal = self._internal.copy(
+                spark_column=calculate_columns_axis(*self._internal.data_spark_columns).alias("0"),
+                column_labels=[("0",)],
+                column_label_names=None,
             )
-            return DataFrame(df)["0"]
+            return Series(internal, anchor=self)
 
     def _to_internal_pandas(self):
         """
