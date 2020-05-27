@@ -446,6 +446,87 @@ class Frame(object):
         else:
             return func(self, *args, **kwargs)
 
+    def tail(self, n: int = 5):
+        """
+        Return the last `n` rows.
+        This function returns last `n` rows from the object based on
+        position. It is useful for quickly verifying data, for example,
+        after sorting or appending rows.
+        For negative values of `n`, this function returns all rows except
+        the first `n` rows, equivalent to ``df[n:]``.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        type of caller
+            The last `n` rows of the caller object.
+
+        See Also
+        --------
+        DataFrame.head : The first `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'animal': ['alligator', 'bee', 'falcon', 'lion',
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+
+        >>> df
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        3       lion
+        4     monkey
+        5     parrot
+        6      shark
+        7      whale
+        8      zebra
+
+        Viewing the last 5 lines
+
+        >>> df.tail()
+           animal
+        4  monkey
+        5  parrot
+        6   shark
+        7   whale
+        8   zebra
+
+        Viewing the last `n` lines (three in this case)
+
+        >>> df.tail(3)
+          animal
+        6  shark
+        7  whale
+        8  zebra
+
+        For negative values of `n`
+
+        >>> df.tail(-3)
+           animal
+        3    lion
+        4  monkey
+        5  parrot
+        6   shark
+        7   whale
+        8   zebra
+        """
+        from databricks.koalas.series import first_series
+
+        if n < 0:
+            n = self.size + n
+        if n <= 0:
+            empty_df: ks.DataFrame = ks.DataFrame(self._internal.with_filter(F.lit(False)))
+            if isinstance(self, ks.DataFrame):
+                return empty_df
+            else:
+                return first_series(empty_df)
+        return self.iloc[-n:]
+
     def to_numpy(self):
         """
         A NumPy ndarray representing the values in this DataFrame or Series.

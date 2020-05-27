@@ -109,7 +109,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(-3), pser.head(-3))
         self.assert_eq(kser.head(-10), pser.head(-10))
 
-        # TODO: self.assert_eq(kser.tail(3), pser.tail(3))
+        self.assert_eq(kser.tail(3), pser.tail(3))
+        self.assert_eq(kser.tail(0), pser.tail(0))
+        self.assert_eq(kser.tail(-3), pser.tail(-3))
+        self.assert_eq(kser.tail(-10), pser.tail(-10))
 
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
