@@ -10081,23 +10081,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
 
         if axis == 0:
-            exprs = []
-            for label in self._internal.column_labels:
-                scol = self._internal.spark_column_for(label)
-                col_type = self._internal.spark_type_for(label)
+
+            def get_spark_column(kdf, label):
+                scol = kdf._internal.spark_column_for(label)
+                col_type = kdf._internal.spark_type_for(label)
 
                 if isinstance(col_type, BooleanType):
                     scol = scol.cast("integer")
 
-                label_str = name_like_string(label)
+                return scol
 
-                scol = F.avg(
-                    F.abs(scol - self._sdf.select(F.avg(scol).alias(label_str)).first()[label_str])
-                )
+            new_columns = [
+                F.avg(get_spark_column(self, label)).alias(name_like_string(label))
+                for label in self._internal.column_labels
+            ]
+            sdf_mean = self._sdf.select(new_columns).first()
 
-                exprs.append(scol.alias(label_str))
-
-            sdf = self._sdf.select(exprs)
+            new_columns = [
+                F.avg(
+                    F.abs(get_spark_column(self, label) - sdf_mean[name_like_string(label)])
+                ).alias(name_like_string(label))
+                for label in self._internal.column_labels
+            ]
+            sdf = self._sdf.select(new_columns)
 
             with ks.option_context(
                 "compute.default_index_type", "distributed", "compute.max_rows", None
