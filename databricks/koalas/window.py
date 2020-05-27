@@ -34,7 +34,8 @@ from databricks.koalas.utils import scol_for
 
 
 class RollingAndExpanding(object):
-    def __init__(self, window, min_periods):
+    def __init__(self, kdf_or_kser, window, min_periods):
+        self._kdf_or_kser = kdf_or_kser
         self._window = window
         # This unbounded Window is later used to handle 'min_periods' for now.
         self._unbounded_window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
@@ -122,24 +123,21 @@ class Rolling(RollingAndExpanding):
             raise ValueError("window must be >= 0")
         if (min_periods is not None) and (min_periods < 0):
             raise ValueError("min_periods must be >= 0")
-        self._window_val = window
-        if min_periods is not None:
-            min_periods = min_periods
-        else:
+        if min_periods is None:
             # TODO: 'min_periods' is not equivalent in pandas because it does not count NA as
             #  a value.
             min_periods = window
 
-        self.kdf_or_kser = kdf_or_kser
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser)
             )
+
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
-            Window.currentRow - (self._window_val - 1), Window.currentRow
+            Window.currentRow - (window - 1), Window.currentRow
         )
 
-        super(Rolling, self).__init__(window, min_periods)
+        super(Rolling, self).__init__(kdf_or_kser, window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeRolling, item):
@@ -151,7 +149,7 @@ class Rolling(RollingAndExpanding):
         raise AttributeError(item)
 
     def _apply_as_series_or_frame(self, func):
-        return self.kdf_or_kser._apply_series_op(
+        return self._kdf_or_kser._apply_series_op(
             lambda kser: kser._with_new_scol(func(kser.spark.column)).rename(kser.name)
         )
 
@@ -617,35 +615,27 @@ class Rolling(RollingAndExpanding):
 
 
 class RollingGroupby(Rolling):
-    def __init__(self, groupby, groupkeys, window, min_periods=None):
+    def __init__(self, groupby, window, min_periods=None):
         from databricks.koalas.groupby import SeriesGroupBy
         from databricks.koalas.groupby import DataFrameGroupBy
 
         if isinstance(groupby, SeriesGroupBy):
-            kdf = groupby._kser.to_frame()
+            kdf_or_kser = groupby._kser
         elif isinstance(groupby, DataFrameGroupBy):
-            kdf = groupby._kdf
+            kdf_or_kser = groupby._kdf
         else:
             raise TypeError(
                 "groupby must be a SeriesGroupBy or DataFrameGroupBy; "
                 "however, got: %s" % type(groupby)
             )
 
-        super(RollingGroupby, self).__init__(kdf, window, min_periods)
+        super(RollingGroupby, self).__init__(kdf_or_kser, window, min_periods)
+
         self._groupby = groupby
-        # NOTE THAT this code intentionally uses `F.col` instead of `spark.column` in
-        # given series. This is because, in case of series, we convert it into
-        # DataFrame. So, if the given `groupkeys` is a series, they end up with
-        # being a different series.
-        self._window = self._window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
-        )
+        self._window = self._window.partitionBy(*[ser.spark.column for ser in groupby._groupkeys])
         self._unbounded_window = self._unbounded_window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
+            *[ser.spark.column for ser in groupby._groupkeys]
         )
-        self._groupkeys = groupkeys
-        # Current implementation reuses DataFrameGroupBy implementations for Series as well.
-        self.kdf = self.kdf_or_kser
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeRollingGroupby, item):
@@ -666,46 +656,48 @@ class RollingGroupby(Rolling):
         from databricks.koalas.series import first_series
         from databricks.koalas.groupby import SeriesGroupBy
 
-        kdf = self.kdf
-        sdf = self.kdf._sdf
+        groupby = self._groupby
+        kdf = groupby._kdf
 
         # Here we need to include grouped key as an index, and shift previous index.
         #   [index_column0, index_column1] -> [grouped key, index_column0, index_column1]
         new_index_scols = []
         new_index_map = OrderedDict()
-        for groupkey in self._groupkeys:
-            new_index_scols.append(
-                # NOTE THAT this code intentionally uses `F.col` instead of `spark.column` in
-                # given series. This is because, in case of series, we convert it into
-                # DataFrame. So, if the given `groupkeys` is a series, they end up with
-                # being a different series.
-                F.col(name_like_string(groupkey.name)).alias(
-                    SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
-                )
-            )
-            new_index_map[
-                SPARK_INDEX_NAME_FORMAT(len(new_index_map))
-            ] = groupkey._internal.column_labels[0]
+        for groupkey in groupby._groupkeys:
+            index_column_name = SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
+            new_index_scols.append(groupkey.spark.column.alias(index_column_name))
+            new_index_map[index_column_name] = groupkey._internal.column_labels[0]
 
         for new_index_scol, index_name in zip(
             kdf._internal.index_spark_columns, kdf._internal.index_names
         ):
-            new_index_scols.append(
-                new_index_scol.alias(SPARK_INDEX_NAME_FORMAT(len(new_index_scols)))
-            )
-            new_index_map[SPARK_INDEX_NAME_FORMAT(len(new_index_map))] = index_name
+            index_column_name = SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
+            new_index_scols.append(new_index_scol.alias(index_column_name))
+            new_index_map[index_column_name] = index_name
+
+        if groupby._agg_columns_selected:
+            agg_columns = groupby._agg_columns
+        else:
+            agg_columns = [
+                kdf._kser_for(label)
+                for label in kdf._internal.column_labels
+                if label not in groupby._column_labels_to_exlcude
+            ]
 
         applied = []
-        for column in kdf.columns:
+        for agg_column in agg_columns:
             applied.append(
-                kdf[column]._with_new_scol(func(kdf[column].spark.column)).rename(kdf[column].name)
+                agg_column._with_new_scol(func(agg_column.spark.column)).rename(agg_column.name)
             )
 
         # Seems like pandas filters out when grouped key is NA.
-        cond = self._groupkeys[0].spark.column.isNotNull()
-        for c in self._groupkeys:
+        cond = groupby._groupkeys[0].spark.column.isNotNull()
+        for c in groupby._groupkeys[1:]:
             cond = cond | c.spark.column.isNotNull()
-        sdf = sdf.select(new_index_scols + [c.spark.column for c in applied]).filter(cond)
+
+        sdf = kdf._internal.spark_frame.select(
+            new_index_scols + [c.spark.column for c in applied]
+        ).filter(cond)
 
         internal = kdf._internal.copy(
             spark_frame=sdf,
@@ -717,7 +709,7 @@ class RollingGroupby(Rolling):
         )
 
         ret = DataFrame(internal)
-        if isinstance(self._groupby, SeriesGroupBy):
+        if isinstance(groupby, SeriesGroupBy):
             return first_series(ret)
         else:
             return ret
@@ -1042,15 +1034,17 @@ class Expanding(RollingAndExpanding):
 
         if min_periods < 0:
             raise ValueError("min_periods must be >= 0")
-        self.kdf_or_kser = kdf_or_kser
+
         if not isinstance(kdf_or_kser, (DataFrame, Series)):
             raise TypeError(
                 "kdf_or_kser must be a series or dataframe; however, got: %s" % type(kdf_or_kser)
             )
+
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(
             Window.unboundedPreceding, Window.currentRow
         )
-        super(Expanding, self).__init__(window, min_periods)
+
+        super(Expanding, self).__init__(kdf_or_kser, window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeExpanding, item):
@@ -1234,6 +1228,19 @@ class Expanding(RollingAndExpanding):
         DataFrame.expanding : Calling object with DataFrames.
         Series.max : Similar method for Series.
         DataFrame.max : Similar method for DataFrame.
+
+        Examples
+        --------
+        Performing a expanding minimum with a window size of 3.
+
+        >>> s = ks.Series([4, 3, 5, 2, 6])
+        >>> s.expanding(3).max()
+        0    NaN
+        1    NaN
+        2    5.0
+        3    5.0
+        4    6.0
+        Name: 0, dtype: float64
         """
         return super(Expanding, self).max()
 
@@ -1383,35 +1390,27 @@ class Expanding(RollingAndExpanding):
 
 
 class ExpandingGroupby(Expanding):
-    def __init__(self, groupby, groupkeys, min_periods=1):
+    def __init__(self, groupby, min_periods=1):
         from databricks.koalas.groupby import SeriesGroupBy
         from databricks.koalas.groupby import DataFrameGroupBy
 
         if isinstance(groupby, SeriesGroupBy):
-            kdf = groupby._kser.to_frame()
+            kdf_or_kser = groupby._kser
         elif isinstance(groupby, DataFrameGroupBy):
-            kdf = groupby._kdf
+            kdf_or_kser = groupby._kdf
         else:
             raise TypeError(
                 "groupby must be a SeriesGroupBy or DataFrameGroupBy; "
                 "however, got: %s" % type(groupby)
             )
 
-        super(ExpandingGroupby, self).__init__(kdf, min_periods)
+        super(ExpandingGroupby, self).__init__(kdf_or_kser, min_periods)
+
         self._groupby = groupby
-        # NOTE THAT this code intentionally uses `F.col` instead of `spark.column` in
-        # given series. This is because, in case of series, we convert it into
-        # DataFrame. So, if the given `groupkeys` is a series, they end up with
-        # being a different series.
-        self._window = self._window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
-        )
+        self._window = self._window.partitionBy(*[ser.spark.column for ser in groupby._groupkeys])
         self._unbounded_window = self._window.partitionBy(
-            *[F.col(name_like_string(ser.name)) for ser in groupkeys]
+            *[ser.spark.column for ser in groupby._groupkeys]
         )
-        self._groupkeys = groupkeys
-        # Current implementation reuses DataFrameGroupBy implementations for Series as well.
-        self.kdf = self.kdf_or_kser
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeExpandingGroupby, item):
@@ -1444,7 +1443,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +SKIP
+        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
         0
         2  0     NaN
            1     NaN
@@ -1462,7 +1461,7 @@ class ExpandingGroupby(Expanding):
         For DataFrame, each expanding count is computed column-wise.
 
         >>> df = ks.DataFrame({"A": s.to_numpy(), "B": s.to_numpy() ** 2})
-        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +SKIP
+        >>> df.groupby(df.A).expanding(2).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
                 A    B
         A
         2 0   NaN  NaN

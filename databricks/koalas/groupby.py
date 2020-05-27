@@ -2024,7 +2024,7 @@ class GroupBy(object):
         Series.groupby
         DataFrame.groupby
         """
-        return RollingGroupby(self, self._groupkeys, window, min_periods=min_periods)
+        return RollingGroupby(self, window, min_periods=min_periods)
 
     def expanding(self, min_periods=1):
         """
@@ -2046,7 +2046,7 @@ class GroupBy(object):
         Series.groupby
         DataFrame.groupby
         """
-        return ExpandingGroupby(self, self._groupkeys, min_periods=min_periods)
+        return ExpandingGroupby(self, min_periods=min_periods)
 
     def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
         if should_include_groupkeys:
