@@ -5137,14 +5137,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
 
     def replace(
-        self,
-        to_replace=None,
-        value=None,
-        subset=None,
-        inplace=False,
-        limit=None,
-        regex=False,
-        method="pad",
+        self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method="pad",
     ):
         """
         Returns a new DataFrame replacing a value with another value.
@@ -5158,10 +5151,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         value : int, float, string, or list
             Value to use to replace holes. The replacement value must be an int, float,
             or string. If value is a list, value should be of the same length with to_replace.
-        subset : string, list
-            Optional list of column names to consider. Columns specified in subset that
-            do not have matching data type are ignored. For example, if value is a string,
-            and subset contains a non-string column, then the non-string column is simply ignored.
         inplace : boolean, default False
             Fill in place (do not create a new object)
 
@@ -5201,25 +5190,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     Thor  Mjolnir
         3     Hulk    Smash
 
-        Replacing value by specifying column
-
-        >>> df.replace('Mjolnir', 'Stormbuster', subset='weapon')
-              name       weapon
-        0   Rescue      Mark-45
-        1  Hawkeye       Shield
-        2     Thor  Stormbuster
-        3     Hulk        Smash
-
-        You can also use an iterable object that returns a list of columns,
-        such as `tuple` or `list`, as input to the `subset` parameter.
-
-        >>> df.replace('Mjolnir', 'Stormbuster', subset=('weapon',))
-              name       weapon
-        0   Rescue      Mark-45
-        1  Hawkeye       Shield
-        2     Thor  Stormbuster
-        3     Hulk        Smash
-
         Dict like `to_replace`
 
         >>> df = ks.DataFrame({'A': [0, 1, 2, 3, 4],
@@ -5243,12 +5213,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3    3    8  d
         4    4    9  e
 
-        Notes
-        -----
-        One difference between this implementation and pandas is that it is necessary
-        to specify the column name when you are passing dictionary in `to_replace`
-        parameter. Calling `replace` on its index such as `df.replace({0: 10, 1: 100})` will
-        throw an error. Instead specify column-name like `df.replace({'A': {0: 10, 1: 100}})`.
+        >>> df.replace({0: 10, 1: 100})
+             A  B  C
+        0   10  5  a
+        1  100  6  b
+        2    2  7  c
+        3    3  8  d
+        4    4  9  e
         """
         if method != "pad":
             raise NotImplementedError("replace currently works only for method='pad")
@@ -5267,16 +5238,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(value) != len(to_replace):
                 raise ValueError("Length of to_replace and value must be same")
 
-        # TODO: Do we still need to support this argument?
-        if subset is None:
-            subset = self._internal.column_labels
-        elif isinstance(subset, str):
-            subset = [(subset,)]
-        elif isinstance(subset, tuple):
-            subset = [subset]
-        else:
-            subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
-        subset = [self._internal.spark_column_name_for(label) for label in subset]
+        subset = [
+            self._internal.spark_column_name_for(label) for label in self._internal.column_labels
+        ]
 
         sdf = self._sdf
         if (
