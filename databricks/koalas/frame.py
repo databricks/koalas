@@ -10083,22 +10083,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis == 0:
             exprs = []
             for label in self._internal.column_labels:
-                col_sdf = self._internal.spark_column_for(label)
+                scol = self._internal.spark_column_for(label)
                 col_type = self._internal.spark_type_for(label)
 
                 if isinstance(col_type, BooleanType):
-                    col_sdf = col_sdf.cast("integer")
+                    scol = scol.cast("integer")
 
                 label_str = name_like_string(label)
 
-                col_sdf = F.avg(
-                    F.abs(
-                        col_sdf
-                        - self._sdf.select(F.avg(col_sdf).alias(label_str)).first()[label_str]
-                    )
+                scol = F.avg(
+                    F.abs(scol - self._sdf.select(F.avg(scol).alias(label_str)).first()[label_str])
                 )
 
-                exprs.append(col_sdf.alias(label_str))
+                exprs.append(scol.alias(label_str))
 
             sdf = self._sdf.select(exprs)
 
