@@ -40,7 +40,7 @@ from pandas.io.formats.printing import pprint_thing
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType
+from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, LongType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -1884,6 +1884,30 @@ class Index(IndexOpsMixin):
 
         return DataFrame(internal).index
 
+    def holds_integer(self):
+        """
+        Whether the type is an integer type.
+
+        Examples
+        --------
+        >>> kidx = ks.Index([1, 2, 3, 4])
+        >>> kidx.holds_integer()
+        True
+
+        Returns False for string type.
+
+        >>> kidx = ks.Index(["A", "B", "C", "D"])
+        >>> kidx.holds_integer()
+        False
+
+        Returns False for float type.
+
+        >>> kidx = ks.Index([1.1, 2.2, 3.3, 4.4])
+        >>> kidx.holds_integer()
+        False
+        """
+        return isinstance(self.spark.data_type, LongType)
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeIndex, item):
             property_or_func = getattr(MissingPandasLikeIndex, item)
@@ -2691,6 +2715,13 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
+
+    def holds_integer(self):
+        """
+        Whether the type is an integer type.
+        Always return False for MultiIndex.
+        """
+        return False
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")

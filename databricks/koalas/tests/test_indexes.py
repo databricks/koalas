@@ -1310,3 +1310,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         for lv, output in zip(level_names, outputs):
             self.assertEqual(output, kdf.index._get_level_number(lv))
+
+    def test_holds_integer(self):
+        pidx = pd.Index([1, 2, 3, 4])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
+
+        pidx = pd.Index([1.1, 2.2, 3.3, 4.4])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
+
+        pidx = pd.Index(["A", "B", "C", "D"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
