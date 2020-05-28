@@ -1323,3 +1323,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index(["A", "B", "C", "D"])
         kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "a")])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.holds_integer(), kmidx.holds_integer())
+
+        pmidx = pd.MultiIndex.from_tuples([(10, 1), (10, 2), (20, 1)])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.holds_integer(), kmidx.holds_integer())
