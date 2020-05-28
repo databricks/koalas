@@ -1712,34 +1712,58 @@ class Frame(object):
             else:
                 raise ValueError("items should be a list-like object.")
             if axis == 0:
-                # TODO: support multi-index here
-                if len(index_scols) != 1:
-                    raise ValueError("Single index must be specified.")
-                col = None
-                for item in items:
-                    if col is None:
-                        col = index_scols[0] == F.lit(item)
-                    else:
-                        col = col | (index_scols[0] == F.lit(item))
+                if len(index_scols) == 1:
+                    col = None
+                    for item in items:
+                        if col is None:
+                            col = index_scols[0] == F.lit(item)
+                        else:
+                            col = col | (index_scols[0] == F.lit(item))
+                elif len(index_scols) > 1:
+                    # for multi-index
+                    col = None
+                    for item in items:
+                        if not isinstance(item, (tuple)):
+                            raise TypeError("Unsupported type {}".format(type(item)))
+                        if not item:
+                            raise ValueError("The item should not be empty.")
+                        midx_col = None
+                        for i, element in enumerate(item):
+                            if midx_col is None:
+                                midx_col = index_scols[i] == F.lit(element)
+                            else:
+                                midx_col = midx_col & (index_scols[i] == F.lit(element))
+                        if col is None:
+                            col = midx_col
+                        else:
+                            col = col | midx_col
+                else:
+                    raise ValueError("Single or multi index must be specified.")
                 filtered_df = ks.DataFrame(kdf._internal.with_filter(col))
             elif axis == 1:
                 filtered_df = kdf[items]
         elif like is not None:
             if axis == 0:
-                # TODO: support multi-index here
-                if len(index_scols) != 1:
-                    raise ValueError("Single index must be specified.")
-                filtered_df = ks.DataFrame(kdf._internal.with_filter(index_scols[0].contains(like)))
+                col = None
+                for index_scol in index_scols:
+                    if col is None:
+                        col = index_scol.contains(like)
+                    else:
+                        col = col | index_scol.contains(like)
+                filtered_df = ks.DataFrame(self._internal.with_filter(col))
             elif axis == 1:
                 column_labels = kdf._internal.column_labels
                 output_labels = [label for label in column_labels if any(like in i for i in label)]
                 filtered_df = kdf[output_labels]
         elif regex is not None:
             if axis == 0:
-                # TODO: support multi-index here
-                if len(index_scols) != 1:
-                    raise ValueError("Single index must be specified.")
-                filtered_df = ks.DataFrame(kdf._internal.with_filter(index_scols[0].rlike(regex)))
+                col = None
+                for index_scol in index_scols:
+                    if col is None:
+                        col = index_scol.rlike(regex)
+                    else:
+                        col = col | index_scol.rlike(regex)
+                filtered_df = ks.DataFrame(self._internal.with_filter(col))
             elif axis == 1:
                 column_labels = kdf._internal.column_labels
                 matcher = re.compile(regex)
