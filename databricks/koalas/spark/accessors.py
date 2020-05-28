@@ -45,6 +45,11 @@ class SparkIndexOpsMethods(object):
         return self._data._internal.spark_type_for(self._data._internal.column_labels[0])
 
     @property
+    def nullable(self):
+        """ Returns the nullability as defined by Spark. """
+        return self._data._internal.spark_column_nullable_for(self._data._internal.column_labels[0])
+
+    @property
     def column(self):
         """
         Spark Column object representing the Series/Index.
