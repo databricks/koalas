@@ -1633,8 +1633,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.item())
 
     def test_filter(self):
-        kser = ks.Series([0, 1, 2], index=["one", "two", "three"])
-        pser = kser.to_pandas()
+        pser = pd.Series([0, 1, 2], index=["one", "two", "three"])
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.filter(items=["one", "three"]), kser.filter(items=["one", "three"]))
         self.assert_eq(pser.filter(regex="e$"), kser.filter(regex="e$"))
@@ -1645,8 +1645,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # for MultiIndex
         midx = pd.MultiIndex.from_tuples([("one", "x"), ("two", "y"), ("three", "z")])
-        kser = ks.Series([0, 1, 2], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([0, 1, 2], index=midx)
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(
             pser.filter(items=[("one", "x"), ("three", "z")]),
