@@ -1642,3 +1642,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Series does not support columns axis."):
             kser.filter(like="hre", axis=1)
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("one", "x"), ("two", "y"), ("three", "z")])
+        kser = ks.Series([0, 1, 2], index=midx)
+        pser = kser.to_pandas()
+
+        self.assert_eq(
+            pser.filter(items=[("one", "x"), ("three", "z")]),
+            kser.filter(items=[("one", "x"), ("three", "z")]),
+        )
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+            kser.filter(items=[["one", "x"], ("three", "z")])
+
+        with self.assertRaisesRegex(ValueError, "The item should not be empty."):
+            kser.filter(items=[(), ("three", "z")])
