@@ -1701,7 +1701,7 @@ class Index(IndexOpsMixin):
         >>> idx.is_all_dates
         False
         """
-        return isinstance(self.spark_type, TimestampType)
+        return isinstance(self.spark.data_type, TimestampType)
 
     def repeat(self, repeats: int) -> "Index":
         """
@@ -2210,7 +2210,7 @@ class MultiIndex(Index):
         prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
-        for field in self.spark_type[::-1]:
+        for field in self.spark.data_type[::-1]:
             left = scol.getField(field.name)
             right = prev.getField(field.name)
             compare = MultiIndex._comparator_for_monotonic_increasing(field.dataType)
@@ -2246,7 +2246,7 @@ class MultiIndex(Index):
         prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
-        for field in self.spark_type[::-1]:
+        for field in self.spark.data_type[::-1]:
             left = scol.getField(field.name)
             right = prev.getField(field.name)
             compare = MultiIndex._comparator_for_monotonic_decreasing(field.dataType)
