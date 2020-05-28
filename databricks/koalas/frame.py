@@ -10110,7 +10110,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ):
                 kdf = DataFrame(sdf)
                 internal = InternalFrame(
-                    kdf._internal.spark_frame,
+                    spark_frame=kdf._internal.spark_frame,
                     index_map=kdf._internal.index_map,
                     column_labels=self._internal.column_labels,
                     column_label_names=self._internal.column_label_names,
