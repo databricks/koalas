@@ -425,7 +425,12 @@ class Index(IndexOpsMixin):
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.to_series().spark.data_type
+        warnings.warn(
+            "Index.spark_type is deprecated as of Index.spark.data_type. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.data_type
 
     @property
     def has_duplicates(self) -> bool:
