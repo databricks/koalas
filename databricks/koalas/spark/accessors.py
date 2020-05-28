@@ -54,6 +54,11 @@ class SparkIndexOpsMethods(object):
         """
         return self._data._internal.spark_column
 
+    @property
+    def dataframe(self):
+        """ Returns the Spark DataFrame representing the Series/Index of Koalas."""
+        return self._data._internal.spark_frame
+
     def transform(self, func):
         """
         Applies a function that takes and returns a Spark column. It allows to natively
