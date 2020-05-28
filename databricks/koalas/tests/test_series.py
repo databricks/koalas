@@ -1639,3 +1639,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.filter(items=["one", "three"]), kser.filter(items=["one", "three"]))
         self.assert_eq(pser.filter(regex="e$"), kser.filter(regex="e$"))
         self.assert_eq(pser.filter(like="hre"), kser.filter(like="hre"))
+
+        with self.assertRaisesRegex(ValueError, "Series does not support columns axis."):
+            kser.filter(like="hre", axis=1)
