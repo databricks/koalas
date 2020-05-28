@@ -48,7 +48,6 @@ class MissingPandasLikeSeries(object):
     ewm = _unsupported_function("ewm")
     factorize = _unsupported_function("factorize")
     ffill = _unsupported_function("ffill")
-    filter = _unsupported_function("filter")
     first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")
