@@ -143,6 +143,12 @@ circle          0      720
 triangle        6      360
 rectangle       8      720
 
+>>> df + df + df
+           angles  degrees
+circle          0     1080
+triangle        9      540
+rectangle      12     1080
+
 >>> df.radd(1)
            angles  degrees
 circle          1      361
@@ -409,10 +415,6 @@ class DataFrame(Frame, Generic[T]):
             super(DataFrame, self).__init__(InternalFrame.from_pandas(pdf))
 
     @property
-    def _sdf(self) -> spark.DataFrame:
-        return self._internal.spark_frame
-
-    @property
     def ndim(self):
         """
         Return an int representing the number of array dimensions.
@@ -505,7 +507,7 @@ class DataFrame(Frame, Generic[T]):
                     exprs.append(col_sdf.alias(name_like_string(label)))
                     new_column_labels.append(label)
 
-            sdf = self._sdf.select(*exprs)
+            sdf = self._internal.spark_frame.select(*exprs)
 
             # The data is expected to be small so it's fine to transpose/use default index.
             with ks.option_context(
@@ -534,7 +536,7 @@ class DataFrame(Frame, Generic[T]):
             def calculate_columns_axis(*cols):
                 return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
 
-            df = self._sdf.select(
+            df = self._internal.spark_frame.select(
                 calculate_columns_axis(*self._internal.data_spark_columns).alias("0")
             )
             return DataFrame(df)["0"]
@@ -1253,7 +1255,9 @@ class DataFrame(Frame, Generic[T]):
             v = [row[c] for c in internal_data_columns]
             return k, v
 
-        for k, v in map(extract_kv_from_spark_row, self._sdf.toLocalIterator()):
+        for k, v in map(
+            extract_kv_from_spark_row, self._internal.applied.spark_frame.toLocalIterator()
+        ):
             s = pd.Series(v, index=columns, name=k)
             yield k, s
 
@@ -1945,7 +1949,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
-        exploded_df = self._sdf.withColumn("pairs", pairs).select(
+        exploded_df = self._internal.spark_frame.withColumn("pairs", pairs).select(
             [
                 F.to_json(
                     F.struct(
@@ -2106,11 +2110,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original_func = func
         func = lambda o: original_func(o, *args, **kwds)
 
+        self_applied = DataFrame(self._internal.applied)
+
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
-            pdf = self.head(limit + 1)._to_internal_pandas()
+            pdf = self_applied.head(limit + 1)._to_internal_pandas()
             applied = func(pdf)
             if not isinstance(applied, pd.DataFrame):
                 raise ValueError(
@@ -2124,14 +2130,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return_schema = kdf._internal.to_internal_spark_frame.schema
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
-                    self, func, return_schema, retain_index=True
+                    self_applied, func, return_schema, retain_index=True
                 )
-                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                sdf = self_applied._internal.to_internal_spark_frame.mapInPandas(
                     lambda iterator: map(output_func, iterator), schema=return_schema
                 )
             else:
                 sdf = GroupBy._spark_group_map_apply(
-                    self, func, (F.spark_partition_id(),), return_schema, retain_index=True
+                    self_applied, func, (F.spark_partition_id(),), return_schema, retain_index=True
                 )
 
             # If schema is inferred, we can restore indexes too.
@@ -2147,14 +2153,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
-                    self, func, return_schema, retain_index=False
+                    self_applied, func, return_schema, retain_index=False
                 )
-                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                sdf = self_applied._internal.to_internal_spark_frame.mapInPandas(
                     lambda iterator: map(output_func, iterator), schema=return_schema
                 )
             else:
                 sdf = GroupBy._spark_group_map_apply(
-                    self, func, (F.spark_partition_id(),), return_schema, retain_index=False
+                    self_applied, func, (F.spark_partition_id(),), return_schema, retain_index=False
                 )
 
             # Otherwise, it loses index.
@@ -2361,11 +2367,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return pdf_or_pser
 
+        self_applied = DataFrame(self._internal.applied)
+
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
-            pdf = self.head(limit + 1)._to_internal_pandas()
+            pdf = self_applied.head(limit + 1)._to_internal_pandas()
             applied = pdf.apply(func, axis=axis, args=args, **kwds)
             kser_or_kdf = ks.from_pandas(applied)
             if len(pdf) <= limit:
@@ -2380,14 +2388,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
-                    self, apply_func, return_schema, retain_index=True
+                    self_applied, apply_func, return_schema, retain_index=True
                 )
-                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                sdf = self_applied._internal.to_internal_spark_frame.mapInPandas(
                     lambda iterator: map(output_func, iterator), schema=return_schema
                 )
             else:
                 sdf = GroupBy._spark_group_map_apply(
-                    self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=True
+                    self_applied,
+                    apply_func,
+                    (F.spark_partition_id(),),
+                    return_schema,
+                    retain_index=True,
                 )
 
             # If schema is inferred, we can restore indexes too.
@@ -2403,7 +2415,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         "hints when axis is 0 or 'index'; however, the return type "
                         "was %s" % return_sig
                     )
-                fields_types = zip(self.columns, [return_schema] * len(self.columns))
+                fields_types = zip(
+                    self_applied.columns, [return_schema] * len(self_applied.columns)
+                )
                 return_schema = StructType([StructField(c, t) for c, t in fields_types])
             elif require_column_axis:
                 if axis != 1:
@@ -2419,14 +2433,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
-                    self, apply_func, return_schema, retain_index=False
+                    self_applied, apply_func, return_schema, retain_index=False
                 )
-                sdf = self._internal.to_internal_spark_frame.mapInPandas(
+                sdf = self_applied._internal.to_internal_spark_frame.mapInPandas(
                     lambda iterator: map(output_func, iterator), schema=return_schema
                 )
             else:
                 sdf = GroupBy._spark_group_map_apply(
-                    self, apply_func, (F.spark_partition_id(),), return_schema, retain_index=False
+                    self_applied,
+                    apply_func,
+                    (F.spark_partition_id(),),
+                    return_schema,
+                    retain_index=False,
                 )
 
             # Otherwise, it loses index.
@@ -2767,19 +2785,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return_schema = StructType(
                     [StructField(field.name, field.dataType) for field in return_schema.fields]
                 )
+
+                self_applied = DataFrame(self._internal.applied)
+
                 output_func = GroupBy._make_pandas_df_builder_func(
-                    self, func, return_schema, retain_index=True
+                    self_applied, func, return_schema, retain_index=True
                 )
-                columns = self._internal.spark_columns
+                columns = self_applied._internal.spark_columns
                 if should_by_pass:
                     pudf = pandas_udf(
                         output_func, returnType=return_schema, functionType=PandasUDFType.SCALAR
                     )
                     temp_struct_column = verify_temp_column_name(
-                        self._internal.spark_frame, "__temp_struct__"
+                        self_applied._internal.spark_frame, "__temp_struct__"
                     )
                     applied = pudf(F.struct(*columns)).alias(temp_struct_column)
-                    sdf = self._internal.spark_frame.select(applied)
+                    sdf = self_applied._internal.spark_frame.select(applied)
                     sdf = sdf.selectExpr("%s.*" % temp_struct_column)
                 else:
                     applied = []
@@ -2791,7 +2812,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                 functionType=PandasUDFType.SCALAR,
                             )(*columns).alias(field.name)
                         )
-                    sdf = self._internal.spark_frame.select(*applied)
+                    sdf = self_applied._internal.spark_frame.select(*applied)
                 return DataFrame(kdf._internal.with_new_sdf(sdf))
         else:
             return_schema = infer_return_type(original_func).tpe
@@ -2816,20 +2837,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
                 return Series(internal, anchor=self)
             else:
+                self_applied = DataFrame(self._internal.applied)
+
                 output_func = GroupBy._make_pandas_df_builder_func(
-                    self, func, return_schema, retain_index=False
+                    self_applied, func, return_schema, retain_index=False
                 )
-                columns = self._internal.spark_columns
+                columns = self_applied._internal.spark_columns
 
                 if should_by_pass:
                     pudf = pandas_udf(
                         output_func, returnType=return_schema, functionType=PandasUDFType.SCALAR
                     )
                     temp_struct_column = verify_temp_column_name(
-                        self._internal.spark_frame, "__temp_struct__"
+                        self_applied._internal.spark_frame, "__temp_struct__"
                     )
                     applied = pudf(F.struct(*columns)).alias(temp_struct_column)
-                    sdf = self._internal.spark_frame.select(applied)
+                    sdf = self_applied._internal.spark_frame.select(applied)
                     sdf = sdf.selectExpr("%s.*" % temp_struct_column)
                 else:
                     applied = []
@@ -2841,7 +2864,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                 functionType=PandasUDFType.SCALAR,
                             )(*columns).alias(field.name)
                         )
-                    sdf = self._internal.spark_frame.select(*applied)
+                    sdf = self_applied._internal.spark_frame.select(*applied)
                 return DataFrame(sdf)
 
     def pop(self, item):
@@ -3025,7 +3048,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         rows = [self._internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)]
 
         sdf = (
-            self._sdf.select(scols + list(HIDDEN_COLUMNS))
+            self._internal.spark_frame.select(scols + list(HIDDEN_COLUMNS))
             .drop(NATURAL_ORDER_COLUMN_NAME)
             .filter(reduce(lambda x, y: x & y, rows))
         )
@@ -3347,7 +3370,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> ks.DataFrame({}, index=list('abc')).empty
         True
         """
-        return len(self._internal.column_labels) == 0 or self._sdf.rdd.isEmpty()
+        return (
+            len(self._internal.column_labels) == 0
+            or self._internal.applied.spark_frame.rdd.isEmpty()
+        )
 
     @property
     def style(self):
@@ -3457,10 +3483,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 (self._internal.spark_column_name_for(label), label) for label in keys
             )
 
-        internal = self._internal.copy(
+        internal = self._internal.applied
+        internal = internal.copy(
             index_map=index_map,
             column_labels=column_labels,
-            data_spark_columns=[self._internal.spark_column_for(label) for label in column_labels],
+            data_spark_columns=[internal.spark_column_for(label) for label in column_labels],
         )
 
         if inplace:
@@ -3682,21 +3709,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if name in self._internal.column_labels:
                 raise ValueError("cannot insert {}, already exists".format(name_like_string(name)))
 
+        sdf = self._internal.spark_frame
         new_data_scols = [
-            scol_for(self._sdf, column).alias(name_like_string(name))
-            for column, name in new_index_map
+            scol_for(sdf, column).alias(name_like_string(name)) for column, name in new_index_map
         ]
 
         if len(index_map) > 0:
-            index_scols = [scol_for(self._sdf, column) for column in index_map]
-            sdf = self._sdf.select(
+            index_scols = [scol_for(sdf, column) for column in index_map]
+            sdf = sdf.select(
                 index_scols
                 + new_data_scols
                 + self._internal.data_spark_columns
                 + list(HIDDEN_COLUMNS)
             )
         else:
-            sdf = self._sdf.select(
+            sdf = sdf.select(
                 new_data_scols + self._internal.data_spark_columns + list(HIDDEN_COLUMNS)
             )
 
@@ -3984,7 +4011,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        sdf = self._sdf.select(
+        sdf = self._internal.spark_frame.select(
             [
                 self._kser_for(label)._nunique(dropna, approx, rsd)
                 for label in self._internal.column_labels
@@ -4102,7 +4129,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
         group_cols = [self._internal.spark_column_name_for(label) for label in subset]
 
-        sdf = self._sdf
+        sdf = self._internal.applied.spark_frame
 
         column = verify_temp_column_name(sdf, "__duplicated__")
 
@@ -5278,7 +5305,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
         subset = [self._internal.spark_column_name_for(label) for label in subset]
 
-        sdf = self._sdf
+        sdf = self._internal.applied.spark_frame
         if (
             isinstance(to_replace, dict)
             and value is None
@@ -5408,10 +5435,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if n <= 0:
             return DataFrame(self._internal.with_filter(F.lit(False)))
         else:
+            sdf = self._internal.applied.spark_frame
             if get_option("compute.ordered_head"):
-                sdf = self._sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
-            else:
-                sdf = self._sdf
+                sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
             return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
 
     def pivot_table(self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None):
@@ -5588,9 +5614,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if set(agg_columns) != set(values):
                 raise ValueError("Columns in aggfunc must be the same as values.")
 
+        sdf = self._internal.applied.spark_frame
         if index is None:
             sdf = (
-                self._sdf.groupBy()
+                sdf.groupBy()
                 .pivot(pivot_col=self._internal.spark_column_name_for(columns))
                 .agg(*agg_cols)
             )
@@ -5598,7 +5625,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         elif isinstance(index, list):
             index = [label if isinstance(label, tuple) else (label,) for label in index]
             sdf = (
-                self._sdf.groupBy([self._internal.spark_column_for(label) for label in index])
+                sdf.groupBy([self._internal.spark_column_name_for(label) for label in index])
                 .pivot(pivot_col=self._internal.spark_column_name_for(columns))
                 .agg(*agg_cols)
             )
@@ -6287,7 +6314,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, "last"): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        sdf = self._sdf.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
+        sdf = self._internal.applied.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
         kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
@@ -6927,8 +6954,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "['inner', 'left', 'right', 'outer']",
             )
 
-        left_table = self._sdf.alias("left_table")
-        right_table = right._sdf.alias("right_table")
+        left_table = self._internal.applied.spark_frame.alias("left_table")
+        right_table = right._internal.applied.spark_frame.alias("right_table")
 
         left_key_columns = [  # type: ignore
             scol_for(left_table, label) for label in left_key_names
@@ -7222,8 +7249,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if verify_integrity and len(index_scols) > 0:
                 if (
-                    self._sdf.select(index_scols)
-                    .intersect(other._sdf.select(other._internal.index_spark_columns))
+                    self._internal.spark_frame.select(index_scols)
+                    .intersect(
+                        other._internal.spark_frame.select(other._internal.index_spark_columns)
+                    )
                     .count()
                 ) > 0:
                     raise ValueError("Indices have overlapping values")
@@ -7315,7 +7344,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         update_columns = list(
             set(self._internal.column_labels).intersection(set(other._internal.column_labels))
         )
-        update_sdf = self.join(other[update_columns], rsuffix="_new")._sdf
+        update_sdf = self.join(other[update_columns], rsuffix="_new")._internal.applied.spark_frame
 
         for column_labels in update_columns:
             column_name = self._internal.spark_column_name_for(column_labels)
@@ -7422,7 +7451,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if frac is None:
             raise ValueError("frac must be specified.")
 
-        sdf = self._sdf.sample(withReplacement=replace, fraction=frac, seed=random_state)
+        sdf = self._internal.applied.spark_frame.sample(
+            withReplacement=replace, fraction=frac, seed=random_state
+        )
         return DataFrame(self._internal.with_new_sdf(sdf))
 
     def astype(self, dtype) -> "DataFrame":
@@ -7757,7 +7788,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         formatted_perc = ["{:.0%}".format(p) for p in sorted(percentiles)]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
-        sdf = self._sdf.select(*exprs).summary(stats)
+        sdf = self._internal.spark_frame.select(*exprs).summary(stats)
         sdf = sdf.replace("stddev", "std", subset="summary")
 
         internal = InternalFrame(
@@ -8050,9 +8081,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_column = self._internal.index_spark_column_names[0]
 
         kser = ks.Series(list(index))
-        labels = kser._internal._sdf.select(kser.spark.column.alias(index_column))
+        labels = kser._internal.spark_frame.select(kser.spark.column.alias(index_column))
 
-        joined_df = self._sdf.drop(NATURAL_ORDER_COLUMN_NAME).join(
+        joined_df = self._internal.applied.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME).join(
             labels, on=index_column, how="right"
         )
         internal = self._internal.with_new_sdf(joined_df)
@@ -8244,7 +8275,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         column_labels = [label for label in column_labels if label not in id_vars]
 
-        sdf = self._sdf
+        sdf = self._internal.spark_frame
 
         if var_name is None:
             if self._internal.column_label_names is not None:
@@ -8444,7 +8475,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         pairs = F.explode(F.array(structs))
 
-        sdf = self._sdf.withColumn("pairs", pairs)
+        sdf = self._internal.spark_frame.withColumn("pairs", pairs)
         sdf = sdf.select(
             self._internal.index_spark_columns
             + [sdf["pairs"][index_column].alias(index_column)]
@@ -8576,7 +8607,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # TODO: Codes here are similar with melt. Should we deduplicate?
         column_labels = self._internal.column_labels
         ser_name = "0"
-        sdf = self._sdf
+        sdf = self._internal.spark_frame
         new_index_columns = [
             SPARK_INDEX_NAME_FORMAT(i) for i in range(self._internal.column_labels_level)
         ]
@@ -8689,7 +8720,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
             )
 
-        sdf = self._sdf.select(F.array(*cols).alias("arrays")).select(F.explode(F.col("arrays")))
+        sdf = self._internal.spark_frame.select(F.array(*cols).alias("arrays")).select(
+            F.explode(F.col("arrays"))
+        )
         sdf = sdf.selectExpr("col.*")
 
         index_column_name = lambda i: (
@@ -8777,7 +8810,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
             )
 
-        sdf = self._sdf.select(F.array(*cols).alias("arrays")).select(F.explode(F.col("arrays")))
+        sdf = self._internal.spark_frame.select(F.array(*cols).alias("arrays")).select(
+            F.explode(F.col("arrays"))
+        )
         sdf = sdf.selectExpr("col.*")
 
         index_column_name = lambda i: (
@@ -9208,7 +9243,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
                 return index_mapper_udf(scol_for(internal.spark_frame, index_col_name))
 
-            sdf = internal.spark_frame
+            sdf = internal.applied.spark_frame
             if level is None:
                 for i in range(num_indices):
                     sdf = sdf.withColumn(index_columns[i], gen_new_index_column(i))
@@ -9399,7 +9434,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         max_cols = map(lambda scol: F.max(scol), self._internal.data_spark_columns)
-        sdf_max = self._sdf.select(*max_cols).head()
+        sdf_max = self._internal.spark_frame.select(*max_cols).head()
         # `sdf_max` looks like below
         # +------+------+------+
         # |(a, x)|(b, y)|(c, z)|
@@ -9478,7 +9513,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: 0, dtype: int64
         """
         min_cols = map(lambda scol: F.min(scol), self._internal.data_spark_columns)
-        sdf_min = self._sdf.select(*min_cols).head()
+        sdf_min = self._internal.spark_frame.select(*min_cols).head()
 
         conds = (
             scol == min_val for scol, min_val in zip(self._internal.data_spark_columns, sdf_min)
@@ -9814,7 +9849,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         inplace = validate_bool_kwarg(inplace, "inplace")
 
         data_columns = [label[0] for label in self._internal.column_labels]
-        sdf = self._sdf.select(
+        sdf = self._internal.spark_frame.select(
             self._internal.index_spark_columns
             + [
                 scol.alias(col)
@@ -10077,20 +10112,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(column, (tuple, str)):
             raise ValueError("column must be a scalar")
 
-        kser = self[column]
+        kdf = DataFrame(self._internal.applied)
+        kser = kdf[column]
         if not isinstance(kser, Series):
             raise ValueError(
                 "The column %s is not unique. For a multi-index, the label must be a tuple "
                 "with elements corresponding to each level." % name_like_string(column)
             )
         if not isinstance(kser.spark.data_type, ArrayType):
-            return self
+            return self.copy()
 
-        sdf = self._sdf.withColumn(
+        sdf = kdf._internal.spark_frame.withColumn(
             kser._internal.data_spark_column_names[0], F.explode_outer(kser.spark.column)
         )
 
-        internal = self._internal.with_new_sdf(sdf)
+        internal = kdf._internal.with_new_sdf(sdf)
         return DataFrame(internal)
 
     def _to_internal_pandas(self):
@@ -10260,10 +10296,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
 
     def __len__(self):
-        return self._sdf.count()
+        return self._internal.applied.spark_frame.count()
 
     def __dir__(self):
-        fields = [f for f in self._sdf.schema.fieldNames() if " " not in f]
+        fields = [f for f in self._internal.applied.spark_frame.schema.fieldNames() if " " not in f]
         return super(DataFrame, self).__dir__() + fields
 
     def __iter__(self):
@@ -10344,9 +10380,9 @@ class CachedDataFrame(DataFrame):
 
     def __init__(self, internal, storage_level=None):
         if storage_level is None:
-            self._cached = internal._sdf.cache()
+            self._cached = internal.spark_frame.cache()
         elif isinstance(storage_level, StorageLevel):
-            self._cached = internal._sdf.persist(storage_level)
+            self._cached = internal.spark_frame.persist(storage_level)
         else:
             raise TypeError(
                 "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"

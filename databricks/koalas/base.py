@@ -351,7 +351,7 @@ class IndexOpsMixin(object):
         >>> ks.DataFrame({}, index=list('abc')).index.empty
         False
         """
-        return self._internal._sdf.rdd.isEmpty()
+        return self._internal.applied.spark_frame.rdd.isEmpty()
 
     @property
     def hasnans(self):
@@ -860,7 +860,7 @@ class IndexOpsMixin(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        sdf = self._internal._sdf.select(self.spark.column)
+        sdf = self._internal.spark_frame.select(self.spark.column)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -923,7 +923,7 @@ class IndexOpsMixin(object):
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        sdf = self._internal._sdf.select(self.spark.column)
+        sdf = self._internal.spark_frame.select(self.spark.column)
         col = scol_for(sdf, sdf.columns[0])
 
         # Note that we're ignoring `None`s here for now.
@@ -1156,9 +1156,9 @@ class IndexOpsMixin(object):
             raise NotImplementedError("value_counts currently does not support bins")
 
         if dropna:
-            sdf_dropna = self._internal._sdf.select(self.spark.column).dropna()
+            sdf_dropna = self._internal.spark_frame.select(self.spark.column).dropna()
         else:
-            sdf_dropna = self._internal._sdf.select(self.spark.column)
+            sdf_dropna = self._internal.spark_frame.select(self.spark.column)
         index_name = SPARK_DEFAULT_INDEX_NAME
         column_name = self._internal.data_spark_column_names[0]
         sdf = sdf_dropna.groupby(scol_for(sdf_dropna, column_name).alias(index_name)).count()
@@ -1241,7 +1241,7 @@ class IndexOpsMixin(object):
         >>> idx.nunique(dropna=False)
         3
         """
-        res = self._internal._sdf.select([self._nunique(dropna, approx, rsd)])
+        res = self._internal.spark_frame.select([self._nunique(dropna, approx, rsd)])
         return res.collect()[0][0]
 
     def _nunique(self, dropna=True, approx=False, rsd=0.05):

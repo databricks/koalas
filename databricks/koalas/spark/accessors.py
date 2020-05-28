@@ -443,6 +443,7 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import CachedDataFrame
 
+        self._kdf._internal = self._kdf._internal.applied
         return CachedDataFrame(self._kdf._internal)
 
     def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
@@ -552,7 +553,11 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import DataFrame
 
-        return DataFrame(self._kdf._internal.with_new_sdf(self._kdf._sdf.hint(name, *parameters)))
+        return DataFrame(
+            self._kdf._internal.with_new_sdf(
+                self._kdf._internal.spark_frame.hint(name, *parameters)
+            )
+        )
 
     def to_table(
         self,
