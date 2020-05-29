@@ -13,6 +13,7 @@ nbsphinx
 numpydoc==0.8
 pypandoc
 ipython
+pydata-sphinx-theme
 
 # Linter
 mypy
