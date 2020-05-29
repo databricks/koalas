@@ -3308,6 +3308,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kser = self._with_new_scol(scol).rename(self.name)
         return kser.astype(np.float64)
 
+    def filter(self, items=None, like=None, regex=None, axis=None):
+        axis = validate_axis(axis)
+        if axis == 1:
+            raise ValueError("Series does not support columns axis.")
+        return first_series(self.to_frame().filter(items=items, like=like, regex=regex, axis=axis))
+
+    filter.__doc__ = DataFrame.filter.__doc__
+
     def describe(self, percentiles: Optional[List[float]] = None) -> "Series":
         return first_series(self.to_dataframe().describe(percentiles))
 

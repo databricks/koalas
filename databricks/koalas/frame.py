@@ -8870,6 +8870,161 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self._apply_series_op(lambda kser: kser.rank(method=method, ascending=ascending))
 
+    def filter(self, items=None, like=None, regex=None, axis=None):
+        """
+        Subset rows or columns of dataframe according to labels in
+        the specified index.
+
+        Note that this routine does not filter a dataframe on its
+        contents. The filter is applied to the labels of the index.
+
+        Parameters
+        ----------
+        items : list-like
+            Keep labels from axis which are in items.
+        like : string
+            Keep labels from axis for which "like in label == True".
+        regex : string (regular expression)
+            Keep labels from axis for which re.search(regex, label) == True.
+        axis : int or string axis name
+            The axis to filter on.  By default this is the info axis,
+            'index' for Series, 'columns' for DataFrame.
+
+        Returns
+        -------
+        same type as input object
+
+        See Also
+        --------
+        DataFrame.loc
+
+        Notes
+        -----
+        The ``items``, ``like``, and ``regex`` parameters are
+        enforced to be mutually exclusive.
+
+        ``axis`` defaults to the info axis that is used when indexing
+        with ``[]``.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(np.array(([1, 2, 3], [4, 5, 6])),
+        ...                   index=['mouse', 'rabbit'],
+        ...                   columns=['one', 'two', 'three'])
+
+        >>> # select columns by name
+        >>> df.filter(items=['one', 'three'])
+                one  three
+        mouse     1      3
+        rabbit    4      6
+
+        >>> # select columns by regular expression
+        >>> df.filter(regex='e$', axis=1)
+                one  three
+        mouse     1      3
+        rabbit    4      6
+
+        >>> # select rows containing 'bbi'
+        >>> df.filter(like='bbi', axis=0)
+                one  two  three
+        rabbit    4    5      6
+
+        For a Series,
+
+        >>> # select rows by name
+        >>> df.one.filter(items=['rabbit'])
+        rabbit    4
+        Name: one, dtype: int64
+
+        >>> # select rows by regular expression
+        >>> df.one.filter(regex='e$')
+        mouse    1
+        Name: one, dtype: int64
+
+        >>> # select rows containing 'bbi'
+        >>> df.one.filter(like='bbi')
+        rabbit    4
+        Name: one, dtype: int64
+        """
+        if sum(x is not None for x in (items, like, regex)) > 1:
+            raise TypeError(
+                "Keyword arguments `items`, `like`, or `regex` " "are mutually exclusive"
+            )
+
+        axis = validate_axis(axis, none_axis=1)
+
+        index_scols = self._internal.index_spark_columns
+
+        if items is not None:
+            if is_list_like(items):
+                items = list(items)
+            else:
+                raise ValueError("items should be a list-like object.")
+            if axis == 0:
+                if len(index_scols) == 1:
+                    col = None
+                    for item in items:
+                        if col is None:
+                            col = index_scols[0] == F.lit(item)
+                        else:
+                            col = col | (index_scols[0] == F.lit(item))
+                elif len(index_scols) > 1:
+                    # for multi-index
+                    col = None
+                    for item in items:
+                        if not isinstance(item, (tuple)):
+                            raise TypeError("Unsupported type {}".format(type(item)))
+                        if not item:
+                            raise ValueError("The item should not be empty.")
+                        midx_col = None
+                        for i, element in enumerate(item):
+                            if midx_col is None:
+                                midx_col = index_scols[i] == F.lit(element)
+                            else:
+                                midx_col = midx_col & (index_scols[i] == F.lit(element))
+                        if col is None:
+                            col = midx_col
+                        else:
+                            col = col | midx_col
+                else:
+                    raise ValueError("Single or multi index must be specified.")
+                return DataFrame(self._internal.with_filter(col))
+            elif axis == 1:
+                return self[items]
+        elif like is not None:
+            if axis == 0:
+                col = None
+                for index_scol in index_scols:
+                    if col is None:
+                        col = index_scol.contains(like)
+                    else:
+                        col = col | index_scol.contains(like)
+                return DataFrame(self._internal.with_filter(col))
+            elif axis == 1:
+                column_labels = self._internal.column_labels
+                output_labels = [label for label in column_labels if any(like in i for i in label)]
+                return self[output_labels]
+        elif regex is not None:
+            if axis == 0:
+                col = None
+                for index_scol in index_scols:
+                    if col is None:
+                        col = index_scol.rlike(regex)
+                    else:
+                        col = col | index_scol.rlike(regex)
+                return DataFrame(self._internal.with_filter(col))
+            elif axis == 1:
+                column_labels = self._internal.column_labels
+                matcher = re.compile(regex)
+                output_labels = [
+                    label
+                    for label in column_labels
+                    if any(matcher.search(i) is not None for i in label)
+                ]
+                return self[output_labels]
+        else:
+            raise TypeError("Must pass either `items`, `like`, or `regex`")
+
     def rename(
         self,
         mapper=None,
