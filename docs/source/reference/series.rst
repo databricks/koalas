@@ -224,6 +224,7 @@ in Spark. These can be accessed by ``Series.spark.<function/property>``.
    :toctree: api/
 
    Series.spark.data_type
+   Series.spark.nullable
    Series.spark.column
    Series.spark.transform
    Series.spark.apply

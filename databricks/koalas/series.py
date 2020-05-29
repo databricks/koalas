@@ -1606,14 +1606,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
         if (method is not None) and (method not in ["ffill", "pad", "backfill", "bfill"]):
             raise ValueError("Expecting 'pad', 'ffill', 'backfill' or 'bfill'.")
-        if self.isnull().sum() == 0:
+
+        if not self.spark.nullable:
             if inplace:
-                self._internal = self._internal.copy()
-                self._kdf = self._kdf.copy()
+                return
             else:
                 return self
 
-        column_name = self.name
         scol = self.spark.column
 
         if value is not None:
@@ -1644,7 +1643,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 .rowsBetween(begin, end)
             )
             scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
-        kseries = self._with_new_scol(scol).rename(column_name)
+        kseries = self._with_new_scol(scol).rename(self.name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf

@@ -637,21 +637,25 @@ class InternalFrame(object):
             (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
         )
 
-    def spark_column_name_for(self, labels: Tuple[str, ...]) -> str:
-        """ Return the actual Spark column name for the given column name. """
-        return self.spark_frame.select(self.spark_column_for(labels)).columns[0]
+    def spark_column_name_for(self, label: Tuple[str, ...]) -> str:
+        """ Return the actual Spark column name for the given column label. """
+        return self.spark_frame.select(self.spark_column_for(label)).columns[0]
 
-    def spark_column_for(self, labels: Tuple[str, ...]):
-        """ Return Spark Column for the given column name. """
+    def spark_column_for(self, label: Tuple[str, ...]):
+        """ Return Spark Column for the given column label. """
         column_labels_to_scol = dict(zip(self.column_labels, self.data_spark_columns))
-        if labels in column_labels_to_scol:
-            return column_labels_to_scol[labels]  # type: ignore
+        if label in column_labels_to_scol:
+            return column_labels_to_scol[label]  # type: ignore
         else:
-            raise KeyError(name_like_string(labels))
+            raise KeyError(name_like_string(label))
 
-    def spark_type_for(self, labels: Tuple[str, ...]) -> DataType:
-        """ Return DataType for the given column name. """
-        return self.spark_frame.select(self.spark_column_for(labels)).schema[0].dataType
+    def spark_type_for(self, label: Tuple[str, ...]) -> DataType:
+        """ Return DataType for the given column label. """
+        return self.spark_frame.select(self.spark_column_for(label)).schema[0].dataType
+
+    def spark_column_nullable_for(self, label: Tuple[str, ...]) -> bool:
+        """ Return nullability for the given column label. """
+        return self.spark_frame.select(self.spark_column_for(label)).schema[0].nullable
 
     @property
     def spark_frame(self) -> spark.DataFrame:
