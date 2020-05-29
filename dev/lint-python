@@ -204,13 +204,7 @@ function sphinx_test {
     local SPHINX_REPORT=
     local SPHINX_STATUS=
 
-    python -c "import sys; assert sys.version_info >= (3, 6), 'Sphinx buiild requires Python 3.6, skipping for now.'"
-    exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        return
-    fi
-
-    python -c "import sys; assert 'conda' not in sys.version, 'Sphinx build does not support Conda yet, skipping for now.'"
+    python -c "import sys; assert sys.version_info >= (3, 6), 'Sphinx buiild requires Python 3.6+, skipping for now.'"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         return

@@ -66,8 +66,6 @@ jobs:
         # as Black only works with Python 3.6+. This is hacky but we will drop
         # Python 3.5 soon so it's fine.
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then sed -i '/black/d' requirements-dev.txt; fi
-        # pydata-sphinx-theme is supported only by pip at this moment.
-        pip install git+https://github.com/pandas-dev/pydata-sphinx-theme.git@master
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
         # matplotlib dropped Python 3.5 support from 3.1.x; however, 3.0.3 only supports sphinx 2.x.
