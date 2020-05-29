@@ -5144,10 +5144,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        to_replace : int, float, string, or list
-            Value to be replaced. If the value is a dict, then value is ignored and
-            to_replace must be a mapping from column name (string) to replacement value.
-            The value to be replaced must be an int, float, or string.
+        to_replace : int, float, string, list or dict
+            Value to be replaced.
         value : int, float, string, or list
             Value to use to replace holes. The replacement value must be an int, float,
             or string. If value is a list, value should be of the same length with to_replace.
@@ -5190,36 +5188,35 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     Thor  Mjolnir
         3     Hulk    Smash
 
-        Dict like `to_replace`
+        Dicts can be used to specify different replacement values for different existing values
+        To use a dict in this way the value parameter should be None
 
-        >>> df = ks.DataFrame({'A': [0, 1, 2, 3, 4],
-        ...                    'B': [5, 6, 7, 8, 9],
-        ...                    'C': ['a', 'b', 'c', 'd', 'e']},
-        ...                   columns=['A', 'B', 'C'])
+        >>> df.replace({'Mjolnir': 'Stormbuster'})
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
 
-        >>> df.replace({'A': {0: 100, 4: 400}})
-             A  B  C
-        0  100  5  a
-        1    1  6  b
-        2    2  7  c
-        3    3  8  d
-        4  400  9  e
+        Dict can specify that different values should be replaced in different columns
+        The value parameter should not be None in this case
 
-        >>> df.replace({'A': 0, 'B': 5}, 100)
-             A    B  C
-        0  100  100  a
-        1    1    6  b
-        2    2    7  c
-        3    3    8  d
-        4    4    9  e
+        >>> df.replace({'weapon': 'Mjolnir'}, 'Stormbuster')
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
 
-        >>> df.replace({0: 10, 1: 100})
-             A  B  C
-        0   10  5  a
-        1  100  6  b
-        2    2  7  c
-        3    3  8  d
-        4    4  9  e
+        Nested dictionaries
+        The value parameter should be None to use a nested dict in this way
+
+        >>> df.replace({'weapon': {'Mjolnir': 'Stormbuster'}})
+              name       weapon
+        0   Rescue      Mark-45
+        1  Hawkeye       Shield
+        2     Thor  Stormbuster
+        3     Hulk        Smash
         """
         if method != "pad":
             raise NotImplementedError("replace currently works only for method='pad")
