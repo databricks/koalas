@@ -1741,7 +1741,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
         objs, Iterable
     ):  # TODO: support dict
         raise TypeError(
-            "first argument must be an iterable of koalas "
+            "first argument must be an iterable of Koalas "
             "objects, you passed an object of type "
             '"{name}"'.format(name=type(objs).__name__)
         )

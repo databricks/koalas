@@ -518,7 +518,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list("ab"))
 
-        # for spark 2.3, disable arrow optimization. Because koalas multi-index do not support
+        # for spark 2.3, disable arrow optimization. Because Koalas multi-index do not support
         # arrow optimization in spark 2.3.
 
         result_kdf = kdf3.rename(index=str_lower)

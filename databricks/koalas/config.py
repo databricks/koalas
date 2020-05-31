@@ -119,7 +119,7 @@ _options = [
     Option(
         key="display.max_rows",
         doc=(
-            "This sets the maximum number of rows koalas should output when printing out "
+            "This sets the maximum number of rows Koalas should output when printing out "
             "various output. For example, this value determines the number of rows to be "
             "shown at the repr() in a dataframe. Set `None` to unlimit the input length. "
             "Default is 1000."

@@ -190,7 +190,7 @@ class GroupBy(object):
         1        2   0.227
         2        4  -0.562
         """
-        # I think current implementation of func and arguments in koalas for aggregate is different
+        # I think current implementation of func and arguments in Koalas for aggregate is different
         # than pandas, later once arguments are added, this could be removed.
         if func_or_funcs is None and kwargs is None:
             raise ValueError("No aggregation argument or function specified.")
