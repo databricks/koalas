@@ -796,7 +796,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_map(self):
         pser = pd.Series(["cat", "dog", None, "rabbit"])
         kser = ks.from_pandas(pser)
-        # Currently Koalas doesn't return NaN as Pandas does.
+        # Currently Koalas doesn't return NaN as pandas does.
         self.assertEqual(
             repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None}).rename(0))
         )

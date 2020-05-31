@@ -304,7 +304,7 @@ if (3, 5) <= sys.version_info < (3, 7):
 
 class DataFrame(Frame, Generic[T]):
     """
-    Koalas DataFrame that corresponds to Pandas DataFrame logically. This holds Spark DataFrame
+    Koalas DataFrame that corresponds to pandas DataFrame logically. This holds Spark DataFrame
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
@@ -312,12 +312,12 @@ class DataFrame(Frame, Generic[T]):
 
     Parameters
     ----------
-    data : numpy ndarray (structured or homogeneous), dict, Pandas DataFrame, Spark DataFrame \
+    data : numpy ndarray (structured or homogeneous), dict, pandas DataFrame, Spark DataFrame \
         or Koalas Series
         Dict can contain Series, arrays, constants, or list-like objects
         If data is a dict, argument order is maintained for Python 3.6
         and later.
-        Note that if `data` is a Pandas DataFrame, a Spark DataFrame, and a Koalas Series,
+        Note that if `data` is a pandas DataFrame, a Spark DataFrame, and a Koalas Series,
         other arguments should not be used.
     index : Index or array-like
         Index to use for resulting frame. Will default to RangeIndex if
@@ -341,7 +341,7 @@ class DataFrame(Frame, Generic[T]):
     0     1     3
     1     2     4
 
-    Constructing DataFrame from Pandas DataFrame
+    Constructing DataFrame from pandas DataFrame
 
     >>> df = ks.DataFrame(pd.DataFrame(data=d, columns=['col1', 'col2']))
     >>> df
@@ -1004,7 +1004,7 @@ class DataFrame(Frame, Generic[T]):
         #  anyway and we don't have to worry about operations on different DataFrames.
         return self._apply_series_op(lambda kser: kser.apply(func))
 
-    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
         """Aggregate using one or more operations over the specified axis.
 
@@ -1364,7 +1364,7 @@ class DataFrame(Frame, Generic[T]):
         """
         Render a DataFrame as an HTML table.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
                   is large, set max_rows parameter.
 
@@ -1434,7 +1434,7 @@ class DataFrame(Frame, Generic[T]):
         table_id : str, optional
             A css id is included in the opening `<table>` tag if specified.
         render_links : bool, default False
-            Convert URLs to HTML links (only works with Pandas 0.24+).
+            Convert URLs to HTML links (only works with pandas 0.24+).
 
         Returns
         -------
@@ -1478,7 +1478,7 @@ class DataFrame(Frame, Generic[T]):
         """
         Render a DataFrame to a console-friendly tabular output.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
                   is large, set max_rows parameter.
 
@@ -1578,7 +1578,7 @@ class DataFrame(Frame, Generic[T]):
         The type of the key-value pairs can be customized with the parameters
         (see below).
 
-        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+        .. note:: This method should only be used if the resulting pandas DataFrame is expected
             to be small, as all the data is loaded into the driver's memory.
 
         Parameters
@@ -1696,7 +1696,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Render an object to a tabular environment table. You can splice this into a LaTeX
         document. Requires usepackage{booktabs}.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
                   is large, consider alternative formats.
 
@@ -4478,7 +4478,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Return a pandas DataFrame.
 
-        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+        .. note:: This method should only be used if the resulting pandas DataFrame is expected
             to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -4724,14 +4724,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         rec.array([(1, 0.5 ), (2, 0.75)],
                   dtype=[('A', '<i8'), ('B', '<f8')])
 
-        Specification of dtype for columns is new in Pandas 0.24.0.
+        Specification of dtype for columns is new in pandas 0.24.0.
         Data types can be specified for the columns:
 
         >>> df.to_records(column_dtypes={"A": "int32"}) # doctest: +SKIP
         rec.array([('a', 1, 0.5 ), ('b', 2, 0.75)],
                   dtype=[('index', 'O'), ('A', '<i4'), ('B', '<f8')])
 
-        Specification of dtype for index is new in Pandas 0.24.0.
+        Specification of dtype for index is new in pandas 0.24.0.
         Data types can also be specified for the index:
 
         >>> df.to_records(index_dtypes="<S2") # doctest: +SKIP
@@ -6052,7 +6052,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             except:
                 pass
 
-        # Handle Pandas types
+        # Handle pandas types
         include_numpy_type = []
         for inc in include:
             try:
@@ -6506,7 +6506,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         This method is equivalent to
         ``df.sort_values(columns, ascending=False).head(n)``, but more
-        performant in Pandas.
+        performant in pandas.
         In Koalas, thanks to Spark's lazy execution and query optimizer,
         the two would have same performance.
 
@@ -10338,7 +10338,7 @@ def _reduce_spark_multi(sdf, aggs):
 
 class CachedDataFrame(DataFrame):
     """
-    Cached Koalas DataFrame, which corresponds to Pandas DataFrame logically, but internally
+    Cached Koalas DataFrame, which corresponds to pandas DataFrame logically, but internally
     it caches the corresponding Spark DataFrame.
     """
 

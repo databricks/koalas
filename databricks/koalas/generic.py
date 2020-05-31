@@ -2097,7 +2097,7 @@ class Frame(object):
         """
         Print Series or DataFrame in Markdown-friendly format.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Parameters
@@ -2182,7 +2182,7 @@ class Frame(object):
     @staticmethod
     def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
         # Special handle floating point types because Spark's count treats nan as a valid value,
-        # whereas Pandas count doesn't include nan.
+        # whereas pandas count doesn't include nan.
         if isinstance(spark_type, (FloatType, DoubleType)):
             return F.count(F.nanvl(col, F.lit(None)))
         else:

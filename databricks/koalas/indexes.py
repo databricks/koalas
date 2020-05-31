@@ -70,7 +70,7 @@ from databricks.koalas.internal import (
 
 class Index(IndexOpsMixin):
     """
-    Koalas Index that corresponds to Pandas Index logically. This might hold Spark Column
+    Koalas Index that corresponds to pandas Index logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -350,7 +350,7 @@ class Index(IndexOpsMixin):
         """
         Return a pandas Index.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -1935,7 +1935,7 @@ class Index(IndexOpsMixin):
 
 class MultiIndex(Index):
     """
-    Koalas MultiIndex that corresponds to Pandas MultiIndex logically. This might hold Spark Column
+    Koalas MultiIndex that corresponds to pandas MultiIndex logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -2363,7 +2363,7 @@ class MultiIndex(Index):
         """
         Return a pandas MultiIndex.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
