@@ -17,7 +17,7 @@
 #
 
 echo "Downloading Spark if necessary"
-echo "Spark version = $SPARK_VERSION"
+echo "Spark version = $SPARK_VERSION-rc$SPARK_RC_VERSION"
 
 sparkVersionsDir="$HOME/.cache/spark-versions"
 mkdir -p "$sparkVersionsDir"
