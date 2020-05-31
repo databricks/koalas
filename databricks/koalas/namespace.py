@@ -1605,7 +1605,7 @@ def get_dummies(
     return kdf[remaining_columns]
 
 
-# TODO: there are many parameters to implement and support. See Pandas's pd.concat.
+# TODO: there are many parameters to implement and support. See pandas's pd.concat.
 def concat(objs, axis=0, join="outer", ignore_index=False):
     """
     Concatenate pandas objects along a particular axis with optional set logic
