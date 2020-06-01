@@ -110,7 +110,7 @@ class SampledPlot:
         if isinstance(data, (DataFrame, Series)):
             if isinstance(data, Series):
                 data = data.to_frame()
-            sampled = data._internal.applied.spark_frame.sample(fraction=self.fraction)
+            sampled = data._internal.resolved_copy.spark_frame.sample(fraction=self.fraction)
             return DataFrame(data._internal.with_new_sdf(sampled)).to_pandas()
         else:
             raise ValueError("Only DataFrame and Series are supported for plotting.")
@@ -423,7 +423,7 @@ class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def _compute_stats(data, colname, whis, precision):
         # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = data._kdf._internal.applied.spark_frame.agg(
+        pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
             *[
                 F.expr(
                     "approx_percentile({}, {}, {})".format(colname, q, int(1.0 / precision))
@@ -460,7 +460,7 @@ class KoalasBoxPlot(BoxPlot):
         # Builds expression to identify outliers
         expression = F.col(colname).between(lfence, ufence)
         # Creates a column to flag rows as outliers or not
-        return data._kdf._internal.applied.spark_frame.withColumn(
+        return data._kdf._internal.resolved_copy.spark_frame.withColumn(
             "__{}_outlier".format(colname), ~expression
         )
 

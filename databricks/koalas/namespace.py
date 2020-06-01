@@ -1886,7 +1886,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 columns_to_add = list(set(merged_columns) - set(kdf._internal.column_labels))
 
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
-                sdf = kdf._internal.applied.spark_frame
+                sdf = kdf._internal.resolved_copy.spark_frame
                 for label in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(label), F.lit(None))
 
@@ -2334,7 +2334,9 @@ def broadcast(obj):
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
-    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.applied.spark_frame)))
+    return DataFrame(
+        obj._internal.with_new_sdf(F.broadcast(obj._internal.resolved_copy.spark_frame))
+    )
 
 
 def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):

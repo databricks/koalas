@@ -443,7 +443,7 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import CachedDataFrame
 
-        self._kdf._internal = self._kdf._internal.applied
+        self._kdf._internal = self._kdf._internal.resolved_copy
         return CachedDataFrame(self._kdf._internal)
 
     def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):

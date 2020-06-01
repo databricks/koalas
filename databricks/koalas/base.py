@@ -351,7 +351,7 @@ class IndexOpsMixin(object):
         >>> ks.DataFrame({}, index=list('abc')).index.empty
         False
         """
-        return self._internal.applied.spark_frame.rdd.isEmpty()
+        return self._internal.resolved_copy.spark_frame.rdd.isEmpty()
 
     @property
     def hasnans(self):

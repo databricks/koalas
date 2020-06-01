@@ -103,8 +103,8 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         # level.
         this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
 
-        this_sdf = this._internal.applied.spark_frame.alias("this")
-        that_sdf = that._internal.applied.spark_frame.alias("that")
+        this_sdf = this._internal.resolved_copy.spark_frame.alias("this")
+        that_sdf = that._internal.resolved_copy.spark_frame.alias("that")
 
         # If the same named index is found, that's used.
         for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
@@ -563,7 +563,7 @@ def verify_temp_column_name(
     ...
     AssertionError: ... should be empty or start and end with `__`: ('', 'dummy')
 
-    >>> internal = kdf._internal.applied
+    >>> internal = kdf._internal.resolved_copy
     >>> sdf = internal.spark_frame
     >>> sdf.select(internal.data_spark_columns).show()  # doctest: +NORMALIZE_WHITESPACE
     +------+---------+-------------+
@@ -611,7 +611,7 @@ def verify_temp_column_name(
         ), "The given column name `{}` already exists in the Koalas DataFrame: {}".format(
             name_like_string(column_name_or_label), df.columns
         )
-        df = df._internal.applied.spark_frame
+        df = df._internal.resolved_copy.spark_frame
     else:
         assert isinstance(column_name_or_label, str), type(column_name_or_label)
         assert column_name_or_label.startswith("__") and column_name_or_label.endswith(

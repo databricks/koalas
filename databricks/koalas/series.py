@@ -4187,7 +4187,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         index_scol_names = [index_map[0] for index_map in self._internal.index_map.items()]
         combined = combine_frames(self.to_frame(), other.to_frame(), how="leftouter")
-        combined_sdf = combined._internal.applied.spark_frame
+        combined_sdf = combined._internal.resolved_copy.spark_frame
         this_col = "__this_%s" % str(
             self._internal.spark_column_name_for(self._internal.column_labels[0])
         )

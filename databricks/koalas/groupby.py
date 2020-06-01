@@ -1139,7 +1139,9 @@ class GroupBy(object):
                 if label not in self._column_labels_to_exlcude
             ]
 
-        data_schema = kdf[agg_columns]._internal.applied.spark_frame.drop(*HIDDEN_COLUMNS).schema
+        data_schema = (
+            kdf[agg_columns]._internal.resolved_copy.spark_frame.drop(*HIDDEN_COLUMNS).schema
+        )
 
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
             kdf, self._groupkeys, agg_columns
@@ -1181,7 +1183,7 @@ class GroupBy(object):
         ]
         kdf = kdf[[s.rename(label) for s, label in zip(groupkeys, groupkey_labels)] + agg_columns]
         groupkey_names = [label if len(label) > 1 else label[0] for label in groupkey_labels]
-        return DataFrame(kdf._internal.applied), groupkey_labels, groupkey_names
+        return DataFrame(kdf._internal.resolved_copy), groupkey_labels, groupkey_names
 
     @staticmethod
     def _spark_group_map_apply(kdf, func, groupkeys_scols, return_schema, retain_index):

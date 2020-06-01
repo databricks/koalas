@@ -1256,7 +1256,7 @@ class DataFrame(Frame, Generic[T]):
             return k, v
 
         for k, v in map(
-            extract_kv_from_spark_row, self._internal.applied.spark_frame.toLocalIterator()
+            extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
         ):
             s = pd.Series(v, index=columns, name=k)
             yield k, s
@@ -2110,7 +2110,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original_func = func
         func = lambda o: original_func(o, *args, **kwds)
 
-        self_applied = DataFrame(self._internal.applied)
+        self_applied = DataFrame(self._internal.resolved_copy)
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -2367,7 +2367,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return pdf_or_pser
 
-        self_applied = DataFrame(self._internal.applied)
+        self_applied = DataFrame(self._internal.resolved_copy)
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -2786,7 +2786,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     [StructField(field.name, field.dataType) for field in return_schema.fields]
                 )
 
-                self_applied = DataFrame(self._internal.applied)
+                self_applied = DataFrame(self._internal.resolved_copy)
 
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=True
@@ -2837,7 +2837,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
                 return Series(internal, anchor=self)
             else:
-                self_applied = DataFrame(self._internal.applied)
+                self_applied = DataFrame(self._internal.resolved_copy)
 
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=False
@@ -3372,7 +3372,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return (
             len(self._internal.column_labels) == 0
-            or self._internal.applied.spark_frame.rdd.isEmpty()
+            or self._internal.resolved_copy.spark_frame.rdd.isEmpty()
         )
 
     @property
@@ -3483,7 +3483,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 (self._internal.spark_column_name_for(label), label) for label in keys
             )
 
-        internal = self._internal.applied
+        internal = self._internal.resolved_copy
         internal = internal.copy(
             index_map=index_map,
             column_labels=column_labels,
@@ -4129,7 +4129,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
         group_cols = [self._internal.spark_column_name_for(label) for label in subset]
 
-        sdf = self._internal.applied.spark_frame
+        sdf = self._internal.resolved_copy.spark_frame
 
         column = verify_temp_column_name(sdf, "__duplicated__")
 
@@ -5305,7 +5305,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
         subset = [self._internal.spark_column_name_for(label) for label in subset]
 
-        sdf = self._internal.applied.spark_frame
+        sdf = self._internal.resolved_copy.spark_frame
         if (
             isinstance(to_replace, dict)
             and value is None
@@ -5435,7 +5435,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if n <= 0:
             return DataFrame(self._internal.with_filter(F.lit(False)))
         else:
-            sdf = self._internal.applied.spark_frame
+            sdf = self._internal.resolved_copy.spark_frame
             if get_option("compute.ordered_head"):
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
             return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
@@ -5614,7 +5614,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if set(agg_columns) != set(values):
                 raise ValueError("Columns in aggfunc must be the same as values.")
 
-        sdf = self._internal.applied.spark_frame
+        sdf = self._internal.resolved_copy.spark_frame
         if index is None:
             sdf = (
                 sdf.groupBy()
@@ -6314,7 +6314,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, "last"): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        sdf = self._internal.applied.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
+        sdf = self._internal.resolved_copy.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
         kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: ks.DataFrame
         if inplace:
             self._internal = kdf._internal
@@ -6954,8 +6954,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "['inner', 'left', 'right', 'outer']",
             )
 
-        left_table = self._internal.applied.spark_frame.alias("left_table")
-        right_table = right._internal.applied.spark_frame.alias("right_table")
+        left_table = self._internal.resolved_copy.spark_frame.alias("left_table")
+        right_table = right._internal.resolved_copy.spark_frame.alias("right_table")
 
         left_key_columns = [  # type: ignore
             scol_for(left_table, label) for label in left_key_names
@@ -7344,7 +7344,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         update_columns = list(
             set(self._internal.column_labels).intersection(set(other._internal.column_labels))
         )
-        update_sdf = self.join(other[update_columns], rsuffix="_new")._internal.applied.spark_frame
+        update_sdf = self.join(
+            other[update_columns], rsuffix="_new"
+        )._internal.resolved_copy.spark_frame
 
         for column_labels in update_columns:
             column_name = self._internal.spark_column_name_for(column_labels)
@@ -7451,7 +7453,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if frac is None:
             raise ValueError("frac must be specified.")
 
-        sdf = self._internal.applied.spark_frame.sample(
+        sdf = self._internal.resolved_copy.spark_frame.sample(
             withReplacement=replace, fraction=frac, seed=random_state
         )
         return DataFrame(self._internal.with_new_sdf(sdf))
@@ -8083,7 +8085,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kser = ks.Series(list(index))
         labels = kser._internal.spark_frame.select(kser.spark.column.alias(index_column))
 
-        joined_df = self._internal.applied.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME).join(
+        joined_df = self._internal.resolved_copy.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME).join(
             labels, on=index_column, how="right"
         )
         internal = self._internal.with_new_sdf(joined_df)
@@ -9243,7 +9245,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
                 return index_mapper_udf(scol_for(internal.spark_frame, index_col_name))
 
-            sdf = internal.applied.spark_frame
+            sdf = internal.resolved_copy.spark_frame
             if level is None:
                 for i in range(num_indices):
                     sdf = sdf.withColumn(index_columns[i], gen_new_index_column(i))
@@ -10112,7 +10114,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(column, (tuple, str)):
             raise ValueError("column must be a scalar")
 
-        kdf = DataFrame(self._internal.applied)
+        kdf = DataFrame(self._internal.resolved_copy)
         kser = kdf[column]
         if not isinstance(kser, Series):
             raise ValueError(
@@ -10296,10 +10298,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
 
     def __len__(self):
-        return self._internal.applied.spark_frame.count()
+        return self._internal.resolved_copy.spark_frame.count()
 
     def __dir__(self):
-        fields = [f for f in self._internal.applied.spark_frame.schema.fieldNames() if " " not in f]
+        fields = [
+            f for f in self._internal.resolved_copy.spark_frame.schema.fieldNames() if " " not in f
+        ]
         return super(DataFrame, self).__dir__() + fields
 
     def __iter__(self):
