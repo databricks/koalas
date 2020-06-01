@@ -354,7 +354,7 @@ def default_session(conf=None):
         builder = builder.config(key, value)
     # Currently, Koalas is dependent on such join due to 'compute.ops_on_diff_frames'
     # configuration. This is needed with Spark 3.0+.
-    builder.config("spark.sql.analyzer.failAmbiguousSelfJoin.enabled", False)
+    builder.config("spark.sql.analyzer.failAmbiguousSelfJoin", False)
     session = builder.getOrCreate()
 
     if not should_use_legacy_ipc:
