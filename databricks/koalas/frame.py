@@ -10093,6 +10093,87 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.with_new_sdf(sdf)
         return DataFrame(internal)
 
+    def mad(self, axis=0):
+        """
+        Return the mean absolute deviation of values.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        ...                   columns=['a', 'b'])
+
+        >>> df.mad()
+        a    0.666667
+        b    0.066667
+        Name: 0, dtype: float64
+
+        >>> df.mad(axis=1)
+        0    0.45
+        1    0.90
+        2    1.35
+        3     NaN
+        Name: 0, dtype: float64
+        """
+        from databricks.koalas.series import Series, first_series
+
+        axis = validate_axis(axis)
+
+        if axis == 0:
+
+            def get_spark_column(kdf, label):
+                scol = kdf._internal.spark_column_for(label)
+                col_type = kdf._internal.spark_type_for(label)
+
+                if isinstance(col_type, BooleanType):
+                    scol = scol.cast("integer")
+
+                return scol
+
+            new_columns = [
+                F.avg(get_spark_column(self, label)).alias(name_like_string(label))
+                for label in self._internal.column_labels
+            ]
+            mean_data = self._internal.spark_frame.select(new_columns).first()
+
+            new_columns = [
+                F.avg(
+                    F.abs(get_spark_column(self, label) - mean_data[name_like_string(label)])
+                ).alias(name_like_string(label))
+                for label in self._internal.column_labels
+            ]
+            sdf = self._internal.spark_frame.select(new_columns)
+
+            with ks.option_context(
+                "compute.default_index_type", "distributed", "compute.max_rows", None
+            ):
+                kdf = DataFrame(sdf)
+                internal = InternalFrame(
+                    spark_frame=kdf._internal.spark_frame,
+                    index_map=kdf._internal.index_map,
+                    column_labels=self._internal.column_labels,
+                    column_label_names=self._internal.column_label_names,
+                )
+
+                return first_series(DataFrame(internal).transpose())
+
+        elif axis == 1:
+
+            @pandas_udf(returnType=DoubleType())
+            def calculate_columns_axis(*cols):
+                return pd.concat(cols, axis=1).mad(axis=1)
+
+            internal = self._internal.copy(
+                spark_column=calculate_columns_axis(*self._internal.data_spark_columns).alias("0"),
+                column_labels=[("0",)],
+                column_label_names=None,
+            )
+            return Series(internal, anchor=self)
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.

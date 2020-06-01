@@ -131,6 +131,7 @@ Computations / Descriptive Stats
    DataFrame.describe
    DataFrame.kurt
    DataFrame.kurtosis
+   DataFrame.mad
    DataFrame.max
    DataFrame.mean
    DataFrame.min

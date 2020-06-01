@@ -3620,3 +3620,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertEqual(actual, expected)
         finally:
             sys.stdout = prev
+
+    def test_mad(self):
+        pdf = pd.DataFrame({"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+        with self.assertRaises(ValueError):
+            kdf.mad(axis=2)
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+        pdf = pd.DataFrame({"A": [True, True, False, False], "B": [True, False, False, True]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
