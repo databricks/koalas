@@ -698,7 +698,7 @@ class InternalFrame(object):
         index_spark_columns = self.index_spark_columns
         return index_spark_columns + [
             spark_column
-            for label, spark_column in zip(self.column_labels, self.data_spark_columns)
+            for spark_column in self.data_spark_columns
             if all(not spark_column._jc.equals(scol._jc) for scol in index_spark_columns)
         ]
 
@@ -793,12 +793,26 @@ class InternalFrame(object):
             ]
         return pdf
 
+    @lazy_property
+    def resolved_copy(self):
+        """ Copy the immutable InternalFrame with the updates resolved. """
+        sdf = self.spark_frame.select(self.spark_columns + list(HIDDEN_COLUMNS))
+        if self.spark_column is None:
+            return self.copy(
+                spark_frame=sdf,
+                data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
+            )
+        else:
+            return self.copy(
+                spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
+            )
+
     def with_new_sdf(
-        self, sdf: spark.DataFrame, data_columns: Optional[List[str]] = None
+        self, spark_frame: spark.DataFrame, data_columns: Optional[List[str]] = None
     ) -> "InternalFrame":
         """ Copy the immutable _InternalFrame with the updates by the specified Spark DataFrame.
 
-        :param sdf: the new Spark DataFrame
+        :param spark_frame: the new Spark DataFrame
         :param data_columns: the new column names.
             If None, the original one is used.
         :return: the copied _InternalFrame.
@@ -812,7 +826,7 @@ class InternalFrame(object):
                 len(data_columns),
                 len(self.column_labels),
             )
-        sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME)
+        sdf = spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
         return self.copy(
             spark_frame=sdf, data_spark_columns=[scol_for(sdf, col) for col in data_columns]
         )
@@ -856,20 +870,19 @@ class InternalFrame(object):
             )
 
         data_spark_columns = []
-        for scol_or_kser, label in zip(scols_or_ksers, column_labels):
+        for scol_or_kser in scols_or_ksers:
             if isinstance(scol_or_kser, Series):
                 scol = scol_or_kser._internal.spark_column
             else:
                 scol = scol_or_kser
             data_spark_columns.append(scol)
 
-        hidden_columns = []
-        if keep_order:
-            hidden_columns.append(NATURAL_ORDER_COLUMN_NAME)
-
-        sdf = self.spark_frame.select(
-            self.index_spark_columns + data_spark_columns + hidden_columns
-        )
+        sdf = self.spark_frame
+        if not keep_order:
+            sdf = self.spark_frame.select(self.index_spark_columns + data_spark_columns)
+            data_spark_columns = [
+                scol_for(sdf, col) for col in self.spark_frame.select(data_spark_columns).columns
+            ]
 
         if column_label_names is _NoValue:
             column_label_names = self._column_label_names
@@ -877,9 +890,7 @@ class InternalFrame(object):
         return self.copy(
             spark_frame=sdf,
             column_labels=column_labels,
-            data_spark_columns=[
-                scol_for(sdf, col) for col in self.spark_frame.select(data_spark_columns).columns
-            ],
+            data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
             spark_column=None,
         )
@@ -899,7 +910,13 @@ class InternalFrame(object):
             spark_type = self.spark_frame.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
 
-        return self.copy(spark_frame=self.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME).filter(pred))
+        sdf = self.spark_frame.select(self.spark_columns).filter(pred)
+        if self.spark_column is None:
+            return self.with_new_sdf(sdf)
+        else:
+            return self.copy(
+                spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
+            )
 
     def copy(
         self,

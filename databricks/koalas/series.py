@@ -1100,7 +1100,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         #
         # This workaround is in order to calculate the distinct count including nulls in
         # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
-        return self._internal._sdf.select(
+        return self._internal.spark_frame.select(
             (F.count(scol) == F.countDistinct(scol))
             & (F.count(F.when(scol.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
@@ -2251,8 +2251,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.spark_frame
         sdf = sdf.select(
             [
-                F.concat(F.lit(prefix), scol_for(sdf, index_column)).alias(index_column)
-                for index_column in internal.index_spark_column_names
+                F.concat(F.lit(prefix), index_spark_column).alias(index_spark_column_name)
+                for index_spark_column, index_spark_column_name in zip(
+                    internal.index_spark_columns, internal.index_spark_column_names
+                )
             ]
             + internal.data_spark_columns
         )
@@ -2305,8 +2307,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.spark_frame
         sdf = sdf.select(
             [
-                F.concat(scol_for(sdf, index_column), F.lit(suffix)).alias(index_column)
-                for index_column in internal.index_spark_column_names
+                F.concat(index_spark_column, F.lit(suffix)).alias(index_spark_column_name)
+                for index_spark_column, index_spark_column_name in zip(
+                    internal.index_spark_columns, internal.index_spark_column_names
+                )
             ]
             + internal.data_spark_columns
         )
@@ -3588,7 +3592,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmin()
         10
         """
-        sdf = self._internal._sdf
+        sdf = self._internal.spark_frame
         scol = self.spark.column
         index_scols = self._internal.index_spark_columns
         # asc_nulls_(last|first)is used via Py4J directly because
@@ -4183,7 +4187,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         index_scol_names = [index_map[0] for index_map in self._internal.index_map.items()]
         combined = combine_frames(self.to_frame(), other.to_frame(), how="leftouter")
-        combined_sdf = combined._sdf
+        combined_sdf = combined._internal.resolved_copy.spark_frame
         this_col = "__this_%s" % str(
             self._internal.spark_column_name_for(self._internal.column_labels[0])
         )
@@ -4779,10 +4783,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not is_list_like(where):
             should_return_series = False
             where = [where]
-        sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self.spark.column)) for index in where]
-        sdf = sdf.select(cond)
+        sdf = self._internal.spark_frame.select(cond)
         if not should_return_series:
             result = sdf.head()[0]
             return result if result is not None else np.nan

@@ -110,7 +110,7 @@ class SampledPlot:
         if isinstance(data, (DataFrame, Series)):
             if isinstance(data, Series):
                 data = data.to_frame()
-            sampled = data._sdf.sample(fraction=self.fraction)
+            sampled = data._internal.resolved_copy.spark_frame.sample(fraction=self.fraction)
             return DataFrame(data._internal.with_new_sdf(sampled)).to_pandas()
         else:
             raise ValueError("Only DataFrame and Series are supported for plotting.")
@@ -423,7 +423,7 @@ class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def _compute_stats(data, colname, whis, precision):
         # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = data._kdf._sdf.agg(
+        pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
             *[
                 F.expr(
                     "approx_percentile({}, {}, {})".format(colname, q, int(1.0 / precision))
@@ -460,7 +460,9 @@ class KoalasBoxPlot(BoxPlot):
         # Builds expression to identify outliers
         expression = F.col(colname).between(lfence, ufence)
         # Creates a column to flag rows as outliers or not
-        return data._kdf._sdf.withColumn("__{}_outlier".format(colname), ~expression)
+        return data._kdf._internal.resolved_copy.spark_frame.withColumn(
+            "__{}_outlier".format(colname), ~expression
+        )
 
     @staticmethod
     def _calc_whiskers(colname, outliers):
@@ -525,7 +527,7 @@ class KoalasHistPlot(HistPlot):
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
 
-        sdf = self.data._sdf
+        sdf = self.data._internal.spark_frame
 
         for i, label in enumerate(self.data._internal.column_labels):
             # 'y' is a Spark DataFrame that selects one column.
@@ -685,7 +687,7 @@ class KoalasKdePlot(KdePlot):
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
 
-        sdf = self.data._sdf
+        sdf = self.data._internal.spark_frame
 
         for i, label in enumerate(self.data._internal.column_labels):
             # 'y' is a Spark DataFrame that selects one column.

@@ -147,7 +147,7 @@ class Index(IndexOpsMixin):
         -------
         String with a summarized representation of the index
         """
-        head, tail, total_count = self._kdf._sdf.select(
+        head, tail, total_count = self._internal.spark_frame.select(
             F.first(self.spark.column), F.last(self.spark.column), F.count(F.expr("*"))
         ).first()
 
@@ -451,10 +451,10 @@ class Index(IndexOpsMixin):
         >>> kdf.index.has_duplicates
         True
         """
-        df = self._kdf._sdf.select(self.spark.column)
-        col = df.columns[0]
+        sdf = self._internal.spark_frame.select(self.spark.column)
+        scol = scol_for(sdf, sdf.columns[0])
 
-        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
+        return sdf.select(F.count(scol) != F.countDistinct(scol)).first()[0]
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
@@ -494,7 +494,7 @@ class Index(IndexOpsMixin):
         >>> kdf.index.nlevels
         2
         """
-        return len(self._kdf._internal.index_spark_column_names)
+        return len(self._internal.index_spark_column_names)
 
     def rename(
         self,
@@ -643,9 +643,8 @@ class Index(IndexOpsMixin):
         sdf = self._internal.spark_frame.select(
             self._internal.index_spark_columns
         ).drop_duplicates()
-        internal = InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
-        result = DataFrame(internal).index
-        return result
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        return DataFrame(internal).index
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -930,7 +929,7 @@ class Index(IndexOpsMixin):
         scols = self._internal.index_spark_columns
         scol_names = self._internal.index_spark_column_names
         scols = [scol.alias(scol_name) for scol, scol_name in zip(scols, scol_names)]
-        sdf = self._kdf._sdf.select(scols).distinct()
+        sdf = self._kdf._internal.spark_frame.select(scols).distinct()
         return DataFrame(
             InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
         ).index
@@ -1153,13 +1152,13 @@ class Index(IndexOpsMixin):
                 "Doesn't support symmetric_difference between Index & MultiIndex for now"
             )
 
-        sdf_self = self._kdf._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._kdf._sdf.select(other._internal.index_spark_columns)
+        sdf_self = self._kdf._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._kdf._internal.spark_frame.select(other._internal.index_spark_columns)
 
         sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
         if sort:
-            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_column_names)
 
         internal = InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
         result = Index(DataFrame(internal))
@@ -1810,7 +1809,7 @@ class Index(IndexOpsMixin):
         >>> idx.asof('1999-01-02')
         nan
         """
-        sdf = self._internal._sdf
+        sdf = self._internal.spark_frame
         if self.is_monotonic_increasing:
             sdf = sdf.where(self.spark.column <= label).select(F.max(self.spark.column))
         elif self.is_monotonic_decreasing:
@@ -1878,13 +1877,13 @@ class Index(IndexOpsMixin):
                     raise ValueError("Index data must be 1-dimensional")
                 else:
                     other = Index(other)
-        sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
+        sdf_self = self._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._internal.spark_frame.select(other._internal.index_spark_columns)
         sdf = sdf_self.union(sdf_other.subtract(sdf_self))
         if isinstance(self, MultiIndex):
             sdf = sdf.drop_duplicates()
         if sort:
-            sdf = sdf.sort(self._internal.index_spark_columns)
+            sdf = sdf.sort(self._internal.index_spark_column_names)
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
         return DataFrame(internal).index
@@ -1965,7 +1964,7 @@ class MultiIndex(Index):
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
         scol = F.struct(kdf._internal.index_spark_columns)
-        data_columns = kdf._sdf.select(scol).columns
+        data_columns = kdf._internal.spark_frame.select(scol).columns
         internal = kdf._internal.copy(
             spark_column=scol,
             column_labels=[(col, None) for col in data_columns],
@@ -2185,9 +2184,8 @@ class MultiIndex(Index):
         >>> midx.levshape
         (3, 3)
         """
-        internal = self._internal
-        result = internal._sdf.agg(
-            *(F.countDistinct(c) for c in internal.index_spark_columns)
+        result = self._internal.spark_frame.agg(
+            *(F.countDistinct(c) for c in self._internal.index_spark_columns)
         ).collect()[0]
         return tuple(result)
 
@@ -2491,8 +2489,8 @@ class MultiIndex(Index):
                 "Doesn't support symmetric_difference between Index & MultiIndex for now"
             )
 
-        sdf_self = self._kdf._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._kdf._sdf.select(other._internal.index_spark_columns)
+        sdf_self = self._kdf._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._kdf._internal.spark_frame.select(other._internal.index_spark_columns)
 
         sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
@@ -2564,7 +2562,7 @@ class MultiIndex(Index):
             scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
         return MultiIndex(
-            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
+            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._internal.index_map))
         )
 
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):

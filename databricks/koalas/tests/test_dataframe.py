@@ -541,7 +541,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_dot_in_column_name(self):
         self.assert_eq(
-            ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))["a.b"], ks.Series([1])
+            ks.DataFrame(ks.range(1)._internal.spark_frame.selectExpr("1 as `a.b`"))["a.b"],
+            ks.Series([1]),
         )
 
     def test_drop(self):
