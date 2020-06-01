@@ -37,10 +37,10 @@ shared_conf = {"spark.sql.shuffle.partitions": "4"}
 # Delta requires Spark 2.4.2+. See
 # https://github.com/delta-io/delta#compatibility-with-apache-spark-versions.
 if LooseVersion(__version__) >= LooseVersion("3.0.0"):
-    shared_conf["spark.jars.packages"] = "io.delta:delta-core_2.12:0.1.0"
+    shared_conf["spark.jars.packages"] = "io.delta:delta-core_2.12:0.6.1"
     session = utils.default_session(shared_conf)
 elif LooseVersion(__version__) >= LooseVersion("2.4.2"):
-    shared_conf["spark.jars.packages"] = "io.delta:delta-core_2.11:0.1.0"
+    shared_conf["spark.jars.packages"] = "io.delta:delta-core_2.11:0.6.1"
     session = utils.default_session(shared_conf)
 else:
     session = utils.default_session(shared_conf)
