@@ -154,3 +154,70 @@ jobs:
         ./dev/pytest
     - uses: codecov/codecov-action@v1
 
+  spark_3_0_build:
+    name: Conda (Python, Spark 3.0, pandas, PyArrow)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: 3.8
+            spark-version: 3.0.0
+            spark-rc-version: 2
+            pandas-version: 1.0.4
+            pyarrow-version: 0.17.1
+    env:
+      PYTHON_VERSION: ${{ matrix.python-version }}
+      SPARK_VERSION: ${{ matrix.spark-version }}
+      SPARK_RC_VERSION: ${{ matrix.spark-rc-version }}
+      PANDAS_VERSION: ${{ matrix.pandas-version }}
+      PYARROW_VERSION: ${{ matrix.pyarrow-version }}
+      SPARK_CACHE_DIR: /home/runner/.cache/spark-versions
+      # `QT_QPA_PLATFORM` for resolving 'QXcbConnection: Could not connect to display :0.0'
+      DISPLAY: 0.0
+      QT_QPA_PLATFORM: offscreen
+      # Github token is required to auto-generate the release notes from Github release notes
+      GITHUB_OAUTH_KEY: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+      - uses: actions/cache@v1
+        with:
+          path: ${{ env.SPARK_CACHE_DIR }}
+          key: ${{ runner.os }}-koalas-spark-${{ env.SPARK_VERSION }}-rc${{ env.SPARK_RC_VERSION }}
+      - name: Install dependencies
+        run: |
+          ./dev/download_spark_3.0.sh
+          curl -s https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh > miniconda.sh
+          bash miniconda.sh -b -p $HOME/miniconda
+          # See also https://github.com/conda/conda/issues/7980
+          . $HOME/miniconda/etc/profile.d/conda.sh
+          hash -r
+          conda config --set always_yes yes --set changeps1 no
+          conda update -q conda
+          # Useful for debugging any issues with conda
+          conda info -a
+          # Replace dep1 dep2 ... with your dependencies
+          conda create -c conda-forge -q -n test-environment python=$PYTHON_VERSION
+          conda activate test-environment
+          conda install -c conda-forge --yes codecov
+          conda config --env --add pinned_packages python=$PYTHON_VERSION
+          conda config --env --add pinned_packages pandas==$PANDAS_VERSION
+          conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
+          conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
+          conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
+          conda list
+      - name: Run tests
+        run: |
+          # The environment should be initialized newly between Github Actions steps. Also,
+          # for some reasons we should add enviornment directory manually to allow for
+          # 'test-enviornment' to be found. See also https://github.com/conda/conda/issues/7980
+          . $HOME/miniconda/etc/profile.d/conda.sh
+          conda config --prepend envs_dirs $HOME/miniconda/envs
+          conda activate test-environment
+          export SPARK_HOME="$SPARK_CACHE_DIR/spark-$SPARK_VERSION-rc$SPARK_RC_VERSION-bin-hadoop2.7"
+          ./dev/lint-python
+          ./dev/pytest
+      - uses: codecov/codecov-action@v1
