@@ -10075,8 +10075,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3     NaN
         Name: 0, dtype: float64
         """
-        from databricks.koalas import Series
-        from databricks.koalas.series import first_series
+        from databricks.koalas.series import Series, first_series
 
         axis = validate_axis(axis)
 
@@ -10095,15 +10094,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 F.avg(get_spark_column(self, label)).alias(name_like_string(label))
                 for label in self._internal.column_labels
             ]
-            sdf_mean = self._sdf.select(new_columns).first()
+            mean_data = self._internal.spark_frame.select(new_columns).first()
 
             new_columns = [
                 F.avg(
-                    F.abs(get_spark_column(self, label) - sdf_mean[name_like_string(label)])
+                    F.abs(get_spark_column(self, label) - mean_data[name_like_string(label)])
                 ).alias(name_like_string(label))
                 for label in self._internal.column_labels
             ]
-            sdf = self._sdf.select(new_columns)
+            sdf = self._internal.spark_frame.select(new_columns)
 
             with ks.option_context(
                 "compute.default_index_type", "distributed", "compute.max_rows", None
