@@ -79,7 +79,7 @@ from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ in Series.
-# This pattern basically seeks the footer string from Pandas'
+# This pattern basically seeks the footer string from pandas'
 REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 
 _flex_doc_SERIES = """
@@ -307,7 +307,7 @@ str_type = str
 
 class Series(Frame, IndexOpsMixin, Generic[T]):
     """
-    Koalas Series that corresponds to Pandas Series logically. This holds Spark Column
+    Koalas Series that corresponds to pandas Series logically. This holds Spark Column
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
@@ -317,11 +317,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     Parameters
     ----------
-    data : array-like, dict, or scalar value, Pandas Series
+    data : array-like, dict, or scalar value, pandas Series
         Contains data stored in Series
         If data is a dict, argument order is maintained for Python 3.6
         and later.
-        Note that if `data` is a Pandas Series, other arguments should not be used.
+        Note that if `data` is a pandas Series, other arguments should not be used.
     index : array-like or Index (1d)
         Values must be hashable and have the same length as `data`.
         Non-unique index values are allowed. Will default to
@@ -1266,7 +1266,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Render a string representation of the Series.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
                   is large, set max_rows parameter.
 
@@ -1336,7 +1336,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Convert Series to {label -> value} dict or dict-like object.
 
-        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+        .. note:: This method should only be used if the resulting pandas DataFrame is expected
             to be small, as all the data is loaded into the driver's memory.
 
         Parameters
@@ -1409,7 +1409,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Return a pandas Series.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -1693,7 +1693,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: float64
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        # TODO: last two examples from Pandas produce different results.
+        # TODO: last two examples from pandas produce different results.
         kseries = first_series(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
             self._internal = kseries._internal
@@ -1958,7 +1958,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Uniques are returned in order of appearance. Hash table-based unique,
         therefore does NOT sort.
 
-        .. note:: This method returns newly creased Series whereas Pandas returns
+        .. note:: This method returns newly creased Series whereas pandas returns
                   the unique values as a NumPy array.
 
         Returns
@@ -2722,7 +2722,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return_schema = sig_return.tpe
             return self._transform_batch(apply_each, return_schema)
 
-    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func: Union[str, List[str]]):
         """Aggregate using one or more operations over the specified axis.
 

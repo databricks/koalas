@@ -89,7 +89,7 @@ class GroupBy(object):
         return [s.spark.column for s in self._agg_columns]
 
     # TODO: Series support is not implemented yet.
-    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func_or_funcs=None, *args, **kwargs):
         """Aggregate using one or more operations over the specified axis.
 
@@ -190,7 +190,7 @@ class GroupBy(object):
         1        2   0.227
         2        4  -0.562
         """
-        # I think current implementation of func and arguments in koalas for aggregate is different
+        # I think current implementation of func and arguments in Koalas for aggregate is different
         # than pandas, later once arguments are added, this could be removed.
         if func_or_funcs is None and kwargs is None:
             raise ValueError("No aggregation argument or function specified.")
@@ -1228,7 +1228,7 @@ class GroupBy(object):
             pdf = func(pdf)
 
             if retain_index:
-                # If schema should be inferred, we don't restore index. Pandas seems restoring
+                # If schema should be inferred, we don't restore index. pandas seems restoring
                 # the index in some cases.
                 # When Spark output type is specified, without executing it, we don't know
                 # if we should restore the index or not. For instance, see the example in
@@ -2074,7 +2074,7 @@ class GroupBy(object):
                 # TODO: we should have a function that takes dataframes and converts the numeric
                 # types. Converting the NaNs is used in a few places, it should be in utils.
                 # Special handle floating point types because Spark's count treats nan as a valid
-                # value, whereas Pandas count doesn't include nan.
+                # value, whereas pandas count doesn't include nan.
                 if isinstance(spark_type, DoubleType) or isinstance(spark_type, FloatType):
                     stat_exprs.append(sfun(F.nanvl(c, F.lit(None))).alias(name))
                     data_columns.append(name)

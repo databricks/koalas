@@ -1721,7 +1721,7 @@ class KoalasFramePlotMethods(PandasObject):
         """
         from databricks.koalas import DataFrame
 
-        # Pandas will raise an error if y is None and subplots if not True
+        # pandas will raise an error if y is None and subplots if not True
         if isinstance(self.data, DataFrame) and y is None and not kwds.get("subplots", False):
             raise ValueError("pie requires either y column or 'subplots=True'")
         return self(kind="pie", y=y, **kwds)

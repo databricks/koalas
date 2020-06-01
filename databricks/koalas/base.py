@@ -165,8 +165,8 @@ class IndexOpsMixin(object):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
-        # Note that timestamp subtraction casts arguments to integer. This is to mimic Pandas's
-        # behaviors. Pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
         if isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, TimestampType):
             if not isinstance(other.spark.data_type, TimestampType):
                 raise TypeError("datetime subtraction can only be applied to datetime series.")

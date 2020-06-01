@@ -157,7 +157,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
 
     def assertPandasAlmostEqual(self, left, right):
         """
-        This function checks if given Pandas objects approximately same,
+        This function checks if given pandas objects approximately same,
         which means the conditions below:
           - Both objects are nullable
           - Compare floats rounding to the number of decimal places, 7 after
@@ -204,7 +204,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     def assert_eq(self, left, right, almost=False):
         """
         Asserts if two arbitrary objects are equal or not. If given objects are Koalas DataFrame
-        or Series, they are converted into Pandas' and compared.
+        or Series, they are converted into pandas' and compared.
 
         :param left: object to compare
         :param right: object to compare

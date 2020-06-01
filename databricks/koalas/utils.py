@@ -399,7 +399,7 @@ def validate_arguments_and_invoke_function(
     For example usage, look at DataFrame.to_html().
 
     :param pobj: the pandas DataFrame or Series to operate on
-    :param koalas_func: koalas function, used to get default parameter values
+    :param koalas_func: Koalas function, used to get default parameter values
     :param pandas_func: pandas function, used to check whether pandas supports all the arguments
     :param input_args: arguments to pass to the pandas function, often created by using locals().
                        Make sure locals() call is at the top of the function so it captures only
