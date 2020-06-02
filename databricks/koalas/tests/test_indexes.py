@@ -287,6 +287,17 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.dropna(), pidx.dropna())
         self.assert_eq((kidx + 1).dropna(), (pidx + 1).dropna())
 
+    def test_putmask(self):
+        pidx = pd.Index(["a", "b", "c", "d", "e"])
+        kidx = ks.from_pandas(pidx)
+
+        mask = [True if x < 2 else False for x in range(5)]
+        value = "Koalas"
+
+        self.assert_eq(
+            kidx.putmask(mask, value).sort_values(), pidx.putmask(mask, value).sort_values()
+        )
+
     def test_index_symmetric_difference(self):
         pidx1 = pd.Index([1, 2, 3, 4])
         pidx2 = pd.Index([2, 3, 4, 5])

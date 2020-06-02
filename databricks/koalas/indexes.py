@@ -41,6 +41,7 @@ import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
 from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
+from pyspark.sql.functions import udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -1545,6 +1546,54 @@ class Index(IndexOpsMixin):
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
         return sdf.orderBy(self.spark.column.asc(), F.col(sequence_col).asc()).first()[0]
+
+    def putmask(self, mask, value):
+        """
+        Return a new Index of the values set with the mask.
+
+        .. note:: this API can be pretty expensive since it is based on
+             a global sequence internally.
+
+        Returns
+        -------
+        Index
+
+        Example
+        -------
+        >>> kidx = ks.Index(['a', 'b', 'c', 'd', 'e'])
+        >>> kidx
+        Index(['a', 'b', 'c', 'd', 'e'], dtype='object')
+
+        >>> kidx.putmask([True if x < 2 else False for x in range(5)], "Koalas").sort_values()
+        Index(['Koalas', 'Koalas', 'c', 'd', 'e'], dtype='object')
+        """
+        origin_col = self._internal.index_spark_column_names[0]
+        sdf = self._internal.spark_frame.select(self.spark.column)
+
+        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+
+        masking_col = verify_temp_column_name(sdf, "__masking_column__")
+        masking_udf = udf(lambda x: mask[x], BooleanType())
+
+        sdf = sdf.withColumn(masking_col, masking_udf(sequence_col))
+        # spark_frame here looks like below
+        # +-------------------------------+-----------------+------------------+
+        # |__distributed_sequence_column__|__index_level_0__|__masking_column__|
+        # +-------------------------------+-----------------+------------------+
+        # |                              0|                a|              true|
+        # |                              3|                d|             false|
+        # |                              1|                b|              true|
+        # |                              2|                c|             false|
+        # |                              4|                e|             false|
+        # +-------------------------------+-----------------+------------------+
+
+        cond = F.when(sdf[masking_col], value).otherwise(sdf[origin_col])
+        sdf = sdf.select(cond.alias(origin_col))
+
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return ks.DataFrame(internal).index
 
     def set_names(self, names, level=None, inplace=False):
         """
