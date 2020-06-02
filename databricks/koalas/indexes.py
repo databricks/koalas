@@ -1567,16 +1567,18 @@ class Index(IndexOpsMixin):
         >>> kidx.putmask([True if x < 2 else False for x in range(5)], "Koalas").sort_values()
         Index(['Koalas', 'Koalas', 'c', 'd', 'e'], dtype='object')
         """
-        origin_col = self._internal.index_spark_column_names[0]
+        scol_name = self._internal.index_spark_column_names[0]
         sdf = self._internal.spark_frame.select(self.spark.column)
 
-        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
-        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+        dist_sequence_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf, column_name=dist_sequence_col_name
+        )
 
         masking_col = verify_temp_column_name(sdf, "__masking_column__")
         masking_udf = udf(lambda x: mask[x], BooleanType())
 
-        sdf = sdf.withColumn(masking_col, masking_udf(sequence_col))
+        sdf = sdf.withColumn(masking_col, masking_udf(dist_sequence_col_name))
         # spark_frame here looks like below
         # +-------------------------------+-----------------+------------------+
         # |__distributed_sequence_column__|__index_level_0__|__masking_column__|
@@ -1588,8 +1590,8 @@ class Index(IndexOpsMixin):
         # |                              4|                e|             false|
         # +-------------------------------+-----------------+------------------+
 
-        cond = F.when(sdf[masking_col], value).otherwise(sdf[origin_col])
-        sdf = sdf.select(cond.alias(origin_col))
+        cond = F.when(sdf[masking_col], value).otherwise(sdf[scol_name])
+        sdf = sdf.select(cond.alias(scol_name))
 
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
