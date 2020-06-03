@@ -3645,3 +3645,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.mad(), pdf.mad())
         self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+    def test_abs(self):
+        pdf = pd.DataFrame({"a": [-2, -1, 0, 1]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(abs(kdf), abs(pdf))
+        self.assert_eq(np.abs(kdf), np.abs(pdf))

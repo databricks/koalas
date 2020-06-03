@@ -1658,3 +1658,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "The item should not be empty."):
             kser.filter(items=[(), ("three", "z")])
+
+    def test_abs(self):
+        pser = pd.Series([-2, -1, 0, 1])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(abs(kser), abs(pser))
+        self.assert_eq(np.abs(kser), np.abs(pser))

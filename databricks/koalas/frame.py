@@ -687,6 +687,9 @@ class DataFrame(Frame, Generic[T]):
     def __rfloordiv__(self, other):
         return self._map_series_op("rfloordiv", other)
 
+    def __abs__(self):
+        return self._apply_series_op(lambda kser: abs(kser))
+
     def add(self, other):
         return self + other
 

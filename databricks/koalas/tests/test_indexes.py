@@ -1310,3 +1310,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         for lv, output in zip(level_names, outputs):
             self.assertEqual(output, kdf.index._get_level_number(lv))
+
+    def test_abs(self):
+        pdf = pd.DataFrame({"a": [-2, -1, 0, 1]}, index=[-2, -1, 0, 1])
+        pidx = pdf.index
+        kidx = ks.from_pandas(pdf).index
+
+        self.assert_eq(abs(pidx), abs(kidx))
+        self.assert_eq(np.abs(pidx), np.abs(kidx))
+
+        kidx = ks.from_pandas(pd.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"]))
+        with self.assertRaisesRegexp(TypeError, "perform __abs__ with this index"):
+            abs(kidx)

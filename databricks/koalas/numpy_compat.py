@@ -138,7 +138,7 @@ def maybe_dispatch_ufunc_to_dunder_op(
         "matmul",
     }
     aliases = {
-        "absolute": "abs",  # TODO: Koalas Series and Index should implement __abs__.
+        "absolute": "abs",
         "multiply": "mul",
         "floor_divide": "floordiv",
         "true_divide": "truediv",
