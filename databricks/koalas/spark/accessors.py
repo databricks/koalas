@@ -729,6 +729,16 @@ class SparkFrameMethods(object):
         == Physical Plan ==
         ...
 
+        >>> df.spark.explain("extended")  # doctest: +ELLIPSIS
+        == Parsed Logical Plan ==
+        ...
+        == Analyzed Logical Plan ==
+        ...
+        == Optimized Logical Plan ==
+        ...
+        == Physical Plan ==
+        ...
+
         >>> df.spark.explain(mode="extended")  # doctest: +ELLIPSIS
         == Parsed Logical Plan ==
         ...
@@ -740,10 +750,14 @@ class SparkFrameMethods(object):
         ...
         """
         if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            if mode is not None and extended is not None:
+                raise Exception("extended and mode should not be set together.")
+
+            if extended is not None and isinstance(extended, str):
+                mode = extended
+
             if mode is not None:
-                if extended is not None:
-                    raise Exception("extended and mode can not be specified simultaneously")
-                elif mode == "simple":
+                if mode == "simple":
                     extended = False
                 elif mode == "extended":
                     extended = True
