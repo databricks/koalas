@@ -90,7 +90,7 @@ __all__ = [
 def from_pandas(
     pobj: Union["pd.DataFrame", "pd.Series", "pd.Index"]
 ) -> Union["Series", "DataFrame", "Index"]:
-    """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
+    """Create a Koalas DataFrame, Series or Index from a pandas DataFrame, Series or Index.
 
     This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
     but this also works with pandas Series and picks the index.

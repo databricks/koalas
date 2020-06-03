@@ -1312,9 +1312,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(output, kdf.index._get_level_number(lv))
 
     def test_abs(self):
-        pdf = pd.DataFrame({"a": [-2, -1, 0, 1]}, index=[-2, -1, 0, 1])
-        pidx = pdf.index
-        kidx = ks.from_pandas(pdf).index
+        pidx = pd.Index([-2, -1, 0, 1])
+        kidx = ks.from_pandas(pidx)
 
         self.assert_eq(abs(pidx), abs(kidx))
         self.assert_eq(np.abs(pidx), np.abs(kidx))
