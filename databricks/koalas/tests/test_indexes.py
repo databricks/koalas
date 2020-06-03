@@ -1318,6 +1318,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(abs(pidx), abs(kidx))
         self.assert_eq(np.abs(pidx), np.abs(kidx))
 
-        kidx = ks.from_pandas(pd.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"]))
+        kidx = ks.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"])
         with self.assertRaisesRegexp(TypeError, "perform __abs__ with this index"):
             abs(kidx)
