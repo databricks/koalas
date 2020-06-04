@@ -292,7 +292,7 @@ T = TypeVar("T")
 
 
 if (3, 5) <= sys.version_info < (3, 7):
-    from typing import GenericMeta  # type: ignore
+    from typing import GenericMeta
 
     # This is a workaround to support variadic generic in DataFrame in Python 3.5+.
     # See https://github.com/python/typing/issues/193

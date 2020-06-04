@@ -16,7 +16,7 @@ ipython
 pydata-sphinx-theme
 
 # Linter
-mypy
+mypy<0.780
 flake8
 
 # Code formatter. Only support Python 3.6+
