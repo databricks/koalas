@@ -2695,12 +2695,22 @@ class MultiIndex(Index):
         )
         return ks.DataFrame(internal).index
 
+    def _get_or_create_repr_pandas_cache(self, n):
+        if (
+                not hasattr(self, "_repr_pandas_cache")
+                or (id(self._internal), n) not in self._repr_pandas_cache
+        ):
+            self._repr_pandas_cache = {
+                (id(self._internal), n): self._kdf.head(n + 1).index.to_pandas()
+            }
+        return self._repr_pandas_cache[(id(self._internal), n)]
+
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = self._kdf.head(max_display_count + 1).index.to_pandas()
+        pindex = self._get_or_create_repr_pandas_cache(max_display_count)
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
