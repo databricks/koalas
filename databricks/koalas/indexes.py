@@ -65,6 +65,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
+    SERIES_DEFAULT_NAME,
 )
 
 
@@ -736,7 +737,7 @@ class Index(IndexOpsMixin):
         """
         if name is None:
             if self._internal.index_names[0] is None:
-                name = ("0",)
+                name = (SERIES_DEFAULT_NAME,)
             else:
                 name = self._internal.index_names[0]
         elif isinstance(name, str):

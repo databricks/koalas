@@ -63,6 +63,8 @@ NATURAL_ORDER_COLUMN_NAME = "__natural_order__"
 
 HIDDEN_COLUMNS = {NATURAL_ORDER_COLUMN_NAME}
 
+SERIES_DEFAULT_NAME = "0"
+
 
 class InternalFrame(object):
     """
