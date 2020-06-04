@@ -5105,8 +5105,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def _get_or_create_repr_pandas_cache(self, n):
         if (
-                not hasattr(self, "_repr_pandas_cache")
-                or (id(self._internal), n) not in self._repr_pandas_cache
+            not hasattr(self, "_repr_pandas_cache")
+            or (id(self._internal), n) not in self._repr_pandas_cache
         ):
             self._repr_pandas_cache = {
                 (id(self._internal), n): self.head(n + 1)._to_internal_pandas()

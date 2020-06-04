@@ -2697,8 +2697,8 @@ class MultiIndex(Index):
 
     def _get_or_create_repr_pandas_cache(self, n):
         if (
-                not hasattr(self, "_repr_pandas_cache")
-                or (id(self._internal), n) not in self._repr_pandas_cache
+            not hasattr(self, "_repr_pandas_cache")
+            or (id(self._internal), n) not in self._repr_pandas_cache
         ):
             self._repr_pandas_cache = {
                 (id(self._internal), n): self._kdf.head(n + 1).index.to_pandas()
