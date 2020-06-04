@@ -55,6 +55,7 @@ from databricks.koalas.utils import (
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import InternalFrame
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.indexes import Index
 
 
 __all__ = [
@@ -86,8 +87,10 @@ __all__ = [
 ]
 
 
-def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "DataFrame"]:
-    """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
+def from_pandas(
+    pobj: Union["pd.DataFrame", "pd.Series", "pd.Index"]
+) -> Union["Series", "DataFrame", "Index"]:
+    """Create a Koalas DataFrame, Series or Index from a pandas DataFrame, Series or Index.
 
     This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
     but this also works with pandas Series and picks the index.

@@ -292,7 +292,7 @@ T = TypeVar("T")
 
 
 if (3, 5) <= sys.version_info < (3, 7):
-    from typing import GenericMeta
+    from typing import GenericMeta  # type: ignore
 
     # This is a workaround to support variadic generic in DataFrame in Python 3.5+.
     # See https://github.com/python/typing/issues/193
@@ -686,6 +686,9 @@ class DataFrame(Frame, Generic[T]):
 
     def __rfloordiv__(self, other):
         return self._map_series_op("rfloordiv", other)
+
+    def __abs__(self):
+        return self._apply_series_op(lambda kser: abs(kser))
 
     def add(self, other):
         return self + other

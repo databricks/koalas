@@ -278,6 +278,7 @@ class IndexOpsMixin(object):
 
     __pow__ = column_op(Column.__pow__)
     __rpow__ = column_op(Column.__rpow__)
+    __abs__ = column_op(F.abs)
 
     # comparison operators
     __eq__ = column_op(Column.__eq__)
