@@ -1972,6 +1972,9 @@ class MultiIndex(Index):
         )
         IndexOpsMixin.__init__(self, internal, kdf)
 
+    def __abs__(self):
+        raise TypeError("TypeError: cannot perform __abs__ with this index type: MultiIndex")
+
     def _with_new_scol(self, scol: spark.Column):
         raise NotImplementedError("Not supported for type MultiIndex")
 
