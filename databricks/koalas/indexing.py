@@ -448,7 +448,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
             if cond is not None:
                 data_columns = sdf.select(data_spark_columns).columns
-                sdf = sdf.select(index_scols + data_spark_columns).filter(cond)
+                sdf = sdf.filter(cond).select(index_scols + data_spark_columns)
                 data_spark_columns = [scol_for(sdf, col) for col in data_columns]
 
             if limit is not None:

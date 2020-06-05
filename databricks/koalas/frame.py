@@ -3050,11 +3050,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         rows = [self._internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)]
 
-        sdf = (
-            self._internal.spark_frame.select(scols + list(HIDDEN_COLUMNS))
-            .drop(NATURAL_ORDER_COLUMN_NAME)
-            .filter(reduce(lambda x, y: x & y, rows))
-        )
+        sdf = self._internal.spark_frame.filter(reduce(lambda x, y: x & y, rows)).select(scols)
 
         if len(key) == len(self._internal.index_spark_columns):
             result = first_series(DataFrame(InternalFrame(spark_frame=sdf, index_map=None)).T)
