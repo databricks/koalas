@@ -910,7 +910,7 @@ class InternalFrame(object):
             spark_type = self.spark_frame.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
 
-        sdf = self.spark_frame.select(self.spark_columns).filter(pred)
+        sdf = self.spark_frame.filter(pred).select(self.spark_columns)
         if self.spark_column is None:
             return self.with_new_sdf(sdf)
         else:

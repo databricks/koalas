@@ -695,9 +695,9 @@ class RollingGroupby(Rolling):
         for c in groupby._groupkeys[1:]:
             cond = cond | c.spark.column.isNotNull()
 
-        sdf = kdf._internal.spark_frame.select(
+        sdf = kdf._internal.spark_frame.filter(cond).select(
             new_index_scols + [c.spark.column for c in applied]
-        ).filter(cond)
+        )
 
         internal = kdf._internal.copy(
             spark_frame=sdf,
