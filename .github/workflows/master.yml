@@ -163,7 +163,7 @@ jobs:
         include:
           - python-version: 3.8
             spark-version: 3.0.0
-            spark-rc-version: 2
+            spark-rc-version: 3
             pandas-version: 1.0.4
             pyarrow-version: 0.17.1
     env:
