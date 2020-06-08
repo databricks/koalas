@@ -729,7 +729,7 @@ class SparkFrameMethods(object):
         == Physical Plan ==
         ...
 
-        >>> df.spark.explain("extended")  # doctest: +SKIP
+        >>> df.spark.explain("extended")  # doctest: +ELLIPSIS
         == Parsed Logical Plan ==
         ...
         == Analyzed Logical Plan ==
