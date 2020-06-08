@@ -10219,12 +10219,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self._internal.to_pandas_frame
 
+    def _get_or_create_repr_pandas_cache(self, n):
+        if (
+            not hasattr(self, "_repr_pandas_cache")
+            or (id(self._internal), n) not in self._repr_pandas_cache
+        ):
+            self._repr_pandas_cache = {
+                (id(self._internal), n): self.head(n + 1)._to_internal_pandas()
+            }
+        return self._repr_pandas_cache[(id(self._internal), n)]
+
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return self._to_internal_pandas().to_string()
 
-        pdf = self.head(max_display_count + 1)._to_internal_pandas()
+        pdf = self._get_or_create_repr_pandas_cache(max_display_count)
         pdf_length = len(pdf)
         pdf = pdf.iloc[:max_display_count]
         if pdf_length > max_display_count:
@@ -10247,7 +10257,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if max_display_count is None:
             return self._to_internal_pandas().to_html(notebook=True, bold_rows=bold_rows)
 
-        pdf = self.head(max_display_count + 1)._to_internal_pandas()
+        pdf = self._get_or_create_repr_pandas_cache(max_display_count)
         pdf_length = len(pdf)
         pdf = pdf.iloc[:max_display_count]
         if pdf_length > max_display_count:
