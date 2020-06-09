@@ -518,7 +518,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf3 = ks.DataFrame([[1, 2], [3, 4], [5, 6], [7, 8]], index=idx, columns=list("ab"))
 
-        # for spark 2.3, disable arrow optimization. Because koalas multi-index do not support
+        # for spark 2.3, disable arrow optimization. Because Koalas multi-index do not support
         # arrow optimization in spark 2.3.
 
         result_kdf = kdf3.rename(index=str_lower)
@@ -541,7 +541,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_dot_in_column_name(self):
         self.assert_eq(
-            ks.DataFrame(ks.range(1)._sdf.selectExpr("1 as `a.b`"))["a.b"], ks.Series([1])
+            ks.DataFrame(ks.range(1)._internal.spark_frame.selectExpr("1 as `a.b`"))["a.b"],
+            ks.Series([1]),
         )
 
     def test_drop(self):
@@ -3620,3 +3621,34 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertEqual(actual, expected)
         finally:
             sys.stdout = prev
+
+    def test_mad(self):
+        pdf = pd.DataFrame({"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+        with self.assertRaises(ValueError):
+            kdf.mad(axis=2)
+
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+        pdf = pd.DataFrame({"A": [True, True, False, False], "B": [True, False, False, True]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.mad(), pdf.mad())
+        self.assert_eq(kdf.mad(axis=1), pdf.mad(axis=1))
+
+    def test_abs(self):
+        pdf = pd.DataFrame({"a": [-2, -1, 0, 1]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(abs(kdf), abs(pdf))
+        self.assert_eq(np.abs(kdf), np.abs(pdf))

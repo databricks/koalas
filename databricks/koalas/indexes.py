@@ -70,7 +70,7 @@ from databricks.koalas.internal import (
 
 class Index(IndexOpsMixin):
     """
-    Koalas Index that corresponds to Pandas Index logically. This might hold Spark Column
+    Koalas Index that corresponds to pandas Index logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -147,7 +147,7 @@ class Index(IndexOpsMixin):
         -------
         String with a summarized representation of the index
         """
-        head, tail, total_count = self._kdf._sdf.select(
+        head, tail, total_count = self._internal.spark_frame.select(
             F.first(self.spark.column), F.last(self.spark.column), F.count(F.expr("*"))
         ).first()
 
@@ -350,7 +350,7 @@ class Index(IndexOpsMixin):
         """
         Return a pandas Index.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -425,7 +425,12 @@ class Index(IndexOpsMixin):
     @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.to_series().spark.data_type
+        warnings.warn(
+            "Index.spark_type is deprecated as of Index.spark.data_type. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.data_type
 
     @property
     def has_duplicates(self) -> bool:
@@ -446,10 +451,10 @@ class Index(IndexOpsMixin):
         >>> kdf.index.has_duplicates
         True
         """
-        df = self._kdf._sdf.select(self.spark.column)
-        col = df.columns[0]
+        sdf = self._internal.spark_frame.select(self.spark.column)
+        scol = scol_for(sdf, sdf.columns[0])
 
-        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
+        return sdf.select(F.count(scol) != F.countDistinct(scol)).first()[0]
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
@@ -489,7 +494,7 @@ class Index(IndexOpsMixin):
         >>> kdf.index.nlevels
         2
         """
-        return len(self._kdf._internal.index_spark_column_names)
+        return len(self._internal.index_spark_column_names)
 
     def rename(
         self,
@@ -638,9 +643,8 @@ class Index(IndexOpsMixin):
         sdf = self._internal.spark_frame.select(
             self._internal.index_spark_columns
         ).drop_duplicates()
-        internal = InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
-        result = DataFrame(internal).index
-        return result
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        return DataFrame(internal).index
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -925,7 +929,7 @@ class Index(IndexOpsMixin):
         scols = self._internal.index_spark_columns
         scol_names = self._internal.index_spark_column_names
         scols = [scol.alias(scol_name) for scol, scol_name in zip(scols, scol_names)]
-        sdf = self._kdf._sdf.select(scols).distinct()
+        sdf = self._kdf._internal.spark_frame.select(scols).distinct()
         return DataFrame(
             InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
         ).index
@@ -1148,13 +1152,13 @@ class Index(IndexOpsMixin):
                 "Doesn't support symmetric_difference between Index & MultiIndex for now"
             )
 
-        sdf_self = self._kdf._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._kdf._sdf.select(other._internal.index_spark_columns)
+        sdf_self = self._kdf._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._kdf._internal.spark_frame.select(other._internal.index_spark_columns)
 
         sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
         if sort:
-            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_column_names)
 
         internal = InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
         result = Index(DataFrame(internal))
@@ -1696,7 +1700,7 @@ class Index(IndexOpsMixin):
         >>> idx.is_all_dates
         False
         """
-        return isinstance(self.spark_type, TimestampType)
+        return isinstance(self.spark.data_type, TimestampType)
 
     def repeat(self, repeats: int) -> "Index":
         """
@@ -1805,7 +1809,7 @@ class Index(IndexOpsMixin):
         >>> idx.asof('1999-01-02')
         nan
         """
-        sdf = self._internal._sdf
+        sdf = self._internal.spark_frame
         if self.is_monotonic_increasing:
             sdf = sdf.where(self.spark.column <= label).select(F.max(self.spark.column))
         elif self.is_monotonic_decreasing:
@@ -1873,13 +1877,13 @@ class Index(IndexOpsMixin):
                     raise ValueError("Index data must be 1-dimensional")
                 else:
                     other = Index(other)
-        sdf_self = self._internal._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._internal._sdf.select(other._internal.index_spark_columns)
+        sdf_self = self._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._internal.spark_frame.select(other._internal.index_spark_columns)
         sdf = sdf_self.union(sdf_other.subtract(sdf_self))
         if isinstance(self, MultiIndex):
             sdf = sdf.drop_duplicates()
         if sort:
-            sdf = sdf.sort(self._internal.index_spark_columns)
+            sdf = sdf.sort(self._internal.index_spark_column_names)
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
         return DataFrame(internal).index
@@ -1963,7 +1967,7 @@ class Index(IndexOpsMixin):
 
 class MultiIndex(Index):
     """
-    Koalas MultiIndex that corresponds to Pandas MultiIndex logically. This might hold Spark Column
+    Koalas MultiIndex that corresponds to pandas MultiIndex logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -1993,13 +1997,16 @@ class MultiIndex(Index):
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
         scol = F.struct(kdf._internal.index_spark_columns)
-        data_columns = kdf._sdf.select(scol).columns
+        data_columns = kdf._internal.spark_frame.select(scol).columns
         internal = kdf._internal.copy(
             spark_column=scol,
             column_labels=[(col, None) for col in data_columns],
             column_label_names=None,
         )
         IndexOpsMixin.__init__(self, internal, kdf)
+
+    def __abs__(self):
+        raise TypeError("TypeError: cannot perform __abs__ with this index type: MultiIndex")
 
     def _with_new_scol(self, scol: spark.Column):
         raise NotImplementedError("Not supported for type MultiIndex")
@@ -2213,9 +2220,8 @@ class MultiIndex(Index):
         >>> midx.levshape
         (3, 3)
         """
-        internal = self._internal
-        result = internal._sdf.agg(
-            *(F.countDistinct(c) for c in internal.index_spark_columns)
+        result = self._internal.spark_frame.agg(
+            *(F.countDistinct(c) for c in self._internal.index_spark_columns)
         ).collect()[0]
         return tuple(result)
 
@@ -2238,7 +2244,7 @@ class MultiIndex(Index):
         prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
-        for field in self.spark_type[::-1]:
+        for field in self.spark.data_type[::-1]:
             left = scol.getField(field.name)
             right = prev.getField(field.name)
             compare = MultiIndex._comparator_for_monotonic_increasing(field.dataType)
@@ -2274,7 +2280,7 @@ class MultiIndex(Index):
         prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
-        for field in self.spark_type[::-1]:
+        for field in self.spark.data_type[::-1]:
             left = scol.getField(field.name)
             right = prev.getField(field.name)
             compare = MultiIndex._comparator_for_monotonic_decreasing(field.dataType)
@@ -2391,7 +2397,7 @@ class MultiIndex(Index):
         """
         Return a pandas MultiIndex.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -2519,8 +2525,8 @@ class MultiIndex(Index):
                 "Doesn't support symmetric_difference between Index & MultiIndex for now"
             )
 
-        sdf_self = self._kdf._sdf.select(self._internal.index_spark_columns)
-        sdf_other = other._kdf._sdf.select(other._internal.index_spark_columns)
+        sdf_self = self._kdf._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._kdf._internal.spark_frame.select(other._internal.index_spark_columns)
 
         sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
@@ -2592,7 +2598,7 @@ class MultiIndex(Index):
             scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
         return MultiIndex(
-            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
+            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._internal.index_map))
         )
 
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
@@ -2725,12 +2731,22 @@ class MultiIndex(Index):
         )
         return ks.DataFrame(internal).index
 
+    def _get_or_create_repr_pandas_cache(self, n):
+        if (
+            not hasattr(self, "_repr_pandas_cache")
+            or (id(self._internal), n) not in self._repr_pandas_cache
+        ):
+            self._repr_pandas_cache = {
+                (id(self._internal), n): self._kdf.head(n + 1).index.to_pandas()
+            }
+        return self._repr_pandas_cache[(id(self._internal), n)]
+
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = self._kdf.head(max_display_count + 1).index.to_pandas()
+        pindex = self._get_or_create_repr_pandas_cache(max_display_count)
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])

@@ -374,7 +374,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
     def __getitem__(self, key):
         from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
+        from databricks.koalas.series import Series, first_series
 
         if self._is_series:
             if isinstance(key, Series) and not same_anchor(key, self._kdf_or_kser):
@@ -444,21 +444,19 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             column_label_names = None
 
         try:
-            sdf = self._internal._sdf
+            sdf = self._internal.spark_frame
+
             if cond is not None:
-                sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond)
+                data_columns = sdf.select(data_spark_columns).columns
+                sdf = sdf.filter(cond).select(index_scols + data_spark_columns)
+                data_spark_columns = [scol_for(sdf, col) for col in data_columns]
+
             if limit is not None:
                 if limit >= 0:
                     sdf = sdf.limit(limit)
                 else:
                     sdf = sdf.limit(sdf.count() + limit)
-
-            data_columns = sdf.select(data_spark_columns).columns
-
-            if cond is None:
-                sdf = sdf.select(index_scols + data_spark_columns + [NATURAL_ORDER_COLUMN_NAME])
-            else:
-                sdf = sdf.select(index_scols + data_spark_columns)
+                sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME)
         except AnalysisException:
             raise KeyError(
                 "[{}] don't exist in columns".format(
@@ -470,15 +468,13 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             spark_frame=sdf,
             index_map=index_map,
             column_labels=column_labels,
-            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
+            data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
         )
         kdf = DataFrame(internal)
 
         if returns_series:
-            kdf_or_kser = Series(
-                kdf._internal.copy(spark_column=kdf._internal.data_spark_columns[0]), anchor=kdf
-            )
+            kdf_or_kser = first_series(kdf)
         else:
             kdf_or_kser = kdf
 
@@ -1512,6 +1508,10 @@ class iLocIndexer(LocIndexerLike):
             self._kdf_or_kser._kdf = kser._kdf
         else:
             assert self._is_df
+            internal = self._kdf_or_kser._internal
+            self._kdf_or_kser._internal = internal.with_new_sdf(
+                internal.spark_frame.select(internal.spark_columns)
+            )
 
         # Clean up implicitly cached properties to be able to reuse the indexer.
         del self._internal

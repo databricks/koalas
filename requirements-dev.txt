@@ -8,11 +8,12 @@ numpy>=1.14
 mlflow>=1.0
 
 # Documentation build
-sphinx
+sphinx<3.1.0
 nbsphinx
 numpydoc==0.8
 pypandoc
 ipython
+pydata-sphinx-theme
 
 # Linter
 mypy

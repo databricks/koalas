@@ -410,7 +410,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         agg_funcs = ["max", "min", ["min", "max"]]
         for aggfunc in agg_funcs:
 
-            # Since in koalas groupby, the order of rows might be different
+            # Since in Koalas groupby, the order of rows might be different
             # so sort on index to ensure they have same output
             sorted_agg_kdf = kdf.groupby("kind").agg(aggfunc).sort_index()
             sorted_agg_pdf = pdf.groupby("kind").agg(aggfunc).sort_index()

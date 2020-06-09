@@ -35,30 +35,32 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
             Rolling(1, 2)
 
     def _test_rolling_func(self, f):
-        kser = ks.Series([1, 2, 3], index=np.random.rand(3))
-        pser = kser.to_pandas()
-        self.assert_eq(repr(getattr(kser.rolling(2), f)()), repr(getattr(pser.rolling(2), f)()))
+        pser = pd.Series([1, 2, 3], index=np.random.rand(3), name="a")
+        kser = ks.from_pandas(pser)
+        self.assert_eq(getattr(kser.rolling(2), f)(), getattr(pser.rolling(2), f)(), almost=True)
 
-        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
-        pdf = kdf.to_pandas()
-        self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
+        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(getattr(kdf.rolling(2), f)(), getattr(pdf.rolling(2), f)(), almost=True)
 
         # Multiindex
-        kser = ks.Series(
-            [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        pser = pd.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")]),
+            name="a",
         )
-        pser = kser.to_pandas()
-        self.assert_eq(repr(getattr(kser.rolling(2), f)()), repr(getattr(pser.rolling(2), f)()))
+        kser = ks.from_pandas(pser)
+        self.assert_eq(getattr(kser.rolling(2), f)(), getattr(pser.rolling(2), f)(), almost=True)
 
-        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
-        pdf = kdf.to_pandas()
-        self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
+        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(getattr(kdf.rolling(2), f)(), getattr(pdf.rolling(2), f)(), almost=True)
 
         # Multiindex column
-        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
-        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
-        pdf = kdf.to_pandas()
-        self.assert_eq(repr(getattr(kdf.rolling(2), f)()), repr(getattr(pdf.rolling(2), f)()))
+        columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
+        pdf.columns = columns
+        kdf.columns = columns
+        self.assert_eq(getattr(kdf.rolling(2), f)(), getattr(pdf.rolling(2), f)(), almost=True)
 
     def test_rolling_min(self):
         self._test_rolling_func("min")
@@ -82,42 +84,69 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         self._test_rolling_func("var")
 
     def _test_groupby_rolling_func(self, f):
-        kser = ks.Series([1, 2, 3], index=np.random.rand(3))
-        pser = kser.to_pandas()
+        pser = pd.Series([1, 2, 3], index=np.random.rand(3), name="a")
+        kser = ks.from_pandas(pser)
         self.assert_eq(
-            repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
-            repr(getattr(pser.groupby(pser).rolling(2), f)().sort_index()),
+            getattr(kser.groupby(kser).rolling(2), f)().sort_index(),
+            getattr(pser.groupby(pser).rolling(2), f)().sort_index(),
+            almost=True,
         )
 
         # Multiindex
-        kser = ks.Series(
-            [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        pser = pd.Series(
+            [1, 2, 3],
+            index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")]),
+            name="a",
         )
-        pser = kser.to_pandas()
+        kser = ks.from_pandas(pser)
         self.assert_eq(
-            repr(getattr(kser.groupby(kser).rolling(2), f)().sort_index()),
-            repr(getattr(pser.groupby(pser).rolling(2), f)()),
+            getattr(kser.groupby(kser).rolling(2), f)().sort_index(),
+            getattr(pser.groupby(pser).rolling(2), f)().sort_index(),
+            almost=True,
         )
 
-        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
-        pdf = kdf.to_pandas()
+        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(
-            repr(getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index()),
-            repr(getattr(pdf.groupby(pdf.a).rolling(2), f)().sort_index()),
+            getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index(),
+            getattr(pdf.groupby(pdf.a).rolling(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            getattr(kdf.groupby(kdf.a + 1).rolling(2), f)().sort_index(),
+            getattr(pdf.groupby(pdf.a + 1).rolling(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            getattr(kdf.b.groupby(kdf.a).rolling(2), f)().sort_index(),
+            getattr(pdf.b.groupby(pdf.a).rolling(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            getattr(kdf.groupby(kdf.a)["b"].rolling(2), f)().sort_index(),
+            getattr(pdf.groupby(pdf.a)["b"].rolling(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            getattr(kdf.groupby(kdf.a)[["b"]].rolling(2), f)().sort_index(),
+            getattr(pdf.groupby(pdf.a)[["b"]].rolling(2), f)().sort_index(),
+            almost=True,
         )
 
         # Multiindex column
-        kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
-        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
-        pdf = kdf.to_pandas()
+        columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
+        pdf.columns = columns
+        kdf.columns = columns
         self.assert_eq(
-            repr(getattr(kdf.groupby(("a", "x")).rolling(2), f)().sort_index()),
-            repr(getattr(pdf.groupby(("a", "x")).rolling(2), f)().sort_index()),
+            getattr(kdf.groupby(("a", "x")).rolling(2), f)().sort_index(),
+            getattr(pdf.groupby(("a", "x")).rolling(2), f)().sort_index(),
+            almost=True,
         )
 
         self.assert_eq(
-            repr(getattr(kdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()),
-            repr(getattr(pdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index()),
+            getattr(kdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index(),
+            getattr(pdf.groupby([("a", "x"), ("a", "y")]).rolling(2), f)().sort_index(),
+            almost=True,
         )
 
     def test_groupby_rolling_count(self):

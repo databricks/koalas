@@ -73,7 +73,7 @@ class InternalFrame(object):
         should not directly access to it.
 
     The internal immutable DataFrame represents the index information for a DataFrame it belongs to.
-    For instance, if we have a Koalas DataFrame as below, Pandas DataFrame does not store the index
+    For instance, if we have a Koalas DataFrame as below, pandas DataFrame does not store the index
     as columns.
 
     >>> kdf = ks.DataFrame({
@@ -130,10 +130,10 @@ class InternalFrame(object):
     +-----------------+---+---+---+---+---+-----------------+
     |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
     +-----------------+---+---+---+---+---+-----------------+
-    |                0|  1|  5|  9| 13| 17|...|
-    |                1|  2|  6| 10| 14| 18|...|
-    |                2|  3|  7| 11| 15| 19|...|
-    |                3|  4|  8| 12| 16| 20|...|
+    |                0|  1|  5|  9| 13| 17|              ...|
+    |                1|  2|  6| 10| 14| 18|              ...|
+    |                2|  3|  7| 11| 15| 19|              ...|
+    |                3|  4|  8| 12| 16| 20|              ...|
     +-----------------+---+---+---+---+---+-----------------+
     >>> internal.data_spark_column_names
     ['A', 'B', 'C', 'D', 'E']
@@ -187,10 +187,10 @@ class InternalFrame(object):
     +-----------------+---+---+---+---+---+-----------------+
     |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
     +-----------------+---+---+---+---+---+-----------------+
-    |                0|  1|  5|  9| 13| 17|...|
-    |                1|  2|  6| 10| 14| 18|...|
-    |                2|  3|  7| 11| 15| 19|...|
-    |                3|  4|  8| 12| 16| 20|...|
+    |                0|  1|  5|  9| 13| 17|              ...|
+    |                1|  2|  6| 10| 14| 18|              ...|
+    |                2|  3|  7| 11| 15| 19|              ...|
+    |                3|  4|  8| 12| 16| 20|              ...|
     +-----------------+---+---+---+---+---+-----------------+
     >>> internal.data_spark_column_names
     ['B', 'C', 'D', 'E']
@@ -245,10 +245,10 @@ class InternalFrame(object):
     +-----------------+---+---+---+---+---+-----------------+
     |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
     +-----------------+---+---+---+---+---+-----------------+
-    |                0|  1|  5|  9| 13| 17|...|
-    |                1|  2|  6| 10| 14| 18|...|
-    |                2|  3|  7| 11| 15| 19|...|
-    |                3|  4|  8| 12| 16| 20|...|
+    |                0|  1|  5|  9| 13| 17|              ...|
+    |                1|  2|  6| 10| 14| 18|              ...|
+    |                2|  3|  7| 11| 15| 19|              ...|
+    |                3|  4|  8| 12| 16| 20|              ...|
     +-----------------+---+---+---+---+---+-----------------+
     >>> internal.data_spark_column_names
     ['B', 'C', 'D', 'E']
@@ -301,18 +301,18 @@ class InternalFrame(object):
     +-----------------+------+------+------+------+-----------------+
     |__index_level_0__|(X, A)|(X, B)|(Y, C)|(Y, D)|__natural_order__|
     +-----------------+------+------+------+------+-----------------+
-    |                0|     1|     2|     3|     4|...|
-    |                1|     5|     6|     7|     8|...|
-    |                2|     9|    10|    11|    12|...|
-    |                3|    13|    14|    15|    16|...|
-    |                4|    17|    18|    19|    20|...|
+    |                0|     1|     2|     3|     4|              ...|
+    |                1|     5|     6|     7|     8|              ...|
+    |                2|     9|    10|    11|    12|              ...|
+    |                3|    13|    14|    15|    16|              ...|
+    |                4|    17|    18|    19|    20|              ...|
     +-----------------+------+------+------+------+-----------------+
     >>> internal.data_spark_column_names
     ['(X, A)', '(X, B)', '(Y, C)', '(Y, D)']
     >>> internal.column_labels
     [('X', 'A'), ('X', 'B'), ('Y', 'C'), ('Y', 'D')]
 
-    For series, it also holds scol to represent the column.
+    For Series, it also holds scol to represent the column.
 
     >>> kseries = kdf1.B
     >>> kseries
@@ -328,10 +328,10 @@ class InternalFrame(object):
     +-----------------+---+---+---+---+---+-----------------+
     |__index_level_0__|  A|  B|  C|  D|  E|__natural_order__|
     +-----------------+---+---+---+---+---+-----------------+
-    |                0|  1|  5|  9| 13| 17|...|
-    |                1|  2|  6| 10| 14| 18|...|
-    |                2|  3|  7| 11| 15| 19|...|
-    |                3|  4|  8| 12| 16| 20|...|
+    |                0|  1|  5|  9| 13| 17|              ...|
+    |                1|  2|  6| 10| 14| 18|              ...|
+    |                2|  3|  7| 11| 15| 19|              ...|
+    |                3|  4|  8| 12| 16| 20|              ...|
     +-----------------+---+---+---+---+---+-----------------+
     >>> internal.spark_column
     Column<b'B'>
@@ -637,21 +637,25 @@ class InternalFrame(object):
             (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
         )
 
-    def spark_column_name_for(self, labels: Tuple[str, ...]) -> str:
-        """ Return the actual Spark column name for the given column name. """
-        return self.spark_frame.select(self.spark_column_for(labels)).columns[0]
+    def spark_column_name_for(self, label: Tuple[str, ...]) -> str:
+        """ Return the actual Spark column name for the given column label. """
+        return self.spark_frame.select(self.spark_column_for(label)).columns[0]
 
-    def spark_column_for(self, labels: Tuple[str, ...]):
-        """ Return Spark Column for the given column name. """
+    def spark_column_for(self, label: Tuple[str, ...]):
+        """ Return Spark Column for the given column label. """
         column_labels_to_scol = dict(zip(self.column_labels, self.data_spark_columns))
-        if labels in column_labels_to_scol:
-            return column_labels_to_scol[labels]  # type: ignore
+        if label in column_labels_to_scol:
+            return column_labels_to_scol[label]  # type: ignore
         else:
-            raise KeyError(name_like_string(labels))
+            raise KeyError(name_like_string(label))
 
-    def spark_type_for(self, labels: Tuple[str, ...]) -> DataType:
-        """ Return DataType for the given column name. """
-        return self.spark_frame.select(self.spark_column_for(labels)).schema[0].dataType
+    def spark_type_for(self, label: Tuple[str, ...]) -> DataType:
+        """ Return DataType for the given column label. """
+        return self.spark_frame.select(self.spark_column_for(label)).schema[0].dataType
+
+    def spark_column_nullable_for(self, label: Tuple[str, ...]) -> bool:
+        """ Return nullability for the given column label. """
+        return self.spark_frame.select(self.spark_column_for(label)).schema[0].nullable
 
     @property
     def spark_frame(self) -> spark.DataFrame:
@@ -694,7 +698,7 @@ class InternalFrame(object):
         index_spark_columns = self.index_spark_columns
         return index_spark_columns + [
             spark_column
-            for label, spark_column in zip(self.column_labels, self.data_spark_columns)
+            for spark_column in self.data_spark_columns
             if all(not spark_column._jc.equals(scol._jc) for scol in index_spark_columns)
         ]
 
@@ -789,12 +793,26 @@ class InternalFrame(object):
             ]
         return pdf
 
+    @lazy_property
+    def resolved_copy(self):
+        """ Copy the immutable InternalFrame with the updates resolved. """
+        sdf = self.spark_frame.select(self.spark_columns + list(HIDDEN_COLUMNS))
+        if self.spark_column is None:
+            return self.copy(
+                spark_frame=sdf,
+                data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
+            )
+        else:
+            return self.copy(
+                spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
+            )
+
     def with_new_sdf(
-        self, sdf: spark.DataFrame, data_columns: Optional[List[str]] = None
+        self, spark_frame: spark.DataFrame, data_columns: Optional[List[str]] = None
     ) -> "InternalFrame":
         """ Copy the immutable _InternalFrame with the updates by the specified Spark DataFrame.
 
-        :param sdf: the new Spark DataFrame
+        :param spark_frame: the new Spark DataFrame
         :param data_columns: the new column names.
             If None, the original one is used.
         :return: the copied _InternalFrame.
@@ -808,7 +826,7 @@ class InternalFrame(object):
                 len(data_columns),
                 len(self.column_labels),
             )
-        sdf = sdf.drop(NATURAL_ORDER_COLUMN_NAME)
+        sdf = spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
         return self.copy(
             spark_frame=sdf, data_spark_columns=[scol_for(sdf, col) for col in data_columns]
         )
@@ -852,20 +870,19 @@ class InternalFrame(object):
             )
 
         data_spark_columns = []
-        for scol_or_kser, label in zip(scols_or_ksers, column_labels):
+        for scol_or_kser in scols_or_ksers:
             if isinstance(scol_or_kser, Series):
                 scol = scol_or_kser._internal.spark_column
             else:
                 scol = scol_or_kser
             data_spark_columns.append(scol)
 
-        hidden_columns = []
-        if keep_order:
-            hidden_columns.append(NATURAL_ORDER_COLUMN_NAME)
-
-        sdf = self.spark_frame.select(
-            self.index_spark_columns + data_spark_columns + hidden_columns
-        )
+        sdf = self.spark_frame
+        if not keep_order:
+            sdf = self.spark_frame.select(self.index_spark_columns + data_spark_columns)
+            data_spark_columns = [
+                scol_for(sdf, col) for col in self.spark_frame.select(data_spark_columns).columns
+            ]
 
         if column_label_names is _NoValue:
             column_label_names = self._column_label_names
@@ -873,9 +890,7 @@ class InternalFrame(object):
         return self.copy(
             spark_frame=sdf,
             column_labels=column_labels,
-            data_spark_columns=[
-                scol_for(sdf, col) for col in self.spark_frame.select(data_spark_columns).columns
-            ],
+            data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
             spark_column=None,
         )
@@ -895,7 +910,13 @@ class InternalFrame(object):
             spark_type = self.spark_frame.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
 
-        return self.copy(spark_frame=self.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME).filter(pred))
+        sdf = self.spark_frame.filter(pred).select(self.spark_columns)
+        if self.spark_column is None:
+            return self.with_new_sdf(sdf)
+        else:
+            return self.copy(
+                spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
+            )
 
     def copy(
         self,

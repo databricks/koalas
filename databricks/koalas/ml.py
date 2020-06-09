@@ -38,7 +38,7 @@ def corr(kdf: "ks.DataFrame", method: str = "pearson") -> pd.DataFrame:
 
     Only accepts scalar numerical values for now.
 
-    :param kdf: the koalas dataframe.
+    :param kdf: the Koalas dataframe.
     :param method: {'pearson', 'spearman'}
                    * pearson : standard correlation coefficient
                    * spearman : Spearman rank correlation
@@ -67,7 +67,7 @@ def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[Tupl
     vector of doubles. This dataframe has a single field called '_1'.
 
     TODO: index is not preserved currently
-    :param kdf: the koalas dataframe.
+    :param kdf: the Koalas dataframe.
     :return: a pair of dataframe, list of strings (the name of the columns
              that were converted to numerical types)
 
@@ -82,7 +82,7 @@ def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[Tupl
     numeric_column_labels = [
         label for label in kdf._internal.column_labels if kdf[label].dtype in accepted_types
     ]
-    numeric_df = kdf._sdf.select(
+    numeric_df = kdf._internal.spark_frame.select(
         *[kdf._internal.spark_column_for(idx) for idx in numeric_column_labels]
     )
     va = VectorAssembler(inputCols=numeric_df.columns, outputCol=CORRELATION_OUTPUT_COLUMN)

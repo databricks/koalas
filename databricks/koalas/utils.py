@@ -103,13 +103,16 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         # level.
         this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
 
+        this_sdf = this._internal.resolved_copy.spark_frame.alias("this")
+        that_sdf = that._internal.resolved_copy.spark_frame.alias("that")
+
         # If the same named index is found, that's used.
         for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
             if this_name == that_name:
                 # We should merge the Spark columns into one
                 # to mimic pandas' behavior.
-                this_scol = scol_for(this._sdf, this_column)
-                that_scol = scol_for(that._sdf, that_column)
+                this_scol = scol_for(this_sdf, this_column)
+                that_scol = scol_for(that_sdf, that_column)
                 join_scol = this_scol == that_scol
                 join_scols.append(join_scol)
                 merged_index_scols.append(
@@ -120,23 +123,23 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
         assert len(join_scols) > 0, "cannot join with no overlapping index names"
 
-        joined_df = this._sdf.alias("this").join(that._sdf.alias("that"), on=join_scols, how=how)
+        joined_df = this_sdf.join(that_sdf, on=join_scols, how=how)
 
         if preserve_order_column:
-            order_column = [scol_for(this._sdf, NATURAL_ORDER_COLUMN_NAME)]
+            order_column = [scol_for(this_sdf, NATURAL_ORDER_COLUMN_NAME)]
         else:
             order_column = []
 
         joined_df = joined_df.select(
             merged_index_scols
             + [
-                this[label].spark.column.alias(
+                scol_for(this_sdf, this._internal.spark_column_name_for(label)).alias(
                     "__this_%s" % this._internal.spark_column_name_for(label)
                 )
                 for label in this._internal.column_labels
             ]
             + [
-                that[label].spark.column.alias(
+                scol_for(that_sdf, that._internal.spark_column_name_for(label)).alias(
                     "__that_%s" % that._internal.spark_column_name_for(label)
                 )
                 for label in that._internal.column_labels
@@ -354,7 +357,7 @@ def default_session(conf=None):
         builder = builder.config(key, value)
     # Currently, Koalas is dependent on such join due to 'compute.ops_on_diff_frames'
     # configuration. This is needed with Spark 3.0+.
-    builder.config("spark.sql.analyzer.failAmbiguousSelfJoin.enabled", False)
+    builder.config("spark.sql.analyzer.failAmbiguousSelfJoin", False)
     session = builder.getOrCreate()
 
     if not should_use_legacy_ipc:
@@ -399,7 +402,7 @@ def validate_arguments_and_invoke_function(
     For example usage, look at DataFrame.to_html().
 
     :param pobj: the pandas DataFrame or Series to operate on
-    :param koalas_func: koalas function, used to get default parameter values
+    :param koalas_func: Koalas function, used to get default parameter values
     :param pandas_func: pandas function, used to check whether pandas supports all the arguments
     :param input_args: arguments to pass to the pandas function, often created by using locals().
                        Make sure locals() call is at the top of the function so it captures only
@@ -560,8 +563,9 @@ def verify_temp_column_name(
     ...
     AssertionError: ... should be empty or start and end with `__`: ('', 'dummy')
 
-    >>> sdf = kdf._internal.spark_frame
-    >>> sdf.select(kdf._internal.data_spark_columns).show()  # doctest: +NORMALIZE_WHITESPACE
+    >>> internal = kdf._internal.resolved_copy
+    >>> sdf = internal.spark_frame
+    >>> sdf.select(internal.data_spark_columns).show()  # doctest: +NORMALIZE_WHITESPACE
     +------+---------+-------------+
     |(x, a)|__dummy__|(, __dummy__)|
     +------+---------+-------------+
@@ -607,7 +611,7 @@ def verify_temp_column_name(
         ), "The given column name `{}` already exists in the Koalas DataFrame: {}".format(
             name_like_string(column_name_or_label), df.columns
         )
-        df = df._internal.spark_frame
+        df = df._internal.resolved_copy.spark_frame
     else:
         assert isinstance(column_name_or_label, str), type(column_name_or_label)
         assert column_name_or_label.startswith("__") and column_name_or_label.endswith(

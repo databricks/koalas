@@ -796,7 +796,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_map(self):
         pser = pd.Series(["cat", "dog", None, "rabbit"])
         kser = ks.from_pandas(pser)
-        # Currently Koalas doesn't return NaN as Pandas does.
+        # Currently Koalas doesn't return NaN as pandas does.
         self.assertEqual(
             repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None}).rename(0))
         )
@@ -1631,3 +1631,37 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_item(self):
         kser = ks.Series([10, 20])
         self.assertRaises(ValueError, lambda: kser.item())
+
+    def test_filter(self):
+        pser = pd.Series([0, 1, 2], index=["one", "two", "three"])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.filter(items=["one", "three"]), kser.filter(items=["one", "three"]))
+        self.assert_eq(pser.filter(regex="e$"), kser.filter(regex="e$"))
+        self.assert_eq(pser.filter(like="hre"), kser.filter(like="hre"))
+
+        with self.assertRaisesRegex(ValueError, "Series does not support columns axis."):
+            kser.filter(like="hre", axis=1)
+
+        # for MultiIndex
+        midx = pd.MultiIndex.from_tuples([("one", "x"), ("two", "y"), ("three", "z")])
+        pser = pd.Series([0, 1, 2], index=midx)
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.filter(items=[("one", "x"), ("three", "z")]),
+            kser.filter(items=[("one", "x"), ("three", "z")]),
+        )
+
+        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+            kser.filter(items=[["one", "x"], ("three", "z")])
+
+        with self.assertRaisesRegex(ValueError, "The item should not be empty."):
+            kser.filter(items=[(), ("three", "z")])
+
+    def test_abs(self):
+        pser = pd.Series([-2, -1, 0, 1])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(abs(kser), abs(pser))
+        self.assert_eq(np.abs(kser), np.abs(pser))

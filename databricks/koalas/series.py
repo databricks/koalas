@@ -79,7 +79,7 @@ from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ in Series.
-# This pattern basically seeks the footer string from Pandas'
+# This pattern basically seeks the footer string from pandas'
 REPR_PATTERN = re.compile(r"Length: (?P<length>[0-9]+)")
 
 _flex_doc_SERIES = """
@@ -307,7 +307,7 @@ str_type = str
 
 class Series(Frame, IndexOpsMixin, Generic[T]):
     """
-    Koalas Series that corresponds to Pandas Series logically. This holds Spark Column
+    Koalas Series that corresponds to pandas Series logically. This holds Spark Column
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
@@ -317,11 +317,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     Parameters
     ----------
-    data : array-like, dict, or scalar value, Pandas Series
+    data : array-like, dict, or scalar value, pandas Series
         Contains data stored in Series
         If data is a dict, argument order is maintained for Python 3.6
         and later.
-        Note that if `data` is a Pandas Series, other arguments should not be used.
+        Note that if `data` is a pandas Series, other arguments should not be used.
     index : array-like or Index (1d)
         Values must be hashable and have the same length as `data`.
         Non-unique index values are allowed. Will default to
@@ -1100,7 +1100,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         #
         # This workaround is in order to calculate the distinct count including nulls in
         # single pass. Note that COUNT(DISTINCT expr) in Spark is designed to ignore nulls.
-        return self._internal._sdf.select(
+        return self._internal.spark_frame.select(
             (F.count(scol) == F.countDistinct(scol))
             & (F.count(F.when(scol.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
@@ -1266,7 +1266,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Render a string representation of the Series.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory. If the input
                   is large, set max_rows parameter.
 
@@ -1336,7 +1336,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Convert Series to {label -> value} dict or dict-like object.
 
-        .. note:: This method should only be used if the resulting Pandas DataFrame is expected
+        .. note:: This method should only be used if the resulting pandas DataFrame is expected
             to be small, as all the data is loaded into the driver's memory.
 
         Parameters
@@ -1409,7 +1409,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Return a pandas Series.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -1606,14 +1606,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
         if (method is not None) and (method not in ["ffill", "pad", "backfill", "bfill"]):
             raise ValueError("Expecting 'pad', 'ffill', 'backfill' or 'bfill'.")
-        if self.isnull().sum() == 0:
+
+        if not self.spark.nullable:
             if inplace:
-                self._internal = self._internal.copy()
-                self._kdf = self._kdf.copy()
+                return
             else:
                 return self
 
-        column_name = self.name
         scol = self.spark.column
 
         if value is not None:
@@ -1644,7 +1643,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 .rowsBetween(begin, end)
             )
             scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
-        kseries = self._with_new_scol(scol).rename(column_name)
+        kseries = self._with_new_scol(scol).rename(self.name)
         if inplace:
             self._internal = kseries._internal
             self._kdf = kseries._kdf
@@ -1694,7 +1693,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: float64
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        # TODO: last two examples from Pandas produce different results.
+        # TODO: last two examples from pandas produce different results.
         kseries = first_series(self.to_dataframe().dropna(axis=axis, inplace=False))
         if inplace:
             self._internal = kseries._internal
@@ -1959,7 +1958,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Uniques are returned in order of appearance. Hash table-based unique,
         therefore does NOT sort.
 
-        .. note:: This method returns newly creased Series whereas Pandas returns
+        .. note:: This method returns newly creased Series whereas pandas returns
                   the unique values as a NumPy array.
 
         Returns
@@ -2252,8 +2251,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.spark_frame
         sdf = sdf.select(
             [
-                F.concat(F.lit(prefix), scol_for(sdf, index_column)).alias(index_column)
-                for index_column in internal.index_spark_column_names
+                F.concat(F.lit(prefix), index_spark_column).alias(index_spark_column_name)
+                for index_spark_column, index_spark_column_name in zip(
+                    internal.index_spark_columns, internal.index_spark_column_names
+                )
             ]
             + internal.data_spark_columns
         )
@@ -2306,8 +2307,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = internal.spark_frame
         sdf = sdf.select(
             [
-                F.concat(scol_for(sdf, index_column), F.lit(suffix)).alias(index_column)
-                for index_column in internal.index_spark_column_names
+                F.concat(index_spark_column, F.lit(suffix)).alias(index_spark_column_name)
+                for index_spark_column, index_spark_column_name in zip(
+                    internal.index_spark_columns, internal.index_spark_column_names
+                )
             ]
             + internal.data_spark_columns
         )
@@ -2723,7 +2726,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return_schema = sig_return.tpe
             return self._transform_batch(apply_each, return_schema)
 
-    # TODO: not all arguments are implemented comparing to Pandas' for now.
+    # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func: Union[str, List[str]]):
         """Aggregate using one or more operations over the specified axis.
 
@@ -3308,6 +3311,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kser = self._with_new_scol(scol).rename(self.name)
         return kser.astype(np.float64)
 
+    def filter(self, items=None, like=None, regex=None, axis=None):
+        axis = validate_axis(axis)
+        if axis == 1:
+            raise ValueError("Series does not support columns axis.")
+        return first_series(self.to_frame().filter(items=items, like=like, regex=regex, axis=axis))
+
+    filter.__doc__ = DataFrame.filter.__doc__
+
     def describe(self, percentiles: Optional[List[float]] = None) -> "Series":
         return first_series(self.to_dataframe().describe(percentiles))
 
@@ -3581,7 +3592,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.idxmin()
         10
         """
-        sdf = self._internal._sdf
+        sdf = self._internal.spark_frame
         scol = self.spark.column
         index_scols = self._internal.index_spark_columns
         # asc_nulls_(last|first)is used via Py4J directly because
@@ -4176,7 +4187,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         index_scol_names = [index_map[0] for index_map in self._internal.index_map.items()]
         combined = combine_frames(self.to_frame(), other.to_frame(), how="leftouter")
-        combined_sdf = combined._sdf
+        combined_sdf = combined._internal.resolved_copy.spark_frame
         this_col = "__this_%s" % str(
             self._internal.spark_column_name_for(self._internal.column_labels[0])
         )
@@ -4772,10 +4783,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not is_list_like(where):
             should_return_series = False
             where = [where]
-        sdf = self._internal._sdf
         index_scol = self._internal.index_spark_columns[0]
         cond = [F.max(F.when(index_scol <= index, self.spark.column)) for index in where]
-        sdf = sdf.select(cond)
+        sdf = self._internal.spark_frame.select(cond)
         if not should_return_series:
             result = sdf.head()[0]
             return result if result is not None else np.nan
@@ -5093,12 +5103,22 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self._internal.to_pandas_frame)
 
+    def _get_or_create_repr_pandas_cache(self, n):
+        if (
+            not hasattr(self, "_repr_pandas_cache")
+            or (id(self._internal), n) not in self._repr_pandas_cache
+        ):
+            self._repr_pandas_cache = {
+                (id(self._internal), n): self.head(n + 1)._to_internal_pandas()
+            }
+        return self._repr_pandas_cache[(id(self._internal), n)]
+
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return self._to_internal_pandas().to_string(name=self.name, dtype=self.dtype)
 
-        pser = self.head(max_display_count + 1)._to_internal_pandas()
+        pser = self._get_or_create_repr_pandas_cache(max_display_count)
         pser_length = len(pser)
         pser = pser.iloc[:max_display_count]
         if pser_length > max_display_count:

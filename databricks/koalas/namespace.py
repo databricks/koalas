@@ -55,6 +55,7 @@ from databricks.koalas.utils import (
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import InternalFrame
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.indexes import Index
 
 
 __all__ = [
@@ -86,8 +87,10 @@ __all__ = [
 ]
 
 
-def from_pandas(pobj: Union["pd.DataFrame", "pd.Series"]) -> Union["Series", "DataFrame"]:
-    """Create a Koalas DataFrame or Series from a pandas DataFrame or Series.
+def from_pandas(
+    pobj: Union["pd.DataFrame", "pd.Series", "pd.Index"]
+) -> Union["Series", "DataFrame", "Index"]:
+    """Create a Koalas DataFrame, Series or Index from a pandas DataFrame, Series or Index.
 
     This is similar to Spark's `SparkSession.createDataFrame()` with pandas DataFrame,
     but this also works with pandas Series and picks the index.
@@ -1580,7 +1583,8 @@ def get_dummies(
         prefix = [prefix[column_label[0]] for column_label in column_labels]
 
     all_values = _reduce_spark_multi(
-        kdf._sdf, [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels]
+        kdf._internal.spark_frame,
+        [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels],
     )
     for i, label in enumerate(column_labels):
         values = sorted(all_values[i])
@@ -1605,7 +1609,7 @@ def get_dummies(
     return kdf[remaining_columns]
 
 
-# TODO: there are many parameters to implement and support. See Pandas's pd.concat.
+# TODO: there are many parameters to implement and support. See pandas's pd.concat.
 def concat(objs, axis=0, join="outer", ignore_index=False):
     """
     Concatenate pandas objects along a particular axis with optional set logic
@@ -1741,7 +1745,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
         objs, Iterable
     ):  # TODO: support dict
         raise TypeError(
-            "first argument must be an iterable of koalas "
+            "first argument must be an iterable of Koalas "
             "objects, you passed an object of type "
             '"{name}"'.format(name=type(objs).__name__)
         )
@@ -1860,7 +1864,6 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     ):
         # If all columns are in the same order and values, use it.
         kdfs = objs
-        merged_columns = column_labelses_of_kdfs[0]
     else:
         if join == "inner":
             interested_columns = set.intersection(*map(set, column_labelses_of_kdfs))
@@ -1886,7 +1889,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 columns_to_add = list(set(merged_columns) - set(kdf._internal.column_labels))
 
                 # TODO: NaN and None difference for missing values. pandas seems filling NaN.
-                sdf = kdf._sdf
+                sdf = kdf._internal.resolved_copy.spark_frame
                 for label in columns_to_add:
                     sdf = sdf.withColumn(name_like_string(label), F.lit(None))
 
@@ -1906,10 +1909,12 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
             raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
-        sdfs = [kdf._sdf.select(kdf._internal.data_spark_columns) for kdf in kdfs]
+        sdfs = [kdf._internal.spark_frame.select(kdf._internal.data_spark_columns) for kdf in kdfs]
     else:
         sdfs = [
-            kdf._sdf.select(kdf._internal.index_spark_columns + kdf._internal.data_spark_columns)
+            kdf._internal.spark_frame.select(
+                kdf._internal.index_spark_columns + kdf._internal.data_spark_columns
+            )
             for kdf in kdfs
         ]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
@@ -2332,7 +2337,9 @@ def broadcast(obj):
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
-    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._sdf)))
+    return DataFrame(
+        obj._internal.with_new_sdf(F.broadcast(obj._internal.resolved_copy.spark_frame))
+    )
 
 
 def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):

@@ -45,6 +45,11 @@ class SparkIndexOpsMethods(object):
         return self._data._internal.spark_type_for(self._data._internal.column_labels[0])
 
     @property
+    def nullable(self):
+        """ Returns the nullability as defined by Spark. """
+        return self._data._internal.spark_column_nullable_for(self._data._internal.column_labels[0])
+
+    @property
     def column(self):
         """
         Spark Column object representing the Series/Index.
@@ -438,6 +443,7 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import CachedDataFrame
 
+        self._kdf._internal = self._kdf._internal.resolved_copy
         return CachedDataFrame(self._kdf._internal)
 
     def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
@@ -547,7 +553,11 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import DataFrame
 
-        return DataFrame(self._kdf._internal.with_new_sdf(self._kdf._sdf.hint(name, *parameters)))
+        return DataFrame(
+            self._kdf._internal.with_new_sdf(
+                self._kdf._internal.spark_frame.hint(name, *parameters)
+            )
+        )
 
     def to_table(
         self,
@@ -719,6 +729,16 @@ class SparkFrameMethods(object):
         == Physical Plan ==
         ...
 
+        >>> df.spark.explain("extended")  # doctest: +ELLIPSIS
+        == Parsed Logical Plan ==
+        ...
+        == Analyzed Logical Plan ==
+        ...
+        == Optimized Logical Plan ==
+        ...
+        == Physical Plan ==
+        ...
+
         >>> df.spark.explain(mode="extended")  # doctest: +ELLIPSIS
         == Parsed Logical Plan ==
         ...
@@ -730,10 +750,14 @@ class SparkFrameMethods(object):
         ...
         """
         if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            if mode is not None and extended is not None:
+                raise Exception("extended and mode should not be set together.")
+
+            if extended is not None and isinstance(extended, str):
+                mode = extended
+
             if mode is not None:
-                if extended is not None:
-                    raise Exception("extended and mode can not be specified simultaneously")
-                elif mode == "simple":
+                if mode == "simple":
                     extended = False
                 elif mode == "extended":
                     extended = True
