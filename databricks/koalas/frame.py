@@ -9103,8 +9103,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         -------
         DataFrame with the renamed axis labels.
 
-        Raises:
-        -------
+        Raises
+        ------
         `KeyError`
             If any of the labels is not found in the selected axis and "errors='raise'".
 

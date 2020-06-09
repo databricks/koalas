@@ -47,13 +47,13 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
 
     The following variable types are supported:
 
-    - string
-    - int
-    - float
-    - list, tuple, range of above types
-    - Koalas DataFrame
-    - Koalas Series
-    - pandas DataFrame
+        * string
+        * int
+        * float
+        * list, tuple, range of above types
+        * Koalas DataFrame
+        * Koalas Series
+        * pandas DataFrame
 
     Parameters
     ----------
