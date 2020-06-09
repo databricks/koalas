@@ -1311,6 +1311,28 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         for lv, output in zip(level_names, outputs):
             self.assertEqual(output, kdf.index._get_level_number(lv))
 
+    def test_holds_integer(self):
+        pidx = pd.Index([1, 2, 3, 4])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
+
+        pidx = pd.Index([1.1, 2.2, 3.3, 4.4])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
+
+        pidx = pd.Index(["A", "B", "C", "D"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.holds_integer(), kidx.holds_integer())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "a")])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.holds_integer(), kmidx.holds_integer())
+
+        pmidx = pd.MultiIndex.from_tuples([(10, 1), (10, 2), (20, 1)])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.holds_integer(), kmidx.holds_integer())
+
     def test_abs(self):
         pidx = pd.Index([-2, -1, 0, 1])
         kidx = ks.from_pandas(pidx)

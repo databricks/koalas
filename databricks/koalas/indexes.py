@@ -40,7 +40,7 @@ from pandas.io.formats.printing import pprint_thing
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType
+from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -1887,6 +1887,39 @@ class Index(IndexOpsMixin):
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
 
         return DataFrame(internal).index
+
+    def holds_integer(self):
+        """
+        Whether the type is an integer type.
+        Always return False for MultiIndex.
+
+        Notes
+        -----
+        When Index contains null values the result can be different with pandas
+        since Koalas cast integer to float when Index contains null values.
+
+        >>> ks.Index([1, 2, 3, None])
+        Float64Index([1.0, 2.0, 3.0, nan], dtype='float64')
+
+        Examples
+        --------
+        >>> kidx = ks.Index([1, 2, 3, 4])
+        >>> kidx.holds_integer()
+        True
+
+        Returns False for string type.
+
+        >>> kidx = ks.Index(["A", "B", "C", "D"])
+        >>> kidx.holds_integer()
+        False
+
+        Returns False for float type.
+
+        >>> kidx = ks.Index([1.1, 2.2, 3.3, 4.4])
+        >>> kidx.holds_integer()
+        False
+        """
+        return isinstance(self.spark.data_type, IntegralType)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeIndex, item):
