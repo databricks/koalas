@@ -22,6 +22,7 @@ import inspect
 import warnings
 from collections import OrderedDict
 from collections.abc import Iterable
+from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
@@ -31,6 +32,7 @@ from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
 
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -4659,7 +4661,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.dot(other)
 
-    def repeat(self, repeats: int) -> "Series":
+    def repeat(self, repeats: Union[int, "Series"]) -> "Series":
         """
         Repeat elements of a Series.
 
@@ -4668,7 +4670,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        repeats : int
+        repeats : int or Series
             The number of repetitions for each element. This should be a
             non-negative integer. Repeating 0 times will return an empty
             Series.
@@ -4701,16 +4703,43 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([1, 2, 3]).repeat(0)
         Series([], Name: 0, dtype: int64)
         """
-        if not isinstance(repeats, int):
-            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
-        elif repeats < 0:
-            raise ValueError("negative dimensions are not allowed")
+        if not isinstance(repeats, (int, Series)):
+            raise ValueError(
+                "`repeats` argument must be integer or Series, but got {}".format(type(repeats))
+            )
 
-        kdf = self.to_frame()
-        if repeats == 0:
-            return first_series(DataFrame(kdf._internal.with_filter(F.lit(False))))
+        if isinstance(repeats, Series):
+            if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+                raise ValueError(
+                    "`repeats` argument must be integer with Spark<2.4, but got {}".format(
+                        type(repeats)
+                    )
+                )
+            if not same_anchor(self, repeats):
+                kdf = self.to_frame()
+                temp_repeats = verify_temp_column_name(kdf, "__temp_repeats__")
+                kdf[temp_repeats] = repeats
+                return kdf[self.name].repeat(kdf[temp_repeats])
+            else:
+                scol = F.explode(
+                    SF.array_repeat(self.spark.column, repeats.astype(int).spark.column)
+                ).alias(name_like_string(self.name))
+                sdf = self._internal.spark_frame.select(self._internal.index_spark_columns + [scol])
+                internal = self._internal.copy(
+                    spark_frame=sdf,
+                    data_spark_columns=[scol_for(sdf, name_like_string(self.name))],
+                    spark_column=None,
+                )
+                return first_series(DataFrame(internal))
         else:
-            return first_series(ks.concat([kdf] * repeats))
+            if repeats < 0:
+                raise ValueError("negative dimensions are not allowed")
+
+            kdf = self.to_frame()
+            if repeats == 0:
+                return first_series(DataFrame(kdf._internal.with_filter(F.lit(False))))
+            else:
+                return first_series(ks.concat([kdf] * repeats))
 
     def asof(self, where):
         """

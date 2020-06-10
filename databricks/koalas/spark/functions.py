@@ -63,6 +63,20 @@ def percentile_approx(col, percentage, accuracy=10000):
     return _call_udf(sc, "percentile_approx", _to_java_column(col), percentage, accuracy)
 
 
+def array_repeat(col, count):
+    """
+    Collection function: creates an array containing a column repeated count times.
+
+    Ported from Spark 3.0.
+    """
+    sc = SparkContext._active_spark_context
+    return Column(
+        sc._jvm.functions.array_repeat(
+            _to_java_column(col), _to_java_column(count) if isinstance(count, Column) else count
+        )
+    )
+
+
 def _call_udf(sc, name, *cols):
     return Column(sc._jvm.functions.callUDF(name, _make_arguments(sc, *cols)))
 

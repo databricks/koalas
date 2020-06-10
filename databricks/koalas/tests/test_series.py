@@ -1382,6 +1382,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.repeat(-1))
         self.assertRaises(ValueError, lambda: kser.repeat("abc"))
 
+        pdf = pd.DataFrame({"a": ["a", "b", "c"], "rep": [10, 20, 30]}, index=np.random.rand(3))
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            self.assertRaises(ValueError, lambda: kdf.a.repeat(kdf.rep))
+        else:
+            self.assert_eq(kdf.a.repeat(kdf.rep).sort_index(), pdf.a.repeat(pdf.rep).sort_index())
+
     def test_take(self):
         pser = pd.Series([100, 200, 300, 400, 500], name="Koalas")
         kser = ks.from_pandas(pser)
