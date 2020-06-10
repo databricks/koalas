@@ -1609,22 +1609,23 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         scol = self.spark.column
 
-        if value is not None:
-            if not isinstance(value, (float, int, str, bool)):
-                raise TypeError("Unsupported type %s" % type(value))
-            if limit is not None:
-                raise ValueError("limit parameter for value is not support now")
-            if isinstance(self.spark.data_type, (FloatType, DoubleType)):
-                scol = F.when(scol.isNull() | F.isnan(scol), value).otherwise(scol)
-            else:
-                scol = F.when(scol.isNull(), value).otherwise(scol)
+        if isinstance(self.spark.data_type, (FloatType, DoubleType)):
+            cond = scol.isNull() | F.isnan(scol)
         else:
             if not self.spark.nullable:
                 if inplace:
                     return
                 else:
                     return self
+            cond = scol.isNull()
 
+        if value is not None:
+            if not isinstance(value, (float, int, str, bool)):
+                raise TypeError("Unsupported type %s" % type(value))
+            if limit is not None:
+                raise ValueError("limit parameter for value is not support now")
+            scol = F.when(cond, value).otherwise(scol)
+        else:
             if method in ["ffill", "pad"]:
                 func = F.last
                 end = Window.currentRow - 1
@@ -1645,7 +1646,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 .orderBy(NATURAL_ORDER_COLUMN_NAME)
                 .rowsBetween(begin, end)
             )
-            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
+            scol = F.when(cond, func(scol, True).over(window)).otherwise(scol)
         kseries = self._with_new_scol(scol).rename(self.name)
         if inplace:
             self._internal = kseries._internal
