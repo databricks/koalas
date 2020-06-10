@@ -1607,12 +1607,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if (method is not None) and (method not in ["ffill", "pad", "backfill", "bfill"]):
             raise ValueError("Expecting 'pad', 'ffill', 'backfill' or 'bfill'.")
 
-        if not self.spark.nullable:
-            if inplace:
-                return
-            else:
-                return self
-
         scol = self.spark.column
 
         if value is not None:
@@ -1620,8 +1614,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 raise TypeError("Unsupported type %s" % type(value))
             if limit is not None:
                 raise ValueError("limit parameter for value is not support now")
-            scol = F.when(scol.isNull(), value).otherwise(scol)
+            if isinstance(self.spark.data_type, (FloatType, DoubleType)):
+                scol = F.when(scol.isNull() | F.isnan(scol), value).otherwise(scol)
+            else:
+                scol = F.when(scol.isNull(), value).otherwise(scol)
         else:
+            if not self.spark.nullable:
+                if inplace:
+                    return
+                else:
+                    return self
+
             if method in ["ffill", "pad"]:
                 func = F.last
                 end = Window.currentRow - 1
