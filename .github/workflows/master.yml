@@ -88,20 +88,20 @@ jobs:
       matrix:
         include:
           - python-version: 3.6
-            spark-version: 2.4.5
+            spark-version: 2.4.6
             pandas-version: 0.24.2
             pyarrow-version: 0.13.0
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.6
-            spark-version: 2.4.5
+            spark-version: 2.4.6
             pandas-version: 0.25.3
             pyarrow-version: 0.13.0
           - python-version: 3.7
-            spark-version: 2.4.5
+            spark-version: 2.4.6
             pandas-version: 0.25.3
             pyarrow-version: 0.14.1
           - python-version: 3.7
-            spark-version: 2.4.5
+            spark-version: 2.4.6
             pandas-version: 1.0.4
             pyarrow-version: 0.15.1
     env:
