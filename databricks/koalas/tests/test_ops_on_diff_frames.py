@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
 import pandas as pd
 import numpy as np
+
+import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -834,6 +838,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kidx2.name = "koalas"
 
         self.assert_eq((kidx1.to_series() == kidx2.to_series()).all(), True)
+
+    def test_series_repeat(self):
+        pser1 = pd.Series(["a", "b", "c"], name="a")
+        pser2 = pd.Series([10, 20, 30], name="rep")
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            self.assertRaises(ValueError, lambda: kser1.repeat(kser2))
+        else:
+            self.assert_eq(kser1.repeat(kser2).sort_index(), pser1.repeat(pser2).sort_index())
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
