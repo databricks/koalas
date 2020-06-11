@@ -1577,6 +1577,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.replace({"A": 0, "B": 5}, 100), pdf.replace({"A": 0, "B": 5}, 100))
 
         self.assert_eq(kdf.replace({"A": {0: 100, 4: 400}}), pdf.replace({"A": {0: 100, 4: 400}}))
+        self.assert_eq(kdf.replace({"X": {0: 100, 4: 400}}), pdf.replace({"X": {0: 100, 4: 400}}))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
@@ -1599,6 +1600,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(
             kdf.replace({("X", "A"): {0: 100, 4: 400}}), pdf.replace({("X", "A"): {0: 100, 4: 400}})
+        )
+        self.assert_eq(
+            kdf.replace({("X", "B"): {0: 100, 4: 400}}), pdf.replace({("X", "B"): {0: 100, 4: 400}})
         )
 
     def test_update(self):
