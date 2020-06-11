@@ -1609,20 +1609,24 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if (method is not None) and (method not in ["ffill", "pad", "backfill", "bfill"]):
             raise ValueError("Expecting 'pad', 'ffill', 'backfill' or 'bfill'.")
 
-        if not self.spark.nullable:
-            if inplace:
-                return
-            else:
-                return self
-
         scol = self.spark.column
+
+        if isinstance(self.spark.data_type, (FloatType, DoubleType)):
+            cond = scol.isNull() | F.isnan(scol)
+        else:
+            if not self.spark.nullable:
+                if inplace:
+                    return
+                else:
+                    return self
+            cond = scol.isNull()
 
         if value is not None:
             if not isinstance(value, (float, int, str, bool)):
                 raise TypeError("Unsupported type %s" % type(value))
             if limit is not None:
                 raise ValueError("limit parameter for value is not support now")
-            scol = F.when(scol.isNull(), value).otherwise(scol)
+            scol = F.when(cond, value).otherwise(scol)
         else:
             if method in ["ffill", "pad"]:
                 func = F.last
@@ -1644,7 +1648,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 .orderBy(NATURAL_ORDER_COLUMN_NAME)
                 .rowsBetween(begin, end)
             )
-            scol = F.when(scol.isNull(), func(scol, True).over(window)).otherwise(scol)
+            scol = F.when(cond, func(scol, True).over(window)).otherwise(scol)
         kseries = self._with_new_scol(scol).rename(self.name)
         if inplace:
             self._internal = kseries._internal

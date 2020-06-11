@@ -210,6 +210,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.fillna(0), pser.fillna(0))
+        self.assert_eq(kser.fillna(np.nan).fillna(0), pser.fillna(np.nan).fillna(0))
 
         kser.fillna(0, inplace=True)
         pser.fillna(0, inplace=True)
@@ -219,6 +220,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.fillna(0, inplace=True)
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
+
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        pser.loc[3] = np.nan
+        kser.loc[3] = np.nan
+
+        self.assert_eq(kser.fillna(0), pser.fillna(0))
+        self.assert_eq(kser.fillna(method="ffill"), pser.fillna(method="ffill"))
+        self.assert_eq(kser.fillna(method="bfill"), pser.fillna(method="bfill"))
 
     def test_dropna(self):
         pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
