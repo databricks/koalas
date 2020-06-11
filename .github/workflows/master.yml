@@ -136,11 +136,10 @@ jobs:
         conda activate test-environment
         conda install -c conda-forge --yes codecov
         conda config --env --add pinned_packages python=$PYTHON_VERSION
-        conda config --env --add pinned_packages pandas==$PANDAS_VERSION
-        conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
         conda config --env --add pinned_packages pyspark==$SPARK_VERSION
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
-        conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
+        conda install -c conda-forge --yes pyspark==$SPARK_VERSION
+        sed -i -e "s/pandas.*/pandas==$PANDAS_VERSION/" -e "s/pyarrow.*/pyarrow==$PYARROW_VERSION/" requirements-dev.txt
+        conda install -c conda-forge --yes --file requirements-dev.txt
         conda list
     - name: Run tests
       run: |
@@ -204,10 +203,8 @@ jobs:
           conda activate test-environment
           conda install -c conda-forge --yes codecov
           conda config --env --add pinned_packages python=$PYTHON_VERSION
-          conda config --env --add pinned_packages pandas==$PANDAS_VERSION
-          conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
-          conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-          conda install -c conda-forge --yes --freeze-installed --file requirements-dev.txt
+          sed -i -e "s/pandas.*/pandas==$PANDAS_VERSION/" -e "s/pyarrow.*/pyarrow==$PYARROW_VERSION/" requirements-dev.txt
+          conda install -c conda-forge --yes --file requirements-dev.txt
           conda list
       - name: Run tests
         run: |
