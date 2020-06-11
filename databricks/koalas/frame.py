@@ -77,7 +77,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_INDEX_NAME_FORMAT,
     SPARK_DEFAULT_INDEX_NAME,
-    SERIES_DEFAULT_NAME,
+    SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
@@ -539,10 +539,10 @@ class DataFrame(Frame, Generic[T]):
 
             df = self._internal.spark_frame.select(
                 calculate_columns_axis(*self._internal.data_spark_columns).alias(
-                    SERIES_DEFAULT_NAME
+                    SPARK_DEFAULT_SERIES_NAME
                 )
             )
-            return DataFrame(df)[SERIES_DEFAULT_NAME]
+            return DataFrame(df)[SPARK_DEFAULT_SERIES_NAME]
 
         else:
             raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
@@ -2435,7 +2435,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 # any axis is fine.
                 should_return_series = True
-                return_schema = StructType([StructField(SERIES_DEFAULT_NAME, return_schema)])
+                return_schema = StructType([StructField(SPARK_DEFAULT_SERIES_NAME, return_schema)])
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
@@ -2838,7 +2838,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns = self._internal.spark_columns
                 internal = self._internal.copy(
                     spark_column=pudf(F.struct(*columns)) if should_by_pass else pudf(*columns),
-                    column_labels=[(SERIES_DEFAULT_NAME,)],
+                    column_labels=[(SPARK_DEFAULT_SERIES_NAME,)],
                     column_label_names=None,
                 )
                 return Series(internal, anchor=self)
@@ -4216,7 +4216,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import first_series
 
         sdf, column = self._mark_duplicates(subset, keep)
-        column_label = (SERIES_DEFAULT_NAME,)
+        column_label = (SPARK_DEFAULT_SERIES_NAME,)
 
         sdf = sdf.select(
             self._internal.index_spark_columns
@@ -8441,7 +8441,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label in self._internal.column_labels:
             new_label = label[:-1]
             if len(new_label) == 0:
-                new_label = (SERIES_DEFAULT_NAME,)
+                new_label = (SPARK_DEFAULT_SERIES_NAME,)
                 should_returns_series = True
             value = label[-1]
 
@@ -8614,7 +8614,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         # TODO: Codes here are similar with melt. Should we deduplicate?
         column_labels = self._internal.column_labels
-        ser_name = SERIES_DEFAULT_NAME
+        ser_name = SPARK_DEFAULT_SERIES_NAME
         sdf = self._internal.spark_frame
         new_index_columns = [
             SPARK_INDEX_NAME_FORMAT(i) for i in range(self._internal.column_labels_level)
@@ -10213,9 +10213,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             internal = self._internal.copy(
                 spark_column=calculate_columns_axis(*self._internal.data_spark_columns).alias(
-                    SERIES_DEFAULT_NAME
+                    SPARK_DEFAULT_SERIES_NAME
                 ),
-                column_labels=[(SERIES_DEFAULT_NAME,)],
+                column_labels=[(SPARK_DEFAULT_SERIES_NAME,)],
                 column_label_names=None,
             )
             return Series(internal, anchor=self)

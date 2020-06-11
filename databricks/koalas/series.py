@@ -56,7 +56,7 @@ from databricks.koalas.internal import (
     InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
-    SERIES_DEFAULT_NAME,
+    SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.missing.series import MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasSeriesPlotMethods
@@ -1236,7 +1236,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = renamed._internal.to_internal_spark_frame
         column_labels = None  # type: Optional[List[Tuple[str, ...]]]
         if renamed._internal.column_labels[0] is None:
-            column_labels = [(SERIES_DEFAULT_NAME,)]
+            column_labels = [(SPARK_DEFAULT_SERIES_NAME,)]
             column_label_names = None
         else:
             column_labels = renamed._internal.column_labels
@@ -3890,7 +3890,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf_count = ser_count._internal.spark_frame
         most_value = ser_count.max()
         sdf_most_value = sdf_count.filter("count == {}".format(most_value))
-        sdf = sdf_most_value.select(F.col(SPARK_DEFAULT_INDEX_NAME).alias(SERIES_DEFAULT_NAME))
+        sdf = sdf_most_value.select(
+            F.col(SPARK_DEFAULT_INDEX_NAME).alias(SPARK_DEFAULT_SERIES_NAME)
+        )
         internal = InternalFrame(spark_frame=sdf, index_map=None)
 
         result = first_series(DataFrame(internal))

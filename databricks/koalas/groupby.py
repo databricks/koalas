@@ -51,7 +51,7 @@ from databricks.koalas.internal import (
     HIDDEN_COLUMNS,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SERIES_DEFAULT_NAME,
+    SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.missing.groupby import (
     MissingPandasLikeDataFrameGroupBy,
@@ -1027,7 +1027,9 @@ class GroupBy(object):
                 if is_series_groupby:
                     return_schema = StructType([StructField(name, return_schema)])
                 else:
-                    return_schema = StructType([StructField(SERIES_DEFAULT_NAME, return_schema)])
+                    return_schema = StructType(
+                        [StructField(SPARK_DEFAULT_SERIES_NAME, return_schema)]
+                    )
 
         def pandas_groupby_apply(pdf):
 

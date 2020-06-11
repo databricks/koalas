@@ -53,7 +53,7 @@ from databricks.koalas.utils import (
     align_diff_frames,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import InternalFrame, SERIES_DEFAULT_NAME
+from databricks.koalas.internal import InternalFrame, SPARK_DEFAULT_SERIES_NAME
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.indexes import Index
 
@@ -1831,7 +1831,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     new_objs = []
     for obj in objs:
         if isinstance(obj, Series):
-            obj = obj.rename(SERIES_DEFAULT_NAME).to_dataframe()
+            obj = obj.rename(SPARK_DEFAULT_SERIES_NAME).to_dataframe()
         new_objs.append(obj)
     objs = new_objs
 
