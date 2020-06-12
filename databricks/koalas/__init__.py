@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import os
+import sys
 from distutils.version import LooseVersion
 
 from databricks.koalas.version import __version__
@@ -102,7 +103,7 @@ __all__ = [
 ]
 
 
-def _auto_patch():
+def _auto_patch_spark():
     import os
     import logging
 
@@ -137,7 +138,27 @@ def _auto_patch():
         df.DataFrame.to_koalas = DataFrame.to_koalas
 
 
-_auto_patch()
+def _auto_patch_pandas():
+    import pandas as pd
+
+    # In order to use it in test cases.
+    global _frame_has_class_getitem
+    global _series_has_class_getitem
+
+    _frame_has_class_getitem = hasattr(pd.DataFrame, "__class_getitem__")
+    _series_has_class_getitem = hasattr(pd.Series, "__class_getitem__")
+
+    if sys.version_info >= (3, 7):
+        # Just in case pandas implements '__class_getitem__' later.
+        if not _frame_has_class_getitem:
+            pd.DataFrame.__class_getitem__ = lambda params: DataFrame.__class_getitem__(params)
+
+        if not _series_has_class_getitem:
+            pd.Series.__class_getitem__ = lambda params: Series.__class_getitem__(params)
+
+
+_auto_patch_spark()
+_auto_patch_pandas()
 
 # Import after the usage logger is attached.
 from databricks.koalas.config import *

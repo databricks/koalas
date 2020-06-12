@@ -35,9 +35,11 @@ except ImportError:
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef.string_typehints import resolve_string_type_hint
 
+T = typing.TypeVar("T")
+
 
 # A column of data, with the data type.
-class SeriesType(object):
+class SeriesType(typing.Generic[T]):
     def __init__(self, tpe):
         self.tpe = tpe  # type: types.DataType
 
@@ -183,16 +185,34 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     >>> infer_return_type(func).tpe
     StructType(List(StructField(c0,FloatType,true)))
     """
+    # We should re-import to make sure the class 'SeriesType' is not treated as a class
+    # within this module locally. See Series.__class_getitem__ which imports this class
+    # canonically.
+    from databricks.koalas.typedef import SeriesType
+
     spec = getfullargspec(f)
     tpe = spec.annotations.get("return", None)
     if isinstance(tpe, str):
         # This type hint can happen when given hints are string to avoid forward reference.
         tpe = resolve_string_type_hint(tpe)
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.Series:
+    if hasattr(tpe, "__origin__") and (
+        issubclass(tpe.__origin__, SeriesType) or tpe.__origin__ == ks.Series
+    ):
+        # TODO: remove "tpe.__origin__ == ks.Series" when we drop Python 3.5 and 3.6.
         inner = as_spark_type(tpe.__args__[0])
         return SeriesType(inner)
+
     if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
-        tuple_type = tpe.__args__[0]
+        # When Python version is lower then 3.7. Unwrap it to a Tuple type
+        # hints.
+        tpe = tpe.__args__[0]
+
+    # Note that, DataFrame type hints will create a Tuple.
+    # Python 3.6 has `__name__`. Python 3.7 and 3.8 have `_name`.
+    # Check if the name is Tuple.
+    name = getattr(tpe, "_name", getattr(tpe, "__name__", None))
+    if name == "Tuple":
+        tuple_type = tpe
         if hasattr(tuple_type, "__tuple_params__"):
             # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
             # See https://github.com/python/cpython/blob/v3.5.2/Lib/typing.py
