@@ -5261,37 +5261,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(value) != len(to_replace):
                 raise ValueError("Length of to_replace and value must be same")
 
-        subset = self._internal.data_spark_column_names
-
-        sdf = self._internal.resolved_copy.spark_frame
-        if (
-            isinstance(to_replace, dict)
-            and value is None
-            and (not any(isinstance(i, dict) for i in to_replace.values()))
+        if isinstance(to_replace, dict) and (
+            value is not None or all(isinstance(i, dict) for i in to_replace.values())
         ):
-            sdf = sdf.replace(to_replace, value, subset)
-        elif isinstance(to_replace, dict):
-            for name, replacement in to_replace.items():
-                if isinstance(name, str):
-                    name = (name,)
-                df_column = self._internal.spark_column_name_for(name)
-                if isinstance(replacement, dict):
-                    sdf = sdf.replace(replacement, subset=df_column)
-                else:
-                    sdf = sdf.withColumn(
-                        df_column,
-                        F.when(scol_for(sdf, df_column) == replacement, value).otherwise(
-                            scol_for(sdf, df_column)
-                        ),
-                    )
-        else:
-            sdf = sdf.replace(to_replace, value, subset)
 
-        internal = self._internal.with_new_sdf(sdf)
-        if inplace:
-            self._internal = internal
+            def op(kser):
+                if kser.name in to_replace:
+                    return kser.replace(to_replace=to_replace[kser.name], value=value, regex=regex)
+                else:
+                    return kser
+
         else:
-            return DataFrame(internal)
+            op = lambda kser: kser.replace(to_replace=to_replace, value=value, regex=regex)
+
+        kdf = self._apply_series_op(op)
+        if inplace:
+            self._internal = kdf._internal
+        else:
+            return kdf
 
     def clip(self, lower: Union[float, int] = None, upper: Union[float, int] = None) -> "DataFrame":
         """
