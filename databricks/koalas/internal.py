@@ -63,6 +63,8 @@ NATURAL_ORDER_COLUMN_NAME = "__natural_order__"
 
 HIDDEN_COLUMNS = {NATURAL_ORDER_COLUMN_NAME}
 
+SPARK_DEFAULT_SERIES_NAME = "0"
+
 
 class InternalFrame(object):
     """

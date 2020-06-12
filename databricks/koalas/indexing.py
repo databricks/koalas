@@ -30,7 +30,11 @@ from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 import numpy as np
 
-from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import (
+    InternalFrame,
+    NATURAL_ORDER_COLUMN_NAME,
+    SPARK_DEFAULT_SERIES_NAME,
+)
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
 from databricks.koalas.utils import (
     lazy_property,
@@ -540,7 +544,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             scol = (
                 F.when(cond, value)
                 .otherwise(self._internal.spark_column)
-                .alias(name_like_string(self._kdf_or_kser.name or "0"))
+                .alias(name_like_string(self._kdf_or_kser.name or SPARK_DEFAULT_SERIES_NAME))
             )
             internal = self._internal.copy(spark_column=scol)
             self._kdf_or_kser._internal = internal
@@ -1498,7 +1502,7 @@ class iLocIndexer(LocIndexerLike):
             )
             internal = internal.copy(
                 spark_frame=sdf,
-                column_labels=[internal.column_labels[0] or ("0",)],
+                column_labels=[internal.column_labels[0] or (SPARK_DEFAULT_SERIES_NAME,)],
                 data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
                 spark_column=None,
             )
