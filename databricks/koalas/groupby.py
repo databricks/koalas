@@ -848,17 +848,26 @@ class GroupBy(object):
         use them before reaching for `apply`.
 
         .. note:: this API executes the function once to infer the type which is
-             potentially expensive, for instance, when the dataset is created after
-             aggregations or sorting.
+            potentially expensive, for instance, when the dataset is created after
+            aggregations or sorting.
 
-             To avoid this, specify return type in ``func``, for instance, as below:
+            To avoid this, specify return type in ``func``, for instance, as below:
 
-             >>> def pandas_div(x) -> ks.DataFrame[float, float]:
-             ...     return x[['B', 'C']] / x[['B', 'C']]
+            >>> def pandas_div(x) -> ks.DataFrame[float, float]:
+            ...     return x[['B', 'C']] / x[['B', 'C']]
 
-             If the return type is specified, the output column names become
-             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
-             DataFrame in ``func``. See examples below.
+            If the return type is specified, the output column names become
+            `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
+            DataFrame in ``func``.
+
+            To specify the names, you can assign them in a pandas friendly style as below:
+
+            >>> def pandas_div(x) -> ks.DataFrame["a": float, "b": float]:
+            ...     return x[['B', 'C']] / x[['B', 'C']]
+
+            >>> pdf = pd.DataFrame({'B': [1.], 'C': [3.]})
+            >>> def plus_one(x) -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+            ...     return x[['B', 'C']] / x[['B', 'C']]
 
         .. note:: the dataframe within ``func`` is actually a pandas dataframe. Therefore,
             any pandas APIs within this function is allowed.

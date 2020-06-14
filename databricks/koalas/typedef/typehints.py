@@ -19,7 +19,7 @@ Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
 import datetime
-from inspect import getfullargspec
+from inspect import getfullargspec, isclass
 
 import numpy as np
 import pandas as pd
@@ -48,12 +48,17 @@ class SeriesType(typing.Generic[T]):
 
 
 class DataFrameType(object):
-    def __init__(self, tpe):
-        # Seems we cannot specify field names. I currently gave some default names
-        # `c0, c1, ... cn`.
-        self.tpe = types.StructType(
-            [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
-        )  # type: types.StructType
+    def __init__(self, tpe, names=None):
+        if names is None:
+            # Seems we cannot specify field names. I currently gave some default names
+            # `c0, c1, ... cn`.
+            self.tpe = types.StructType(
+                [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
+            )  # type: types.StructType
+        else:
+            self.tpe = types.StructType(
+                [types.StructField(n, t) for n, t in zip(names, tpe)]
+            )  # type: types.StructType
 
     def __repr__(self):
         return "DataFrameType[{}]".format(self.tpe)
@@ -75,6 +80,11 @@ class UnknownType(object):
 
     def __repr__(self):
         return "UnknownType[{}]".format(self.tpe)
+
+
+class NameTypeHolder(object):
+    name = None
+    tpe = None
 
 
 def as_spark_type(tpe) -> types.DataType:
@@ -109,8 +119,11 @@ def as_spark_type(tpe) -> types.DataType:
         return types.DateType()
     elif tpe in (bool, "boolean", "bool", np.bool):
         return types.BooleanType()
-    elif tpe in ():
+    elif tpe in (np.ndarray,):
+        # TODO: support other child types
         return types.ArrayType(types.StringType())
+    else:
+        raise TypeError("Type %s was not understood." % tpe)
 
 
 def spark_type_to_pandas_dtype(spark_type):
@@ -184,11 +197,33 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     ...    pass
     >>> infer_return_type(func).tpe
     StructType(List(StructField(c0,FloatType,true)))
+
+    >>> def func() -> ks.DataFrame['a': np.float, 'b': int]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(a,FloatType,true),StructField(b,IntegerType,true)))
+
+    >>> def func() -> "ks.DataFrame['a': np.float, 'b': int]":
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(a,FloatType,true),StructField(b,IntegerType,true)))
+
+    >>> pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
+    >>> def func() -> ks.DataFrame[pdf.dtypes]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(c0,LongType,true),StructField(c1,LongType,true)))
+
+    >>> pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
+    >>> def func() -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(a,LongType,true),StructField(b,LongType,true)))
     """
     # We should re-import to make sure the class 'SeriesType' is not treated as a class
     # within this module locally. See Series.__class_getitem__ which imports this class
     # canonically.
-    from databricks.koalas.typedef import SeriesType
+    from databricks.koalas.typedef import SeriesType, NameTypeHolder
 
     spec = getfullargspec(f)
     tpe = spec.annotations.get("return", None)
@@ -219,6 +254,12 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
             parameters = getattr(tuple_type, "__tuple_params__")
         else:
             parameters = getattr(tuple_type, "__args__")
+        if len(parameters) > 0 and all(
+            isclass(p) and issubclass(p, NameTypeHolder) for p in parameters
+        ):
+            names = [p.name for p in parameters if issubclass(p, NameTypeHolder)]
+            types = [p.tpe for p in parameters if issubclass(p, NameTypeHolder)]
+            return DataFrameType([as_spark_type(t) for t in types], names)
         return DataFrameType([as_spark_type(t) for t in parameters])
     inner = as_spark_type(tpe)
     if inner is None:
