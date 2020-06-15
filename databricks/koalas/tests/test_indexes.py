@@ -288,14 +288,27 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq((kidx + 1).dropna(), (pidx + 1).dropna())
 
     def test_putmask(self):
-        pidx = pd.Index(["a", "b", "c", "d", "e"])
+        pidx = pd.Index([1, 2, 3, 4, 5])
         kidx = ks.from_pandas(pidx)
 
-        mask = [True if x < 2 else False for x in range(5)]
-        value = "Koalas"
-
         self.assert_eq(
-            kidx.putmask(mask, value).sort_values(), pidx.putmask(mask, value).sort_values()
+            kidx.putmask(kidx < 3, 100).sort_values(), pidx.putmask(pidx < 3, 100).sort_values()
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < 3, [100, 200, 300, 400, 500]).sort_values(),
+            pidx.putmask(pidx < 3, [100, 200, 300, 400, 500]).sort_values(),
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < 3, (100, 200, 300, 400, 500)).sort_values(),
+            pidx.putmask(pidx < 3, (100, 200, 300, 400, 500)).sort_values(),
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < 3, ks.Index([100, 200, 300, 400, 500])).sort_values(),
+            pidx.putmask(pidx < 3, pd.Index([100, 200, 300, 400, 500])).sort_values(),
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < 3, ks.Series([100, 200, 300, 400, 500])).sort_values(),
+            pidx.putmask(pidx < 3, pd.Series([100, 200, 300, 400, 500])).sort_values(),
         )
 
     def test_index_symmetric_difference(self):

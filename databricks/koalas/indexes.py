@@ -1564,8 +1564,11 @@ class Index(IndexOpsMixin):
         >>> kidx
         Index(['a', 'b', 'c', 'd', 'e'], dtype='object')
 
-        >>> kidx.putmask([True if x < 2 else False for x in range(5)], "Koalas").sort_values()
+        >>> kidx.putmask(kidx < 'c', "Koalas").sort_values()
         Index(['Koalas', 'Koalas', 'c', 'd', 'e'], dtype='object')
+
+        >>> kidx.putmask(kidx < 'c', ks.Index([100, 200, 300, 400, 500])).sort_values()
+        Index(['100', '200', 'c', 'd', 'e'], dtype='object')
         """
         scol_name = self._internal.index_spark_column_names[0]
         sdf = self._internal.spark_frame.select(self.spark.column)
@@ -1575,22 +1578,38 @@ class Index(IndexOpsMixin):
             sdf, column_name=dist_sequence_col_name
         )
 
+        replace_col = verify_temp_column_name(sdf, "__replace_column__")
         masking_col = verify_temp_column_name(sdf, "__masking_column__")
-        masking_udf = udf(lambda x: mask[x], BooleanType())
 
+        if isinstance(value, (list, tuple)):
+            replace_udf = udf(lambda x: value[x])
+            sdf = sdf.withColumn(replace_col, replace_udf(dist_sequence_col_name))
+        elif isinstance(value, (Index, Series)):
+            value = value.to_numpy().tolist()
+            replace_udf = udf(lambda x: value[x])
+            sdf = sdf.withColumn(replace_col, replace_udf(dist_sequence_col_name))
+        else:
+            sdf = sdf.withColumn(replace_col, F.lit(value))
+
+        if isinstance(mask, (Index, Series)):
+            mask = mask.to_numpy().tolist()
+        elif not isinstance(mask, list) and not isinstance(mask, tuple):
+            raise TypeError("Mask data doesn't support type " "{0}".format(type(mask).__name__))
+
+        masking_udf = udf(lambda x: mask[x], BooleanType())
         sdf = sdf.withColumn(masking_col, masking_udf(dist_sequence_col_name))
         # spark_frame here looks like below
-        # +-------------------------------+-----------------+------------------+
-        # |__distributed_sequence_column__|__index_level_0__|__masking_column__|
-        # +-------------------------------+-----------------+------------------+
-        # |                              0|                a|              true|
-        # |                              3|                d|             false|
-        # |                              1|                b|              true|
-        # |                              2|                c|             false|
-        # |                              4|                e|             false|
-        # +-------------------------------+-----------------+------------------+
+        # +-------------------------------+-----------------+------------------+------------------+
+        # |__distributed_sequence_column__|__index_level_0__|__replace_column__|__masking_column__|
+        # +-------------------------------+-----------------+------------------+------------------+
+        # |                              0|                a|               100|              true|
+        # |                              3|                d|               400|             false|
+        # |                              1|                b|               200|              true|
+        # |                              2|                c|               300|             false|
+        # |                              4|                e|               500|             false|
+        # +-------------------------------+-----------------+------------------+------------------+
 
-        cond = F.when(sdf[masking_col], value).otherwise(sdf[scol_name])
+        cond = F.when(sdf[masking_col], sdf[replace_col]).otherwise(sdf[scol_name])
         sdf = sdf.select(cond.alias(scol_name))
 
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
