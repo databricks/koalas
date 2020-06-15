@@ -2149,6 +2149,78 @@ class Frame(object):
             internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
         )
 
+    # TODO: add 'downcast' when value parameter exists
+    def bfill(self, axis=None, inplace=False, limit=None):
+        """
+        Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`bfill```.
+
+        .. note:: the current implementation of 'bfill' uses Spark's Window
+            without specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame or Series
+            DataFrame or Series with NA entries filled.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({
+        ...     'A': [None, 3, None, None],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> kdf
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  NaN  NaN  NaN  5
+        3  NaN  3.0  1.0  4
+
+        Propagate non-null values backward.
+
+        >>> kdf.bfill()
+             A    B    C  D
+        0  3.0  2.0  1.0  0
+        1  3.0  4.0  1.0  1
+        2  NaN  3.0  1.0  5
+        3  NaN  3.0  1.0  4
+
+        For Series
+
+        >>> kser = kdf.C
+        >>> kser
+        0    NaN
+        1    NaN
+        2    NaN
+        3    1.0
+        Name: C, dtype: float64
+
+        >>> kser.bfill()
+        0    1.0
+        1    1.0
+        2    1.0
+        3    1.0
+        Name: C, dtype: float64
+        """
+        return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
+
     @property
     def at(self):
         return AtIndexer(self)

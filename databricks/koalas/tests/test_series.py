@@ -1684,3 +1684,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(abs(kser), abs(pser))
         self.assert_eq(np.abs(kser), np.abs(pser))
+
+    def test_bfill(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.bfill(), pser.bfill())
+
+        kser.bfill(inplace=True)
+        pser.bfill(inplace=True)
+        self.assert_eq(kser, pser)
