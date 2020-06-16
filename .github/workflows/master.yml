@@ -104,7 +104,7 @@ jobs:
             spark-version: 2.4.6
             pandas-version: 1.0.4
             pyarrow-version: 0.15.1
-          - python-version: 3.8
+          - python-version: 3.7
             spark-version: 3.0.0
             pandas-version: 0.25.3
             pyarrow-version: 0.15.1
