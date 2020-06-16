@@ -40,7 +40,14 @@ from pandas.io.formats.printing import pprint_thing
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
+from pyspark.sql.types import (
+    BooleanType,
+    NumericType,
+    StringType,
+    TimestampType,
+    IntegralType,
+    _infer_type,
+)
 from pyspark.sql.functions import udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -1560,15 +1567,15 @@ class Index(IndexOpsMixin):
 
         Example
         -------
-        >>> kidx = ks.Index(['a', 'b', 'c', 'd', 'e'])
+        >>> kidx = ks.Index([1, 2, 3, 4, 5])
         >>> kidx
-        Index(['a', 'b', 'c', 'd', 'e'], dtype='object')
+        Int64Index([1, 2, 3, 4, 5], dtype='int64')
 
-        >>> kidx.putmask(kidx < 'c', "Koalas").sort_values()
-        Index(['Koalas', 'Koalas', 'c', 'd', 'e'], dtype='object')
+        >>> kidx.putmask(kidx > 3, 100).sort_values()
+        Int64Index([1, 2, 3, 100, 100], dtype='int64')
 
-        >>> kidx.putmask(kidx > 'c', ks.Index(['g', 'h', 'i', 'j', 'k'])).sort_values()
-        Index(['a', 'b', 'c', 'j', 'k'], dtype='object')
+        >>> kidx.putmask(kidx > 3, ks.Index([100, 200, 300, 400, 500])).sort_values()
+        Int64Index([1, 2, 3, 400, 500], dtype='int64')
         """
         scol_name = self._internal.index_spark_column_names[0]
         sdf = self._internal.spark_frame.select(self.spark.column)
@@ -1582,11 +1589,11 @@ class Index(IndexOpsMixin):
         masking_col = verify_temp_column_name(sdf, "__masking_column__")
 
         if isinstance(value, (list, tuple)):
-            replace_udf = udf(lambda x: value[x])
+            replace_udf = udf(lambda x: value[x], _infer_type(value[0]))
             sdf = sdf.withColumn(replace_col, replace_udf(dist_sequence_col_name))
         elif isinstance(value, (Index, Series)):
             value = value.to_numpy().tolist()
-            replace_udf = udf(lambda x: value[x])
+            replace_udf = udf(lambda x: value[x], _infer_type(value[0]))
             sdf = sdf.withColumn(replace_col, replace_udf(dist_sequence_col_name))
         else:
             sdf = sdf.withColumn(replace_col, F.lit(value))
