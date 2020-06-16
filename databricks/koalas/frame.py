@@ -7793,7 +7793,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> new_index= ['Safari', 'Iceweasel', 'Comodo Dragon', 'IE10',
         ...             'Chrome']
         >>> df.reindex(new_index).sort_index()
-        ... # doctest: +NORMALIZE_WHITESPACE
                        http_status  response_time
         Chrome               200.0           0.02
         Comodo Dragon          NaN            NaN
@@ -7805,7 +7804,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         the keyword ``fill_value``.
 
         >>> df.reindex(new_index, fill_value=0, copy=False).sort_index()
-        ... # doctest: +NORMALIZE_WHITESPACE
                        http_status  response_time
         Chrome                 200           0.02
         Comodo Dragon            0           0.00
@@ -7816,24 +7814,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         We can also reindex the columns.
 
         >>> df.reindex(columns=['http_status', 'user_agent']).sort_index()
-        ... # doctest: +NORMALIZE_WHITESPACE
-                       http_status  user_agent
-        Chrome                 200         NaN
-        Comodo Dragon            0         NaN
-        IE10                   404         NaN
-        Iceweasel                0         NaN
-        Safari                 404         NaN
+                   http_status  user_agent
+        Chrome             200         NaN
+        Firefox            200         NaN
+        IE10               404         NaN
+        Konqueror          301         NaN
+        Safari             404         NaN
 
         Or we can use "axis-style" keyword arguments
 
         >>> df.reindex(['http_status', 'user_agent'], axis="columns").sort_index()
-        ... # doctest: +NORMALIZE_WHITESPACE
-                      http_status  user_agent
-        Chrome                 200         NaN
-        Comodo Dragon            0         NaN
-        IE10                   404         NaN
-        Iceweasel                0         NaN
-        Safari                 404         NaN
+                   http_status  user_agent
+        Chrome             200         NaN
+        Firefox            200         NaN
+        IE10               404         NaN
+        Konqueror          301         NaN
+        Safari             404         NaN
 
         To further illustrate the filling functionality in
         ``reindex``, we will create a dataframe with a
@@ -7843,7 +7839,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> date_index = pd.date_range('1/1/2010', periods=6, freq='D')
         >>> df2 = ks.DataFrame({"prices": [100, 101, np.nan, 100, 89, 88]},
         ...                    index=date_index)
-        >>> df2.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df2.sort_index()
                     prices
         2010-01-01   100.0
         2010-01-02   101.0
@@ -7856,7 +7852,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         date range.
 
         >>> date_index2 = pd.date_range('12/29/2009', periods=10, freq='D')
-        >>> df2.reindex(date_index2).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df2.reindex(date_index2).sort_index()
                     prices
         2009-12-29     NaN
         2009-12-30     NaN
@@ -7893,13 +7889,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "%s was passed" % type(columns)
             )
 
-        df = self.copy()
+        df = self
 
         if index is not None:
-            df = DataFrame(df._reindex_index(index))
+            df = df._reindex_index(index)
 
         if columns is not None:
-            df = DataFrame(df._reindex_columns(columns))
+            df = df._reindex_columns(columns)
 
         # Process missing values.
         if fill_value is not None:
@@ -7909,8 +7905,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if copy:
             return df.copy()
         else:
-            self._internal = df._internal
-            return self
+            return df
 
     def _reindex_index(self, index):
         # When axis is index, we can mimic pandas' by a right outer join.
@@ -7928,7 +7923,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         internal = self._internal.with_new_sdf(joined_df)
 
-        return internal
+        return DataFrame(internal)
 
     def _reindex_columns(self, columns):
         level = self._internal.column_labels_level
@@ -7952,7 +7947,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 scols.append(F.lit(np.nan).alias(name_like_string(label)))
             labels.append(label)
 
-        return self._internal.with_new_columns(scols, column_labels=labels)
+        return DataFrame(self._internal.with_new_columns(scols, column_labels=labels))
 
     def melt(self, id_vars=None, value_vars=None, var_name=None, value_name="value"):
         """
