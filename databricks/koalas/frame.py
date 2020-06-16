@@ -9124,7 +9124,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = internal.with_new_columns(new_data_scols, column_labels=new_column_labels)
         if inplace:
             self._internal = internal
-            return self
         else:
             return DataFrame(internal)
 
