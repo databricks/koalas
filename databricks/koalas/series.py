@@ -19,6 +19,7 @@ A wrapper class for Spark Column to behave similar to pandas Series.
 """
 import re
 import inspect
+import sys
 import warnings
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -5182,6 +5183,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def _equals(self, other: "Series") -> bool:
         return self.spark.column._jc.equals(other.spark.column._jc)
+
+    if sys.version_info >= (3, 7):
+        # In order to support the type hints such as Series[...]. See DataFrame.__class_getitem__.
+        def __class_getitem__(cls, tpe):
+            return SeriesType[tpe]
 
 
 def unpack_scalar(sdf):

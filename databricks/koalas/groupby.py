@@ -44,7 +44,7 @@ from pyspark.sql.types import (
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import infer_return_type
+from databricks.koalas.typedef import infer_return_type, SeriesType
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (
     InternalFrame,
@@ -1015,13 +1015,14 @@ class GroupBy(object):
 
             return_schema = kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
         else:
-            if not is_series_groupby and getattr(return_sig, "__origin__", None) == ks.Series:
+            return_type = infer_return_type(func)
+            if not is_series_groupby and isinstance(return_type, SeriesType):
                 raise TypeError(
                     "Series as a return type hint at frame groupby is not supported "
                     "currently; however got [%s]. Use DataFrame type hint instead." % return_sig
                 )
 
-            return_schema = infer_return_type(func).tpe
+            return_schema = return_type.tpe
             if not isinstance(return_schema, StructType):
                 should_return_series = True
                 if is_series_groupby:

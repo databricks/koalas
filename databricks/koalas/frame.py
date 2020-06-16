@@ -81,7 +81,7 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.typedef import infer_return_type, as_spark_type
+from databricks.koalas.typedef import infer_return_type, as_spark_type, DataFrameType, SeriesType
 from databricks.koalas.plot import KoalasFramePlotMethods
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -2149,8 +2149,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
         else:
-            return_schema = infer_return_type(original_func).tpe
-            is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
+            return_type = infer_return_type(original_func)
+            return_schema = return_type.tpe
+            is_return_dataframe = isinstance(return_type, DataFrameType)
             if not is_return_dataframe:
                 raise TypeError(
                     "The given function should specify a frame as its type "
@@ -2411,9 +2412,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # If schema is inferred, we can restore indexes too.
             internal = kdf._internal.with_new_sdf(sdf)
         else:
-            return_schema = infer_return_type(func).tpe
-            require_index_axis = getattr(return_sig, "__origin__", None) == ks.Series
-            require_column_axis = getattr(return_sig, "__origin__", None) == ks.DataFrame
+            return_type = infer_return_type(func)
+            return_schema = return_type.tpe
+            require_index_axis = isinstance(return_type, SeriesType)
+            require_column_axis = isinstance(return_type, DataFrameType)
             if require_index_axis:
                 if axis != 0:
                     raise TypeError(
@@ -2821,9 +2823,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     sdf = self_applied._internal.spark_frame.select(*applied)
                 return DataFrame(kdf._internal.with_new_sdf(sdf))
         else:
-            return_schema = infer_return_type(original_func).tpe
-            is_return_dataframe = getattr(return_sig, "__origin__", None) == ks.DataFrame
-            is_return_series = getattr(return_sig, "__origin__", None) == ks.Series
+            return_type = infer_return_type(original_func)
+            return_schema = return_type.tpe
+            is_return_series = isinstance(return_type, SeriesType)
+            is_return_dataframe = isinstance(return_type, DataFrameType)
             if not is_return_dataframe and not is_return_series:
                 raise TypeError(
                     "The given function should specify a frame or series as its type "
@@ -10279,7 +10282,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # This is a workaround to support variadic generic in DataFrame in Python 3.7.
             # See https://github.com/python/typing/issues/193
             # we always wraps the given type hints by a tuple to mimic the variadic generic.
-            return super(cls, DataFrame).__class_getitem__(Tuple[params])
+            return Tuple[params]
 
     elif (3, 5) <= sys.version_info < (3, 7):
         # This is a workaround to support variadic generic in DataFrame in Python 3.5+

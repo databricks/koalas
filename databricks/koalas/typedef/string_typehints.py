@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import numpy as np
+import pandas
 import pandas as pd
 from numpy import *
 from pandas import *
@@ -24,7 +25,12 @@ def resolve_string_type_hint(tpe):
     import databricks.koalas as ks
     from databricks.koalas import DataFrame, Series
 
-    locs = {"ks": ks, "DataFrame": DataFrame, "Series": Series}
+    locs = {
+        "ks": ks,
+        "koalas": ks,
+        "DataFrame": DataFrame,
+        "Series": Series,
+    }
     # This is a hack to resolve the forward reference string.
     exec("def func() -> %s: pass\narg_spec = getfullargspec(func)" % tpe, globals(), locs)
     return locs["arg_spec"].annotations.get("return", None)
