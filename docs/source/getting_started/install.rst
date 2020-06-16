@@ -78,7 +78,7 @@ Once you download the release, un-tar it first as below::
 
     tar xzvf spark-2.4.4-bin-hadoop2.7.tgz
 
-After that, make sure set ``SPARK_HOME`` enviornment variable to indicate the directory you untar-ed::
+After that, make sure set ``SPARK_HOME`` environment variable to indicate the directory you untar-ed::
 
     cd spark-2.4.4-bin-hadoop2.7
     export SPARK_HOME=`pwd`

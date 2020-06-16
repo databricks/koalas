@@ -29,7 +29,7 @@ jobs:
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
-      # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around wtih xvfb-run
+      # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around with xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
       # Github token is required to auto-generate the release notes from Github release notes
       GITHUB_OAUTH_KEY: ${{ secrets.GITHUB_TOKEN }}
@@ -154,7 +154,7 @@ jobs:
     - name: Run tests
       run: |
         # The environment should be initialized newly between Github Actions steps. Also,
-        # for some reasons we should add enviornment directory manually to allow for
+        # for some reasons we should add environment directory manually to allow for
         # 'test-enviornment' to be found. See also https://github.com/conda/conda/issues/7980
         . $HOME/miniconda/etc/profile.d/conda.sh
         conda config --prepend envs_dirs $HOME/miniconda/envs

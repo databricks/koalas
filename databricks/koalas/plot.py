@@ -1498,7 +1498,7 @@ class KoalasSeriesPlotMethods(PandasObject):
 
 
 class KoalasFramePlotMethods(PandasObject):
-    # TODO: not sure if Koalas wanna combine plot method for Series and DataFrame
+    # TODO: not sure if Koalas wants to combine plot method for Series and DataFrame
     """
     DataFrame plotting accessor and method.
 
