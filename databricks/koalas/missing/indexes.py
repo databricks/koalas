@@ -128,7 +128,6 @@ class MissingPandasLikeMultiIndex(object):
     is_type_compatible = _unsupported_function("is_type_compatible")
     join = _unsupported_function("join")
     map = _unsupported_function("map")
-    putmask = _unsupported_function("putmask")
     ravel = _unsupported_function("ravel")
     reindex = _unsupported_function("reindex")
     remove_unused_levels = _unsupported_function("remove_unused_levels")

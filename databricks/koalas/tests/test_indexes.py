@@ -288,27 +288,27 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq((kidx + 1).dropna(), (pidx + 1).dropna())
 
     def test_putmask(self):
-        pidx = pd.Index([1, 2, 3, 4, 5])
+        pidx = pd.Index(["a", "b", "c", "d", "e"])
         kidx = ks.from_pandas(pidx)
 
         self.assert_eq(
-            kidx.putmask(kidx < 3, 100).sort_values(), pidx.putmask(pidx < 3, 100).sort_values()
+            kidx.putmask(kidx < "c", "k").sort_values(), pidx.putmask(pidx < "c", "k").sort_values()
         )
         self.assert_eq(
-            kidx.putmask(kidx < 3, [100, 200, 300, 400, 500]).sort_values(),
-            pidx.putmask(pidx < 3, [100, 200, 300, 400, 500]).sort_values(),
+            kidx.putmask(kidx < "c", ["g", "h", "i", "j", "k"]).sort_values(),
+            pidx.putmask(pidx < "c", ["g", "h", "i", "j", "k"]).sort_values(),
         )
         self.assert_eq(
-            kidx.putmask(kidx < 3, (100, 200, 300, 400, 500)).sort_values(),
-            pidx.putmask(pidx < 3, (100, 200, 300, 400, 500)).sort_values(),
+            kidx.putmask(kidx < "c", ("g", "h", "i", "j", "k")).sort_values(),
+            pidx.putmask(pidx < "c", ("g", "h", "i", "j", "k")).sort_values(),
         )
         self.assert_eq(
-            kidx.putmask(kidx < 3, ks.Index([100, 200, 300, 400, 500])).sort_values(),
-            pidx.putmask(pidx < 3, pd.Index([100, 200, 300, 400, 500])).sort_values(),
+            kidx.putmask(kidx < "c", ks.Index(["g", "h", "i", "j", "k"])).sort_values(),
+            pidx.putmask(pidx < "c", pd.Index(["g", "h", "i", "j", "k"])).sort_values(),
         )
         self.assert_eq(
-            kidx.putmask(kidx < 3, ks.Series([100, 200, 300, 400, 500])).sort_values(),
-            pidx.putmask(pidx < 3, pd.Series([100, 200, 300, 400, 500])).sort_values(),
+            kidx.putmask(kidx < "c", ks.Series(["g", "h", "i", "j", "k"])).sort_values(),
+            pidx.putmask(pidx < "c", pd.Series(["g", "h", "i", "j", "k"])).sort_values(),
         )
 
     def test_index_symmetric_difference(self):

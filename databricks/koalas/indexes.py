@@ -1567,8 +1567,8 @@ class Index(IndexOpsMixin):
         >>> kidx.putmask(kidx < 'c', "Koalas").sort_values()
         Index(['Koalas', 'Koalas', 'c', 'd', 'e'], dtype='object')
 
-        >>> kidx.putmask(kidx < 'c', ks.Index([100, 200, 300, 400, 500])).sort_values()
-        Index(['100', '200', 'c', 'd', 'e'], dtype='object')
+        >>> kidx.putmask(kidx > 'c', ks.Index(['g', 'h', 'i', 'j', 'k'])).sort_values()
+        Index(['a', 'b', 'c', 'j', 'k'], dtype='object')
         """
         scol_name = self._internal.index_spark_column_names[0]
         sdf = self._internal.spark_frame.select(self.spark.column)
