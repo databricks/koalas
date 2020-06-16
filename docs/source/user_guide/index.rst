@@ -8,5 +8,6 @@ User Guide
     options
     pandas_pyspark
     transform_apply
-    faq
+    typehints
     best_practices
+    faq
