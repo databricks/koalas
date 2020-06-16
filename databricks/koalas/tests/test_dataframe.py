@@ -3124,8 +3124,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             dummy_kdf = kdf.copy()
             dummy_pdf = pdf.copy()
 
-            pdf.query(expr, inplace=True)
-            kdf.query(expr, inplace=True)
+            dummy_pdf.query(expr, inplace=True)
+            dummy_kdf.query(expr, inplace=True)
 
             self.assert_eq(dummy_kdf, dummy_pdf)
 
