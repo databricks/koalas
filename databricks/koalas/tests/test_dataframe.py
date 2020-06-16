@@ -475,8 +475,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(result_kdf, result_pdf)
 
         # inplace
-        result_kdf.rename(index={1: 10, 2: 20}, inplace=True)
-        result_pdf.rename(index={1: 10, 2: 20}, inplace=True)
+        result_kdf.rename(index={10: 100, 20: 200}, inplace=True)
+        result_pdf.rename(index={10: 100, 20: 200}, inplace=True)
         self.assert_eq(result_kdf, result_pdf)
 
         def str_lower(s) -> str:
