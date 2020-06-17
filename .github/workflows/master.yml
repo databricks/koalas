@@ -154,7 +154,7 @@ jobs:
     - name: Run tests
       run: |
         # The environment should be initialized newly between Github Actions steps. Also,
-        # for some reasons we should add environment directory manually to allow for
+        # for some reasons we should add an environment directory manually to allow for
         # 'test-enviornment' to be found. See also https://github.com/conda/conda/issues/7980
         . $HOME/miniconda/etc/profile.d/conda.sh
         conda config --prepend envs_dirs $HOME/miniconda/envs
