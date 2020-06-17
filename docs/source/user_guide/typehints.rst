@@ -10,8 +10,8 @@ such as :func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.t
 :func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc.
 
 However, this is potentially expensive. If there are several expensive operations such as a shuffle
-in the upstream of the execution plan, Koalas will end up with executing twice, once for schema
-inference, and once for processing actual data with the schema.
+in the upstream of the execution plan, Koalas will end up with executing the Spark job twice, once
+for schema inference, and once for processing actual data with the schema.
 
 To avoid the consequences, Koalas has its own type hinting style to specify the schema to avoid
 schema inference. Koalas understands the type hints specified in the return type and converts it
@@ -31,7 +31,7 @@ it as a Spark schema. As an example, you can specify the return type hint as bel
 .. code-block:: python
 
     >>> def pandas_div(pdf) -> ks.DataFrame[float, float]:
-    ...    # pdf is a pandas DataFrame,
+    ...    # pdf is a pandas DataFrame.
     ...    return pdf[['B', 'C']] / pdf[['B', 'C']]
     ...
     >>> df = ks.DataFrame({'A': ['a', 'a', 'b'], 'B': [1, 2, 3], 'C': [4, 6, 5]})
@@ -45,7 +45,7 @@ From Koalas 1.0 with Python 3.7+, now you can specify the type hints by using pa
 .. code-block:: python
 
     >>> def pandas_div(pdf) -> pd.DataFrame[float, float]:
-    ...    # pdf is a pandas DataFrame,
+    ...    # pdf is a pandas DataFrame.
     ...    return pdf[['B', 'C']] / pdf[['B', 'C']]
     ...
     >>> df = ks.DataFrame({'A': ['a', 'a', 'b'], 'B': [1, 2, 3], 'C': [4, 6, 5]})
