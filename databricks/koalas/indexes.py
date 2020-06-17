@@ -1590,19 +1590,19 @@ class Index(IndexOpsMixin):
 
         if isinstance(value, (list, tuple, Index, Series)):
             if isinstance(value, (list, tuple)):
-                pandas_replace_value = pd.Series(value)
+                pandas_value = pd.Series(value)
             elif isinstance(value, (Index, Series)):
-                pandas_replace_value = value.to_pandas()
+                pandas_value = value.to_pandas()
 
-            if self.size != pandas_replace_value.size:
+            if self.size != pandas_value.size:
                 # TODO: We can't support different size of value for now.
                 raise ValueError("value and data must be the same size")
 
-            replace_return_type = as_spark_type(pandas_replace_value.dtype.type)
+            replace_return_type = as_spark_type(pandas_value.dtype.type)
 
             @pandas_udf(returnType=replace_return_type if replace_return_type else StringType())
             def replace_pandas_udf(sequence):
-                return pandas_replace_value[sequence]
+                return pandas_value[sequence]
 
             sdf = sdf.withColumn(replace_col, replace_pandas_udf(dist_sequence_col_name))
         else:
@@ -1610,16 +1610,16 @@ class Index(IndexOpsMixin):
 
         if isinstance(mask, (list, tuple, Index, Series)):
             if isinstance(mask, (list, tuple)):
-                pandas_replace_mask = pd.Series(mask)
+                pandas_mask = pd.Series(mask)
             elif isinstance(mask, (Index, Series)):
-                pandas_replace_mask = mask.to_pandas()
+                pandas_mask = mask.to_pandas()
 
-            if self.size != pandas_replace_mask.size:
+            if self.size != pandas_mask.size:
                 raise ValueError("mask and data must be the same size")
 
             @pandas_udf(returnType=BooleanType())
             def masking_pandas_udf(sequence):
-                return pandas_replace_mask[sequence]
+                return pandas_mask[sequence]
 
             sdf = sdf.withColumn(masking_col, masking_pandas_udf(dist_sequence_col_name))
         elif not isinstance(mask, list) and not isinstance(mask, tuple):
