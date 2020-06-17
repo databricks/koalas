@@ -1931,16 +1931,22 @@ class Index(IndexOpsMixin):
                 return partial(property_or_func, self)
         raise AttributeError("'Index' object has no attribute '{}'".format(item))
 
+    def _get_or_create_repr_pandas_cache(self, n):
+        if (
+            not hasattr(self, "_repr_pandas_cache")
+            or (id(self._internal), n) not in self._repr_pandas_cache
+        ):
+            self._repr_pandas_cache = {
+                (id(self._internal), n): self._kdf.head(n + 1).index.to_pandas()
+            }
+        return self._repr_pandas_cache[(id(self._internal), n)]
+
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = (
-            self._kdf.head(max_display_count + 1)
-            .index._with_new_scol(self.spark.column)
-            .to_pandas()
-        )
+        pindex = self._get_or_create_repr_pandas_cache(max_display_count)
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
@@ -2731,31 +2737,6 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
-
-    def _get_or_create_repr_pandas_cache(self, n):
-        if (
-            not hasattr(self, "_repr_pandas_cache")
-            or (id(self._internal), n) not in self._repr_pandas_cache
-        ):
-            self._repr_pandas_cache = {
-                (id(self._internal), n): self._kdf.head(n + 1).index.to_pandas()
-            }
-        return self._repr_pandas_cache[(id(self._internal), n)]
-
-    def __repr__(self):
-        max_display_count = get_option("display.max_rows")
-        if max_display_count is None:
-            return repr(self.to_pandas())
-
-        pindex = self._get_or_create_repr_pandas_cache(max_display_count)
-
-        pindex_length = len(pindex)
-        repr_string = repr(pindex[:max_display_count])
-
-        if pindex_length > max_display_count:
-            footer = "\nShowing only the first {}".format(max_display_count)
-            return repr_string + footer
-        return repr_string
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)
