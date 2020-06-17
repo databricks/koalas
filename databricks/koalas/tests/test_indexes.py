@@ -311,6 +311,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             pidx.putmask(pidx < "c", pd.Series(["g", "h", "i", "j", "k"])).sort_values(),
         )
 
+        with self.assertRaisesRegexp(ValueError, "value and data must be the same size"):
+            kidx.putmask(kidx < "c", ks.Series(["g", "h"]))
+
+        with self.assertRaisesRegexp(ValueError, "mask and data must be the same size"):
+            kidx.putmask([True, False], ks.Series(["g", "h", "i", "j", "k"]))
+
     def test_index_symmetric_difference(self):
         pidx1 = pd.Index([1, 2, 3, 4])
         pidx2 = pd.Index([2, 3, 4, 5])

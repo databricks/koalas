@@ -36,6 +36,7 @@ from pandas.api.types import (
     is_object_dtype,
 )
 from pandas.io.formats.printing import pprint_thing
+from pyspark.sql.functions import pandas_udf
 
 import pyspark
 from pyspark import sql as spark
@@ -48,7 +49,6 @@ from pyspark.sql.types import (
     IntegralType,
     _infer_type,
 )
-from pyspark.sql.functions import udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -57,6 +57,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.typedef import as_spark_type
 from databricks.koalas.utils import (
     compare_allow_null,
     compare_disallow_null,
@@ -1588,23 +1589,43 @@ class Index(IndexOpsMixin):
         replace_col = verify_temp_column_name(sdf, "__replace_column__")
         masking_col = verify_temp_column_name(sdf, "__masking_column__")
 
-        if isinstance(value, (list, tuple)):
-            replace_udf = udf(lambda x: value[x], _infer_type(value[0]))
-            sdf = sdf.withColumn(replace_col, replace_udf(dist_sequence_col_name))
-        elif isinstance(value, (Index, Series)):
-            value = value.to_numpy().tolist()
-            replace_udf = udf(lambda x: value[x], _infer_type(value[0]))
-            sdf = sdf.withColumn(replace_col, replace_udf(dist_sequence_col_name))
+        if isinstance(value, (list, tuple, Index, Series)):
+            if isinstance(value, (list, tuple)):
+                pandas_replace_value = pd.Series(value)
+            elif isinstance(value, (Index, Series)):
+                pandas_replace_value = value.to_pandas()
+
+            if self.size != pandas_replace_value.size:
+                # TODO: We can't support different size of value for now.
+                raise ValueError("value and data must be the same size")
+
+            replace_return_type = as_spark_type(pandas_replace_value.dtype.type)
+
+            @pandas_udf(returnType=replace_return_type if replace_return_type else StringType())
+            def replace_pandas_udf(sequence):
+                return pandas_replace_value[sequence]
+
+            sdf = sdf.withColumn(replace_col, replace_pandas_udf(dist_sequence_col_name))
         else:
             sdf = sdf.withColumn(replace_col, F.lit(value))
 
-        if isinstance(mask, (Index, Series)):
-            mask = mask.to_numpy().tolist()
+        if isinstance(mask, (list, tuple, Index, Series)):
+            if isinstance(mask, (list, tuple)):
+                pandas_replace_mask = pd.Series(mask)
+            elif isinstance(mask, (Index, Series)):
+                pandas_replace_mask = mask.to_pandas()
+
+            if self.size != pandas_replace_mask.size:
+                raise ValueError("mask and data must be the same size")
+
+            @pandas_udf(returnType=BooleanType())
+            def masking_pandas_udf(sequence):
+                return pandas_replace_mask[sequence]
+
+            sdf = sdf.withColumn(masking_col, masking_pandas_udf(dist_sequence_col_name))
         elif not isinstance(mask, list) and not isinstance(mask, tuple):
             raise TypeError("Mask data doesn't support type " "{0}".format(type(mask).__name__))
 
-        masking_udf = udf(lambda x: mask[x], BooleanType())
-        sdf = sdf.withColumn(masking_col, masking_udf(dist_sequence_col_name))
         # spark_frame here looks like below
         # +-------------------------------+-----------------+------------------+------------------+
         # |__distributed_sequence_column__|__index_level_0__|__replace_column__|__masking_column__|
@@ -1616,7 +1637,9 @@ class Index(IndexOpsMixin):
         # |                              4|                e|               500|             false|
         # +-------------------------------+-----------------+------------------+------------------+
 
-        cond = F.when(sdf[masking_col], sdf[replace_col]).otherwise(sdf[scol_name])
+        cond = F.when(scol_for(sdf, masking_col), scol_for(sdf, replace_col)).otherwise(
+            scol_for(sdf, scol_name)
+        )
         sdf = sdf.select(cond.alias(scol_name))
 
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
