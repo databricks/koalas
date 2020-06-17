@@ -116,4 +116,4 @@ Under the hood, each batch of Koalas Series is split to multipl pandas Series, a
   :width: 350
   :align: center
 
-There are more details such as the type inference and preventing its performence panality. Please refer the API documentations.
+There are more details such as the type inference and preventing its performance panality. Please refer the API documentations.
