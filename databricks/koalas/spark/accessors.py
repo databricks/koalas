@@ -443,7 +443,9 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import CachedDataFrame
 
-        self._kdf._internal = self._kdf._internal.resolved_copy
+        self._kdf._update_internal_frame(
+            self._kdf._internal.resolved_copy, requires_same_anchor=False
+        )
         return CachedDataFrame(self._kdf._internal)
 
     def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
@@ -517,6 +519,9 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import CachedDataFrame
 
+        self._kdf._update_internal_frame(
+            self._kdf._internal.resolved_copy, requires_same_anchor=False
+        )
         return CachedDataFrame(self._kdf._internal, storage_level=storage_level)
 
     def hint(self, name: str, *parameters) -> "ks.DataFrame":

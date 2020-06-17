@@ -24,7 +24,8 @@ import numpy as np
 from typing import Any
 
 from databricks.koalas.utils import lazy_property, default_session
-from databricks.koalas import Series, DataFrame
+from databricks.koalas.frame import DataFrame
+from databricks.koalas.series import first_series
 from databricks.koalas.typedef import as_spark_type
 
 __all__ = ["PythonModelWrapper", "load_model"]
@@ -93,10 +94,10 @@ class PythonModelWrapper(object):
             column_labels = [
                 (col,) for col in data._internal.spark_frame.select(return_col).columns
             ]
-            return Series(
-                data._internal.copy(spark_column=return_col, column_labels=column_labels),
-                anchor=data,
+            internal = data._internal.copy(
+                column_labels=column_labels, data_spark_columns=[return_col]
             )
+            return first_series(DataFrame(internal))
 
 
 def load_model(model_uri, predict_type="infer") -> PythonModelWrapper:

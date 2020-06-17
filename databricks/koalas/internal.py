@@ -812,12 +812,12 @@ class InternalFrame(object):
     def with_new_sdf(
         self, spark_frame: spark.DataFrame, data_columns: Optional[List[str]] = None
     ) -> "InternalFrame":
-        """ Copy the immutable _InternalFrame with the updates by the specified Spark DataFrame.
+        """ Copy the immutable InternalFrame with the updates by the specified Spark DataFrame.
 
         :param spark_frame: the new Spark DataFrame
         :param data_columns: the new column names.
             If None, the original one is used.
-        :return: the copied _InternalFrame.
+        :return: the copied InternalFrame.
         """
         assert self.spark_column is None
 
@@ -841,13 +841,13 @@ class InternalFrame(object):
         keep_order: bool = True,
     ) -> "InternalFrame":
         """
-        Copy the immutable _InternalFrame with the updates by the specified Spark Columns or Series.
+        Copy the immutable InternalFrame with the updates by the specified Spark Columns or Series.
 
         :param scols_or_ksers: the new Spark Columns or Series.
         :param column_labels: the new column index.
             If None, the its column_labels is used when the corresponding `scols_or_ksers` is
             Series, otherwise the original one is used.
-        :return: the copied _InternalFrame.
+        :return: the copied InternalFrame.
         """
         from databricks.koalas.series import Series
 
@@ -898,10 +898,10 @@ class InternalFrame(object):
         )
 
     def with_filter(self, pred: Union[spark.Column, "Series"]):
-        """ Copy the immutable _InternalFrame with the updates by the predicate.
+        """ Copy the immutable InternalFrame with the updates by the predicate.
 
         :param pred: the predicate to filter.
-        :return: the copied _InternalFrame.
+        :return: the copied InternalFrame.
         """
         from databricks.koalas.series import Series
 
@@ -920,6 +920,22 @@ class InternalFrame(object):
                 spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
             )
 
+    def with_new_spark_column(
+        self, column_label: Tuple[str, ...], scol: spark.Column, keep_order: bool = True
+    ):
+        """
+        Copy the immutable InternalFrame with the updates by the specified Spark Column.
+
+        :param column_label: the column label to be updated.
+        :param scol: the new Spark Column
+        """
+        assert column_label in self.column_labels, column_label
+
+        idx = self.column_labels.index(column_label)
+        data_spark_columns = self.data_spark_columns.copy()
+        data_spark_columns[idx] = scol
+        return self.with_new_columns(data_spark_columns, keep_order=keep_order)
+
     def copy(
         self,
         spark_frame: Union[spark.DataFrame, _NoValueType] = _NoValue,
@@ -929,7 +945,7 @@ class InternalFrame(object):
         column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
         spark_column: Optional[Union[spark.Column, _NoValueType]] = _NoValue,
     ) -> "InternalFrame":
-        """ Copy the immutable DataFrame.
+        """ Copy the immutable InternalFrame.
 
         :param spark_frame: the new Spark DataFrame. If None, then the original one is used.
         :param index_map: the new index information. If None, then the original one is used.
@@ -937,7 +953,7 @@ class InternalFrame(object):
         :param data_spark_columns: the new Spark Columns. If None, then the original ones are used.
         :param column_label_names: the new names of the index levels.
         :param spark_column: the new Spark Column. If None, then the original one is used.
-        :return: the copied immutable DataFrame.
+        :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
             spark_frame = self.spark_frame

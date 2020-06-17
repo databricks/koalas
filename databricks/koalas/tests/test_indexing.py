@@ -860,25 +860,46 @@ class IndexingTest(ReusedSQLTestCase):
         )
         kdf = ks.from_pandas(pdf)
 
+        pser1 = pdf.max_speed
+        pser2 = pdf.shield
+        kser1 = kdf.max_speed
+        kser2 = kdf.shield
+
         pdf.loc[["viper", "sidewinder"], ["shield", "max_speed"]] = 10
         kdf.loc[["viper", "sidewinder"], ["shield", "max_speed"]] = 10
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         pdf.loc[["viper", "sidewinder"], "shield"] = 50
         kdf.loc[["viper", "sidewinder"], "shield"] = 50
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         pdf.loc["cobra", "max_speed"] = 30
         kdf.loc["cobra", "max_speed"] = 30
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         pdf.loc[pdf.max_speed < 5, "max_speed"] = -pdf.max_speed
         kdf.loc[kdf.max_speed < 5, "max_speed"] = -kdf.max_speed
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
+
+        pdf.loc[pdf.max_speed < 2, "max_speed"] = -pdf.max_speed
+        kdf.loc[kdf.max_speed < 2, "max_speed"] = -kdf.max_speed
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         pdf.loc[:, "min_speed"] = 0
         kdf.loc[:, "min_speed"] = 0
         self.assert_eq(kdf, pdf, almost=True)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         with self.assertRaisesRegex(ValueError, "Incompatible indexer with Series"):
             kdf.loc["cobra", "max_speed"] = -kdf.max_speed
@@ -897,10 +918,14 @@ class IndexingTest(ReusedSQLTestCase):
         pdf.loc[:, ("y", "shield")] = -pdf[("x", "shield")]
         kdf.loc[:, ("y", "shield")] = -kdf[("x", "shield")]
         self.assert_eq(kdf, pdf, almost=True)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         pdf.loc[:, "z"] = 100
         kdf.loc[:, "z"] = 100
         self.assert_eq(kdf, pdf, almost=True)
+        self.assert_eq(kser1, pser1)
+        self.assert_eq(kser2, pser2)
 
         with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
             kdf.loc[:, [("x", "max_speed", "foo")]] = -kdf[("x", "shield")]
@@ -947,12 +972,19 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf, pdf)
 
     def test_series_loc_setitem(self):
-        pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}, index=["cobra", "viper", "sidewinder"])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        psery = pdf.y
+        kser = kdf.x
+        ksery = kdf.y
 
         pser.loc[pser % 2 == 1] = -pser
         kser.loc[kser % 2 == 1] = -kser
         self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(ksery, psery)
 
         for key, value in [
             (["viper", "sidewinder"], 10),
@@ -965,6 +997,8 @@ class IndexingTest(ReusedSQLTestCase):
                 pser.loc[key] = value
                 kser.loc[key] = value
                 self.assert_eq(kser, pser)
+                self.assert_eq(kdf, pdf)
+                self.assert_eq(ksery, psery)
 
         with self.assertRaises(ValueError):
             kser.loc["viper"] = -kser
@@ -980,6 +1014,10 @@ class IndexingTest(ReusedSQLTestCase):
         kser.loc["x"] = kser * 10
         self.assert_eq(kser, pser)
 
+        pser.loc["y"] = pser * 10
+        kser.loc["y"] = kser * 10
+        self.assert_eq(kser, pser)
+
         if LooseVersion(pd.__version__) < LooseVersion("1.0"):
             # TODO: seems like a pandas' bug in pandas>=1.0.0?
             pser.loc[("x", "viper"):"y"] = pser * 20
@@ -987,8 +1025,13 @@ class IndexingTest(ReusedSQLTestCase):
             self.assert_eq(kser, pser)
 
     def test_series_iloc_setitem(self):
-        pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}, index=["cobra", "viper", "sidewinder"])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        psery = pdf.y
+        kser = kdf.x
+        ksery = kdf.y
 
         piloc = pser.iloc
         kiloc = kser.iloc
@@ -1007,14 +1050,20 @@ class IndexingTest(ReusedSQLTestCase):
                 pser.iloc[key] = value
                 kser.iloc[key] = value
                 self.assert_eq(kser, pser)
+                self.assert_eq(kdf, pdf)
+                self.assert_eq(ksery, psery)
 
                 piloc[key] = -value
                 kiloc[key] = -value
                 self.assert_eq(kser, pser)
+                self.assert_eq(kdf, pdf)
+                self.assert_eq(ksery, psery)
 
                 pser1.iloc[key] = value
                 kser1.iloc[key] = value
                 self.assert_eq(kser1, pser1)
+                self.assert_eq(kdf, pdf)
+                self.assert_eq(ksery, psery)
 
         with self.assertRaises(ValueError):
             kser.iloc[1] = -kser
@@ -1042,6 +1091,7 @@ class IndexingTest(ReusedSQLTestCase):
         pser.iloc[[1]] = -pdf.b
         kser.iloc[[1]] = -kdf.b
         self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
 
         with self.assertRaisesRegex(ValueError, "Incompatible indexer with DataFrame"):
             kser.iloc[1] = kdf[["b"]]

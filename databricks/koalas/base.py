@@ -17,6 +17,7 @@
 """
 Base and utility classes for Koalas objects.
 """
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from functools import wraps, partial
 from typing import Union, Callable, Any
@@ -118,22 +119,27 @@ def numpy_column_op(f):
     return wrapper
 
 
-class IndexOpsMixin(object):
+class IndexOpsMixin(object, metaclass=ABCMeta):
     """common ops mixin to support a unified interface / docs for Series / Index
 
     Assuming there are following attributes or properties and function.
 
-    :ivar _kdf: Parent's Koalas DataFrame
-    :type _kdf: ks.DataFrame
-    :ivar spark: Spark-related features
-    :type spark: SparkIndexOpsMethods
+    :ivar _anchor: Parent's Koalas DataFrame
+    :type _anchor: ks.DataFrame
     """
 
-    def __init__(self, internal: InternalFrame, kdf):
-        assert internal is not None
-        assert kdf is not None and isinstance(kdf, DataFrame)
-        self._internal = internal  # type: InternalFrame
-        self._kdf = kdf
+    def __init__(self, anchor: DataFrame):
+        assert anchor is not None
+        self._anchor = anchor
+
+    @property
+    @abstractmethod
+    def _internal(self) -> InternalFrame:
+        pass
+
+    @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
 
     spark = CachedAccessor("spark", SparkIndexOpsMethods)
 

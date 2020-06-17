@@ -17,12 +17,13 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
-import warnings
+from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
 from typing import Optional, Union, List
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -45,13 +46,15 @@ from databricks.koalas.utils import (
 from databricks.koalas.window import Rolling, Expanding
 
 
-class Frame(object):
+class Frame(object, metaclass=ABCMeta):
     """
     The base class for both DataFrame and Series.
     """
 
-    def __init__(self, internal: InternalFrame):
-        self._internal = internal  # type: InternalFrame
+    @property
+    @abstractmethod
+    def _internal(self) -> InternalFrame:
+        pass
 
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
