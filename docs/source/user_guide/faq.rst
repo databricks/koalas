@@ -5,18 +5,19 @@ FAQ
 What's the project's status?
 ----------------------------
 
-This project is currently in beta and is rapidly evolving.
-We plan to do bi-weekly releases at this stage.
-You should expect the following differences:
+Koalas 1.0.0 was released, and it is much more stable now.
+You might still face the following differences:
 
- - some functions may be missing. Please create a GitHub issue if your favorite function is not yet supported. We also document all the functions that are not yet supported in the `missing directory <https://github.com/databricks/koalas/tree/master/databricks/koalas/missing>`_.
+ - Most of pandas-equivalent APIs are implemented but still some may be missing.
+   Please create a GitHub issue if your favorite function is not yet supported.
+   We also document all APIs that are not yet supported in the `missing directory <https://github.com/databricks/koalas/tree/master/databricks/koalas/missing>`_.
 
- - some behavior may be different, in particular in the treatment of nulls: Pandas uses
+ - Some behaviors may be different, in particular in the treatment of nulls: Pandas uses
    Not a Number (NaN) special constants to indicate missing values, while Spark has a
    special flag on each value to indicate missing values. We would love to hear from you
    if you come across any discrepancies
 
- - because Spark is lazy in nature, some operations like creating new columns only get 
+ - Because Spark is lazy in nature, some operations like creating new columns only get
    performed when Spark needs to print or write the dataframe.
 
 Is it Koalas or koalas?
