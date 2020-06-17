@@ -248,10 +248,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         expected = [1, 2, 4, 6, 7, 9, 10]
         self.assert_eq(expected, sorted((kidx + 1).unique().to_pandas()))
 
-        with self.assertRaisesRegexp(IndexError, "Too many levels*"):
+        with self.assertRaisesRegex(IndexError, "Too many levels*"):
             kidx.unique(level=1)
 
-        with self.assertRaisesRegexp(KeyError, "Requested level (hi)*"):
+        with self.assertRaisesRegex(KeyError, "Requested level (hi)*"):
             kidx.unique(level="hi")
 
     def test_multi_index_copy(self):
@@ -312,7 +312,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         idx = ks.Index(["a", "b", "c"])
         midx = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
 
-        with self.assertRaisesRegexp(NotImplementedError, "Doesn't support*"):
+        with self.assertRaisesRegex(NotImplementedError, "Doesn't support*"):
             idx.symmetric_difference(midx)
 
     def test_multi_index_symmetric_difference(self):
@@ -325,7 +325,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             midx.to_pandas().symmetric_difference(midx_.to_pandas()),
         )
 
-        with self.assertRaisesRegexp(NotImplementedError, "Doesn't support*"):
+        with self.assertRaisesRegex(NotImplementedError, "Doesn't support*"):
             midx.symmetric_difference(idx)
 
     def test_missing(self):
@@ -1286,15 +1286,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.DataFrame({"a": [1, 2, 3]}, index=mi)
 
         # level is not int and not in the level name list
-        with self.assertRaisesRegexp(KeyError, "Level lv_3 not found"):
+        with self.assertRaisesRegex(KeyError, "Level lv_3 not found"):
             kdf.index._get_level_number("lv_3")
 
         # level is int, but an invalid negative number
-        with self.assertRaisesRegexp(IndexError, "Too many levels: Index has only"):
+        with self.assertRaisesRegex(IndexError, "Too many levels: Index has only"):
             kdf.index._get_level_number(-3)
 
         # level is int, but an invalid positive number
-        with self.assertRaisesRegexp(IndexError, "Too many levels: Index has only"):
+        with self.assertRaisesRegex(IndexError, "Too many levels: Index has only"):
             kdf.index._get_level_number(3)
 
         # Correct and valid inputs in numbers
@@ -1341,5 +1341,5 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(np.abs(pidx), np.abs(kidx))
 
         kidx = ks.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"])
-        with self.assertRaisesRegexp(TypeError, "perform __abs__ with this index"):
+        with self.assertRaisesRegex(TypeError, "perform __abs__ with this index"):
             abs(kidx)
