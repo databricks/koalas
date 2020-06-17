@@ -46,7 +46,7 @@ setup(
         'spark': ['pyspark>=2.4.0'],
         'mlflow': ['mlflow>=1.0'],
     },
-    python_requires='>=3.5,<3.8',
+    python_requires='>=3.5,<3.9',
     install_requires=[
         'pandas>=0.23.2',
         'pyarrow>=0.10',
@@ -69,5 +69,6 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 )
