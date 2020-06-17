@@ -50,8 +50,7 @@ class SeriesType(typing.Generic[T]):
 class DataFrameType(object):
     def __init__(self, tpe, names=None):
         if names is None:
-            # Seems we cannot specify field names. I currently gave some default names
-            # `c0, c1, ... cn`.
+            # Default names `c0, c1, ... cn`.
             self.tpe = types.StructType(
                 [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
             )  # type: types.StructType

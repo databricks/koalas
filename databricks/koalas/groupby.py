@@ -860,7 +860,7 @@ class GroupBy(object):
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
             DataFrame in ``func``.
 
-            To specify the names, you can assign them in a pandas friendly style as below:
+            To specify the column names, you can assign them in a pandas friendly style as below:
 
             >>> def pandas_div(x) -> ks.DataFrame["a": float, "b": float]:
             ...     return x[['B', 'C']] / x[['B', 'C']]
