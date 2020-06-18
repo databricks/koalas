@@ -315,7 +315,7 @@ class DataFrame(Frame, Generic[T]):
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
-    :type _internal: _InternalFrame
+    :type _internal: InternalFrame
 
     Parameters
     ----------
@@ -419,6 +419,7 @@ class DataFrame(Frame, Generic[T]):
 
     @property
     def _ksers(self):
+        """ Return a dict of column label -> Series which anchors `self`. """
         from databricks.koalas.series import Series
 
         if not hasattr(self, "_kseries"):
@@ -431,12 +432,11 @@ class DataFrame(Frame, Generic[T]):
                 len(self._internal.column_labels),
                 len(kseries),
             )
-            if any(
-                self is not kser._kdf or not same_anchor(self, kser) for kser in kseries.values()
-            ):
+            if any(self is not kser._kdf for kser in kseries.values()):
+                # Refresh the dict to contain only Series anchoring `self`.
                 self._kseries = {
                     label: kseries[label]
-                    if self is kseries[label]._kdf and same_anchor(self, kseries[label])
+                    if self is kseries[label]._kdf
                     else Series(data=self, index=label)
                     for label in self._internal.column_labels
                 }
@@ -447,6 +447,19 @@ class DataFrame(Frame, Generic[T]):
         return self._internal_frame
 
     def _update_internal_frame(self, internal: InternalFrame, requires_same_anchor: bool = True):
+        """
+        Update InternalFrame with the given one.
+
+        If the column_label is changed or the new InternalFrame is not the same `anchor`,
+        disconnect the link to the Series and create a new one.
+
+        If `requires_same_anchor` is `False`, checking whether or not the same anchor is ignored
+        and force to update the InternalFrame, e.g., replacing the internal with the resolved_copy,
+        updating the underlying Spark DataFrame which need to combine a different Spark DataFrame.
+
+        :param internal: the new InternalFrame
+        :param requires_same_anchor: whether checking the same anchor
+        """
         from databricks.koalas.series import Series
 
         kseries = {}
@@ -456,9 +469,11 @@ class DataFrame(Frame, Generic[T]):
         ):
             if old_label is not None:
                 kser = self._ksers[old_label]
-                if old_label != new_label or (
-                    requires_same_anchor and not same_anchor(internal, kser)
-                ):
+
+                renamed = old_label != new_label
+                not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
+
+                if renamed or not_same_anchor:
                     kdf = DataFrame(
                         self._internal.copy(
                             column_labels=[old_label],
@@ -617,13 +632,13 @@ class DataFrame(Frame, Generic[T]):
         """
         Create Series with a proper column label.
 
-        The given label must be verified to exist in `_InternalFrame.column_labels`.
+        The given label must be verified to exist in `InternalFrame.column_labels`.
 
         For example, in some method, self is like:
 
         >>> self = ks.range(3)
 
-        `self._kser_for(label)` can be used with `_InternalFrame.column_labels`:
+        `self._kser_for(label)` can be used with `InternalFrame.column_labels`:
 
         >>> self._kser_for(self._internal.column_labels[0])
         0    0

@@ -1240,7 +1240,7 @@ class GroupBy(object):
                 # if we should restore the index or not. For instance, see the example in
                 # https://github.com/databricks/koalas/issues/628.
 
-                # TODO: deduplicate this logic with _InternalFrame.from_pandas
+                # TODO: deduplicate this logic with InternalFrame.from_pandas
                 new_index_columns = [
                     SPARK_INDEX_NAME_FORMAT(i) for i in range(len(pdf.index.names))
                 ]

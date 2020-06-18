@@ -1291,6 +1291,7 @@ class iLocIndexer(LocIndexerLike):
 
     @lazy_property
     def _internal(self):
+        # Use resolved_copy to fix the natural order.
         internal = super(iLocIndexer, self)._internal.resolved_copy
         sdf = InternalFrame.attach_distributed_sequence_column(
             internal.spark_frame, column_name=self._sequence_col
@@ -1299,6 +1300,7 @@ class iLocIndexer(LocIndexerLike):
 
     @lazy_property
     def _sequence_col(self):
+        # Use resolved_copy to fix the natural order.
         internal = super(iLocIndexer, self)._internal.resolved_copy
         return verify_temp_column_name(internal.spark_frame, "__distributed_sequence_column__")
 
@@ -1506,6 +1508,7 @@ class iLocIndexer(LocIndexerLike):
 
     def __setitem__(self, key, value):
         super(iLocIndexer, self).__setitem__(key, value)
+        # Update again with resolved_copy to drop extra columns.
         self._kdf._update_internal_frame(
             self._kdf._internal.resolved_copy, requires_same_anchor=False
         )

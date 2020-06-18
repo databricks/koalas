@@ -374,10 +374,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             column_labels=[self._column_label],
         )
 
-    @property
-    def _kdf(self):
-        return self._anchor
-
     def _with_new_scol(self, scol: spark.Column) -> "Series":
         """
         Copy Koalas Series with the new Spark Column.
