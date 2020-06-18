@@ -3782,11 +3782,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 )
             )
 
-        cols = self._internal.index_spark_columns[len(item) :] + [
-            self._internal.spark_column_for(self._internal.column_labels[0])
+        cols = self._kdf._internal.index_spark_columns[len(item) :] + [
+            self._kdf._internal.spark_column_for(self._column_label)
         ]
-        rows = [self._internal.spark_columns[level] == index for level, index in enumerate(item)]
-        sdf = self._internal.spark_frame.select(cols).filter(reduce(lambda x, y: x & y, rows))
+        rows = [
+            self._kdf._internal.spark_columns[level] == index for level, index in enumerate(item)
+        ]
+        sdf = self._kdf._internal.spark_frame.select(cols).filter(reduce(lambda x, y: x & y, rows))
 
         kdf = self._drop(item)
         self._anchor = kdf
@@ -3808,9 +3810,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return first_series(DataFrame(internal))
 
         else:
-            internal = self._internal.copy(
+            internal = self._kdf._internal.copy(
                 spark_frame=sdf,
                 index_map=OrderedDict(list(self._internal._index_map.items())[len(item) :]),
+                column_labels=[self._column_label],
+                data_spark_columns=[
+                    scol_for(sdf, self._kdf._internal.spark_column_name_for(self._column_label))
+                ],
             )
 
             return first_series(DataFrame(internal))
