@@ -1291,7 +1291,7 @@ class iLocIndexer(LocIndexerLike):
 
     @lazy_property
     def _internal(self):
-        internal = super(iLocIndexer, self)._internal
+        internal = super(iLocIndexer, self)._internal.resolved_copy
         sdf = InternalFrame.attach_distributed_sequence_column(
             internal.spark_frame, column_name=self._sequence_col
         )
