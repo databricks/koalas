@@ -628,14 +628,14 @@ class Frame(object):
         2012-02-29 12:00:00,US,2
         2012-03-31 12:00:00,JP,3
 
-        >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path, num_files=1)
+        >>> df.cummax().to_csv(path=r'%s/to_csv/foo.csv' % path, num_files=1)
         >>> ks.read_csv(
         ...    path=r'%s/to_csv/foo.csv' % path
         ... ).sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
                            date country  code
         ... 2012-01-31 12:00:00      KR     1
         ... 2012-02-29 12:00:00      US     2
-        ... 2012-03-31 12:00:00      JP     3
+        ... 2012-03-31 12:00:00      US     3
 
         In case of Series,
 
@@ -730,8 +730,10 @@ class Frame(object):
             sdf = sdf.select(
                 [scol_for(sdf, name_like_string(label)) for label in index_cols]
                 + [
-                    self._internal.spark_column_for(label).alias(new_name)
-                    for (label, new_name) in zip(column_labels, header)
+                    scol_for(sdf, str(i) if label is None else name_like_string(label)).alias(
+                        new_name
+                    )
+                    for i, (label, new_name) in enumerate(zip(column_labels, header))
                 ]
             )
             header = True
@@ -739,7 +741,10 @@ class Frame(object):
             sdf = kdf.to_spark(index_col)  # type: ignore
             sdf = sdf.select(
                 [scol_for(sdf, name_like_string(label)) for label in index_cols]
-                + [kdf._internal.spark_column_for(label) for label in column_labels]
+                + [
+                    scol_for(sdf, str(i) if label is None else name_like_string(label))
+                    for i, label in enumerate(column_labels)
+                ]
             )
 
         if num_files is not None:
