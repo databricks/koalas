@@ -478,6 +478,9 @@ class DataFrame(Frame, Generic[T]):
         self._internal_frame = internal
         self._kseries = kseries
 
+        if hasattr(self, "_repr_pandas_cache"):
+            del self._repr_pandas_cache
+
     @property
     def ndim(self):
         """
@@ -10128,14 +10131,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.to_pandas_frame
 
     def _get_or_create_repr_pandas_cache(self, n):
-        if (
-            not hasattr(self, "_repr_pandas_cache")
-            or (id(self._internal), n) not in self._repr_pandas_cache
-        ):
-            self._repr_pandas_cache = {
-                (id(self._internal), n): self.head(n + 1)._to_internal_pandas()
-            }
-        return self._repr_pandas_cache[(id(self._internal), n)]
+        if not hasattr(self, "_repr_pandas_cache") or n not in self._repr_pandas_cache:
+            self._repr_pandas_cache = {n: self.head(n + 1)._to_internal_pandas()}
+        return self._repr_pandas_cache[n]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
