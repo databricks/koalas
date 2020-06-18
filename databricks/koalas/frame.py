@@ -464,7 +464,7 @@ class DataFrame(Frame, Generic[T]):
                             column_labels=[old_label],
                             data_spark_columns=[self._internal.spark_column_for(old_label)],
                         )
-                    )
+                    )  # type: DataFrame
                     kser._anchor = kdf
                     kdf._kseries = {old_label: kser}
                     kser = None

@@ -2139,6 +2139,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if inplace:
             self._anchor = kdf
             kdf._kseries = {self._column_label: self}
+            return None
         else:
             return first_series(kdf)
 
@@ -2233,6 +2234,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if inplace:
             self._anchor = kdf
             kdf._kseries = {self._column_label: self}
+            return None
         else:
             return first_series(kdf)
 
