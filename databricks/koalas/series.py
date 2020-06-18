@@ -1910,7 +1910,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 raise ValueError("'index' type should be one of str, list, tuple")
             if level is None:
                 level = 0
-            if level >= len(self._internal.index_spark_columns):
+            if level >= len(self._kdf._internal.index_spark_columns):
                 raise ValueError("'level' should be less than the number of indexes")
 
             if isinstance(index, str):
@@ -1940,7 +1940,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             for idxes in index:
                 try:
                     index_scols = [
-                        self._internal.index_spark_columns[lvl] == idx
+                        self._kdf._internal.index_spark_columns[lvl] == idx
                         for lvl, idx in enumerate(idxes, level)
                     ]
                 except IndexError:
@@ -1955,7 +1955,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
             cond = ~reduce(lambda x, y: x | y, drop_index_scols)
-            return DataFrame(self._internal.with_filter(cond))
+
+            return DataFrame(self._kdf[[self.name]]._internal.with_filter(cond))
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
