@@ -4471,12 +4471,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             level = 0
 
         cols = (
-            self._internal.index_spark_columns[:level]
-            + self._internal.index_spark_columns[level + len(key) :]
-            + [self._internal.spark_column_for(self._internal.column_labels[0])]
+            self._kdf._internal.index_spark_columns[:level]
+            + self._kdf._internal.index_spark_columns[level + len(key) :]
+            + [self._kdf._internal.spark_column_for(self._column_label)]
         )
-        rows = [self._internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)]
-        sdf = self._internal.spark_frame.select(cols).where(reduce(lambda x, y: x & y, rows))
+        rows = [
+            self._kdf._internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)
+        ]
+        sdf = self._kdf._internal.spark_frame.select(cols).where(reduce(lambda x, y: x & y, rows))
 
         if len(self._internal._index_map) == len(key):
             # if spark_frame has one column and one data, return data only without frame
@@ -4489,11 +4491,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             col for col in sdf.columns if col not in self._internal.data_spark_column_names
         ]
         index_map_dict = dict(self._internal.index_map)
-        internal = self._internal.copy(
+        internal = self._kdf._internal.copy(
             spark_frame=sdf,
             index_map=OrderedDict(
                 (index_col, index_map_dict[index_col]) for index_col in index_cols
             ),
+            column_labels=[self._column_label],
+            data_spark_columns=[
+                scol_for(sdf, self._kdf._internal.spark_column_name_for(self._column_label))
+            ],
         )
 
         return first_series(DataFrame(internal))
