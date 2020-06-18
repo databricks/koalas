@@ -8,7 +8,7 @@ numpy>=1.14
 mlflow>=1.0
 
 # Documentation build
-sphinx<3.1.0
+sphinx
 nbsphinx
 numpydoc==0.8
 pypandoc
