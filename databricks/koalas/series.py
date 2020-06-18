@@ -5151,22 +5151,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self._internal.to_pandas_frame)
 
-    def _get_or_create_repr_pandas_cache(self, n):
-        if (
-            not hasattr(self, "_repr_pandas_cache")
-            or (id(self._kdf._internal), n) not in self._repr_pandas_cache
-        ):
-            self._repr_pandas_cache = {
-                (id(self._kdf._internal), n): self.head(n + 1)._to_internal_pandas()
-            }
-        return self._repr_pandas_cache[(id(self._kdf._internal), n)]
-
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return self._to_internal_pandas().to_string(name=self.name, dtype=self.dtype)
 
-        pser = self._get_or_create_repr_pandas_cache(max_display_count)
+        pser = self._kdf._get_or_create_repr_pandas_cache(max_display_count)[self.name]
         pser_length = len(pser)
         pser = pser.iloc[:max_display_count]
         if pser_length > max_display_count:

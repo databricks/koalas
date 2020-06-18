@@ -1933,22 +1933,12 @@ class Index(IndexOpsMixin):
                 return partial(property_or_func, self)
         raise AttributeError("'Index' object has no attribute '{}'".format(item))
 
-    def _get_or_create_repr_pandas_cache(self, n):
-        if (
-            not hasattr(self, "_repr_pandas_cache")
-            or (id(self._kdf._internal), n) not in self._repr_pandas_cache
-        ):
-            self._repr_pandas_cache = {
-                (id(self._kdf._internal), n): self._kdf.head(n + 1).index.to_pandas()
-            }
-        return self._repr_pandas_cache[(id(self._kdf._internal), n)]
-
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = self._get_or_create_repr_pandas_cache(max_display_count)
+        pindex = self._kdf._get_or_create_repr_pandas_cache(max_display_count).index
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])

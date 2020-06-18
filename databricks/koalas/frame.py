@@ -478,6 +478,9 @@ class DataFrame(Frame, Generic[T]):
         self._internal_frame = internal
         self._kseries = kseries
 
+        if hasattr(self, "_repr_pandas_cache"):
+            del self._repr_pandas_cache
+
     @property
     def ndim(self):
         """
