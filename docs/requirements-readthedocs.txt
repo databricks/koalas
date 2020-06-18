@@ -1,3 +1,0 @@
-# For Read the docs. Only support Python 3.6+ and PIP.
-install-jdk
-sphinx>=3.0.0

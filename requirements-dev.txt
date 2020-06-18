@@ -7,8 +7,8 @@ numpy>=1.14
 # Optional dependencies in Koalas.
 mlflow>=1.0
 
-# Documentation build
-sphinx<3.1.0
+# Documentation build.
+sphinx>=2.0.0,<3.1.0
 nbsphinx
 numpydoc==0.8
 pypandoc
