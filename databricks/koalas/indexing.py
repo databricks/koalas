@@ -1299,7 +1299,7 @@ class iLocIndexer(LocIndexerLike):
 
     @lazy_property
     def _sequence_col(self):
-        internal = super(iLocIndexer, self)._internal
+        internal = super(iLocIndexer, self)._internal.resolved_copy
         return verify_temp_column_name(internal.spark_frame, "__distributed_sequence_column__")
 
     def _select_rows_by_series(
