@@ -70,9 +70,124 @@ class TypeHintTests(unittest.TestCase):
         expected = StructType([StructField("c0", FloatType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
+
+        def func() -> pd.DataFrame[pdf.dtypes]:  # type: ignore
+            pass
+
+        expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
     def test_if_pandas_implements_class_getitem(self):
         # the current type hint implementation of pandas DataFrame assumes pandas doesn't
         # implement '__class_getitem__'. This test case is to make sure pandas
         # doesn't implement them.
         assert not ks._frame_has_class_getitem
         assert not ks._series_has_class_getitem
+
+    @unittest.skipIf(
+        sys.version_info < (3, 7),
+        "Type inference from pandas instances is supported with Python 3.7+",
+    )
+    def test_infer_schema_with_names_pandas_instances(self):
+        def func() -> 'pd.DataFrame["a" : np.float, "b":str]':
+            pass
+
+        expected = StructType([StructField("a", FloatType()), StructField("b", StringType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
+        def func() -> "pd.DataFrame['a': np.float, 'b': int]":
+            pass
+
+        expected = StructType([StructField("a", FloatType()), StructField("b", IntegerType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
+
+        def func() -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+            pass
+
+        expected = StructType([StructField("a", LongType()), StructField("b", LongType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
+    @unittest.skipIf(
+        sys.version_info < (3, 7),
+        "Type inference from pandas instances is supported with Python 3.7+",
+    )
+    def test_infer_schema_with_names_pandas_instances_negative(self):
+        def try_infer_return_type():
+            def f() -> 'pd.DataFrame["a" : np.float : 1, "b":str:2]':
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "Type hints should be specified", try_infer_return_type)
+
+        class A:
+            pass
+
+        def try_infer_return_type():
+            def f() -> pd.DataFrame[A]:
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "not understood", try_infer_return_type)
+
+        def try_infer_return_type():
+            def f() -> 'pd.DataFrame["a" : np.float : 1, "b":str:2]':
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "Type hints should be specified", try_infer_return_type)
+
+        # object type
+        pdf = pd.DataFrame({"a": ["a", 2, None]})
+
+        def try_infer_return_type():
+            def f() -> pd.DataFrame[pdf.dtypes]:  # type: ignore
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
+
+    def test_infer_schema_with_names_negative(self):
+        def try_infer_return_type():
+            def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "Type hints should be specified", try_infer_return_type)
+
+        class A:
+            pass
+
+        def try_infer_return_type():
+            def f() -> ks.DataFrame[A]:
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "not understood", try_infer_return_type)
+
+        def try_infer_return_type():
+            def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "Type hints should be specified", try_infer_return_type)
+
+        # object type
+        pdf = pd.DataFrame({"a": ["a", 2, None]})
+
+        def try_infer_return_type():
+            def f() -> ks.DataFrame[pdf.dtypes]:  # type: ignore
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)

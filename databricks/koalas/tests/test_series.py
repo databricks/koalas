@@ -1128,7 +1128,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
 
-        with self.assertRaisesRegex(ValueError, "Type int63 not understood"):
+        with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")
 
     def test_aggregate(self):

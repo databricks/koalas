@@ -292,6 +292,43 @@ rectangle    16.0  2.348543e+108
 T = TypeVar("T")
 
 
+def _create_tuple_for_frame_type(params):
+    from databricks.koalas.typedef import NameTypeHolder
+
+    if isinstance(params, zip):
+        params = [slice(name, tpe) for name, tpe in params]
+
+    if isinstance(params, slice):
+        params = (params,)
+
+    if (
+        hasattr(params, "__len__")
+        and isinstance(params, Iterable)
+        and all(isinstance(param, slice) for param in params)
+    ):
+        for param in params:
+            if isinstance(param.start, str) and param.step is not None:
+                raise TypeError(
+                    "Type hints should be specified as "
+                    "DataFrame['name': type]; however, got %s" % param
+                )
+
+        name_classes = []
+        for param in params:
+            new_class = type("NameType", (NameTypeHolder,), {})
+            new_class.name = param.start
+            # When the given argument is a numpy's dtype instance.
+            new_class.tpe = param.stop.type if isinstance(param.stop, np.dtype) else param.stop
+            name_classes.append(new_class)
+
+        return Tuple[tuple(name_classes)]
+
+    if not isinstance(params, Iterable):
+        params = [params]
+    params = [param.type if isinstance(param, np.dtype) else param for param in params]
+    return Tuple[tuple(params)]
+
+
 if (3, 5) <= sys.version_info < (3, 7):
     from typing import GenericMeta  # type: ignore
 
@@ -302,7 +339,7 @@ if (3, 5) <= sys.version_info < (3, 7):
 
     def new_getitem(self, params):
         if hasattr(self, "is_dataframe"):
-            return old_getitem(self, Tuple[params])
+            return old_getitem(self, _create_tuple_for_frame_type(params))
         else:
             return old_getitem(self, params)
 
@@ -2107,7 +2144,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             If the return type is specified, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
-            DataFrame in ``func``. See examples below.
+            DataFrame in ``func``.
+
+            To specify the column names, you can assign them in a pandas friendly style as below:
+
+            >>> def plus_one(x) -> ks.DataFrame["a": float, "b": float]:
+            ...     return x + 1
+
+            >>> pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [3, 4, 5]})
+            >>> def plus_one(x) -> ks.DataFrame[zip(pdf.dtypes, pdf.columns)]:
+            ...     return x + 1
 
 
         Parameters
@@ -2147,6 +2193,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.apply_batch(query_func)
            c0  c1
         0   1   2
+
+        >>> def query_func(pdf) -> ks.DataFrame["A": int, "B": int]:
+        ...     return pdf.query('A == 1')
+        >>> df.apply_batch(query_func)
+           A  B
+        0  1  2
 
         You can also omit the type hints so Koalas infers the return schema as below:
 
@@ -2311,7 +2363,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             If the return type is specified as `DataFrame`, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
-            DataFrame in ``func``. See examples below.
+            DataFrame in ``func``.
+
+            To specify the column names, you can assign them in a pandas friendly style as below:
+
+            >>> def plus_one(x) -> ks.DataFrame["a": float, "b": float]:
+            ...     return x + 1
+
+            >>> pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [3, 4, 5]})
+            >>> def plus_one(x) -> ks.DataFrame[zip(pdf.dtypes, pdf.columns)]:
+            ...     return x + 1
 
             However, this way switches the index type to default index type in the output
             because the type hint cannot express the index type at this moment. Use
@@ -2405,14 +2466,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         In order to specify the types when `axis` is '1', it should use DataFrame[...]
         annotation. In this case, the column names are automatically generated.
 
-        >>> def identify(x) -> ks.DataFrame[np.int64, np.int64]:
+        >>> def identify(x) -> ks.DataFrame['A': np.int64, 'B': np.int64]:
         ...     return x
         ...
         >>> df.apply(identify, axis=1)
-           c0  c1
-        0   4   9
-        1   4   9
-        2   4   9
+           A  B
+        0  4  9
+        1  4  9
+        2  4  9
 
         You can also specify extra arguments.
 
@@ -2722,7 +2783,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             If the return type is specified, the output column names become
             `c0, c1, c2 ... cn`. These names are positionally mapped to the returned
-            DataFrame in ``func``. See examples below.
+            DataFrame in ``func``.
+
+            To specify the column names, you can assign them in a pandas friendly style as below:
+
+            >>> def plus_one(x) -> ks.DataFrame['a': float, 'b': float]:
+            ...     return x + 1
+
+            >>> pdf = pd.DataFrame({'a': [1, 2, 3], 'b': [3, 4, 5]})
+            >>> def plus_one(x) -> ks.DataFrame[zip(pdf.dtypes, pdf.columns)]:
+            ...     return x + 1
 
 
         Parameters
@@ -2759,6 +2829,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0   2   3
         1   4   5
         2   6   7
+
+        >>> def plus_one_func(pdf) -> ks.DataFrame['A': int, 'B': int]:
+        ...     return pdf + 1
+        >>> df.transform_batch(plus_one_func)
+           A  B
+        0  2  3
+        1  4  5
+        2  6  7
 
         >>> def plus_one_func(pdf) -> ks.Series[int]:
         ...     return pdf.B + 1
@@ -10364,7 +10442,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # This is a workaround to support variadic generic in DataFrame in Python 3.7.
             # See https://github.com/python/typing/issues/193
             # we always wraps the given type hints by a tuple to mimic the variadic generic.
-            return Tuple[params]
+            return _create_tuple_for_frame_type(params)
 
     elif (3, 5) <= sys.version_info < (3, 7):
         # This is a workaround to support variadic generic in DataFrame in Python 3.5+
