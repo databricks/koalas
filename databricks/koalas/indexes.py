@@ -110,15 +110,19 @@ class Index(IndexOpsMixin):
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
-            kdf = data
         else:
-            kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
-        internal = kdf._internal.copy(
-            spark_column=kdf._internal.index_spark_columns[0],
-            column_labels=kdf._internal.index_names,
+            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
+
+        super(Index, self).__init__(data)
+
+    @property
+    def _internal(self) -> InternalFrame:
+        internal = self._kdf._internal
+        return internal.copy(
+            spark_column=internal.index_spark_columns[0],
+            column_labels=internal.index_names,
             column_label_names=None,
         )
-        IndexOpsMixin.__init__(self, internal, kdf)
 
     def _with_new_scol(self, scol: spark.Column) -> "Index":
         """
@@ -556,21 +560,14 @@ class Index(IndexOpsMixin):
         """
         names = self._verify_for_rename(name)
 
-        if inplace:
-            kdf = self._kdf
-        else:
-            kdf = self._kdf.copy()
-
-        kdf._internal = kdf._internal.copy(
-            index_map=OrderedDict(zip(kdf._internal.index_spark_column_names, names))
+        internal = self._kdf._internal.copy(
+            index_map=OrderedDict(zip(self._kdf._internal.index_spark_column_names, names))
         )
 
-        idx = kdf.index
-        idx._internal = idx._internal.copy(spark_column=self.spark.column)
         if inplace:
-            self._internal = idx._internal
+            self._kdf._update_internal_frame(internal)
         else:
-            return idx
+            return DataFrame(internal).index
 
     def _verify_for_rename(self, name):
         if name is None or isinstance(name, tuple):
@@ -678,13 +675,18 @@ class Index(IndexOpsMixin):
         scol = self.spark.column
         if name is not None:
             scol = scol.alias(name_like_string(name))
-        column_labels = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
-        return Series(
-            kdf._internal.copy(
-                spark_column=scol, column_labels=column_labels, column_label_names=None
-            ),
-            anchor=kdf,
+        column_labels = (
+            [(SPARK_DEFAULT_SERIES_NAME,)]
+            if len(kdf._internal.index_map) > 1
+            else [
+                (SPARK_DEFAULT_SERIES_NAME,) if name is None else name
+                for name in kdf._internal.index_names
+            ]
         )
+        internal = kdf._internal.copy(
+            column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
+        )
+        return first_series(DataFrame(internal))
 
     def to_frame(self, index=True, name=None) -> DataFrame:
         """
@@ -1033,7 +1035,7 @@ class Index(IndexOpsMixin):
         >>> df.index.copy(name='snake')
         Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
         """
-        result = Index(self._kdf.copy())
+        result = self._kdf.copy().index
         if name:
             result.name = name
         return result
@@ -1931,22 +1933,12 @@ class Index(IndexOpsMixin):
                 return partial(property_or_func, self)
         raise AttributeError("'Index' object has no attribute '{}'".format(item))
 
-    def _get_or_create_repr_pandas_cache(self, n):
-        if (
-            not hasattr(self, "_repr_pandas_cache")
-            or (id(self._internal), n) not in self._repr_pandas_cache
-        ):
-            self._repr_pandas_cache = {
-                (id(self._internal), n): self._kdf.head(n + 1).index.to_pandas()
-            }
-        return self._repr_pandas_cache[(id(self._internal), n)]
-
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = self._get_or_create_repr_pandas_cache(max_display_count)
+        pindex = self._kdf._get_or_create_repr_pandas_cache(max_display_count).index
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
@@ -2003,14 +1995,19 @@ class MultiIndex(Index):
 
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
-        scol = F.struct(kdf._internal.index_spark_columns)
-        data_columns = kdf._internal.spark_frame.select(scol).columns
-        internal = kdf._internal.copy(
+
+        super(MultiIndex, self).__init__(kdf)
+
+    @property
+    def _internal(self):
+        internal = self._kdf._internal
+        scol = F.struct(internal.index_spark_columns)
+        data_columns = internal.spark_frame.select(scol).columns
+        return internal.copy(
             spark_column=scol,
             column_labels=[(col, None) for col in data_columns],
             column_label_names=None,
         )
-        IndexOpsMixin.__init__(self, internal, kdf)
 
     def __abs__(self):
         raise TypeError("TypeError: cannot perform __abs__ with this index type: MultiIndex")
@@ -2460,7 +2457,7 @@ class MultiIndex(Index):
                     ('d', 'h')],
                    )
         """
-        return MultiIndex(self._kdf.copy())
+        return super(MultiIndex, self).copy(deep=deep)
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """

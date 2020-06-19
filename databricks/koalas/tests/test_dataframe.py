@@ -80,6 +80,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
+    def test_inplace(self):
+        pdf, kdf = self.df_pair
+
+        pser = pdf.a
+        kser = kdf.a
+
+        pdf["a"] = pdf["a"] + 10
+        kdf["a"] = kdf["a"] + 10
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
+
     def test_dataframe_multiindex_columns(self):
         pdf = pd.DataFrame(
             {
@@ -182,6 +194,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reset_index()
 
         self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
+
+        # inplace
+        pser = pdf.a
+        kser = kdf.a
+        pdf.reset_index(drop=True, inplace=True)
+        kdf.reset_index(drop=True, inplace=True)
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
 
     def test_reset_index_with_default_index_types(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=np.random.rand(3))
@@ -475,9 +495,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(result_kdf, result_pdf)
 
         # inplace
+        pser = result_pdf.A
+        kser = result_kdf.A
         result_kdf.rename(index={10: 100, 20: 200}, inplace=True)
         result_pdf.rename(index={10: 100, 20: 200}, inplace=True)
         self.assert_eq(result_kdf, result_pdf)
+        self.assert_eq(kser, pser)
 
         def str_lower(s) -> str:
             return str.lower(s)
@@ -584,9 +607,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.dropna(thresh=1, subset=["y", "z"]), pdf.dropna(thresh=1, subset=["y", "z"])
         )
 
-        ddf2 = kdf.copy()
-        ddf2.dropna(inplace=True)
-        self.assert_eq(ddf2, pdf.dropna())
+        pdf2 = pdf.copy()
+        kdf2 = kdf.copy()
+        pser = pdf2.x
+        kser = kdf2.x
+        pdf2.dropna(inplace=True)
+        kdf2.dropna(inplace=True)
+        self.assert_eq(kdf2, pdf2)
+        self.assert_eq(kser, pser, almost=True)
 
         msg = "dropna currently only works for axis=0 or axis='index'"
         with self.assertRaisesRegex(NotImplementedError, msg):
@@ -675,9 +703,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.fillna(method="bfill"), kdf.fillna(method="bfill"))
         self.assert_eq(pdf.fillna(method="ffill"), kdf.fillna(method="ffill"))
 
+        pser = pdf.z
+        kser = kdf.z
         pdf.fillna({"x": -1, "y": -2, "z": -5}, inplace=True)
         kdf.fillna({"x": -1, "y": -2, "z": -5}, inplace=True)
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser, almost=True)
 
         s_nan = pd.Series([-1, -2, -5], index=["x", "y", "z"], dtype=int)
         self.assert_eq(kdf.fillna(s_nan), pdf.fillna(s_nan))
@@ -799,24 +830,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             {"a": [1, 2, 3, 4, 5, None, 7], "b": [7, 6, 5, 4, 3, 2, 1]}, index=np.random.rand(7)
         )
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(repr(kdf.sort_values("b")), repr(pdf.sort_values("b")))
-        self.assert_eq(repr(kdf.sort_values(["b", "a"])), repr(pdf.sort_values(["b", "a"])))
+        self.assert_eq(kdf.sort_values("b"), pdf.sort_values("b"))
+        self.assert_eq(kdf.sort_values(["b", "a"]), pdf.sort_values(["b", "a"]))
         self.assert_eq(
-            repr(kdf.sort_values(["b", "a"], ascending=[False, True])),
-            repr(pdf.sort_values(["b", "a"], ascending=[False, True])),
+            kdf.sort_values(["b", "a"], ascending=[False, True]),
+            pdf.sort_values(["b", "a"], ascending=[False, True]),
         )
 
         self.assertRaises(ValueError, lambda: kdf.sort_values(["b", "a"], ascending=[False]))
 
         self.assert_eq(
-            repr(kdf.sort_values(["b", "a"], na_position="first")),
-            repr(pdf.sort_values(["b", "a"], na_position="first")),
+            kdf.sort_values(["b", "a"], na_position="first"),
+            pdf.sort_values(["b", "a"], na_position="first"),
         )
 
         self.assertRaises(ValueError, lambda: kdf.sort_values(["b", "a"], na_position="invalid"))
 
+        pserA = pdf.a
+        kserA = kdf.a
         self.assert_eq(kdf.sort_values("b", inplace=True), pdf.sort_values("b", inplace=True))
-        self.assert_eq(repr(kdf), repr(pdf))
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kserA, pserA, almost=True)
 
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
         kdf.columns = columns
@@ -843,9 +877,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sort_index(ascending=False), pdf.sort_index(ascending=False))
         # Assert sorting NA indices first
         self.assert_eq(kdf.sort_index(na_position="first"), pdf.sort_index(na_position="first"))
+
         # Assert sorting inplace
+        pserA = pdf.A
+        kserA = kdf.A
         self.assertEqual(kdf.sort_index(inplace=True), pdf.sort_index(inplace=True))
         self.assert_eq(kdf, pdf)
+        self.assert_eq(kserA, pserA, almost=True)
 
         # Assert multi-indices
         pdf = pd.DataFrame(
@@ -1536,6 +1574,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.replace(["Ironman", "Captain America"], ["Rescue", "Hawkeye"]),
         )
 
+        # inplace
+        pser = pdf.name
+        kser = kdf.name
+        pdf.replace("Ironman", "Spiderman", inplace=True)
+        kdf.replace("Ironman", "Spiderman", inplace=True)
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
+
         pdf = pd.DataFrame(
             {"A": [0, 1, 2, 3, 4], "B": [5, 6, 7, 8, 9], "C": ["a", "b", "c", "d", "e"]},
             index=np.random.rand(5),
@@ -1608,9 +1654,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             return left_kdf, left_pdf, right_kdf, right_pdf
 
         left_kdf, left_pdf, right_kdf, right_pdf = get_data()
+        pser = left_pdf.B
+        kser = left_kdf.B
         left_pdf.update(right_pdf)
         left_kdf.update(right_kdf)
         self.assert_eq(left_pdf.sort_values(by=["A", "B"]), left_kdf.sort_values(by=["A", "B"]))
+        self.assert_eq(kser.sort_index(), pser.sort_index(), almost=True)
 
         left_kdf, left_pdf, right_kdf, right_pdf = get_data()
         left_pdf.update(right_pdf, overwrite=False)
@@ -2188,9 +2237,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 {"a": [1, 2, 2, 2, 3], "b": ["a", "a", "a", "c", "d"]}, index=np.random.rand(5)
             )
             kdf = ks.from_pandas(pdf)
+            pser = pdf.a
+            kser = kdf.a
             pdf.drop_duplicates(subset=subset, inplace=True)
             kdf.drop_duplicates(subset=subset, inplace=True)
-            self.assert_eq(pdf.sort_index(), kdf.sort_index())
+            self.assert_eq(kdf.sort_index(), pdf.sort_index())
+            self.assert_eq(kser.sort_index(), pser.sort_index())
 
         # multi-index columns, inplace is True
         subset_list = [None, ("x", "a"), [("x", "a"), ("y", "b")]]
@@ -2202,9 +2254,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
             pdf.columns = columns
             kdf.columns = columns
+            pser = pdf[("x", "a")]
+            kser = kdf[("x", "a")]
             pdf.drop_duplicates(subset=subset, inplace=True)
             kdf.drop_duplicates(subset=subset, inplace=True)
-            self.assert_eq(pdf.sort_index(), kdf.sort_index())
+            self.assert_eq(kdf.sort_index(), pdf.sort_index())
+            self.assert_eq(kser.sort_index(), pser.sort_index())
 
     def test_reindex(self):
         index = ["A", "B", "C", "D", "E"]
@@ -3101,10 +3156,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             dummy_kdf = kdf.copy()
             dummy_pdf = pdf.copy()
 
+            pser = dummy_pdf.A
+            kser = dummy_kdf.A
             dummy_pdf.query(expr, inplace=True)
             dummy_kdf.query(expr, inplace=True)
 
             self.assert_eq(dummy_kdf, dummy_pdf)
+            self.assert_eq(kser, pser)
 
         # invalid values for `expr`
         invalid_exprs = (1, 1.0, (exprs[0],), [exprs[0]])
@@ -3268,9 +3326,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.eval("C = A + B", inplace=True)
         kdf.eval("C = A + B", inplace=True)
         self.assert_eq(pdf, kdf)
+        pser = pdf.A
+        kser = kdf.A
         pdf.eval("A = B + C", inplace=True)
         kdf.eval("A = B + C", inplace=True)
         self.assert_eq(pdf, kdf)
+        self.assert_eq(pser, kser)
 
         # doesn't support for multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b"), ("z", "c")])

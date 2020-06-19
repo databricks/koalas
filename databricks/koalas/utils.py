@@ -36,26 +36,35 @@ if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
     from databricks.koalas.base import IndexOpsMixin
     from databricks.koalas.frame import DataFrame
+    from databricks.koalas.internal import InternalFrame
 
 
 def same_anchor(
-    this: Union["DataFrame", "IndexOpsMixin"], that: Union["DataFrame", "IndexOpsMixin"]
+    this: Union["DataFrame", "IndexOpsMixin", "InternalFrame"],
+    that: Union["DataFrame", "IndexOpsMixin", "InternalFrame"],
 ) -> bool:
     """
     Check if the anchors of the given DataFrame or Series are the same or not.
     """
     from databricks.koalas.base import IndexOpsMixin
     from databricks.koalas.frame import DataFrame
+    from databricks.koalas.internal import InternalFrame
 
-    assert isinstance(this, (DataFrame, IndexOpsMixin)), type(this)
-    this_internal = this._internal
+    if isinstance(this, InternalFrame):
+        this_internal = this
+    else:
+        assert isinstance(this, (DataFrame, IndexOpsMixin)), type(this)
+        this_internal = this._internal
 
-    assert isinstance(that, (DataFrame, IndexOpsMixin)), type(that)
-    that_internal = that._internal
+    if isinstance(that, InternalFrame):
+        that_internal = that
+    else:
+        assert isinstance(that, (DataFrame, IndexOpsMixin)), type(that)
+        that_internal = that._internal
 
     return (
         this_internal.spark_frame is that_internal.spark_frame
-        and this_internal.index_map == that_internal.index_map
+        and this_internal.index_spark_column_names == that_internal.index_spark_column_names
     )
 
 
@@ -321,7 +330,8 @@ def align_diff_frames(
 
 def align_diff_series(func, this_series, *args, how="full"):
     from databricks.koalas.base import IndexOpsMixin
-    from databricks.koalas.series import Series
+    from databricks.koalas.frame import DataFrame
+    from databricks.koalas.series import first_series
 
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
@@ -331,12 +341,10 @@ def align_diff_series(func, this_series, *args, how="full"):
         *combined["that"]._internal.data_spark_columns
     )
 
-    return Series(
-        combined._internal.copy(
-            spark_column=scol, column_labels=this_series._internal.column_labels
-        ),
-        anchor=combined,
+    internal = combined._internal.copy(
+        column_labels=this_series._internal.column_labels, data_spark_columns=[scol]
     )
+    return first_series(DataFrame(internal))
 
 
 def default_session(conf=None):

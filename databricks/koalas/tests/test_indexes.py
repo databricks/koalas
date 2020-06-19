@@ -128,8 +128,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertIsNone(kdf.index.name)
 
         idx = pd.Index([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], name="x")
-        pdf = pd.DataFrame(np.random.randn(10, 5), idx)
+        pdf = pd.DataFrame(np.random.randn(10, 5), index=idx, columns=list("abcde"))
         kdf = ks.from_pandas(pdf)
+
+        pser = pdf.a
+        kser = kdf.a
 
         self.assertEqual(kdf.index.name, pdf.index.name)
         self.assertEqual(kdf.index.names, pdf.index.names)
@@ -141,12 +144,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.name, pidx.name)
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
+        self.assertEqual(kdf.index.name, pdf.index.name)
+        self.assertEqual(kdf.index.names, pdf.index.names)
+        self.assertEqual(kser.index.names, pser.index.names)
 
         pidx.name = None
         kidx.name = None
         self.assertEqual(kidx.name, pidx.name)
         self.assertEqual(kidx.names, pidx.names)
         self.assert_eq(kidx, pidx)
+        self.assertEqual(kdf.index.name, pdf.index.name)
+        self.assertEqual(kdf.index.names, pdf.index.names)
+        self.assertEqual(kser.index.names, pser.index.names)
 
         with self.assertRaisesRegex(ValueError, "Names must be a list-like"):
             kidx.names = "hi"

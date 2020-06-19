@@ -315,7 +315,7 @@ class DataFrame(Frame, Generic[T]):
     internally.
 
     :ivar _internal: an internal immutable Frame to manage metadata.
-    :type _internal: _InternalFrame
+    :type _internal: InternalFrame
 
     Parameters
     ----------
@@ -390,20 +390,20 @@ class DataFrame(Frame, Generic[T]):
             assert columns is None
             assert dtype is None
             assert not copy
-            super(DataFrame, self).__init__(data)
+            internal = data
         elif isinstance(data, spark.DataFrame):
             assert index is None
             assert columns is None
             assert dtype is None
             assert not copy
-            super(DataFrame, self).__init__(InternalFrame(spark_frame=data, index_map=None))
+            internal = InternalFrame(spark_frame=data, index_map=None)
         elif isinstance(data, ks.Series):
             assert index is None
             assert columns is None
             assert dtype is None
             assert not copy
-            data = data.to_dataframe()
-            super(DataFrame, self).__init__(data._internal)
+            data = data.to_frame()
+            internal = data._internal
         else:
             if isinstance(data, pd.DataFrame):
                 assert index is None
@@ -413,7 +413,88 @@ class DataFrame(Frame, Generic[T]):
                 pdf = data
             else:
                 pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
-            super(DataFrame, self).__init__(InternalFrame.from_pandas(pdf))
+            internal = InternalFrame.from_pandas(pdf)
+
+        self._internal_frame = internal
+
+    @property
+    def _ksers(self):
+        """ Return a dict of column label -> Series which anchors `self`. """
+        from databricks.koalas.series import Series
+
+        if not hasattr(self, "_kseries"):
+            self._kseries = {
+                label: Series(data=self, index=label) for label in self._internal.column_labels
+            }
+        else:
+            kseries = self._kseries
+            assert len(self._internal.column_labels) == len(kseries), (
+                len(self._internal.column_labels),
+                len(kseries),
+            )
+            if any(self is not kser._kdf for kser in kseries.values()):
+                # Refresh the dict to contain only Series anchoring `self`.
+                self._kseries = {
+                    label: kseries[label]
+                    if self is kseries[label]._kdf
+                    else Series(data=self, index=label)
+                    for label in self._internal.column_labels
+                }
+        return self._kseries
+
+    @property
+    def _internal(self) -> InternalFrame:
+        return self._internal_frame
+
+    def _update_internal_frame(self, internal: InternalFrame, requires_same_anchor: bool = True):
+        """
+        Update InternalFrame with the given one.
+
+        If the column_label is changed or the new InternalFrame is not the same `anchor`,
+        disconnect the link to the Series and create a new one.
+
+        If `requires_same_anchor` is `False`, checking whether or not the same anchor is ignored
+        and force to update the InternalFrame, e.g., replacing the internal with the resolved_copy,
+        updating the underlying Spark DataFrame which need to combine a different Spark DataFrame.
+
+        :param internal: the new InternalFrame
+        :param requires_same_anchor: whether checking the same anchor
+        """
+        from databricks.koalas.series import Series
+
+        kseries = {}
+
+        for old_label, new_label in zip_longest(
+            self._internal.column_labels, internal.column_labels
+        ):
+            if old_label is not None:
+                kser = self._ksers[old_label]
+
+                renamed = old_label != new_label
+                not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
+
+                if renamed or not_same_anchor:
+                    kdf = DataFrame(
+                        self._internal.copy(
+                            column_labels=[old_label],
+                            data_spark_columns=[self._internal.spark_column_for(old_label)],
+                        )
+                    )  # type: DataFrame
+                    kser._anchor = kdf
+                    kdf._kseries = {old_label: kser}
+                    kser = None
+            else:
+                kser = None
+            if new_label is not None:
+                if kser is None:
+                    kser = Series(data=self, index=new_label)
+                kseries[new_label] = kser
+
+        self._internal_frame = internal
+        self._kseries = kseries
+
+        if hasattr(self, "_repr_pandas_cache"):
+            del self._repr_pandas_cache
 
     @property
     def ndim(self):
@@ -551,13 +632,13 @@ class DataFrame(Frame, Generic[T]):
         """
         Create Series with a proper column label.
 
-        The given label must be verified to exist in `_InternalFrame.column_labels`.
+        The given label must be verified to exist in `InternalFrame.column_labels`.
 
         For example, in some method, self is like:
 
         >>> self = ks.range(3)
 
-        `self._kser_for(label)` can be used with `_InternalFrame.column_labels`:
+        `self._kser_for(label)` can be used with `InternalFrame.column_labels`:
 
         >>> self._kser_for(self._internal.column_labels[0])
         0    0
@@ -574,14 +655,7 @@ class DataFrame(Frame, Generic[T]):
         2    2
         Name: id, dtype: int64
         """
-        from databricks.koalas.series import Series
-
-        return Series(
-            self._internal.copy(
-                spark_column=self._internal.spark_column_for(label), column_labels=[label]
-            ),
-            anchor=self,
-        )
+        return self._ksers[label]
 
     def _apply_series_op(self, op):
         applied = []
@@ -2719,7 +2793,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Name: B, dtype: int64
         """
         from databricks.koalas.groupby import GroupBy
-        from databricks.koalas import Series
+        from databricks.koalas.series import first_series
 
         assert callable(func), "the first argument should be a callable function."
         spec = inspect.getfullargspec(func)
@@ -2776,11 +2850,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 columns = self._internal.spark_columns
                 # TODO: Index will be lost in this case.
                 internal = self._internal.copy(
-                    spark_column=pudf(F.struct(*columns)) if should_by_pass else pudf(*columns),
                     column_labels=kser._internal.column_labels,
+                    data_spark_columns=[
+                        (pudf(F.struct(*columns)) if should_by_pass else pudf(*columns)).alias(
+                            kser._internal.data_spark_column_names[0]
+                        )
+                    ],
                     column_label_names=kser._internal.column_label_names,
                 )
-                return Series(internal, anchor=self)
+                return first_series(DataFrame(internal))
             else:
                 kdf = kdf_or_kser
                 if len(pdf) <= limit:
@@ -2840,11 +2918,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
                 columns = self._internal.spark_columns
                 internal = self._internal.copy(
-                    spark_column=pudf(F.struct(*columns)) if should_by_pass else pudf(*columns),
                     column_labels=[(SPARK_DEFAULT_SERIES_NAME,)],
+                    data_spark_columns=[
+                        (pudf(F.struct(*columns)) if should_by_pass else pudf(*columns)).alias(
+                            SPARK_DEFAULT_SERIES_NAME
+                        )
+                    ],
                     column_label_names=None,
                 )
-                return Series(internal, anchor=self)
+                return first_series(DataFrame(internal))
             else:
                 self_applied = DataFrame(self._internal.resolved_copy)
 
@@ -2951,8 +3033,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3       NaN
         """
         result = self[item]
-        self._internal = self.drop(item)._internal
-
+        self._update_internal_frame(self.drop(item)._internal)
         return result
 
     # TODO: add axis parameter can work when '1' or 'columns'
@@ -3059,8 +3140,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._internal.spark_frame.filter(reduce(lambda x, y: x & y, rows)).select(scols)
 
         if len(key) == len(self._internal.index_spark_columns):
-            result = first_series(DataFrame(InternalFrame(spark_frame=sdf, index_map=None)).T)
-            result.name = key
+            result = first_series(
+                DataFrame(InternalFrame(spark_frame=sdf, index_map=None)).T
+            ).rename(key)
         else:
             new_index_map = OrderedDict(
                 list(self._internal.index_map.items())[:level]
@@ -3496,7 +3578,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
         if inplace:
-            self._internal = internal
+            self._update_internal_frame(internal)
         else:
             return DataFrame(internal)
 
@@ -3767,7 +3849,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
         if inplace:
-            self._internal = internal
+            self._update_internal_frame(internal)
         else:
             return DataFrame(internal)
 
@@ -4804,7 +4886,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  3  5  7
         1  2  4  6  8
         """
-        return DataFrame(self._internal.copy())
+        return DataFrame(self._internal)
 
     def dropna(self, axis=0, how="any", thresh=None, subset=None, inplace=False):
         """
@@ -4927,7 +5009,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             internal = self._internal.with_filter(pred)
             if inplace:
-                self._internal = internal
+                self._update_internal_frame(internal)
             else:
                 return DataFrame(internal)
 
@@ -5054,7 +5136,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = self._apply_series_op(op)
         if inplace:
-            self._internal = kdf._internal
+            self._update_internal_frame(kdf._internal)
         else:
             return kdf
 
@@ -5172,7 +5254,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = self._apply_series_op(op)
         if inplace:
-            self._internal = kdf._internal
+            self._update_internal_frame(kdf._internal)
         else:
             return kdf
 
@@ -5728,8 +5810,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal.spark_column_for(label).alias(name)
             for label, name in zip(self._internal.column_labels, data_columns)
         ]
-        self._internal = self._internal.with_new_columns(
-            data_spark_columns, column_labels=column_labels, column_label_names=column_label_names
+        self._update_internal_frame(
+            self._internal.with_new_columns(
+                data_spark_columns,
+                column_labels=column_labels,
+                column_label_names=column_label_names,
+            )
         )
 
     @property
@@ -6158,7 +6244,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._internal.resolved_copy.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
         kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: ks.DataFrame
         if inplace:
-            self._internal = kdf._internal
+            self._update_internal_frame(kdf._internal)
             return None
         else:
             return kdf
@@ -7180,7 +7266,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("Only left join is supported")
 
         if isinstance(other, ks.Series):
-            other = DataFrame(other)
+            other = other.to_frame()
 
         update_columns = list(
             set(self._internal.column_labels).intersection(set(other._internal.column_labels))
@@ -7208,7 +7294,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             + list(HIDDEN_COLUMNS)
         )
         internal = self._internal.with_new_sdf(sdf)
-        self._internal = internal
+        self._update_internal_frame(internal, requires_same_anchor=False)
 
     def sample(
         self,
@@ -7718,7 +7804,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = sdf.where(~scol_for(sdf, column)).drop(column)
         internal = self._internal.with_new_sdf(sdf)
         if inplace:
-            self._internal = internal
+            self._update_internal_frame(internal)
         else:
             return DataFrame(internal)
 
@@ -9123,7 +9209,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ]
             internal = internal.with_new_columns(new_data_scols, column_labels=new_column_labels)
         if inplace:
-            self._internal = internal
+            self._update_internal_frame(internal)
         else:
             return DataFrame(internal)
 
@@ -9696,7 +9782,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.with_new_sdf(sdf, data_columns=data_columns)
 
         if inplace:
-            self._internal = internal
+            self._update_internal_frame(internal)
         else:
             return DataFrame(internal)
 
@@ -9896,7 +9982,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if inplace:
             # Here, the result is always a frame because the error is thrown during schema inference
             # from pandas.
-            self._internal = result._internal
+            self._update_internal_frame(result._internal, requires_same_anchor=False)
         elif should_return_series:
             return first_series(result)
         elif should_return_scalar:
@@ -10041,13 +10127,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return pd.concat(cols, axis=1).mad(axis=1)
 
             internal = self._internal.copy(
-                spark_column=calculate_columns_axis(*self._internal.data_spark_columns).alias(
-                    SPARK_DEFAULT_SERIES_NAME
-                ),
                 column_labels=[(SPARK_DEFAULT_SERIES_NAME,)],
+                data_spark_columns=[
+                    calculate_columns_axis(*self._internal.data_spark_columns).alias(
+                        SPARK_DEFAULT_SERIES_NAME
+                    )
+                ],
                 column_label_names=None,
             )
-            return Series(internal, anchor=self)
+            return first_series(DataFrame(internal))
 
     def _to_internal_pandas(self):
         """
@@ -10058,14 +10146,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.to_pandas_frame
 
     def _get_or_create_repr_pandas_cache(self, n):
-        if (
-            not hasattr(self, "_repr_pandas_cache")
-            or (id(self._internal), n) not in self._repr_pandas_cache
-        ):
-            self._repr_pandas_cache = {
-                (id(self._internal), n): self.head(n + 1)._to_internal_pandas()
-            }
-        return self._repr_pandas_cache[(id(self._internal), n)]
+        if not hasattr(self, "_repr_pandas_cache") or n not in self._repr_pandas_cache:
+            self._repr_pandas_cache = {n: self.head(n + 1)._to_internal_pandas()}
+        return self._repr_pandas_cache[n]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
@@ -10158,7 +10241,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Same Series.
             kdf = self._assign({key: value})
 
-        self._internal = kdf._internal
+        self._update_internal_frame(kdf._internal)
 
     def _index_normalized_label(self, labels):
         """

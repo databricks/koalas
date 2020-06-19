@@ -71,8 +71,16 @@ class IndexerLike(object):
         return isinstance(self._kdf_or_kser, Series)
 
     @property
+    def _kdf(self):
+        if self._is_df:
+            return self._kdf_or_kser
+        else:
+            assert self._is_series
+            return self._kdf_or_kser._kdf
+
+    @property
     def _internal(self):
-        return self._kdf_or_kser._internal
+        return self._kdf._internal
 
 
 class AtIndexer(IndexerLike):
@@ -123,7 +131,7 @@ class AtIndexer(IndexerLike):
             if isinstance(key, tuple) and len(key) != 1:
                 raise TypeError("Use Series.at like .at[row_index]")
             row_sel = key
-            col_sel = self._internal.column_labels[0]
+            col_sel = self._kdf_or_kser._column_label
 
         if len(self._internal.index_map) == 1:
             if is_list_like(row_sel):
@@ -392,8 +400,9 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             if cond is None and limit is None:
                 return self._kdf_or_kser
 
-            column_labels = self._internal.column_labels
-            data_spark_columns = self._internal.data_spark_columns
+            column_label = self._kdf_or_kser._column_label
+            column_labels = [column_label]
+            data_spark_columns = [self._internal.spark_column_for(column_label)]
             returns_series = True
         else:
             assert self._is_df
@@ -502,7 +511,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             if (isinstance(key, Series) and not same_anchor(key, self._kdf_or_kser)) or (
                 isinstance(value, Series) and not same_anchor(value, self._kdf_or_kser)
             ):
-                kdf = self._kdf_or_kser.to_frame()
+                kdf = self._kdf_or_kser._kdf.copy()
                 temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")
                 temp_key_col = verify_temp_column_name(kdf, "__temp_key_col__")
                 temp_value_col = verify_temp_column_name(kdf, "__temp_value_col__")
@@ -514,7 +523,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                     kdf[temp_value_col] = value
                 kdf = kdf.sort_values(temp_natural_order).drop(temp_natural_order)
 
-                kser = kdf[self._kdf_or_kser.name]
+                kser = kdf._kser_for(self._kdf_or_kser._column_label)
                 if isinstance(key, Series):
                     key = kdf[temp_key_col]
                 if isinstance(value, Series):
@@ -522,8 +531,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
                 type(self)(kser)[key] = value
 
-                self._kdf_or_kser._internal = kser._internal
-                self._kdf_or_kser._kdf = kser._kdf
+                self._kdf_or_kser._kdf._update_internal_frame(
+                    kdf[list(self._kdf_or_kser._kdf.columns)]._internal.resolved_copy,
+                    requires_same_anchor=False,
+                )
                 return
 
             if isinstance(value, DataFrame):
@@ -543,11 +554,12 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 value = F.lit(value)
             scol = (
                 F.when(cond, value)
-                .otherwise(self._internal.spark_column)
+                .otherwise(self._internal.spark_column_for(self._kdf_or_kser._column_label))
                 .alias(name_like_string(self._kdf_or_kser.name or SPARK_DEFAULT_SERIES_NAME))
             )
-            internal = self._internal.copy(spark_column=scol)
-            self._kdf_or_kser._internal = internal
+
+            internal = self._internal.with_new_spark_column(self._kdf_or_kser._column_label, scol)
+            self._kdf_or_kser._kdf._update_internal_frame(internal, requires_same_anchor=False)
         else:
             assert self._is_df
 
@@ -587,7 +599,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
                 type(self)(kdf)[rows_sel, cols_sel] = value
 
-                self._kdf_or_kser._internal = kdf[list(self._kdf_or_kser.columns)]._internal
+                self._kdf_or_kser._update_internal_frame(
+                    kdf[list(self._kdf_or_kser.columns)]._internal.resolved_copy,
+                    requires_same_anchor=False,
+                )
                 return
 
             cond, limit, remaining_index = self._select_rows(rows_sel)
@@ -636,7 +651,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 new_data_spark_columns.append(F.when(cond, value).alias(name_like_string(label)))
 
             internal = self._internal.with_new_columns(new_data_spark_columns, column_labels)
-            self._kdf_or_kser._internal = internal
+            self._kdf_or_kser._update_internal_frame(internal, requires_same_anchor=False)
 
 
 class LocIndexer(LocIndexerLike):
@@ -1276,7 +1291,8 @@ class iLocIndexer(LocIndexerLike):
 
     @lazy_property
     def _internal(self):
-        internal = super(iLocIndexer, self)._internal
+        # Use resolved_copy to fix the natural order.
+        internal = super(iLocIndexer, self)._internal.resolved_copy
         sdf = InternalFrame.attach_distributed_sequence_column(
             internal.spark_frame, column_name=self._sequence_col
         )
@@ -1284,7 +1300,8 @@ class iLocIndexer(LocIndexerLike):
 
     @lazy_property
     def _sequence_col(self):
-        internal = super(iLocIndexer, self)._internal
+        # Use resolved_copy to fix the natural order.
+        internal = super(iLocIndexer, self)._internal.resolved_copy
         return verify_temp_column_name(internal.spark_frame, "__distributed_sequence_column__")
 
     def _select_rows_by_series(
@@ -1490,32 +1507,11 @@ class iLocIndexer(LocIndexerLike):
             )
 
     def __setitem__(self, key, value):
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import first_series
-
         super(iLocIndexer, self).__setitem__(key, value)
-
-        if self._is_series:
-            internal = self._kdf_or_kser._internal
-            sdf = internal.spark_frame.select(
-                internal.index_spark_columns + [internal.spark_column]
-            )
-            internal = internal.copy(
-                spark_frame=sdf,
-                column_labels=[internal.column_labels[0] or (SPARK_DEFAULT_SERIES_NAME,)],
-                data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
-                spark_column=None,
-            )
-            kser = first_series(DataFrame(internal))
-
-            self._kdf_or_kser._internal = kser._internal
-            self._kdf_or_kser._kdf = kser._kdf
-        else:
-            assert self._is_df
-            internal = self._kdf_or_kser._internal
-            self._kdf_or_kser._internal = internal.with_new_sdf(
-                internal.spark_frame.select(internal.spark_columns)
-            )
+        # Update again with resolved_copy to drop extra columns.
+        self._kdf._update_internal_frame(
+            self._kdf._internal.resolved_copy, requires_same_anchor=False
+        )
 
         # Clean up implicitly cached properties to be able to reuse the indexer.
         del self._internal

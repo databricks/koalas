@@ -120,10 +120,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kser.name, "renamed")
         self.assert_eq(kser, pser)
 
-        pser.name = None
-        kser.name = None
-        self.assertEqual(kser.name, None)
-        self.assert_eq(kser, pser)
+        # pser.name = None
+        # kser.name = None
+        # self.assertEqual(kser.name, None)
+        # self.assert_eq(kser, pser)
 
         pidx = pser.index
         kidx = kser.index
@@ -205,9 +205,31 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, msg):
             kser.isin(1)
 
+    def test_drop_duplicates(self):
+        pdf = pd.DataFrame({"animal": ["lama", "cow", "lama", "beetle", "lama", "hippo"]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.animal
+        kser = kdf.animal
+
+        self.assert_eq(kser.drop_duplicates().sort_index(), pser.drop_duplicates().sort_index())
+        self.assert_eq(
+            kser.drop_duplicates(keep="last").sort_index(),
+            pser.drop_duplicates(keep="last").sort_index(),
+        )
+
+        # inplace
+        kser.drop_duplicates(keep=False, inplace=True)
+        pser.drop_duplicates(keep=False, inplace=True)
+        self.assert_eq(kser.sort_index(), pser.sort_index())
+        self.assert_eq(kdf, pdf)
+
     def test_fillna(self):
-        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        kser = kdf.x
 
         self.assert_eq(kser.fillna(0), pser.fillna(0))
         self.assert_eq(kser.fillna(np.nan).fillna(0), pser.fillna(np.nan).fillna(0))
@@ -215,6 +237,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.fillna(0, inplace=True)
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
 
         # test considering series does not have NA/NaN values
         kser.fillna(0, inplace=True)
@@ -232,14 +255,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.fillna(method="bfill"), pser.fillna(method="bfill"))
 
     def test_dropna(self):
-        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
+        kdf = ks.from_pandas(pdf)
 
-        kser = ks.from_pandas(pser)
+        pser = pdf.x
+        kser = kdf.x
 
         self.assert_eq(kser.dropna(), pser.dropna())
 
+        pser.dropna(inplace=True)
         kser.dropna(inplace=True)
-        self.assert_eq(kser, pser.dropna())
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
 
     def test_nunique(self):
         pser = pd.Series([1, 2, 1, np.nan])
@@ -616,6 +643,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ):
             kser.any(axis=1)
 
+    def test_reset_index(self):
+        pdf = pd.DataFrame({"foo": [1, 2, 3, 4]}, index=pd.Index(["a", "b", "c", "d"], name="idx"))
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.foo
+        kser = kdf.foo
+
+        self.assert_eq(kser.reset_index(), pser.reset_index())
+        self.assert_eq(kser.reset_index(name="values"), pser.reset_index(name="values"))
+        self.assert_eq(kser.reset_index(drop=True), pser.reset_index(drop=True))
+
+        # inplace
+        kser.reset_index(drop=True, inplace=True)
+        pser.reset_index(drop=True, inplace=True)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
+
     def test_reset_index_with_default_index_types(self):
         pser = pd.Series([1, 2, 3], name="0", index=np.random.rand(3))
         kser = ks.from_pandas(pser)
@@ -634,22 +678,44 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             )
 
     def test_sort_values(self):
-        pser = pd.Series([1, 2, 3, 4, 5, None, 7], name="0")
-        kser = ks.from_pandas(pser)
-        self.assert_eq(repr(kser.sort_values()), repr(pser.sort_values()))
+        pdf = pd.DataFrame({"x": [1, 2, 3, 4, 5, None, 7]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        kser = kdf.x
+
+        self.assert_eq(kser.sort_values(), pser.sort_values(), almost=True)
         self.assert_eq(
-            repr(kser.sort_values(ascending=False)), repr(pser.sort_values(ascending=False))
+            kser.sort_values(ascending=False), pser.sort_values(ascending=False), almost=True
         )
         self.assert_eq(
-            repr(kser.sort_values(na_position="first")), repr(pser.sort_values(na_position="first"))
+            kser.sort_values(na_position="first"),
+            pser.sort_values(na_position="first"),
+            almost=True,
         )
+
         self.assertRaises(ValueError, lambda: kser.sort_values(na_position="invalid"))
-        self.assert_eq(kser.sort_values(inplace=True), pser.sort_values(inplace=True))
-        self.assert_eq(repr(kser), repr(pser))
+
+        # inplace
+        # pandas raises an exception when the Series is derived from DataFrame
+        kser.sort_values(inplace=True)
+        self.assert_eq(kser, pser.sort_values(), almost=True)
+        self.assert_eq(kdf, pdf)
+
+        pser = pdf.x.copy()
+        kser = kdf.x.copy()
+
+        kser.sort_values(inplace=True)
+        pser.sort_values(inplace=True)
+        self.assert_eq(kser, pser, almost=True)
+        self.assert_eq(kdf, pdf)
 
     def test_sort_index(self):
-        pser = pd.Series([2, 1, np.nan], index=["b", "a", np.nan], name="0")
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [2, 1, np.nan]}, index=["b", "a", np.nan])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        kser = kdf.x
 
         # Assert invalid parameters
         self.assertRaises(NotImplementedError, lambda: kser.sort_index(axis=1))
@@ -666,9 +732,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kser.sort_index(na_position="first"), pser.sort_index(na_position="first"), almost=True
         )
+
         # Assert sorting inplace
-        self.assertEqual(kser.sort_index(inplace=True), pser.sort_index(inplace=True))
+        # pandas sorts pdf.x by the index and update the column only
+        # when the Series is derived from DataFrame.
+        kser.sort_index(inplace=True)
+        self.assert_eq(kser, pser.sort_index(), almost=True)
+        self.assert_eq(kdf, pdf)
+
+        pser = pdf.x.copy()
+        kser = kdf.x.copy()
+
+        kser.sort_index(inplace=True)
+        pser.sort_index(inplace=True)
         self.assert_eq(kser, pser, almost=True)
+        self.assert_eq(kdf, pdf)
 
         # Assert multi-indices
         pser = pd.Series(range(4), index=[["b", "b", "a", "a"], [1, 0, 1, 0]], name="0")
@@ -1105,10 +1183,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        pser = kser.to_pandas()
+        pdf = pd.DataFrame({"x": [45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3]}, index=midx)
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        kser = kdf.x
 
         self.assert_eq(kser.pop(("lama", "speed")), pser.pop(("lama", "speed")))
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
 
         msg = "'key' should be string or tuple that contains strings"
         with self.assertRaisesRegex(ValueError, msg):
@@ -1180,13 +1263,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
         kser1 = ks.from_pandas(pser1)
 
-        self.assert_eq(repr(pser1.where(pser1 > 3)), repr(kser1.where(kser1 > 3).sort_index()))
+        self.assert_eq(pser1.where(pser1 > 3), kser1.where(kser1 > 3).sort_index(), almost=True)
 
     def test_mask(self):
         pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
         kser1 = ks.from_pandas(pser1)
 
-        self.assert_eq(repr(pser1.mask(pser1 > 3)), repr(kser1.mask(kser1 > 3).sort_index()))
+        self.assert_eq(pser1.mask(pser1 > 3), kser1.mask(kser1 > 3).sort_index(), almost=True)
 
     def test_truncate(self):
         pser1 = pd.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 5, 6, 7])
