@@ -2296,7 +2296,7 @@ def to_numeric(arg):
     1.0
     """
     if isinstance(arg, Series):
-        return arg._with_new_scol(arg._internal.spark_column.cast("float"))
+        return arg._with_new_scol(arg.spark.column.cast("float"))
     else:
         return pd.to_numeric(arg)
 
