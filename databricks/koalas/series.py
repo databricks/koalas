@@ -3831,8 +3831,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         b    2
         Name: 0, dtype: int64
         """
-        internal = self._kdf._internal.select_column(self._column_label)
-        return first_series(DataFrame(internal))
+        return first_series(DataFrame(self._internal))
 
     def mode(self, dropna=True) -> "Series":
         """
