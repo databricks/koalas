@@ -4983,7 +4983,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         convenient if you want to create a lazy iterator.
 
         .. note:: Unlike pandas', the iteritems in Koalas returns only the number of items
-            specified in `ks.options.compute.max_rows`
+            specified in `ks.options.compute.max_rows`. If you want to get all items of
+            Series, specify the `ks.options.compute.max_rows` to the length of Series,
+            or just use pandas' directly with `to_pandas()`.
 
         Returns
         -------
