@@ -5014,6 +5014,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kser = self[: ks.options.compute.max_rows]
         return zip(iter(kser.index.to_numpy()), kser.values)
 
+    def items(self) -> Iterable:
+        """This is an alias of ``iteritems``."""
+        return self.iteritems()
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
