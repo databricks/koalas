@@ -5004,7 +5004,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> with ks.option_context("compute.max_rows", 5):
         ...     items = kser.iteritems()
         >>> for index, value in items:
-        ...     print(f"Index : {index}, Value : {value}")
+        ...     print("Index : {}, Value : {}".format(index, value))
         Index : 0, Value : 0
         Index : 1, Value : 1
         Index : 2, Value : 2
