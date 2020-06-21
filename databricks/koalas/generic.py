@@ -2301,6 +2301,10 @@ class Frame(object, metaclass=ABCMeta):
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
 
+    def items(self) -> Iterable:
+        """This is an alias of ``iteritems``."""
+        return self.iteritems()
+
     @property
     def at(self):
         return AtIndexer(self)

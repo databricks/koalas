@@ -1787,3 +1787,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.ffill(inplace=True)
         pser.ffill(inplace=True)
         self.assert_eq(repr(kser), repr(pser))
+
+    def test_iteritems(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        for p_items, k_items in zip(pser.iteritems(), kser.iteritems()):
+            self.assert_eq(repr(p_items), repr(k_items))
+
+        pser = pd.Series(range(10000))
+        kser = ks.from_pandas(pser)
+
+        compute_max_rows = 10
+        with ks.option_context("compute.max_rows", compute_max_rows):
+            for p_items, k_items in zip(pser[:compute_max_rows].iteritems(), kser.iteritems()):
+                self.assert_eq(repr(p_items), repr(k_items))

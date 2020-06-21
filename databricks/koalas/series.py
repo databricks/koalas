@@ -4975,6 +4975,42 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.head(2).to_pandas().item()
 
+    def iteritems(self):
+        """
+        Lazily iterate over (index, value) tuples.
+
+        This method returns an iterable tuple (index, value). This is
+        convenient if you want to create a lazy iterator.
+
+        .. note:: Unlike pandas', the iteritems in Koalas returns the number of `ks.options.compute.max_rows`
+
+        Returns
+        -------
+        iterable
+            Iterable of tuples containing the (index, value) pairs from a
+            Series.
+
+        See Also
+        --------
+        DataFrame.items : Iterate over (column name, Series) pairs.
+        DataFrame.iterrows : Iterate over DataFrame rows as (index, Series) pairs.
+
+        Examples
+        --------
+        >>> kser = ks.Series(range(10000))
+        >>> with ks.option_context("compute.max_rows", 5):
+        ...     items = kser.iteritems()
+        >>> for index, value in items:
+        ...     print(f"Index : {index}, Value : {value}")
+        Index : 0, Value : 0
+        Index : 1, Value : 1
+        Index : 2, Value : 2
+        Index : 3, Value : 3
+        Index : 4, Value : 4
+        """
+        kser = self[: ks.options.compute.max_rows]
+        return zip(iter(kser.index.to_numpy()), kser.values)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 

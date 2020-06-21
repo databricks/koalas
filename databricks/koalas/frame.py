@@ -1378,10 +1378,6 @@ class DataFrame(Frame, Generic[T]):
             s = pd.Series(v, index=columns, name=k)
             yield k, s
 
-    def items(self) -> Iterable:
-        """This is an alias of ``iteritems``."""
-        return self.iteritems()
-
     def to_clipboard(self, excel=True, sep=None, **kwargs):
         """
         Copy object to the system clipboard.
