@@ -3694,3 +3694,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(abs(kdf), abs(pdf))
         self.assert_eq(np.abs(kdf), np.abs(pdf))
+
+    def test_iteritems(self):
+        pdf = pd.DataFrame(
+            {"species": ["bear", "bear", "marsupial"], "population": [1864, 22000, 80000]},
+            index=["panda", "polar", "koala"],
+            columns=["species", "population"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for p_items, k_items in zip(pdf.iteritems(), kdf.iteritems()):
+            self.assert_eq(repr(p_items), repr(k_items))

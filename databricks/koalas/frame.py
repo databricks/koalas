@@ -1312,10 +1312,10 @@ class DataFrame(Frame, Generic[T]):
         polar    22000
         koala    80000
         """
-        return [
+        return (
             (label if len(label) > 1 else label[0], self._kser_for(label))
             for label in self._internal.column_labels
-        ]
+        )
 
     def iterrows(self):
         """
