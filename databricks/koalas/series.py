@@ -368,11 +368,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     @property
     def _internal(self) -> InternalFrame:
-        internal = self._kdf._internal
-        return internal.copy(
-            spark_column=internal.spark_column_for(self._column_label),
-            column_labels=[self._column_label],
+        return self._kdf._internal.select_column(self._column_label)
+
+    def _update_anchor(self, kdf: DataFrame):
+        assert kdf._internal.column_labels == [self._column_label], (
+            kdf._internal.column_labels,
+            [self._column_label],
         )
+        self._anchor = kdf
+        kdf._kseries = {self._column_label: self}
 
     def _with_new_scol(self, scol: spark.Column) -> "Series":
         """
@@ -1078,9 +1082,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = DataFrame(internal)  # type: DataFrame
 
         if kwargs.get("inplace", False):
-            self._anchor = kdf
             self._column_label = index
-            kdf._kseries = {index: self}
+            self._update_anchor(kdf)
             return self
         else:
             return first_series(kdf)
@@ -1208,8 +1211,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
             if inplace:
-                self._anchor = kdf
-                kdf._kseries = {self._column_label: self}
+                self._update_anchor(kdf)
             else:
                 return first_series(kdf)
         else:
@@ -1531,8 +1533,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = self.to_frame().drop_duplicates(keep=keep)
 
         if inplace:
-            self._anchor = kdf
-            kdf._kseries = {self._column_label: self}
+            self._update_anchor(kdf)
         else:
             return first_series(kdf)
 
@@ -1719,8 +1720,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         # TODO: last two examples from pandas produce different results.
         kdf = self.to_frame().dropna(axis=axis, inplace=False)
         if inplace:
-            self._anchor = kdf
-            kdf._kseries = {self._column_label: self}
+            self._update_anchor(kdf)
         else:
             return first_series(kdf)
 
@@ -1953,16 +1953,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             cond = ~reduce(lambda x, y: x | y, drop_index_scols)
 
-            sdf = internal.spark_frame.filter(cond).select(internal.spark_columns)
-            return DataFrame(
-                internal.copy(
-                    spark_frame=sdf,
-                    data_spark_columns=[
-                        scol_for(sdf, col) for col in internal.data_spark_column_names
-                    ],
-                    spark_column=None,
-                )
-            )
+            return DataFrame(internal.with_filter(cond))
         else:
             raise ValueError("Need to specify at least one of 'labels' or 'index'")
 
@@ -2144,8 +2135,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
 
         if inplace:
-            self._anchor = kdf
-            kdf._kseries = {self._column_label: self}
+            self._update_anchor(kdf)
             return None
         else:
             return first_series(kdf)
@@ -2239,8 +2229,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
 
         if inplace:
-            self._anchor = kdf
-            kdf._kseries = {self._column_label: self}
+            self._update_anchor(kdf)
             return None
         else:
             return first_series(kdf)
@@ -2829,7 +2818,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    3
         Name: 0, dtype: int64
         """
-        return first_series(DataFrame(self._internal.copy(spark_column=None)))
+        return self.copy()
 
     T = property(transpose)
 
@@ -3175,7 +3164,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # +--------------------------------+
             # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
             # +--------------------------------+
-            percentile_col = SF.percentile_approx(self._internal.spark_column, quantiles, accuracy)
+            percentile_col = SF.percentile_approx(self.spark.column, quantiles, accuracy)
             sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
 
             internal_index_column = SPARK_DEFAULT_INDEX_NAME
@@ -3312,8 +3301,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if method == "first":
             window = (
                 Window.orderBy(
-                    asc_func(self._internal.spark_column),
-                    asc_func(F.col(NATURAL_ORDER_COLUMN_NAME)),
+                    asc_func(self.spark.column), asc_func(F.col(NATURAL_ORDER_COLUMN_NAME)),
                 )
                 .partitionBy(*part_cols)
                 .rowsBetween(Window.unboundedPreceding, Window.currentRow)
@@ -3321,7 +3309,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol = F.row_number().over(window)
         elif method == "dense":
             window = (
-                Window.orderBy(asc_func(self._internal.spark_column))
+                Window.orderBy(asc_func(self.spark.column))
                 .partitionBy(*part_cols)
                 .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             )
@@ -3334,13 +3322,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             elif method == "max":
                 stat_func = F.max
             window1 = (
-                Window.orderBy(asc_func(self._internal.spark_column))
+                Window.orderBy(asc_func(self.spark.column))
                 .partitionBy(*part_cols)
                 .rowsBetween(Window.unboundedPreceding, Window.currentRow)
             )
-            window2 = Window.partitionBy(
-                [self._internal.spark_column] + list(part_cols)
-            ).rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+            window2 = Window.partitionBy([self.spark.column] + list(part_cols)).rowsBetween(
+                Window.unboundedPreceding, Window.unboundedFollowing
+            )
             scol = stat_func(F.row_number().over(window1)).over(window2)
         kser = self._with_new_scol(scol).rename(self.name)
         return kser.astype(np.float64)
@@ -3789,13 +3777,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
 
         internal = self._internal
-        scols = internal.index_spark_columns[len(item) :] + [internal.spark_column]
+        scols = internal.index_spark_columns[len(item) :] + [self.spark.column]
         rows = [internal.spark_columns[level] == index for level, index in enumerate(item)]
         sdf = internal.spark_frame.filter(reduce(lambda x, y: x & y, rows)).select(scols)
 
         kdf = self._drop(item)
-        self._anchor = kdf
-        kdf._kseries = {self._column_label: self}
+        self._update_anchor(kdf)
 
         if len(self._internal._index_map) == len(item):
             # if spark_frame has one column and one data, return data only without frame
@@ -3815,7 +3802,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 spark_frame=sdf,
                 index_map=OrderedDict(list(self._internal._index_map.items())[len(item) :]),
                 data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
-                spark_column=None,
             )
             return first_series(DataFrame(internal))
 
@@ -3845,11 +3831,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         b    2
         Name: 0, dtype: int64
         """
-        internal = self._kdf._internal.copy(
-            column_labels=[self._column_label],
-            data_spark_columns=[self._kdf._internal.spark_column_for(self._column_label)],
-        )
-        return first_series(DataFrame(internal))
+        return first_series(DataFrame(self._internal))
 
     def mode(self, dropna=True) -> "Series":
         """
@@ -4478,7 +4460,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         scols = (
             internal.index_spark_columns[:level]
             + internal.index_spark_columns[level + len(key) :]
-            + [internal.spark_column]
+            + [self.spark.column]
         )
         rows = [internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)]
         sdf = internal.spark_frame.filter(reduce(lambda x, y: x & y, rows)).select(scols)
@@ -4497,7 +4479,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             spark_frame=sdf,
             index_map=OrderedDict(index_map),
             data_spark_columns=[scol_for(sdf, internal.data_spark_column_names[0])],
-            spark_column=None,
         )
         return first_series(DataFrame(internal))
 
@@ -4547,7 +4528,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1   -0.055556
         Name: 0, dtype: float64
         """
-        scol = self._internal.spark_column
+        scol = self.spark.column
 
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
         prev_row = F.lag(scol, periods).over(window)
@@ -4589,14 +4570,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
         if same_anchor(self, other):
-            this = self._internal.spark_column
-            that = other._internal.spark_column
+            this = self.spark.column
+            that = other.spark.column
             combined = self._kdf
         else:
             with option_context("compute.ops_on_diff_frames", True):
                 combined = combine_frames(self.to_frame(), other)
-            this = combined["this"][self.name]._internal.spark_column
-            that = combined["that"][other.name]._internal.spark_column
+            this = combined["this"]._internal.spark_column_for(self._column_label)
+            that = combined["that"]._internal.spark_column_for(other._column_label)
         # If `self` has missing value, use value of `other`
         cond = F.when(this.isNull(), that).otherwise(this)
         # If `self` and `other` come from same frame, the anchor should be kept
@@ -4754,7 +4735,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 internal = self._internal.copy(
                     spark_frame=sdf,
                     data_spark_columns=[scol_for(sdf, name_like_string(self.name))],
-                    spark_column=None,
                 )
                 return first_series(DataFrame(internal))
         else:
@@ -4872,7 +4852,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
 
         sdf = self._internal.spark_frame
-        spark_column = self._internal.spark_column
+        spark_column = self.spark.column
         avg = unpack_scalar(sdf.select(F.avg(spark_column)))
         mad = unpack_scalar(sdf.select(F.avg(F.abs(spark_column - avg))))
 

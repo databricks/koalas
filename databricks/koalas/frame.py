@@ -511,14 +511,8 @@ class DataFrame(Frame, Generic[T]):
                 not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
 
                 if renamed or not_same_anchor:
-                    kdf = DataFrame(
-                        self._internal.copy(
-                            column_labels=[old_label],
-                            data_spark_columns=[self._internal.spark_column_for(old_label)],
-                        )
-                    )  # type: DataFrame
-                    kser._anchor = kdf
-                    kdf._kseries = {old_label: kser}
+                    kdf = DataFrame(self._internal.select_column(old_label))  # type: DataFrame
+                    kser._update_anchor(kdf)
                     kser = None
             else:
                 kser = None
@@ -3226,7 +3220,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 list(self._internal.index_map.items())[:level]
                 + list(self._internal.index_map.items())[level + len(key) :]
             )
-            internal = self._internal.copy(spark_frame=sdf, index_map=new_index_map,)
+            internal = self._internal.copy(spark_frame=sdf, index_map=new_index_map)
             result = DataFrame(internal)
 
         return result
