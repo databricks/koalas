@@ -37,13 +37,13 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 
 ## Getting Started
 
-The recommended way of installing Koalas is Conda as below.
+Koalas can be installed as below:
 
 ```bash
-conda install koalas -c conda-forge
+pip install koalas
 ```
 
-You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
+Koalas can also be installed in many ways such as Conda. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
 
 If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below for the regular Databricks Runtime,
 
