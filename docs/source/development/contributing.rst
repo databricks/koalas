@@ -48,7 +48,7 @@ Environment Setup
 Conda
 -----
 
-We recommend setting up a Conda environment for development:
+If you are using Conda, the Koalas installation and developement enviornment are as follows.
 
 .. code-block:: bash
 
@@ -68,7 +68,7 @@ Once setup, make sure you switch to `koalas-dev-env` before development:
 pip
 ---
 
-You can use `pip` alternatively if your Python is 3.6+.
+With Python 3.6+, pip can be used as below to install and set up the development environment.
 
 .. code-block:: bash
 
