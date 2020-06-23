@@ -222,11 +222,7 @@ class GroupBy(object):
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
         if not self._as_index:
             should_drop_index = set(
-                i
-                for i, gkey in enumerate(self._groupkeys_scols)
-                if all(
-                    not gkey._jc.equals(scol._jc) for scol in self._kdf._internal.data_spark_columns
-                )
+                i for i, gkey in enumerate(self._groupkeys) if gkey._kdf is not self._kdf
             )
             if len(should_drop_index) > 0:
                 kdf = kdf.reset_index(level=should_drop_index, drop=True)
@@ -2122,11 +2118,7 @@ class GroupBy(object):
         kdf = DataFrame(internal)
         if not self._as_index:
             should_drop_index = set(
-                i
-                for i, gkey in enumerate(self._groupkeys_scols)
-                if all(
-                    not gkey._jc.equals(scol._jc) for scol in self._kdf._internal.data_spark_columns
-                )
+                i for i, gkey in enumerate(self._groupkeys) if gkey._kdf is not self._kdf
             )
             if len(should_drop_index) > 0:
                 kdf = kdf.reset_index(level=should_drop_index, drop=True)
@@ -2141,14 +2133,18 @@ class GroupBy(object):
         column_labels_level = kdf._internal.column_labels_level
 
         column_labels = []
+        additional_spark_columns = []
+        additional_column_labels = []
         tmp_column_labels = set()
         for i, col_or_s in enumerate(by):
             if isinstance(col_or_s, Series):
-                if any(
-                    col_or_s.spark.column._jc.equals(scol._jc)
-                    for scol in kdf._internal.data_spark_columns
-                ):
+                if col_or_s._kdf is kdf:
                     column_labels.append(col_or_s._internal.column_labels[0])
+                elif same_anchor(col_or_s, kdf):
+                    temp_label = verify_temp_column_name(kdf, "__tmp_groupkey_{}__".format(i))
+                    column_labels.append(temp_label)
+                    additional_spark_columns.append(col_or_s.rename(temp_label).spark.column)
+                    additional_column_labels.append(temp_label)
                 else:
                     temp_label = verify_temp_column_name(
                         kdf,
@@ -2165,6 +2161,13 @@ class GroupBy(object):
                 column_labels.append(col_or_s)
             else:
                 raise ValueError(col_or_s)
+
+        kdf = DataFrame(
+            kdf._internal.with_new_columns(
+                kdf._internal.data_spark_columns + additional_spark_columns,
+                column_labels=kdf._internal.column_labels + additional_column_labels,
+            )
+        )
 
         def assign_columns(kdf, this_column_labels, that_column_labels):
             raise NotImplementedError(
@@ -2185,6 +2188,8 @@ class GroupBy(object):
                     preserve_order_column=True,
                 )
 
+        tmp_column_labels |= set(additional_column_labels)
+
         new_by_series = []
         for col_or_s, label in zip(by, column_labels):
             if label in tmp_column_labels:
@@ -2200,11 +2205,7 @@ class GroupBy(object):
         new_by_series = []
         for col_or_s in by:
             if isinstance(col_or_s, Series):
-                if col_or_s._kdf is kdf:
-                    new_by_series.append(col_or_s)
-                else:
-                    # Rename to distinguish the key from a different DataFrame.
-                    new_by_series.append(col_or_s.rename(col_or_s.name))
+                new_by_series.append(col_or_s)
             elif isinstance(col_or_s, tuple):
                 kser = kdf[col_or_s]
                 if not isinstance(kser, Series):
@@ -2258,7 +2259,7 @@ class DataFrameGroupBy(GroupBy):
             agg_columns = [
                 label
                 for label in kdf._internal.column_labels
-                if all(not kdf._kser_for(label)._equals(key) for key in by)
+                if not any(label == key._column_label and key._kdf is kdf for key in by)
                 and label not in column_labels_to_exlcude
             ]
         self._agg_columns = [kdf[label] for label in agg_columns]  # type: ignore
