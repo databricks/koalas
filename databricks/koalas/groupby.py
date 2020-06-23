@@ -2142,7 +2142,7 @@ class GroupBy(object):
                     column_labels.append(col_or_s._internal.column_labels[0])
                 elif same_anchor(col_or_s, kdf):
                     temp_label = verify_temp_column_name(kdf, "__tmp_groupkey_{}__".format(i))
-                    column_labels.append(temp_label)
+                    column_labels.append(temp_label)  # type: ignore
                     additional_spark_columns.append(col_or_s.rename(temp_label).spark.column)
                     additional_column_labels.append(temp_label)
                 else:
@@ -2165,7 +2165,9 @@ class GroupBy(object):
         kdf = DataFrame(
             kdf._internal.with_new_columns(
                 kdf._internal.data_spark_columns + additional_spark_columns,
-                column_labels=kdf._internal.column_labels + additional_column_labels,
+                column_labels=(
+                    kdf._internal.column_labels + additional_column_labels  # type: ignore
+                ),
             )
         )
 
