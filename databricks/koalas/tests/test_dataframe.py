@@ -539,6 +539,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf3.rename(index=str_lower, level=0), pdf3.rename(index=str_lower, level=0))
         self.assert_eq(kdf3.rename(index=str_lower, level=1), pdf3.rename(index=str_lower, level=1))
 
+        pdf4 = pdf2 + 1
+        kdf4 = kdf2 + 1
+        self.assert_eq(kdf4.rename(columns=str_lower), pdf4.rename(columns=str_lower))
+
+        pdf5 = pdf3 + 1
+        kdf5 = kdf3 + 1
+        self.assert_eq(kdf5.rename(index=str_lower), pdf5.rename(index=str_lower))
+
     def test_dot_in_column_name(self):
         self.assert_eq(
             ks.DataFrame(ks.range(1)._internal.spark_frame.selectExpr("1 as `a.b`"))["a.b"],

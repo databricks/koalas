@@ -9269,15 +9269,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             new_column_labels = list(map(gen_new_column_labels_entry, internal.column_labels))
 
-            if internal.column_labels_level == 1:
-                new_data_columns = [col[0] for col in new_column_labels]
-            else:
-                new_data_columns = [str(col) for col in new_column_labels]
             new_data_scols = [
-                scol_for(internal.spark_frame, old_col_name).alias(new_col_name)
-                for old_col_name, new_col_name in zip(
-                    internal.data_spark_column_names, new_data_columns
-                )
+                scol.alias(name_like_string(new_label))
+                for scol, new_label in zip(internal.data_spark_columns, new_column_labels)
             ]
             internal = internal.with_new_columns(new_data_scols, column_labels=new_column_labels)
         if inplace:
