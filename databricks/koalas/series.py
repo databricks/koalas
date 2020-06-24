@@ -5166,9 +5166,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def __iter__(self):
         return MissingPandasLikeSeries.__iter__(self)
 
-    def _equals(self, other: "Series") -> bool:
-        return self.spark.column._jc.equals(other.spark.column._jc)
-
     if sys.version_info >= (3, 7):
         # In order to support the type hints such as Series[...]. See DataFrame.__class_getitem__.
         def __class_getitem__(cls, tpe):
