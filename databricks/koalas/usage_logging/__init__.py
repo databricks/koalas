@@ -49,6 +49,7 @@ from databricks.koalas.spark.accessors import (
     SparkIndexOpsMethods,
 )
 from databricks.koalas.strings import StringMethods
+from databricks.koalas.utils.accessors import UtilsFrameMethods
 from databricks.koalas.window import Expanding, ExpandingGroupby, Rolling, RollingGroupby
 
 
@@ -88,6 +89,7 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         CachedSparkFrameMethods,
         SparkFrameMethods,
         SparkIndexOpsMethods,
+        UtilsFrameMethods,
     ]
 
     try:

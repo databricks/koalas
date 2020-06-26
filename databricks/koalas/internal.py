@@ -543,12 +543,8 @@ class InternalFrame(object):
         if default_index_type is None:
             default_index_type = get_option("compute.default_index_type")
 
-        scols = [scol_for(sdf, column) for column in sdf.columns]
         if default_index_type == "sequence":
-            sequential_index = (
-                F.row_number().over(Window.orderBy(F.monotonically_increasing_id())) - 1
-            )
-            return sdf.select(sequential_index.alias(index_column), *scols)
+            return InternalFrame.attach_sequence_column(sdf, column_name=index_column)
         elif default_index_type == "distributed-sequence":
             return InternalFrame.attach_distributed_sequence_column(sdf, column_name=index_column)
         elif default_index_type == "distributed":
@@ -558,6 +554,12 @@ class InternalFrame(object):
                 "'compute.default_index_type' should be one of 'sequence',"
                 " 'distributed-sequence' and 'distributed'"
             )
+
+    @staticmethod
+    def attach_sequence_column(sdf, column_name):
+        scols = [scol_for(sdf, column) for column in sdf.columns]
+        sequential_index = F.row_number().over(Window.orderBy(F.monotonically_increasing_id())) - 1
+        return sdf.select(sequential_index.alias(column_name), *scols)
 
     @staticmethod
     def attach_distributed_column(sdf, column_name):

@@ -252,8 +252,6 @@ Serialization / IO / Conversion
    DataFrame.to_latex
    DataFrame.style
 
-.. _api.dataframe.plot:
-
 Spark-related
 -------------
 ``DataFrame.spark`` provides features that does not exist in pandas but
@@ -273,8 +271,10 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.explain
    DataFrame.spark.apply
 
+.. _api.dataframe.plot:
+
 Plotting
--------------------------------
+--------
 ``DataFrame.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
 
@@ -292,3 +292,15 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.density
    DataFrame.hist
    DataFrame.kde
+
+Utilities
+---------
+``DataFrame.utils`` provides utility features that exists only in Koalas.
+These can be accessed by ``DataFrame.utils.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.utils.attach_sequence_column
+   DataFrame.utils.attach_distributed_sequence_column
+   DataFrame.utils.attach_distributed_column

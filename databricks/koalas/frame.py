@@ -70,6 +70,7 @@ from databricks.koalas.utils import (
     validate_axis,
     verify_temp_column_name,
 )
+from databricks.koalas.utils.accessors import UtilsFrameMethods
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
     InternalFrame,
@@ -806,6 +807,9 @@ class DataFrame(Frame, Generic[T]):
 
     # create accessor for Spark related methods.
     spark = CachedAccessor("spark", SparkFrameMethods)
+
+    # create accessor for utils
+    utils = CachedAccessor("utils", UtilsFrameMethods)
 
     def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
