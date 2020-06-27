@@ -366,9 +366,9 @@ def assert_produces_warning(
 
                     caller = getframeinfo(stack()[2][0])
                     msg = (
-                        "Warning not set with correct stacklevel. "
-                        f"File where warning is raised: {actual_warning.filename} != "
-                        f"{caller.filename}. Warning message: {actual_warning.message}"
+                        "Warning not set with correct stacklevel. ",
+                        "File where warning is raised: {} != ".format(actual_warning.filename),
+                        "{}. Warning message: {}".format(caller.filename, actual_warning.message),
                     )
                     assert actual_warning.filename == caller.filename, msg
             else:
@@ -381,7 +381,7 @@ def assert_produces_warning(
                     )
                 )
         if expected_warning:
-            msg = f"Did not see expected warning of class " f"{repr(expected_warning.__name__)}"
+            msg = "Did not see expected warning of class {}".format(repr(expected_warning.__name__))
             assert saw_warning, msg
         if raise_on_extra_warnings and extra_warnings:
-            raise AssertionError(f"Caused unexpected warning(s): {repr(extra_warnings)}")
+            raise AssertionError("Caused unexpected warning(s): {}".format(repr(extra_warnings)))

@@ -105,7 +105,9 @@ def _register_accessor(name, cls):
     def decorator(accessor):
         if hasattr(cls, name):
             warnings.warn(
-                f"registration of accessor {accessor} under name {name} for type {cls} is "
+                "registration of accessor {0} under name {1} for type {2} is ".format(
+                    accessor, name, cls
+                ),
                 "overriding a preexisting attribute with the same name.",
                 UserWarning,
                 stacklevel=2,
