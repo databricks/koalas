@@ -105,12 +105,12 @@ def _register_accessor(name, cls):
     def decorator(accessor):
         if hasattr(cls, name):
             msg = "registration of accessor {0} under name {1} for type {2} is overriding \
-                a preexisting attribute with the same name.".format(accessor, name, cls)
-                
+                a preexisting attribute with the same name.".format(
+                accessor, name, cls
+            )
+
             warnings.warn(
-                msg,
-                UserWarning,
-                stacklevel=2,
+                msg, UserWarning, stacklevel=2,
             )
         setattr(cls, name, CachedAccessor(name, accessor))
         return accessor
