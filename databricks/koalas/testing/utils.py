@@ -327,6 +327,7 @@ def assert_produces_warning(
     raise_on_extra_warnings : bool, default True
         Whether extra warnings not of the type `expected_warning` should
         cause the test to fail.
+
     Examples
     --------
     >>> import warnings
