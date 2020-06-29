@@ -301,6 +301,6 @@ These can be accessed by ``DataFrame.utils.<function/property>``.
 .. autosummary::
    :toctree: api/
 
-   DataFrame.utils.attach_sequence_column
-   DataFrame.utils.attach_distributed_sequence_column
-   DataFrame.utils.attach_distributed_column
+   DataFrame.utils.attach_sequence_id_column
+   DataFrame.utils.attach_distributed_sequence_id_column
+   DataFrame.utils.attach_distributed_id_column
