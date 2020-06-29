@@ -266,7 +266,7 @@ def register_series_accessor(name):
         >>> type(GeoAccessor) # doctest: +SKIP
             <class 'databricks.koalas.extensions.GeoAccessor'>
         >>> kdf = ks.DataFrame({"longitude": np.linspace(0,10),
-        ...                         "latitude": np.linspace(0, 20)})
+        ...                     "latitude": np.linspace(0, 20)})
         >>> kdf.longitude.geo.is_valid # doctest: +SKIP
             True
         ...
@@ -343,7 +343,7 @@ def register_index_accessor(name):
         >>> type(CustomAccessor) # doctest: +SKIP
             <class 'databricks.koalas.extensions.CustomAccessor'>
         >>> kdf = ks.DataFrame({"longitude": np.linspace(0,10),
-        ...                         "latitude": np.linspace(0, 20)})
+        ...                     "latitude": np.linspace(0, 20)})
         >>> kdf.index.foo.bar # doctest: +SKIP
             "baz"
         ...
