@@ -32,7 +32,7 @@ class UtilsFrameMethods(object):
     def __init__(self, frame: "DataFrame"):
         self._kdf = frame
 
-    def attach_sequence_column(self, column: Union[str, Tuple[str, ...]]) -> "DataFrame":
+    def attach_sequence_id_column(self, column: Union[str, Tuple[str, ...]]) -> "DataFrame":
         """
         Attach a column of a sequence that increases one by one.
 
@@ -43,7 +43,7 @@ class UtilsFrameMethods(object):
 
         Parameters
         ----------
-        column : string or list of string
+        column : string or tuple of string
             The column name to be attached.
 
         Returns
@@ -54,15 +54,25 @@ class UtilsFrameMethods(object):
         Examples
         --------
         >>> df = ks.DataFrame({"x": ['a', 'b', 'c']})
-        >>> df.utils.attach_sequence_column("sequence")
+        >>> df.utils.attach_sequence_id_column("sequence")
            x  sequence
         0  a         0
         1  b         1
         2  c         2
+
+        For multi-index columns:
+
+        >>> df = ks.DataFrame({("x", "y"): ['a', 'b', 'c']})
+        >>> df.utils.attach_sequence_id_column(("sequence-x", "sequence-y")).sort_index()
+           x sequence-x
+           y sequence-y
+        0  a          0
+        1  b          1
+        2  c          2
         """
         return self._attach_default_index_like_column(column, InternalFrame.attach_sequence_column)
 
-    def attach_distributed_sequence_column(
+    def attach_distributed_sequence_id_column(
         self, column: Union[str, Tuple[str, ...]]
     ) -> "DataFrame":
         """
@@ -71,7 +81,7 @@ class UtilsFrameMethods(object):
 
         Parameters
         ----------
-        column : string or list of string
+        column : string or tuple of string
             The column name to be attached.
 
         Returns
@@ -82,24 +92,35 @@ class UtilsFrameMethods(object):
         Examples
         --------
         >>> df = ks.DataFrame({"x": ['a', 'b', 'c']})
-        >>> df.utils.attach_distributed_sequence_column("distributed_sequence").sort_index()
+        >>> df.utils.attach_distributed_sequence_id_column("distributed_sequence").sort_index()
            x  distributed_sequence
         0  a                     0
         1  b                     1
         2  c                     2
+
+        For multi-index columns:
+
+        >>> df = ks.DataFrame({("x", "y"): ['a', 'b', 'c']})
+        >>> df.utils.attach_distributed_sequence_id_column(
+        ...     ("distributed-sequence-x", "distributed-sequence-y")).sort_index()
+           x distributed-sequence-x
+           y distributed-sequence-y
+        0  a                      0
+        1  b                      1
+        2  c                      2
         """
         return self._attach_default_index_like_column(
             column, InternalFrame.attach_distributed_sequence_column
         )
 
-    def attach_distributed_column(self, column: Union[str, Tuple[str, ...]]) -> "DataFrame":
+    def attach_distributed_id_column(self, column: Union[str, Tuple[str, ...]]) -> "DataFrame":
         """
         Attach a column of a monotonically increasing sequence simply by using PySpark’s
         monotonically_increasing_id function in a fully distributed manner.
 
         Parameters
         ----------
-        column : string or list of string
+        column : string or tuple of string
             The column name to be attached.
 
         Returns
@@ -110,12 +131,23 @@ class UtilsFrameMethods(object):
         Examples
         --------
         >>> df = ks.DataFrame({"x": ['a', 'b', 'c']})
-        >>> df.utils.attach_distributed_column("distributed")
+        >>> df.utils.attach_distributed_id_column("distributed")
         ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
            x  distributed
         0  a          ...
         1  b          ...
         2  c          ...
+
+        For multi-index columns:
+
+        >>> df = ks.DataFrame({("x", "y"): ['a', 'b', 'c']})
+        >>> df.utils.attach_distributed_id_column(("distributed-x", "distributed-y"))
+        ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+           x  distributed-x
+           y  distributed-y
+        0  a            ...
+        1  b            ...
+        2  c            ...
         """
         return self._attach_default_index_like_column(
             column, InternalFrame.attach_distributed_column
