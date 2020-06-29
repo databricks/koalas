@@ -39,7 +39,7 @@ class CachedAccessor:
     This object is not meant to be instantiated directly. Instead, use register_dataframe_accessor,
     register_series_accessor, or register_index_accessor.
 
-    The koalas accessor is modified based on pandas.core.accessor.
+    The Koalas accessor is modified based on pandas.core.accessor.
     """
 
     def __init__(self, name, accessor):
@@ -76,7 +76,7 @@ def _register_accessor(name, cls):
 
     Notes
     -----
-    When accessed, your accessor will be initialiazed with the koalas object the user is interacting
+    When accessed, your accessor will be initialiazed with the Koalas object the user is interacting
     with. The code signature must be:
 
     .. code-block:: python
@@ -120,7 +120,7 @@ def _register_accessor(name, cls):
 
 def register_dataframe_accessor(name):
     """
-    Register a custom accessor with a koalas.DataFrame
+    Register a custom accessor with a DataFrame
 
     Parameters
     ----------
@@ -188,7 +188,7 @@ def register_dataframe_accessor(name):
         >>> type(GeoAccessor) # doctest: +SKIP
             <class 'databricks.koalas.extensions.GeoAccessor'>
         >>> kdf = ks.DataFrame({"longitude": np.linspace(0,10),
-        ...                         "latitude": np.linspace(0, 20)})
+        ...                     "latitude": np.linspace(0, 20)})
         >>> kdf.geo.center # doctest: +SKIP
             (5.0, 10.0)
 
@@ -202,7 +202,7 @@ def register_dataframe_accessor(name):
 
 def register_series_accessor(name):
     """
-    Register a custom accessor with a koalas.Series
+    Register a custom accessor with a Series object
 
     Parameters
     ----------
@@ -278,7 +278,7 @@ def register_series_accessor(name):
 
 def register_index_accessor(name):
     """
-    Register a custom accessor with a koalas.Index
+    Register a custom accessor with an Index
 
     Parameters
     ----------
