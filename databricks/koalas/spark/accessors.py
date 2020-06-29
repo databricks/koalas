@@ -42,12 +42,12 @@ class SparkIndexOpsMethods(object):
     @property
     def data_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self._data._internal.spark_type_for(self._data._internal.column_labels[0])
+        return self._data._internal.spark_type_for(self._data._column_label)
 
     @property
     def nullable(self):
         """ Returns the nullability as defined by Spark. """
-        return self._data._internal.spark_column_nullable_for(self._data._internal.column_labels[0])
+        return self._data._internal.spark_column_nullable_for(self._data._column_label)
 
     @property
     def column(self):
@@ -57,7 +57,7 @@ class SparkIndexOpsMethods(object):
         .. note:: This Spark Column object is strictly stick to its base DataFrame the Series/Index
             was derived from.
         """
-        return self._data._internal.spark_column
+        return self._data._internal.spark_column_for(self._data._column_label)
 
     def transform(self, func):
         """

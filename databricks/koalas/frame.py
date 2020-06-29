@@ -511,14 +511,8 @@ class DataFrame(Frame, Generic[T]):
                 not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
 
                 if renamed or not_same_anchor:
-                    kdf = DataFrame(
-                        self._internal.copy(
-                            column_labels=[old_label],
-                            data_spark_columns=[self._internal.spark_column_for(old_label)],
-                        )
-                    )  # type: DataFrame
-                    kser._anchor = kdf
-                    kdf._kseries = {old_label: kser}
+                    kdf = DataFrame(self._internal.select_column(old_label))  # type: DataFrame
+                    kser._update_anchor(kdf)
                     kser = None
             else:
                 kser = None
@@ -1312,10 +1306,10 @@ class DataFrame(Frame, Generic[T]):
         polar    22000
         koala    80000
         """
-        return [
+        return (
             (label if len(label) > 1 else label[0], self._kser_for(label))
             for label in self._internal.column_labels
-        ]
+        )
 
     def iterrows(self):
         """
@@ -3226,7 +3220,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 list(self._internal.index_map.items())[:level]
                 + list(self._internal.index_map.items())[level + len(key) :]
             )
-            internal = self._internal.copy(spark_frame=sdf, index_map=new_index_map,)
+            internal = self._internal.copy(spark_frame=sdf, index_map=new_index_map)
             result = DataFrame(internal)
 
         return result
@@ -9275,15 +9269,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             new_column_labels = list(map(gen_new_column_labels_entry, internal.column_labels))
 
-            if internal.column_labels_level == 1:
-                new_data_columns = [col[0] for col in new_column_labels]
-            else:
-                new_data_columns = [str(col) for col in new_column_labels]
             new_data_scols = [
-                scol_for(internal.spark_frame, old_col_name).alias(new_col_name)
-                for old_col_name, new_col_name in zip(
-                    internal.data_spark_column_names, new_data_columns
-                )
+                scol.alias(name_like_string(new_label))
+                for scol, new_label in zip(internal.data_spark_columns, new_column_labels)
             ]
             internal = internal.with_new_columns(new_data_scols, column_labels=new_column_labels)
         if inplace:

@@ -335,8 +335,6 @@ class InternalFrame(object):
     |                2|  3|  7| 11| 15| 19|              ...|
     |                3|  4|  8| 12| 16| 20|              ...|
     +-----------------+---+---+---+---+---+-----------------+
-    >>> internal.spark_column
-    Column<b'B'>
     >>> internal.data_spark_column_names
     ['B']
     >>> internal.index_spark_column_names
@@ -372,7 +370,6 @@ class InternalFrame(object):
         column_labels: Optional[List[Tuple[str, ...]]] = None,
         data_spark_columns: Optional[List[spark.Column]] = None,
         column_label_names: Optional[List[str]] = None,
-        spark_column: Optional[spark.Column] = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -389,7 +386,6 @@ class InternalFrame(object):
                                    this argument is ignored, otherwise if this is None, calculated
                                    from spark_frame.
         :param column_label_names: Names for each of the index levels.
-        :param spark_column: Spark Column to be managed.
 
         See the examples below to refer what each parameter means.
 
@@ -433,9 +429,6 @@ class InternalFrame(object):
 
         >>> list(internal._column_label_names)
         ['column_labels_a', 'column_labels_b']
-
-        >>> internal.spark_column
-        Column<b'(a, y)'>
         """
 
         assert isinstance(spark_frame, spark.DataFrame)
@@ -468,17 +461,14 @@ class InternalFrame(object):
             )
             for index_field, index_name in index_map.items()
         ), index_map
-        assert spark_column is None or isinstance(spark_column, spark.Column)
         assert data_spark_columns is None or all(
             isinstance(scol, spark.Column) for scol in data_spark_columns
         )
 
         self._sdf = spark_frame  # type: spark.DataFrame
         self._index_map = index_map  # type: Dict[str, Optional[Tuple[str, ...]]]
-        self._spark_column = spark_column  # type: Optional[spark.Column]
-        if spark_column is not None:
-            self._data_spark_columns = [spark_column]
-        elif data_spark_columns is None:
+
+        if data_spark_columns is None:
             index_columns = set(index_column for index_column in self._index_map)
             self._data_spark_columns = [
                 scol_for(spark_frame, col)
@@ -488,24 +478,25 @@ class InternalFrame(object):
         else:
             self._data_spark_columns = data_spark_columns
 
-        if spark_column is not None:
-            assert column_labels is not None and len(column_labels) == 1, column_labels
-            assert all(
-                label is None or (isinstance(label, tuple) and len(label) > 0)
-                for label in column_labels
-            ), column_labels
-            self._column_labels = column_labels
-        elif column_labels is None:
+        if column_labels is None:
             self._column_labels = [
-                (spark_frame.select(scol).columns[0],) for scol in self._data_spark_columns
-            ]
+                (col,) for col in spark_frame.select(self._data_spark_columns).columns
+            ]  # type: List[Tuple[str, ...]]
         else:
             assert len(column_labels) == len(self._data_spark_columns), (
                 len(column_labels),
                 len(self._data_spark_columns),
             )
-            assert all(isinstance(i, tuple) for i in column_labels), column_labels
-            assert len(set(len(i) for i in column_labels)) <= 1, column_labels
+            if len(column_labels) == 1:
+                column_label = column_labels[0]
+                assert column_label is None or (
+                    isinstance(column_label, tuple) and len(column_label) > 0
+                ), column_label
+            else:
+                assert all(
+                    isinstance(label, tuple) and len(label) > 0 for label in column_labels
+                ), column_labels
+                assert len(set(len(label) for label in column_labels)) <= 1, column_labels
             self._column_labels = column_labels
 
         if column_label_names is not None and not is_list_like(column_label_names):
@@ -664,11 +655,6 @@ class InternalFrame(object):
         """ Return the managed Spark DataFrame. """
         return self._sdf
 
-    @property
-    def spark_column(self) -> Optional[spark.Column]:
-        """ Return the managed Spark Column. """
-        return self._spark_column
-
     @lazy_property
     def data_spark_column_names(self) -> List[str]:
         """ Return the managed column field names. """
@@ -799,15 +785,10 @@ class InternalFrame(object):
     def resolved_copy(self):
         """ Copy the immutable InternalFrame with the updates resolved. """
         sdf = self.spark_frame.select(self.spark_columns + list(HIDDEN_COLUMNS))
-        if self.spark_column is None:
-            return self.copy(
-                spark_frame=sdf,
-                data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
-            )
-        else:
-            return self.copy(
-                spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
-            )
+        return self.copy(
+            spark_frame=sdf,
+            data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
+        )
 
     def with_new_sdf(
         self, spark_frame: spark.DataFrame, data_columns: Optional[List[str]] = None
@@ -819,8 +800,6 @@ class InternalFrame(object):
             If None, the original one is used.
         :return: the copied InternalFrame.
         """
-        assert self.spark_column is None
-
         if data_columns is None:
             data_columns = self.data_spark_column_names
         else:
@@ -874,7 +853,7 @@ class InternalFrame(object):
         data_spark_columns = []
         for scol_or_kser in scols_or_ksers:
             if isinstance(scol_or_kser, Series):
-                scol = scol_or_kser._internal.spark_column
+                scol = scol_or_kser.spark.column
             else:
                 scol = scol_or_kser
             data_spark_columns.append(scol)
@@ -894,10 +873,9 @@ class InternalFrame(object):
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
-            spark_column=None,
         )
 
-    def with_filter(self, pred: Union[spark.Column, "Series"]):
+    def with_filter(self, pred: Union[spark.Column, "Series"]) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates by the predicate.
 
         :param pred: the predicate to filter.
@@ -912,22 +890,17 @@ class InternalFrame(object):
             spark_type = self.spark_frame.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
 
-        sdf = self.spark_frame.filter(pred).select(self.spark_columns)
-        if self.spark_column is None:
-            return self.with_new_sdf(sdf)
-        else:
-            return self.copy(
-                spark_frame=sdf, spark_column=scol_for(sdf, self.data_spark_column_names[0])
-            )
+        return self.with_new_sdf(self.spark_frame.filter(pred).select(self.spark_columns))
 
     def with_new_spark_column(
         self, column_label: Tuple[str, ...], scol: spark.Column, keep_order: bool = True
-    ):
+    ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Column.
 
         :param column_label: the column label to be updated.
         :param scol: the new Spark Column
+        :return: the copied InternalFrame.
         """
         assert column_label in self.column_labels, column_label
 
@@ -936,6 +909,19 @@ class InternalFrame(object):
         data_spark_columns[idx] = scol
         return self.with_new_columns(data_spark_columns, keep_order=keep_order)
 
+    def select_column(self, column_label: Tuple[str, ...]) -> "InternalFrame":
+        """
+        Copy the immutable InternalFrame with the specified column.
+
+        :param column_label: the column label to use.
+        :return: the copied InternalFrame.
+        """
+        assert column_label in self.column_labels, column_label
+
+        return self.copy(
+            column_labels=[column_label], data_spark_columns=[self.spark_column_for(column_label)]
+        )
+
     def copy(
         self,
         spark_frame: Union[spark.DataFrame, _NoValueType] = _NoValue,
@@ -943,7 +929,6 @@ class InternalFrame(object):
         column_labels: Optional[Union[List[Tuple[str, ...]], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
         column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
-        spark_column: Optional[Union[spark.Column, _NoValueType]] = _NoValue,
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
@@ -952,7 +937,6 @@ class InternalFrame(object):
         :param column_labels: the new column index.
         :param data_spark_columns: the new Spark Columns. If None, then the original ones are used.
         :param column_label_names: the new names of the index levels.
-        :param spark_column: the new Spark Column. If None, then the original one is used.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
@@ -965,15 +949,12 @@ class InternalFrame(object):
             data_spark_columns = self._data_spark_columns
         if column_label_names is _NoValue:
             column_label_names = self._column_label_names
-        if spark_column is _NoValue:
-            spark_column = self.spark_column
         return InternalFrame(
             spark_frame,
             index_map=index_map,
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
-            spark_column=spark_column,
         )
 
     @staticmethod

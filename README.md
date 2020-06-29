@@ -37,13 +37,19 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 
 ## Getting Started
 
-The recommended way of installing Koalas is Conda as below.
+Koalas can be installed in many ways such as Conda and pip.
 
 ```bash
+# Conda
 conda install koalas -c conda-forge
 ```
 
-You can use not only Conda but also multiple ways to install Koalas. See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for full instructions to install Koalas.
+```bash
+# pip
+pip install koalas
+```
+
+See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for more details.
 
 If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below for the regular Databricks Runtime,
 
@@ -52,16 +58,16 @@ dbutils.library.installPyPI("koalas")
 dbutils.library.restartPython()
 ```
 
-or using `conda` with `--no-deps` option for Databricks Runtime for Machine Learning 6.0 and above, which provides all the required libraries.
+For Databricks Runtime for Machine Learning 6.0 and above, you can install it as follows.
 
 ```sh
 %sh
-conda install koalas -c conda-forge --no-deps
+pip install koalas
 ```
 
 Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
 
-Lastly, note that if your PyArrow version is 0.15+ and your PySpark version is lower than 3.0, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
+Lastly, if your PyArrow version is 0.15+ and your PySpark version is lower than 3.0, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
 Koalas will try its best to set it for you but it is impossible to set it if there is a Spark context already launched.
 
 Now you can turn a pandas DataFrame into a Koalas DataFrame that is API-compliant with the former:

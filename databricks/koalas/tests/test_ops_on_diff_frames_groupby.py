@@ -119,6 +119,14 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
                     sort(kdf1.groupby(kdf2.A, as_index=as_index).B.sum()),
                     sort(pdf1.groupby(pdf2.A, as_index=as_index).B.sum()),
                 )
+                self.assert_eq(
+                    sort(kdf1.groupby([kdf1.C, kdf2.A], as_index=as_index).sum()),
+                    sort(pdf1.groupby([pdf1.C, pdf2.A], as_index=as_index).sum()),
+                )
+                self.assert_eq(
+                    sort(kdf1.groupby([kdf1.C + 1, kdf2.A], as_index=as_index).sum()),
+                    sort(pdf1.groupby([pdf1.C + 1, pdf2.A], as_index=as_index).sum()),
+                )
 
         self.assert_eq(
             kdf1.B.groupby(kdf2.A).sum().sort_index(), pdf1.B.groupby(pdf2.A).sum().sort_index(),
@@ -160,6 +168,14 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
                             {"B": ["min", "max"], "C": "sum"}
                         )
                     ),
+                )
+                self.assert_eq(
+                    sort(kdf1.groupby([kdf1.C, kdf2.A], as_index=as_index).agg("sum")),
+                    sort(pdf1.groupby([pdf1.C, pdf2.A], as_index=as_index).agg("sum")),
+                )
+                self.assert_eq(
+                    sort(kdf1.groupby([kdf1.C + 1, kdf2.A], as_index=as_index).agg("sum")),
+                    sort(pdf1.groupby([pdf1.C + 1, pdf2.A], as_index=as_index).agg("sum")),
                 )
 
         # multi-index columns

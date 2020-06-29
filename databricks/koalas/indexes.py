@@ -119,10 +119,14 @@ class Index(IndexOpsMixin):
     def _internal(self) -> InternalFrame:
         internal = self._kdf._internal
         return internal.copy(
-            spark_column=internal.index_spark_columns[0],
             column_labels=internal.index_names,
+            data_spark_columns=internal.index_spark_columns,
             column_label_names=None,
         )
+
+    @property
+    def _column_label(self):
+        return self._kdf._internal.index_names[0]
 
     def _with_new_scol(self, scol: spark.Column) -> "Index":
         """
@@ -2002,12 +2006,13 @@ class MultiIndex(Index):
     def _internal(self):
         internal = self._kdf._internal
         scol = F.struct(internal.index_spark_columns)
-        data_columns = internal.spark_frame.select(scol).columns
         return internal.copy(
-            spark_column=scol,
-            column_labels=[(col, None) for col in data_columns],
-            column_label_names=None,
+            column_labels=[None], data_spark_columns=[scol], column_label_names=None
         )
+
+    @property
+    def _column_label(self):
+        return None
 
     def __abs__(self):
         raise TypeError("TypeError: cannot perform __abs__ with this index type: MultiIndex")
