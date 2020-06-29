@@ -139,7 +139,7 @@ def register_dataframe_accessor(name):
 
     Notes
     -----
-    When accessed, your accessor will be initialiazed with the koalas object the user is interacting
+    When accessed, your accessor will be initialiazed with the Koalas object the user is interacting
     with. The accessor's init method should always ingest the object being accessed. See the
     examples for the init signature.
 
@@ -221,7 +221,7 @@ def register_series_accessor(name):
 
     Notes
     -----
-    When accessed, your accessor will be initialiazed with the koalas object the user is interacting
+    When accessed, your accessor will be initialiazed with the Koalas object the user is interacting
     with. The code signature must be::
 
         def __init__(self, koalas_obj):
