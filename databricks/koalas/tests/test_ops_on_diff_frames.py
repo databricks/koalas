@@ -948,6 +948,32 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kser1.repeat(kser2).sort_index(), pser1.repeat(pser2).sort_index())
 
+    def test_cov(self):
+        kser = ks.Series([90, 91, 85])
+        pser = kser.to_pandas()
+        kser_other = ks.Series([90, 91, 85])
+        pser_other = kser_other.to_pandas()
+
+        self.assert_eq(kser.cov(kser_other), pser.cov(pser_other), almost=True)
+
+        kser = ks.Series([90])
+        pser = kser.to_pandas()
+        kser_other = ks.Series([85])
+        pser_other = kser_other.to_pandas()
+
+        k_isnan = np.isnan(kser.cov(kser_other))
+        p_isnan = np.isnan(pser.cov(pser_other))
+        self.assert_eq(k_isnan, p_isnan)
+
+        kser = ks.Series([90, 91, 85])
+        pser = kser.to_pandas()
+        kser_other = ks.Series([90, 91, 85])
+        pser_other = kser_other.to_pandas()
+
+        k_isnan = np.isnan(kser.cov(kser_other, 4))
+        p_isnan = np.isnan(pser.cov(pser_other, 4))
+        self.assert_eq(k_isnan, p_isnan)
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod

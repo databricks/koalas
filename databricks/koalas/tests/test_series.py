@@ -1787,3 +1787,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.ffill(inplace=True)
         pser.ffill(inplace=True)
         self.assert_eq(repr(kser), repr(pser))
+
+    def test_cov(self):
+        kdf = ks.DataFrame({"A": [90, 91, 85], "B": [90, 91, 85]}, columns=["A", "B"])
+        pdf = kdf.to_pandas()
+
+        self.assert_eq(kdf.A.cov(kdf.B), pdf.A.cov(pdf.B), almost=True)
+
+        kdf = ks.DataFrame({"A": [90], "B": [90]}, columns=["A", "B"])
+        pdf = kdf.to_pandas()
+
+        k_cov = kdf.A.cov(kdf.B)
+        p_cov = pdf.A.cov(pdf.B)
+
+        self.assert_eq(np.isnan(k_cov), np.isnan(p_cov))
+
+        kdf = ks.DataFrame({"A": [90, 91, 85], "B": [90, 91, 85]}, columns=["A", "B"])
+        pdf = kdf.to_pandas()
+
+        k_cov = kdf.A.cov(kdf.B, 4)
+        p_cov = pdf.A.cov(pdf.B, 4)
+
+        self.assert_eq(np.isnan(k_cov), np.isnan(p_cov))
