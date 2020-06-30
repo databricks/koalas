@@ -4962,11 +4962,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         This method returns an iterable tuple (index, value). This is
         convenient if you want to create a lazy iterator.
 
-        .. note:: Unlike pandas', the iteritems in Koalas returns only the number of items
-            specified in `ks.options.compute.max_rows`. If you want to get all items of
-            Series, specify the `ks.options.compute.max_rows` to the length of Series,
-            or just use pandas' directly with `to_pandas()`.
-
         Returns
         -------
         iterable
@@ -4991,8 +4986,22 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Index : 3, Value : 3
         Index : 4, Value : 4
         """
-        kser = self[: ks.options.compute.max_rows]
-        return zip(iter(kser.index.to_numpy()), kser.values)
+        internal_index_columns = self._internal.index_spark_column_names
+        internal_data_column = self._internal.data_spark_column_names[0]
+
+        def extract_kv_from_spark_row(row):
+            k = (
+                row[internal_index_columns[0]]
+                if len(internal_index_columns) == 1
+                else tuple(row[c] for c in internal_index_columns)
+            )
+            v = row[internal_data_column]
+            return k, v
+
+        for k, v in map(
+            extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
+        ):
+            yield k, v
 
     def items(self) -> Iterable:
         """This is an alias of ``iteritems``."""
