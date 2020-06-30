@@ -297,7 +297,7 @@ def register_index_accessor(name):
 
     Notes
     -----
-    When accessed, your accessor will be initialiazed with the koalas object the user is interacting
+    When accessed, your accessor will be initialiazed with the Koalas object the user is interacting
     with. The code signature must be::
 
         def __init__(self, koalas_obj):

@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.testing.utils import assert_produces_warning
+from databricks.koalas.testing.utils import assert_produces_warning, ReusedSQLTestCase
 from databricks.koalas.extensions import (
     register_dataframe_accessor,
     register_series_accessor,
@@ -66,7 +66,7 @@ class CustomAccessor:
                 raise ValueError(str(e))
 
 
-class AccessorTests(unittest.TestCase):
+class ExtensionTest(ReusedSQLTestCase):
     @property
     def pdf(self):
         return pd.DataFrame(
