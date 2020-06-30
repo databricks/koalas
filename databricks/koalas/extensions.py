@@ -59,6 +59,7 @@ def _register_accessor(name, cls):
     Register a custom accessor on {klass} objects.
 
     Parameters
+    ----------
     name : str
         Name under which the accessor should be registered. A warning is issued if this name
         conflicts with a preexisting attribute.
@@ -216,7 +217,7 @@ def register_series_accessor(name):
 
     See Also
     --------
-    register_dataframe_accessor: Register a custom accessor on Series objects
+    register_dataframe_accessor: Register a custom accessor on DataFrame objects
     register_index_accessor: Register a custom accessor on Index objects
 
     Notes
@@ -285,15 +286,15 @@ def register_index_accessor(name):
     name : str
         name used when calling the accessor after its registered
 
-        Returns
+    Returns
     -------
     callable
         A class decorator.
 
     See Also
     --------
-    register_dataframe_accessor: Register a custom accessor on Series objects
-    register_series_accessor: Register a custom accessor on Index objects
+    register_dataframe_accessor: Register a custom accessor on DataFrame objects
+    register_series_accessor: Register a custom accessor on Series objects
 
     Notes
     -----
