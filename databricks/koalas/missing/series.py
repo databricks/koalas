@@ -42,7 +42,6 @@ class MissingPandasLikeSeries(object):
     autocorr = _unsupported_function("autocorr")
     between_time = _unsupported_function("between_time")
     combine = _unsupported_function("combine")
-    cov = _unsupported_function("cov")
     droplevel = _unsupported_function("droplevel")
     ewm = _unsupported_function("ewm")
     factorize = _unsupported_function("factorize")

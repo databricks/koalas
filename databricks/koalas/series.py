@@ -4858,6 +4858,54 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return mad
 
+    def cov(self, other: "Series", min_periods: Optional[int] = None) -> float:
+        """
+        Return the covariance between two series.
+
+        Parameters
+        ----------
+        other : Series
+        min_periods : int
+
+        Examples
+        --------
+        >>> s1 = ks.Series([1, 2, 3, 4])
+        >>> s2 = ks.Series([5, 6, 7, 8])
+        >>> s1
+        0    1
+        1    2
+        2    3
+        3    4
+        Name: 0, dtype: int64
+
+        >>> s2
+        0    5
+        1    6
+        2    7
+        3    8
+        Name: 0, dtype: int64
+
+        >>> s1.cov(s2)
+        1.666666...
+        """
+
+        if not isinstance(other, Series):
+            raise ValueError("'other' must be a Series")
+
+        if len(self.index) != len(other.index):
+            raise ValueError("series are not aligned")
+
+        min_periods = 0 if min_periods is None else min_periods
+        if len(self.index) < min_periods or len(self.index) <= 1:
+            return np.nan
+
+        if same_anchor(self, other):
+            # if the have the same anchor use the more performant Spark native `cov`
+            return self._internal.spark_frame.cov(self.name, other.name)
+        else:
+            # if not on the same anchor calculate covariance manually
+            return (self - self.mean()).dot(other - other.mean()) / (len(self.index) - 1)
+
     def unstack(self, level=-1):
         """
         Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.
