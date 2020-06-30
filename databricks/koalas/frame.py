@@ -1319,9 +1319,8 @@ class DataFrame(Frame, Generic[T]):
         ------
         index : label or tuple of label
             The index of the row. A tuple for a `MultiIndex`.
-        data : pandas.Series
+        data : Series
             The data of the row as a Series.
-
         it : generator
             A generator that iterates over the rows of the frame.
 
@@ -1369,7 +1368,7 @@ class DataFrame(Frame, Generic[T]):
         for k, v in map(
             extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
         ):
-            s = pd.Series(v, index=columns, name=k)
+            s = ks.Series(v, index=columns, name=k)
             yield k, s
 
     def items(self) -> Iterable:
