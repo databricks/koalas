@@ -29,8 +29,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas._libs.parsers import is_datetime64_dtype
-from pandas.core.dtypes.common import is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
