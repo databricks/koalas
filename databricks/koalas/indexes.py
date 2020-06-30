@@ -56,7 +56,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
-from databricks.koalas.typedef import as_spark_type
+from databricks.koalas.typedef import infer_pd_series_spark_type
 from databricks.koalas.utils import (
     compare_allow_null,
     compare_disallow_null,
@@ -1598,7 +1598,7 @@ class Index(IndexOpsMixin):
                 # TODO: We can't support different size of value for now.
                 raise ValueError("value and data must be the same size")
 
-            replace_return_type = as_spark_type(pandas_value.dtype.type)
+            replace_return_type = infer_pd_series_spark_type(pandas_value)
 
             @pandas_udf(returnType=replace_return_type if replace_return_type else StringType())
             def replace_pandas_udf(sequence):
