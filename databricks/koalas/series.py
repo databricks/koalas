@@ -4962,6 +4962,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         This method returns an iterable tuple (index, value). This is
         convenient if you want to create a lazy iterator.
 
+        .. note:: Unlike pandas', the iteritems in Koalas returns generator rather zip object
+
         Returns
         -------
         iterable
