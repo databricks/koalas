@@ -4979,7 +4979,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         --------
         >>> s = ks.Series(['A', 'B', 'C'])
         >>> for index, value in s.items():
-        ...     print(f"Index : {index}, Value : {value}")
+        ...     print("Index : {}, Value : {}".format(index, value))
         Index : 0, Value : A
         Index : 1, Value : B
         Index : 2, Value : C
