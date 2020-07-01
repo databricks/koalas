@@ -1787,3 +1787,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.ffill(inplace=True)
         pser.ffill(inplace=True)
         self.assert_eq(repr(kser), repr(pser))
+
+    def test_iteritems(self):
+        pser = pd.Series(["A", "B", "C"])
+        kser = ks.from_pandas(pser)
+
+        for p_items, k_items in zip(pser.iteritems(), kser.iteritems()):
+            self.assert_eq(repr(p_items), repr(k_items))

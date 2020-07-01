@@ -4955,6 +4955,56 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.head(2).to_pandas().item()
 
+    def iteritems(self):
+        """
+        Lazily iterate over (index, value) tuples.
+
+        This method returns an iterable tuple (index, value). This is
+        convenient if you want to create a lazy iterator.
+
+        .. note:: Unlike pandas', the iteritems in Koalas returns generator rather zip object
+
+        Returns
+        -------
+        iterable
+            Iterable of tuples containing the (index, value) pairs from a
+            Series.
+
+        See Also
+        --------
+        DataFrame.items : Iterate over (column name, Series) pairs.
+        DataFrame.iterrows : Iterate over DataFrame rows as (index, Series) pairs.
+
+        Examples
+        --------
+        >>> s = ks.Series(['A', 'B', 'C'])
+        >>> for index, value in s.items():
+        ...     print("Index : {}, Value : {}".format(index, value))
+        Index : 0, Value : A
+        Index : 1, Value : B
+        Index : 2, Value : C
+        """
+        internal_index_columns = self._internal.index_spark_column_names
+        internal_data_column = self._internal.data_spark_column_names[0]
+
+        def extract_kv_from_spark_row(row):
+            k = (
+                row[internal_index_columns[0]]
+                if len(internal_index_columns) == 1
+                else tuple(row[c] for c in internal_index_columns)
+            )
+            v = row[internal_data_column]
+            return k, v
+
+        for k, v in map(
+            extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
+        ):
+            yield k, v
+
+    def items(self) -> Iterable:
+        """This is an alias of ``iteritems``."""
+        return self.iteritems()
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
