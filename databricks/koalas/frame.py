@@ -688,11 +688,13 @@ class DataFrame(Frame, Generic[T]):
         """
         return self._ksers[label]
 
-    def _apply_series_op(self, op):
+    def _apply_series_op(self, op, should_resolve: bool = False):
         applied = []
         for label in self._internal.column_labels:
             applied.append(op(self._kser_for(label)))
         internal = self._internal.with_new_columns(applied)
+        if should_resolve:
+            internal = internal.resolved_copy
         return DataFrame(internal)
 
     # Arithmetic Operators
