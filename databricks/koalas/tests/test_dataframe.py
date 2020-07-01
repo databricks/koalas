@@ -554,19 +554,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_droplevel(self):
-        pdf = pd.DataFrame([
-            [1, 2, 3, 4],
-            [5, 6, 7, 8],
-            [9, 10, 11, 12]
-        ]).set_index([0, 1]).rename_axis(['a', 'b'])
+        pdf = (
+            pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
+            .set_index([0, 1])
+            .rename_axis(["a", "b"])
+        )
 
-        pdf.columns = pd.MultiIndex.from_tuples([('c', 'e'), ('d', 'f')],
-                                                names=['level_1', 'level_2'])
+        pdf.columns = pd.MultiIndex.from_tuples(
+            [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
+        )
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.droplevel('a'), kdf.droplevel('a'))
-        self.assert_eq(pdf.droplevel('level_1', axis=1), kdf.droplevel('level_1', axis=1))
-        self.assertRaises(ValueError, lambda: kdf.droplevel(['a', 'b']))
-        self.assertRaises(ValueError, lambda: kdf.droplevel(['level_1', 'level_2'], axis=1))
+        self.assert_eq(pdf.droplevel("a"), kdf.droplevel("a"))
+        self.assert_eq(pdf.droplevel("level_1", axis=1), kdf.droplevel("level_1", axis=1))
+        self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
+        self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
 
     def test_drop(self):
         pdf = pd.DataFrame({"x": [1, 2], "y": [3, 4], "z": [5, 6]}, index=np.random.rand(2))
