@@ -46,7 +46,9 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             getattr(kser.expanding(2), f)(), getattr(pser.expanding(2), f)(), almost=True
         )
 
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        pdf = pd.DataFrame(
+            {"a": [1.0, 2.0, 3.0, 2.0], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4)
+        )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(getattr(kdf.expanding(2), f)(), getattr(pdf.expanding(2), f)(), almost=True)
         self.assert_eq(
@@ -158,7 +160,7 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
 
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        pdf = pd.DataFrame({"a": [1.0, 2.0, 3.0, 2.0], "b": [4.0, 2.0, 3.0, 1.0]})
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
             getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index(),
