@@ -4977,16 +4977,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> kser = ks.Series(range(10000))
-        >>> with ks.option_context("compute.max_rows", 5):
-        ...     items = kser.iteritems()
-        >>> for index, value in items:
-        ...     print("Index : {}, Value : {}".format(index, value))
-        Index : 0, Value : 0
-        Index : 1, Value : 1
-        Index : 2, Value : 2
-        Index : 3, Value : 3
-        Index : 4, Value : 4
+        >>> s = ks.Series(['A', 'B', 'C'])
+        >>> for index, value in s.items():
+        ...     print(f"Index : {index}, Value : {value}")
+        Index : 0, Value : A
+        Index : 1, Value : B
+        Index : 2, Value : C
         """
         internal_index_columns = self._internal.index_spark_column_names
         internal_data_column = self._internal.data_spark_column_names[0]
