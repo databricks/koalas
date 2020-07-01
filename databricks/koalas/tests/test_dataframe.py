@@ -560,7 +560,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             [9, 10, 11, 12]
         ]).set_index([0, 1]).rename_axis(['a', 'b'])
 
-        pdf.columns = pd.MultiIndex.from_tuples([('c', 'e'), ('d', 'f')], names=['level_1', 'level_2'])
+        pdf.columns = pd.MultiIndex.from_tuples([('c', 'e'), ('d', 'f')],
+                                                names=['level_1', 'level_2'])
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.droplevel('a'), kdf.droplevel('a'))
         self.assert_eq(pdf.droplevel('level_1', axis=1), kdf.droplevel('level_1', axis=1))
