@@ -6175,6 +6175,104 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Frame._count_expr, name="count", axis=axis, numeric_only=False
         )
 
+    def droplevel(self, level, axis=0) -> "DataFrame":
+        """
+        Return DataFrame with requested index / column level(s) removed.
+
+        Parameters
+        ----------
+        level: int, str, or list-like
+            If a string is given, must be the name of a level If list-like, elements must
+            be names or positional indexes of levels.
+
+        axis: {0 or ‘index’, 1 or ‘columns’}, default 0
+
+        Returns
+        -------
+        DataFrame with requested index / column level(s) removed.
+
+        Examples
+        --------
+        >>> df = pd.DataFrame([
+        ...    [1, 2, 3, 4],
+        ...    [5, 6, 7, 8],
+        ...    [9, 10, 11, 12]
+        ... ]).set_index([0, 1]).rename_axis(['a', 'b'])
+
+        >>> df.columns = pd.MultiIndex.from_tuples([
+        ...   ('c', 'e'), ('d', 'f')
+        ... ], names=['level_1', 'level_2'])
+
+        >>> df
+        level_1   c   d
+        level_2   e   f
+        a b
+        1 2      3   4
+        5 6      7   8
+        9 10    11  12
+        >>> df.droplevel('a')
+        level_1   c   d
+        level_2   e   f
+        b
+        2        3   4
+        6        7   8
+        10      11  12
+
+        >>> df.droplevel('level2', axis=1)
+        level_1   c   d
+        a b
+        1 2      3   4
+        5 6      7   8
+        9 10    11  12
+        """
+        axis = validate_axis(axis)
+        # idx = self.index
+        # cols = self.columns
+        internal = self.copy()
+        if axis == 0:
+            names = self.index.names
+            nlevels = self.index.nlevels
+            if not isinstance(level, (tuple, list)):
+                level = [level]
+
+            for n in level:
+                if isinstance(n, int) and (n > nlevels - 1):
+                    raise IndexError(
+                        "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
+                    )
+                if isinstance(n, (str, tuple)) and (n not in names):
+                    raise KeyError("Level {} not found".format(n))
+
+            if len(level) >= nlevels:
+                raise ValueError(
+                    "Cannot remove {} levels from an index with {} "
+                    "levels: at least one level must be "
+                    "left.".format(len(level), nlevels)
+                )
+            internal = internal.reset_index(level).drop(level)
+        elif axis == 1:
+            names = self.columns.names
+            nlevels = self.columns.nlevels
+            if not isinstance(level, (tuple, list)):
+                level = [level]
+
+            for n in level:
+                if isinstance(n, int) and (n > nlevels - 1):
+                    raise IndexError(
+                        "Too many levels: Column has only {} levels, not {}".format(nlevels, n + 1)
+                    )
+                if isinstance(n, (str, tuple)) and (n not in names):
+                    raise KeyError("Level {} not found".format(n))
+
+            if len(level) >= nlevels:
+                raise ValueError(
+                    "Cannot remove {} levels from an index with {} "
+                    "levels: at least one level must be "
+                    "left.".format(len(level), nlevels)
+                )
+            internal.columns = internal.columns.droplevel(level)
+        return internal
+
     def drop(
         self,
         labels=None,
