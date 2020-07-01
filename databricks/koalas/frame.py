@@ -6193,7 +6193,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = pd.DataFrame([
+        >>> df = ks.DataFrame([
         ...    [1, 2, 3, 4],
         ...    [5, 6, 7, 8],
         ...    [9, 10, 11, 12]
@@ -6226,8 +6226,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         9 10    11  12
         """
         axis = validate_axis(axis)
-        # idx = self.index
-        # cols = self.columns
         internal = self.copy()
         if axis == 0:
             names = self.index.names
