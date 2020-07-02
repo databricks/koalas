@@ -38,10 +38,9 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         pser = pd.Series([1, 2, 3], index=np.random.rand(3), name="a")
         kser = ks.from_pandas(pser)
         self.assert_eq(getattr(kser.rolling(2), f)(), getattr(pser.rolling(2), f)(), almost=True)
-
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
-        kdf = ks.from_pandas(pdf)
-        self.assert_eq(getattr(kdf.rolling(2), f)(), getattr(pdf.rolling(2), f)(), almost=True)
+        self.assert_eq(
+            getattr(kser.rolling(2), f)().sum(), getattr(pser.rolling(2), f)().sum(), almost=True
+        )
 
         # Multiindex
         pser = pd.Series(
@@ -52,9 +51,14 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(getattr(kser.rolling(2), f)(), getattr(pser.rolling(2), f)(), almost=True)
 
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        pdf = pd.DataFrame(
+            {"a": [1.0, 2.0, 3.0, 2.0], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4)
+        )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(getattr(kdf.rolling(2), f)(), getattr(pdf.rolling(2), f)(), almost=True)
+        self.assert_eq(
+            getattr(kdf.rolling(2), f)().sum(), getattr(pdf.rolling(2), f)().sum(), almost=True
+        )
 
         # Multiindex column
         columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
@@ -84,18 +88,23 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
         self._test_rolling_func("var")
 
     def _test_groupby_rolling_func(self, f):
-        pser = pd.Series([1, 2, 3], index=np.random.rand(3), name="a")
+        pser = pd.Series([1, 2, 3, 2], index=np.random.rand(4), name="a")
         kser = ks.from_pandas(pser)
         self.assert_eq(
             getattr(kser.groupby(kser).rolling(2), f)().sort_index(),
             getattr(pser.groupby(pser).rolling(2), f)().sort_index(),
             almost=True,
         )
+        self.assert_eq(
+            getattr(kser.groupby(kser).rolling(2), f)().sum(),
+            getattr(pser.groupby(pser).rolling(2), f)().sum(),
+            almost=True,
+        )
 
         # Multiindex
         pser = pd.Series(
-            [1, 2, 3],
-            index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")]),
+            [1, 2, 3, 2],
+            index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z"), ("c", "z")]),
             name="a",
         )
         kser = ks.from_pandas(pser)
@@ -105,11 +114,16 @@ class RollingTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
 
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        pdf = pd.DataFrame({"a": [1.0, 2.0, 3.0, 2.0], "b": [4.0, 2.0, 3.0, 1.0]})
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
             getattr(kdf.groupby(kdf.a).rolling(2), f)().sort_index(),
             getattr(pdf.groupby(pdf.a).rolling(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            getattr(kdf.groupby(kdf.a).rolling(2), f)().sum(),
+            getattr(pdf.groupby(pdf.a).rolling(2), f)().sum(),
             almost=True,
         )
         self.assert_eq(

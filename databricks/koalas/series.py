@@ -5097,8 +5097,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # ----------------------------------------------------------------------
 
-    def _apply_series_op(self, op):
-        return op(self)
+    def _apply_series_op(self, op, should_resolve: bool = False):
+        kser = op(self)
+        if should_resolve:
+            internal = kser._internal.resolved_copy
+            return first_series(DataFrame(internal))
+        else:
+            return kser
 
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
         """

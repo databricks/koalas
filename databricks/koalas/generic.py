@@ -56,6 +56,14 @@ class Frame(object, metaclass=ABCMeta):
     def _internal(self) -> InternalFrame:
         pass
 
+    @abstractmethod
+    def _apply_series_op(self, op, should_resolve: bool = False):
+        pass
+
+    @abstractmethod
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
+        pass
+
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
         """
@@ -114,7 +122,9 @@ class Frame(object, metaclass=ABCMeta):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._apply_series_op(lambda kser: kser._cum(F.min, skipna))  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cum(F.min, skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True):
@@ -175,7 +185,9 @@ class Frame(object, metaclass=ABCMeta):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._apply_series_op(lambda kser: kser._cum(F.max, skipna))  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cum(F.max, skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
@@ -236,7 +248,9 @@ class Frame(object, metaclass=ABCMeta):
         2    6.0
         Name: A, dtype: float64
         """
-        return self._apply_series_op(lambda kser: kser._cum(F.sum, skipna))  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cum(F.sum, skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
@@ -305,7 +319,9 @@ class Frame(object, metaclass=ABCMeta):
         Name: A, dtype: float64
 
         """
-        return self._apply_series_op(lambda kser: kser._cumprod(skipna))  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cumprod(skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
