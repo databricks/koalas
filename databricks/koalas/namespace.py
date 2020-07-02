@@ -1785,16 +1785,15 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 ), "inner or full join type does not include non-common columns"
                 pretty_names = [name_like_string(column_label) for column_label in duplicated_names]
                 raise ValueError(
-                    "Labels have to be unique; however, got " "duplicated labels %s." % pretty_names
+                    "Labels have to be unique; however, got duplicated labels %s." % pretty_names
                 )
 
             for kser_or_kdf in objs[1:]:
-                if isinstance(kser_or_kdf, Series):
-                    # TODO: there is a corner case to optimize - when the series are from
-                    #   the same DataFrame.
-                    that_kdf = kser_or_kdf.to_frame()
-                else:
-                    that_kdf = kser_or_kdf
+                # TODO: there is a corner case to optimize - when the series are from
+                #   the same DataFrame.
+                # FIXME: force to create a new Spark DataFrame to make sure the anchors are
+                #   different.
+                that_kdf = DataFrame(kser_or_kdf._internal.resolved_copy)
 
                 this_index_level = concat_kdf._internal.column_labels_level
                 that_index_level = that_kdf._internal.column_labels_level
