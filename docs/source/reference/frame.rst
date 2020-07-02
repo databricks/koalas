@@ -293,14 +293,12 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.hist
    DataFrame.kde
 
-Utilities
----------
-``DataFrame.utils`` provides utility features that exists only in Koalas.
-These can be accessed by ``DataFrame.utils.<function/property>``.
+Koalas-specific
+---------------
+``DataFrame.koalas`` provides Koalas-specific features that exists only in Koalas.
+These can be accessed by ``DataFrame.koalas.<function/property>``.
 
 .. autosummary::
    :toctree: api/
 
-   DataFrame.utils.attach_sequence_id_column
-   DataFrame.utils.attach_distributed_sequence_id_column
-   DataFrame.utils.attach_distributed_id_column
+   DataFrame.koalas.attach_id_column

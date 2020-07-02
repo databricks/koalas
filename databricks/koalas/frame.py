@@ -56,6 +56,7 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.accessors import KoalasFrameMethods
 from databricks.koalas.config import option_context, get_option
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFrameMethods
@@ -70,7 +71,6 @@ from databricks.koalas.utils import (
     validate_axis,
     verify_temp_column_name,
 )
-from databricks.koalas.utils.accessors import UtilsFrameMethods
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
     InternalFrame,
@@ -808,8 +808,8 @@ class DataFrame(Frame, Generic[T]):
     # create accessor for Spark related methods.
     spark = CachedAccessor("spark", SparkFrameMethods)
 
-    # create accessor for utils
-    utils = CachedAccessor("utils", UtilsFrameMethods)
+    # create accessor for Koalas specific methods.
+    koalas = CachedAccessor("koalas", KoalasFrameMethods)
 
     def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
