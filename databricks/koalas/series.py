@@ -1250,24 +1250,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if name is not None:
             renamed = self.rename(name)
+        elif self._column_label is None:
+            renamed = self.rename(SPARK_DEFAULT_SERIES_NAME)
         else:
             renamed = self
-        sdf = renamed._internal.to_internal_spark_frame
-        column_labels = None  # type: Optional[List[Tuple[str, ...]]]
-        if renamed._internal.column_labels[0] is None:
-            column_labels = [(SPARK_DEFAULT_SERIES_NAME,)]
-            column_label_names = None
-        else:
-            column_labels = renamed._internal.column_labels
-            column_label_names = renamed._internal.column_label_names
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=renamed._internal.index_map,
-            column_labels=column_labels,
-            data_spark_columns=[scol_for(sdf, sdf.columns[-1])],
-            column_label_names=column_label_names,
-        )
-        return DataFrame(internal)
+        return DataFrame(renamed._internal)
 
     to_dataframe = to_frame
 
@@ -4582,7 +4569,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         cond = F.when(this.isNull(), that).otherwise(this)
         # If `self` and `other` come from same frame, the anchor should be kept
         if same_anchor(self, other):
-            return self._with_new_scol(cond)
+            return self._with_new_scol(cond).rename(self.name)
         index_scols = combined._internal.index_spark_columns
         sdf = combined._internal.spark_frame.select(
             *index_scols, cond.alias(self._internal.data_spark_column_names[0])
