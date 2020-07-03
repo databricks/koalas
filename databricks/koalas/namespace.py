@@ -1786,8 +1786,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
         kdfs_not_same_anchor = []
         for kdf in kdfs[1:]:
-            labels = kdf._internal.column_labels
-            duplicated = [label for label in labels if label in column_labels]
+            duplicated = [label for label in kdf._internal.column_labels if label in column_labels]
             if len(duplicated) > 0:
                 pretty_names = [name_like_string(label) for label in duplicated]
                 raise ValueError(
