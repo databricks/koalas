@@ -40,12 +40,19 @@ utils.default_session({"spark.sql.shuffle.partitions": "4"})
 
 def gendoc():
     """Get releases from Github and generate reStructuredText files for release notes."""
+    source_dir = os.path.dirname(os.path.abspath(__file__))
+    whatsnew_dir = "%s/whatsnew" % source_dir
+
+    # Read the Docs builds multiple times. To speed up, we don't delete the generated rst
+    # files to reuse in Read the Docs build
+    if "READTHEDOCS" in os.environ and os.path.isdir(whatsnew_dir):
+        return
+
     dev_dir = "%s/../../dev" % os.path.dirname(os.path.abspath(__file__))
     spec = importlib.util.spec_from_file_location("gendoc", "%s/gendoc.py" % dev_dir)
     gendoc = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gendoc)
     gendoc.download_pandoc_if_needed(dev_dir)
-    source_dir = os.path.dirname(os.path.abspath(__file__))
     gendoc.gen_release_notes(source_dir)
 
 
