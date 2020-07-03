@@ -49,8 +49,6 @@ class MissingPandasLikeSeries(object):
     first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")
-    items = _unsupported_function("items")
-    iteritems = _unsupported_function("iteritems")
     last = _unsupported_function("last")
     last_valid_index = _unsupported_function("last_valid_index")
     prod = _unsupported_function("prod")

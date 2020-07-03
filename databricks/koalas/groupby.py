@@ -18,6 +18,7 @@
 A wrapper for GroupedData to behave similar to pandas GroupBy.
 """
 
+from abc import ABCMeta, abstractmethod
 import sys
 import inspect
 from collections import OrderedDict, namedtuple
@@ -29,8 +30,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas._libs.parsers import is_datetime64_dtype
-from pandas.core.dtypes.common import is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -73,7 +73,7 @@ from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
 
 
-class GroupBy(object):
+class GroupBy(object, metaclass=ABCMeta):
     """
     :ivar _kdf: The parent dataframe that is used to perform the groupby
     :type _kdf: DataFrame
@@ -88,6 +88,10 @@ class GroupBy(object):
     @property
     def _agg_columns_scols(self):
         return [s.spark.column for s in self._agg_columns]
+
+    @abstractmethod
+    def _apply_series_op(self, op, should_resolve: bool = False):
+        pass
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to pandas' for now.
@@ -681,7 +685,8 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
         )
 
     def cummin(self):
@@ -728,7 +733,8 @@ class GroupBy(object):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
         )
 
     def cumprod(self):
@@ -776,7 +782,7 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols), should_resolve=True
         )
 
     def cumsum(self):
@@ -824,7 +830,8 @@ class GroupBy(object):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
         )
 
     def apply(self, func, *args, **kwargs):
@@ -2296,11 +2303,13 @@ class DataFrameGroupBy(GroupBy):
                 agg_columns=item,
             )
 
-    def _apply_series_op(self, op):
+    def _apply_series_op(self, op, should_resolve: bool = False):
         applied = []
         for column in self._agg_columns:
             applied.append(op(column.groupby(self._groupkeys)))
         internal = self._kdf._internal.with_new_columns(applied, keep_order=False)
+        if should_resolve:
+            internal = internal.resolved_copy
         return DataFrame(internal)
 
     # TODO: Implement 'percentiles', 'include', and 'exclude' arguments.
@@ -2425,8 +2434,13 @@ class SeriesGroupBy(GroupBy):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    def _apply_series_op(self, op):
-        return op(self)
+    def _apply_series_op(self, op, should_resolve: bool = False):
+        kser = op(self)
+        if should_resolve:
+            internal = kser._internal.resolved_copy
+            return first_series(DataFrame(internal))
+        else:
+            return kser
 
     @property
     def _kdf(self) -> DataFrame:

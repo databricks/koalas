@@ -2127,6 +2127,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
         self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
+        self.assert_eq(pdf.cummin().sum(), kdf.cummin().sum())
 
     def test_cummin(self):
         pdf = pd.DataFrame(
@@ -2147,6 +2148,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_cummax(self, pdf, kdf):
         self.assert_eq(pdf.cummax(), kdf.cummax())
         self.assert_eq(pdf.cummax(skipna=False), kdf.cummax(skipna=False))
+        self.assert_eq(pdf.cummax().sum(), kdf.cummax().sum())
 
     def test_cummax(self):
         pdf = pd.DataFrame(
@@ -2167,6 +2169,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_cumsum(self, pdf, kdf):
         self.assert_eq(pdf.cumsum(), kdf.cumsum())
         self.assert_eq(pdf.cumsum(skipna=False), kdf.cumsum(skipna=False))
+        self.assert_eq(pdf.cumsum().sum(), kdf.cumsum().sum())
 
     def test_cumsum(self):
         pdf = pd.DataFrame(
@@ -2185,8 +2188,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self._test_cumsum(pdf, kdf)
 
     def _test_cumprod(self, pdf, kdf):
-        self.assertEqual(repr(pdf.cumprod()), repr(kdf.cumprod()))
-        self.assertEqual(repr(pdf.cumprod(skipna=False)), repr(kdf.cumprod(skipna=False)))
+        self.assert_eq(pdf.cumprod(), kdf.cumprod(), almost=True)
+        self.assert_eq(pdf.cumprod(skipna=False), kdf.cumprod(skipna=False), almost=True)
+        self.assert_eq(pdf.cumprod().sum(), kdf.cumprod().sum(), almost=True)
 
     def test_cumprod(self):
         pdf = pd.DataFrame(

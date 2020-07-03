@@ -31,6 +31,11 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             getattr(kser.expanding(2), f)(), getattr(pser.expanding(2), f)(), almost=True
         )
+        self.assert_eq(
+            getattr(kser.expanding(2), f)().sum(),
+            getattr(pser.expanding(2), f)().sum(),
+            almost=True,
+        )
 
         # Multiindex
         pser = pd.Series(
@@ -41,9 +46,14 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             getattr(kser.expanding(2), f)(), getattr(pser.expanding(2), f)(), almost=True
         )
 
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4))
+        pdf = pd.DataFrame(
+            {"a": [1.0, 2.0, 3.0, 2.0], "b": [4.0, 2.0, 3.0, 1.0]}, index=np.random.rand(4)
+        )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(getattr(kdf.expanding(2), f)(), getattr(pdf.expanding(2), f)(), almost=True)
+        self.assert_eq(
+            getattr(kdf.expanding(2), f)().sum(), getattr(pdf.expanding(2), f)().sum(), almost=True
+        )
 
         # Multiindex column
         columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
@@ -76,6 +86,8 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kser.expanding(2).count().sort_index(), expected_result.sort_index(), almost=True
             )
+            self.assert_eq(kser.expanding(2).count().sum(), expected_result.sum(), almost=True)
+
             # MultiIndex
             midx = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
             kser = ks.Series([1, 2, 3], index=midx, name="a")
@@ -90,6 +102,7 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kdf.expanding(2).count().sort_index(), expected_result.sort_index(), almost=True
             )
+            self.assert_eq(kdf.expanding(2).count().sum(), expected_result.sum(), almost=True)
 
             # MultiIndex columns
             idx = np.random.rand(4)
@@ -121,18 +134,23 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
         self._test_expanding_func("var")
 
     def _test_groupby_expanding_func(self, f):
-        pser = pd.Series([1, 2, 3], index=np.random.rand(3), name="a")
+        pser = pd.Series([1, 2, 3, 2], index=np.random.rand(4), name="a")
         kser = ks.from_pandas(pser)
         self.assert_eq(
             getattr(kser.groupby(kser).expanding(2), f)().sort_index(),
             getattr(pser.groupby(pser).expanding(2), f)().sort_index(),
             almost=True,
         )
+        self.assert_eq(
+            getattr(kser.groupby(kser).expanding(2), f)().sum(),
+            getattr(pser.groupby(pser).expanding(2), f)().sum(),
+            almost=True,
+        )
 
         # Multiindex
         pser = pd.Series(
-            [1, 2, 3],
-            index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")]),
+            [1, 2, 3, 2],
+            index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z"), ("c", "z")]),
             name="a",
         )
         kser = ks.from_pandas(pser)
@@ -142,11 +160,16 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             almost=True,
         )
 
-        pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
+        pdf = pd.DataFrame({"a": [1.0, 2.0, 3.0, 2.0], "b": [4.0, 2.0, 3.0, 1.0]})
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
             getattr(kdf.groupby(kdf.a).expanding(2), f)().sort_index(),
             getattr(pdf.groupby(pdf.a).expanding(2), f)().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            getattr(kdf.groupby(kdf.a).expanding(2), f)().sum(),
+            getattr(pdf.groupby(pdf.a).expanding(2), f)().sum(),
             almost=True,
         )
         self.assert_eq(
@@ -193,23 +216,29 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             self._test_groupby_expanding_func("count")
         else:
             # Series
-            kser = ks.Series([1, 2, 3], index=np.random.rand(3))
+            kser = ks.Series([1, 2, 3, 2], index=np.random.rand(4))
             midx = pd.MultiIndex.from_tuples(
                 list(zip(kser.to_pandas().values, kser.index.to_pandas().values))
             )
-            expected_result = pd.Series([np.nan, np.nan, np.nan], index=midx)
+            expected_result = pd.Series([np.nan, np.nan, np.nan, 2], index=midx)
             self.assert_eq(
                 kser.groupby(kser).expanding(2).count().sort_index(),
                 expected_result.sort_index(),
                 almost=True,
             )
+            self.assert_eq(
+                kser.groupby(kser).expanding(2).count().sum(), expected_result.sum(), almost=True
+            )
 
             # MultiIndex
             kser = ks.Series(
-                [1, 2, 3], index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+                [1, 2, 3, 2],
+                index=pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z"), ("a", "y")]),
             )
-            midx = pd.MultiIndex.from_tuples([(1, "a", "x"), (2, "a", "y"), (3, "b", "z")])
-            expected_result = pd.Series([np.nan, np.nan, np.nan], index=midx)
+            midx = pd.MultiIndex.from_tuples(
+                [(1, "a", "x"), (2, "a", "y"), (3, "b", "z"), (2, "a", "y")]
+            )
+            expected_result = pd.Series([np.nan, np.nan, np.nan, 2], index=midx)
             self.assert_eq(
                 kser.groupby(kser).expanding(2).count().sort_index(),
                 expected_result.sort_index(),
@@ -226,6 +255,9 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
                 kdf.groupby(kdf.a).expanding(2).count().sort_index(),
                 expected_result.sort_index(),
                 almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kdf.a).expanding(2).count().sum(), expected_result.sum(), almost=True
             )
             expected_result = pd.DataFrame(
                 {"a": [None, None, 2.0, None], "b": [None, None, 2.0, None]},

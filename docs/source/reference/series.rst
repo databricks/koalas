@@ -51,6 +51,8 @@ Indexing, iteration
    Series.iloc
    Series.keys
    Series.pop
+   Series.items
+   Series.iteritems
    Series.item
    Series.xs
    Series.get

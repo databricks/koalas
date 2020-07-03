@@ -150,7 +150,8 @@ class Rolling(RollingAndExpanding):
 
     def _apply_as_series_or_frame(self, func):
         return self._kdf_or_kser._apply_series_op(
-            lambda kser: kser._with_new_scol(func(kser.spark.column)).rename(kser.name)
+            lambda kser: kser._with_new_scol(func(kser.spark.column)).rename(kser.name),
+            should_resolve=True,
         )
 
     def count(self):

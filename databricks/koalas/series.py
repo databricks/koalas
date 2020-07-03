@@ -1250,24 +1250,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if name is not None:
             renamed = self.rename(name)
+        elif self._column_label is None:
+            renamed = self.rename(SPARK_DEFAULT_SERIES_NAME)
         else:
             renamed = self
-        sdf = renamed._internal.to_internal_spark_frame
-        column_labels = None  # type: Optional[List[Tuple[str, ...]]]
-        if renamed._internal.column_labels[0] is None:
-            column_labels = [(SPARK_DEFAULT_SERIES_NAME,)]
-            column_label_names = None
-        else:
-            column_labels = renamed._internal.column_labels
-            column_label_names = renamed._internal.column_label_names
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=renamed._internal.index_map,
-            column_labels=column_labels,
-            data_spark_columns=[scol_for(sdf, sdf.columns[-1])],
-            column_label_names=column_label_names,
-        )
-        return DataFrame(internal)
+        return DataFrame(renamed._internal)
 
     to_dataframe = to_frame
 
@@ -4582,7 +4569,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         cond = F.when(this.isNull(), that).otherwise(this)
         # If `self` and `other` come from same frame, the anchor should be kept
         if same_anchor(self, other):
-            return self._with_new_scol(cond)
+            return self._with_new_scol(cond).rename(self.name)
         index_scols = combined._internal.index_spark_columns
         sdf = combined._internal.spark_frame.select(
             *index_scols, cond.alias(self._internal.data_spark_column_names[0])
@@ -4955,6 +4942,56 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.head(2).to_pandas().item()
 
+    def iteritems(self):
+        """
+        Lazily iterate over (index, value) tuples.
+
+        This method returns an iterable tuple (index, value). This is
+        convenient if you want to create a lazy iterator.
+
+        .. note:: Unlike pandas', the iteritems in Koalas returns generator rather zip object
+
+        Returns
+        -------
+        iterable
+            Iterable of tuples containing the (index, value) pairs from a
+            Series.
+
+        See Also
+        --------
+        DataFrame.items : Iterate over (column name, Series) pairs.
+        DataFrame.iterrows : Iterate over DataFrame rows as (index, Series) pairs.
+
+        Examples
+        --------
+        >>> s = ks.Series(['A', 'B', 'C'])
+        >>> for index, value in s.items():
+        ...     print("Index : {}, Value : {}".format(index, value))
+        Index : 0, Value : A
+        Index : 1, Value : B
+        Index : 2, Value : C
+        """
+        internal_index_columns = self._internal.index_spark_column_names
+        internal_data_column = self._internal.data_spark_column_names[0]
+
+        def extract_kv_from_spark_row(row):
+            k = (
+                row[internal_index_columns[0]]
+                if len(internal_index_columns) == 1
+                else tuple(row[c] for c in internal_index_columns)
+            )
+            v = row[internal_data_column]
+            return k, v
+
+        for k, v in map(
+            extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
+        ):
+            yield k, v
+
+    def items(self) -> Iterable:
+        """This is an alias of ``iteritems``."""
+        return self.iteritems()
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
@@ -5060,8 +5097,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # ----------------------------------------------------------------------
 
-    def _apply_series_op(self, op):
-        return op(self)
+    def _apply_series_op(self, op, should_resolve: bool = False):
+        kser = op(self)
+        if should_resolve:
+            internal = kser._internal.resolved_copy
+            return first_series(DataFrame(internal))
+        else:
+            return kser
 
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
         """
