@@ -20,13 +20,18 @@ from databricks import koalas
 from databricks.koalas import utils
 sys.path.insert(0, os.path.abspath('.'))
 
-# Remove previously generated rst files. Ignore errors just in case it stops generating whole docs.
-shutil.rmtree("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
-try:
-    os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
-except OSError as e:
-    if e.errno != errno.EEXIST:
-        raise
+# Read the Docs builds multiple times. To speed up, we don't delete the generated rst
+# files to reuse in Read the Docs build
+if "READTHEDOCS" not in os.environ:
+    # Remove previously generated rst files. Ignore errors just in case it stops
+    # generating whole docs.
+    shutil.rmtree(
+        "%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
+    try:
+        os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
 
 
 # Lower the number of partitions to speed up documentation build
