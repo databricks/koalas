@@ -6193,24 +6193,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame([
-        ...    [1, 2, 3, 4],
-        ...    [5, 6, 7, 8],
-        ...    [9, 10, 11, 12]
-        ... ]).set_index([0, 1]).rename_axis(['a', 'b'])
+        >>> df = ks.DataFrame(
+        ...     [[3, 4], [7, 8], [11, 12]],
+        ...     index=pd.MultiIndex.from_tuples([(1, 2), (5, 6), (9, 10)], names=["a", "b"]),
+        ... )
 
         >>> df.columns = pd.MultiIndex.from_tuples([
         ...   ('c', 'e'), ('d', 'f')
         ... ], names=['level_1', 'level_2'])
 
-        >>> df
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
         level_1   c   d
         level_2   e   f
         a b
         1 2      3   4
         5 6      7   8
         9 10    11  12
-        >>> df.droplevel('a')
+        >>> df.droplevel('a')  # doctest: +NORMALIZE_WHITESPACE
         level_1   c   d
         level_2   e   f
         b
@@ -6218,7 +6217,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         6        7   8
         10      11  12
 
-        >>> df.droplevel('level2', axis=1)
+        >>> df.droplevel('level_2', axis=1)  # doctest: +NORMALIZE_WHITESPACE
         level_1   c   d
         a b
         1 2      3   4
@@ -6226,7 +6225,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         9 10    11  12
         """
         axis = validate_axis(axis)
-        internal = self.copy()
+        kdf = self.copy()
         if axis == 0:
             names = self.index.names
             nlevels = self.index.nlevels
@@ -6247,7 +6246,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "levels: at least one level must be "
                     "left.".format(len(level), nlevels)
                 )
-            internal = internal.reset_index(level).drop(level)
+            drop_spark_index_columns = list()
+            index_spark_column_names = kdf._internal.index_spark_column_names
+            for n in level:
+                if isinstance(n, int):
+                    index_order = n
+                elif isinstance(n, (str, tuple)):
+                    index_order = kdf.index.names.index(n)
+                drop_spark_index_columns.append(index_spark_column_names[index_order])
+            sdf = kdf._internal.spark_frame
+            sdf = sdf.drop(*drop_spark_index_columns)
+            index_map = kdf._internal.index_map.copy()
+            for drop_spark_index_column in drop_spark_index_columns:
+                index_map.pop(drop_spark_index_column)
+            internal_frame = kdf._internal.copy(spark_frame=sdf, index_map=index_map)
+            kdf = DataFrame(internal_frame)
         elif axis == 1:
             names = self.columns.names
             nlevels = self.columns.nlevels
@@ -6268,8 +6281,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "levels: at least one level must be "
                     "left.".format(len(level), nlevels)
                 )
-            internal.columns = internal.columns.droplevel(level)
-        return internal
+            kdf.columns = kdf.columns.droplevel(level)
+        return kdf
 
     def drop(
         self,
