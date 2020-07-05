@@ -159,6 +159,7 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.drop
+   Series.drop_level
    Series.drop_duplicates
    Series.equals
    Series.add_prefix

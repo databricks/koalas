@@ -4992,6 +4992,87 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
+    def droplevel(self, level):
+        """
+        Return Series with requested index level(s) removed.
+
+        Parameters
+        ----------
+        level : int, str, or list-like
+            If a string is given, must be the name of a level
+            If list-like, elements must be names or positional indexes
+            of levels.
+
+        Returns
+        -------
+        Series
+            Series with requested index level(s) removed.
+
+        Examples
+        --------
+        >>> kser = ks.Series(
+        ...     [1, 2, 3],
+        ...     index=pd.MultiIndex.from_tuples(
+        ...         [("x", "a"), ("x", "b"), ("y", "c")], names=["level_1", "level_2"]
+        ...     ),
+        ... )
+        >>> kser
+        level_1  level_2
+        x        a          1
+                 b          2
+        y        c          3
+        Name: 0, dtype: int64
+
+        Removing specific index level by level
+
+        >>> kser.droplevel(0)
+        level_2
+        a    1
+        b    2
+        c    3
+        Name: 0, dtype: int64
+
+        Removing specific index level by name
+
+        >>> kser.droplevel("level_2")
+        level_1
+        x    1
+        x    2
+        y    3
+        Name: 0, dtype: int64
+        """
+        if not isinstance(level, (tuple, list)):
+            if not isinstance(level, (str, int)):
+                raise KeyError("Level {} not found".format(level))
+            level = [level]
+
+        spark_frame = self._internal.spark_frame
+        index_map = self._internal.index_map.copy()
+        index_names = self.index.names
+        nlevels = self.index.nlevels
+        for n in level:
+            if isinstance(n, str):
+                if n not in index_names:
+                    raise KeyError("Level {} not found".format(n))
+                n = index_names.index(n)
+            elif isinstance(n, int):
+                if n >= nlevels:
+                    raise IndexError(
+                        "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
+                    )
+            index_spark_column = self._internal.index_spark_column_names[n]
+            spark_frame = spark_frame.drop(index_spark_column)
+            index_map.pop(index_spark_column)
+
+        if len(level) == nlevels:
+            raise ValueError(
+                "Cannot remove {0} levels from an index with {0} levels: "
+                "at least one level must be left.".format(nlevels)
+            )
+        internal = self._internal.copy(spark_frame=spark_frame, index_map=index_map)
+
+        return first_series(DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
