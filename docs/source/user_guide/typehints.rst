@@ -6,8 +6,8 @@ Type Hints In Koalas
 
 Koalas, by default, infers the schema by taking some top records from the output,
 in particular, when you use APIs that allow users to apply a function against Koalas DataFrame
-such as :func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.transform_batch`,
-:func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc.
+such as :func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.koalas.koalas.apply_batch`,
+:func:`DataFrame.koalas.apply_batch`, :func:`Series.koalas.koalas.apply_batch`, etc.
 
 However, this is potentially expensive. If there are several expensive operations such as a shuffle
 in the upstream of the execution plan, Koalas will end up with executing the Spark job twice, once
@@ -79,7 +79,7 @@ the column names as ``c#`` and this easily leads users to lose or forgot the Ser
     ...     pdf['A'] = pdf.id + 1
     ...     return pdf
     ...
-    >>> ks.range(5).apply_batch(transform)
+    >>> ks.range(5).koalas.apply_batch(transform)
 
 .. code-block:: bash
 
@@ -100,7 +100,7 @@ the Series names, ``id`` and ``A``, and ``int`` types respectively.
     ...     pdf['A'] = pdf.id + 1
     ...     return pdf
     ...
-    >>> ks.range(5).apply_batch(transform)
+    >>> ks.range(5).koalas.apply_batch(transform)
 
 .. code-block:: bash
 
@@ -119,7 +119,7 @@ programmatically generate the return type and schema.
     >>> def transform(pdf) -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:
     ...    return pdf + 1
     ...
-    >>> kdf.apply_batch(transform)
+    >>> kdf.koalas.apply_batch(transform)
 
 Likewise, ``dtype`` instances from pandas DataFrame can be used alone and let Koalas generate column names.
 
@@ -128,7 +128,7 @@ Likewise, ``dtype`` instances from pandas DataFrame can be used alone and let Ko
     >>> def transform(pdf) -> pd.DataFrame[pdf.dtypes]:
     ...     return pdf + 1
     ...
-    >>> kdf.apply_batch(transform)
+    >>> kdf.koalas.apply_batch(transform)
 
 .. warning::
     This new style of type hinting is experimental. It could be changed or removed between minor

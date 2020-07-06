@@ -112,7 +112,7 @@ class DatetimeMethods(object):
         def pandas_microsecond(s) -> "ks.Series[np.int64]":
             return s.dt.microsecond
 
-        return self._data.transform_batch(pandas_microsecond)
+        return self._data.koalas.transform_batch(pandas_microsecond)
 
     @property
     def nanosecond(self) -> "ks.Series":
