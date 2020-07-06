@@ -1801,7 +1801,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_tail(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series(range(1000))
+            pser = pd.Series(range(1000), name="Koalas")
             kser = ks.from_pandas(pser)
 
             self.assert_eq(pser.tail(), kser.tail())

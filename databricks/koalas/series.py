@@ -5040,7 +5040,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(n, int):
             raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))
         if n == 0:
-            return ks.Series([])
+            return first_series(ks.DataFrame(self._internal.with_filter(F.lit(False))))
         if n < 0:
             n = len(self) + n
         sdf = self._internal.spark_frame
