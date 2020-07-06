@@ -1352,3 +1352,17 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"])
         with self.assertRaisesRegex(TypeError, "perform __abs__ with this index"):
             abs(kidx)
+
+    def test_iter(self):
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+
+        for pandas_value, koalas_value in zip(pidx, kidx):
+            self.assert_eq(pandas_value, koalas_value)
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        kmidx = ks.from_pandas(pmidx)
+
+        for pandas_value, koalas_value in zip(pmidx, kmidx):
+            self.assert_eq(pandas_value, koalas_value)

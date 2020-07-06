@@ -1953,7 +1953,15 @@ class Index(IndexOpsMixin):
         return repr_string
 
     def __iter__(self):
-        return MissingPandasLikeIndex.__iter__(self)
+        internal_data_column = self._internal.data_spark_column_names[0]
+
+        def extract_value_from_spark_row(row):
+            return row[internal_data_column]
+
+        for value in map(
+            extract_value_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
+        ):
+            yield value
 
     def __xor__(self, other):
         return self.symmetric_difference(other)
@@ -2741,4 +2749,12 @@ class MultiIndex(Index):
         return ks.DataFrame(internal).index
 
     def __iter__(self):
-        return MissingPandasLikeMultiIndex.__iter__(self)
+        internal_data_column = self._internal.data_spark_column_names[0]
+
+        def extract_value_from_spark_row(row):
+            return tuple(row[internal_data_column])
+
+        for value in map(
+            extract_value_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
+        ):
+            yield value
