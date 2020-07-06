@@ -6,8 +6,8 @@ Type Hints In Koalas
 
 Koalas, by default, infers the schema by taking some top records from the output,
 in particular, when you use APIs that allow users to apply a function against Koalas DataFrame
-such as :func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.koalas.koalas.apply_batch`,
-:func:`DataFrame.koalas.apply_batch`, :func:`Series.koalas.koalas.apply_batch`, etc.
+such as :func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.koalas.apply_batch`,
+:func:`DataFrame.koalas.apply_batch`, :func:`Series.koalas.apply_batch`, etc.
 
 However, this is potentially expensive. If there are several expensive operations such as a shuffle
 in the upstream of the execution plan, Koalas will end up with executing the Spark job twice, once
