@@ -1381,10 +1381,10 @@ def to_datetime(
         )
 
     if isinstance(arg, Series):
-        return arg.transform_batch(pandas_to_datetime)
+        return arg.koalas.transform_batch(pandas_to_datetime)
     if isinstance(arg, DataFrame):
         kdf = arg[["year", "month", "day"]]
-        return kdf.transform_batch(pandas_to_datetime)
+        return kdf.koalas.transform_batch(pandas_to_datetime)
     return pd.to_datetime(
         arg,
         errors=errors,

@@ -32,7 +32,6 @@ import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
-
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -50,6 +49,7 @@ from pyspark.sql.types import (
 from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks.koalas.accessors import KoalasSeriesMethods
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
@@ -607,6 +607,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         reverse="floordiv",
         series_examples=_floordiv_example_SERIES,
     )
+
+    # create accessor for Koalas specific methods.
+    koalas = CachedAccessor("koalas", KoalasSeriesMethods)
 
     # Comparison Operators
     def eq(self, other):
@@ -2725,7 +2728,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.apply(func, *args, **kwds)
             kser = Series(transformed)
-            return self._transform_batch(apply_each, kser.spark.data_type)
+            return self.koalas._transform_batch(apply_each, kser.spark.data_type)
         else:
             sig_return = infer_return_type(func)
             if not isinstance(sig_return, ScalarType):
@@ -2734,7 +2737,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     "but found type {}".format(sig_return)
                 )
             return_schema = sig_return.tpe
-            return self._transform_batch(apply_each, return_schema)
+            return self.koalas._transform_batch(apply_each, return_schema)
 
     # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func: Union[str, List[str]]):
@@ -2898,146 +2901,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return self.apply(func, args=args, **kwargs)
 
     def transform_batch(self, func, *args, **kwargs) -> "ks.Series":
-        """
-        Transform the data with the function that takes pandas Series and outputs pandas Series.
-        The pandas Series given to the function is of a batch used internally.
+        warnings.warn(
+            "Series.transform_batch is deprecated as of Series.koalas.transform_batch. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.koalas.transform_batch(func, *args, **kwargs)
 
-        See also `Transform and apply a function
-        <https://koalas.readthedocs.io/en/latest/user_guide/transform_apply.html>`_.
-
-        .. note:: the `func` is unable to access to the whole input series. Koalas internally
-            splits the input series into multiple batches and calls `func` with each batch multiple
-            times. Therefore, operations such as global aggregations are impossible. See the example
-            below.
-
-            >>> # This case does not return the length of whole frame but of the batch internally
-            ... # used.
-            ... def length(pser) -> ks.Series[int]:
-            ...     return pd.Series([len(pser)] * len(pser))
-            ...
-            >>> df = ks.DataFrame({'A': range(1000)})
-            >>> df.A.transform_batch(length)  # doctest: +SKIP
-                c0
-            0   83
-            1   83
-            2   83
-            ...
-
-        .. note:: this API executes the function once to infer the type which is
-            potentially expensive, for instance, when the dataset is created after
-            aggregations or sorting.
-
-            To avoid this, specify return type in ``func``, for instance, as below:
-
-            >>> def plus_one(x) -> ks.Series[int]:
-            ...     return x + 1
-
-        Parameters
-        ----------
-        func : function
-            Function to apply to each pandas frame.
-        *args
-            Positional arguments to pass to func.
-        **kwargs
-            Keyword arguments to pass to func.
-
-        Returns
-        -------
-        DataFrame
-
-        See Also
-        --------
-        DataFrame.apply_batch : Similar but it takes pandas DataFrame as its internal batch.
-
-        Examples
-        --------
-        >>> df = ks.DataFrame([(1, 2), (3, 4), (5, 6)], columns=['A', 'B'])
-        >>> df
-           A  B
-        0  1  2
-        1  3  4
-        2  5  6
-
-        >>> def plus_one_func(pser) -> ks.Series[np.int64]:
-        ...     return pser + 1
-        >>> df.A.transform_batch(plus_one_func)
-        0    2
-        1    4
-        2    6
-        Name: A, dtype: int64
-
-        You can also omit the type hints so Koalas infers the return schema as below:
-
-        >>> df.A.transform_batch(lambda pser: pser + 1)
-        0    2
-        1    4
-        2    6
-        Name: A, dtype: int64
-
-        You can also specify extra arguments.
-
-        >>> def plus_one_func(pser, a, b, c=3) -> ks.Series[np.int64]:
-        ...     return pser + a + b + c
-        >>> df.A.transform_batch(plus_one_func, 1, b=2)
-        0     7
-        1     9
-        2    11
-        Name: A, dtype: int64
-
-        You can also use ``np.ufunc`` as input.
-
-        >>> df.A.transform_batch(np.add, 10)
-        0    11
-        1    13
-        2    15
-        Name: A, dtype: int64
-        """
-
-        assert callable(func), "the first argument should be a callable function."
-
-        return_sig = None
-        try:
-            spec = inspect.getfullargspec(func)
-            return_sig = spec.annotations.get("return", None)
-        except TypeError:
-            # Falls back to schema inference if it fails to get signature.
-            pass
-
-        return_schema = None
-        if return_sig is not None:
-            # Extract the signature arguments from this function.
-            sig_return = infer_return_type(func)
-            if not isinstance(sig_return, SeriesType):
-                raise ValueError(
-                    "Expected the return type of this function to be of type column,"
-                    " but found type {}".format(sig_return)
-                )
-            return_schema = sig_return.tpe
-
-        ff = func
-        func = lambda o: ff(o, *args, **kwargs)
-        return self._transform_batch(func, return_schema)
-
-    def _transform_batch(self, func, return_schema):
-        if isinstance(func, np.ufunc):
-            f = func
-            func = lambda *args, **kwargs: f(*args, **kwargs)
-
-        if return_schema is None:
-            # TODO: In this case, it avoids the shortcut for now (but only infers schema)
-            #  because it returns a series from a different DataFrame and it has a different
-            #  anchor. We should fix this to allow the shortcut or only allow to infer
-            #  schema.
-            limit = get_option("compute.shortcut_limit")
-            pser = self.head(limit)._to_internal_pandas()
-            transformed = pser.transform(func)
-            kser = Series(transformed)
-            spark_return_type = kser.spark.data_type
-        else:
-            spark_return_type = return_schema
-
-        pudf = pandas_udf(func, returnType=spark_return_type, functionType=PandasUDFType.SCALAR)
-        return self._with_new_scol(scol=pudf(self.spark.column)).rename(self.name)
+    transform_batch.__doc__ = KoalasSeriesMethods.transform_batch.__doc__
 
     def round(self, decimals=0):
         """

@@ -2956,39 +2956,44 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.DataFrame(pdf)
 
+        # One to test alias.
         self.assert_eq(kdf.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index())
         self.assert_eq(
-            kdf.apply_batch(lambda pdf, a: pdf + a, args=(1,)).sort_index(), (pdf + 1).sort_index()
+            kdf.koalas.apply_batch(lambda pdf, a: pdf + a, args=(1,)).sort_index(),
+            (pdf + 1).sort_index(),
         )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
-                kdf.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+                kdf.koalas.apply_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
             )
             self.assert_eq(
-                kdf.apply_batch(lambda pdf, b: pdf + b, b=1).sort_index(), (pdf + 1).sort_index()
+                kdf.koalas.apply_batch(lambda pdf, b: pdf + b, b=1).sort_index(),
+                (pdf + 1).sort_index(),
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
-            kdf.apply_batch(1)
+            kdf.koalas.apply_batch(1)
 
         with self.assertRaisesRegex(TypeError, "The given function.*frame as its type hints"):
 
             def f2(_) -> ks.Series[int]:
                 pass
 
-            kdf.apply_batch(f2)
+            kdf.koalas.apply_batch(f2)
 
         with self.assertRaisesRegex(ValueError, "The given function should return a frame"):
-            kdf.apply_batch(lambda pdf: 1)
+            kdf.koalas.apply_batch(lambda pdf: 1)
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(kdf.apply_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+        self.assert_eq(kdf.koalas.apply_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
         with option_context("compute.shortcut_limit", 500):
-            self.assert_eq(kdf.apply_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+            self.assert_eq(
+                kdf.koalas.apply_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
+            )
 
     def test_transform_batch(self):
         pdf = pd.DataFrame(
@@ -3002,65 +3007,72 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.DataFrame(pdf)
 
+        # One to test alias.
         self.assert_eq(
             kdf.transform_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
         )
         self.assert_eq(
-            kdf.transform_batch(lambda pdf: pdf.c + 1).sort_index(), (pdf.c + 1).sort_index()
+            kdf.koalas.transform_batch(lambda pdf: pdf.c + 1).sort_index(), (pdf.c + 1).sort_index()
         )
         self.assert_eq(
-            kdf.transform_batch(lambda pdf, a: pdf + a, 1).sort_index(), (pdf + 1).sort_index()
+            kdf.koalas.transform_batch(lambda pdf, a: pdf + a, 1).sort_index(),
+            (pdf + 1).sort_index(),
         )
         self.assert_eq(
-            kdf.transform_batch(lambda pdf, a: pdf.c + a, a=1).sort_index(),
+            kdf.koalas.transform_batch(lambda pdf, a: pdf.c + a, a=1).sort_index(),
             (pdf.c + 1).sort_index(),
         )
 
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
-                kdf.transform_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
+                kdf.koalas.transform_batch(lambda pdf: pdf + 1).sort_index(), (pdf + 1).sort_index()
             )
             self.assert_eq(
-                kdf.transform_batch(lambda pdf: pdf.b + 1).sort_index(), (pdf.b + 1).sort_index()
+                kdf.koalas.transform_batch(lambda pdf: pdf.b + 1).sort_index(),
+                (pdf.b + 1).sort_index(),
             )
             self.assert_eq(
-                kdf.transform_batch(lambda pdf, a: pdf + a, 1).sort_index(), (pdf + 1).sort_index()
+                kdf.koalas.transform_batch(lambda pdf, a: pdf + a, 1).sort_index(),
+                (pdf + 1).sort_index(),
             )
             self.assert_eq(
-                kdf.transform_batch(lambda pdf, a: pdf.c + a, a=1).sort_index(),
+                kdf.koalas.transform_batch(lambda pdf, a: pdf.c + a, a=1).sort_index(),
                 (pdf.c + 1).sort_index(),
             )
 
         with self.assertRaisesRegex(AssertionError, "the first argument should be a callable"):
-            kdf.transform_batch(1)
+            kdf.koalas.transform_batch(1)
 
         with self.assertRaisesRegex(ValueError, "The given function should return a frame"):
-            kdf.transform_batch(lambda pdf: 1)
+            kdf.koalas.transform_batch(lambda pdf: 1)
 
         with self.assertRaisesRegex(
             ValueError, "transform_batch cannot produce aggregated results"
         ):
-            kdf.transform_batch(lambda pdf: pd.Series(1))
+            kdf.koalas.transform_batch(lambda pdf: pd.Series(1))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(kdf.transform_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index())
+        self.assert_eq(
+            kdf.koalas.transform_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
+        )
         with option_context("compute.shortcut_limit", 500):
             self.assert_eq(
-                kdf.transform_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
+                kdf.koalas.transform_batch(lambda x: x + 1).sort_index(), (pdf + 1).sort_index()
             )
 
     def test_transform_batch_same_anchor(self):
         kdf = ks.range(10)
-        kdf["d"] = kdf.transform_batch(lambda pdf: pdf.id + 1)
+        kdf["d"] = kdf.koalas.transform_batch(lambda pdf: pdf.id + 1)
         self.assert_eq(
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
         )
 
         kdf = ks.range(10)
+        # One to test alias.
         kdf["d"] = kdf.id.transform_batch(lambda ser: ser + 1)
         self.assert_eq(
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
@@ -3071,7 +3083,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         def plus_one(pdf) -> ks.Series[np.int64]:
             return pdf.id + 1
 
-        kdf["d"] = kdf.transform_batch(plus_one)
+        kdf["d"] = kdf.koalas.transform_batch(plus_one)
         self.assert_eq(
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
         )
@@ -3081,7 +3093,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         def plus_one(ser) -> ks.Series[np.int64]:
             return ser + 1
 
-        kdf["d"] = kdf.id.transform_batch(plus_one)
+        kdf["d"] = kdf.id.koalas.transform_batch(plus_one)
         self.assert_eq(
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
         )

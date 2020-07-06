@@ -7,8 +7,8 @@ Transform and apply a function
 .. currentmodule:: databricks.koalas
 
 There are many APIs that allow users to apply a function against Koalas DataFrame such as
-:func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.transform_batch`,
-:func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc. Each has a distinct
+:func:`DataFrame.transform`, :func:`DataFrame.apply`, :func:`DataFrame.koalas.transform_batch`,
+:func:`DataFrame.koalas.apply_batch`, :func:`Series.koalas.transform_batch`, etc. Each has a distinct
 purpose and works differently internally. This section describes the differences among
 them where users are confused often.
 
@@ -62,10 +62,10 @@ In the examples above, the type hints were not used for simplicity but it is enc
 Please refer the API documentations.
 
 
-``transform_batch`` and ``apply_batch``
----------------------------------------
+``koalas.transform_batch`` and ``koalas.apply_batch``
+-----------------------------------------------------
 
-In :func:`DataFrame.transform_batch`, :func:`DataFrame.apply_batch`, :func:`Series.transform_batch`, etc., the ``batch``
+In :func:`DataFrame.koalas.transform_batch`, :func:`DataFrame.koalas.apply_batch`, :func:`Series.koalas.transform_batch`, etc., the ``batch``
 postfix means each chunk in Koalas DataFrame or Series. The APIs slice the Koalas DataFrame or Series, and
 then applies the given function with pandas DataFrame or Series as input and output. See the examples below:
 
@@ -75,7 +75,7 @@ then applies the given function with pandas DataFrame or Series as input and out
    >>> def pandas_plus(pdf):
    ...     return pdf + 1  # should always return the same length as input.
    ...
-   >>> kdf.transform_batch(pandas_plus)
+   >>> kdf.koalas.transform_batch(pandas_plus)
 
 .. code-block:: python
 
@@ -83,22 +83,24 @@ then applies the given function with pandas DataFrame or Series as input and out
    >>> def pandas_plus(pdf):
    ...     return pdf[pdf.a > 1]  # allow arbitrary length
    ...
-   >>> kdf.apply_batch(pandas_plus)
-
-Note that :func:`DataFrame.transform_batch` has the length
-resctriction whereas :func:`DataFrame.apply_batch` is not, and :func:`DataFrame.transform_batch` can return a Series which
-can be usful to avoid a shuffle by the operations between different DataFrames, see also
-`Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.
+   >>> kdf.koalas.apply_batch(pandas_plus)
 
 The functions in both examples take a pandas DataFrame as a chunk of Koalas DataFrame, and output a pandas DataFrame.
 Koalas combines the pandas DataFrames as a Koalas DataFrame.
 
+Note that :func:`DataFrame.koalas.transform_batch` has the length resctriction - the length of input and output should be
+the same whereas :func:`DataFrame.koalas.apply_batch` does not.  However, it is important to know that
+the output belongs to the same DataFrame when :func:`DataFrame.koalas.transform_batch` can a Series, and
+you can avoid a shuffle by the operations between different DataFrames. In case of :func:`DataFrame.koalas.apply_batch`, its output is always
+treated that it belongs to a new different DataFrame. See also
+`Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.
+
 .. image:: https://user-images.githubusercontent.com/6477701/80076779-9f6cac80-8587-11ea-8c92-07d7b992733b.png
-  :alt: transform_batch and apply_batch in Frame
+  :alt: koalas.transform_batch and koalas.apply_batch in Frame
   :align: center
   :width: 650
 
-In case of :func:`Series.transform_batch`, it is also similar with :func:`DataFrame.transform_batch`; however, it takes
+In case of :func:`Series.koalas.transform_batch`, it is also similar with :func:`DataFrame.koalas.transform_batch`; however, it takes
 a pandas Series as a chunk of Koalas Series.
 
 .. code-block:: python
@@ -107,12 +109,12 @@ a pandas Series as a chunk of Koalas Series.
    >>> def pandas_plus(pser):
    ...     return pser + 1  # should always return the same length as input.
    ...
-   >>> kdf.a.transform_batch(pandas_plus)
+   >>> kdf.a.koalas.transform_batch(pandas_plus)
 
-Under the hood, each batch of Koalas Series is split to multipl pandas Series, and each function computes on that as below:
+Under the hood, each batch of Koalas Series is split to multiple pandas Series, and each function computes on that as below:
 
 .. image:: https://user-images.githubusercontent.com/6477701/80076795-a3003380-8587-11ea-8b73-186e4047f8c0.png
-  :alt: transform_batch in Series
+  :alt: koalas.transform_batch in Series
   :width: 350
   :align: center
 

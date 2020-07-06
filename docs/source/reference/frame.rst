@@ -104,7 +104,6 @@ Function application, GroupBy & Window
 
    DataFrame.apply
    DataFrame.applymap
-   DataFrame.apply_batch
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
@@ -112,7 +111,6 @@ Function application, GroupBy & Window
    DataFrame.rolling
    DataFrame.expanding
    DataFrame.transform
-   DataFrame.transform_batch
    DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
@@ -302,3 +300,5 @@ These can be accessed by ``DataFrame.koalas.<function/property>``.
    :toctree: api/
 
    DataFrame.koalas.attach_id_column
+   DataFrame.koalas.apply_batch
+   DataFrame.koalas.transform_batch
