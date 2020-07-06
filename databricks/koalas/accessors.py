@@ -817,4 +817,4 @@ class KoalasSeriesMethods(object):
             spark_return_type = return_schema
 
         pudf = pandas_udf(func, returnType=spark_return_type, functionType=PandasUDFType.SCALAR)
-        return self._kser._with_new_scol(scol=pudf(self._kser.spark.column)).rename(self._kser.name)
+        return self._kser._with_new_scol(scol=pudf(self._kser.spark.column))

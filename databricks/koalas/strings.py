@@ -38,7 +38,6 @@ class StringMethods(object):
         if not isinstance(series.spark.data_type, (StringType, BinaryType, ArrayType)):
             raise ValueError("Cannot call StringMethods on type {}".format(series.spark.data_type))
         self._data = series
-        self.name = self._data.name
 
     # Methods
     def capitalize(self) -> "ks.Series":
@@ -1148,7 +1147,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        return self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+        return self._data._with_new_scol(scol=pudf(self._data.spark.column))
 
     def index(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -2001,7 +2000,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column))
 
         if expand:
             kdf = kser.to_frame()
@@ -2135,7 +2134,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column))
 
         if expand:
             kdf = kser.to_frame()

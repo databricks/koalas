@@ -1419,9 +1419,7 @@ class Frame(object, metaclass=ABCMeta):
         3  7  40   50
         """
         # TODO: The first example above should not have "Name: 0".
-        return self._apply_series_op(
-            lambda kser: kser._with_new_scol(F.abs(kser.spark.column)).rename(kser.name)
-        )
+        return self._apply_series_op(lambda kser: kser._with_new_scol(F.abs(kser.spark.column)))
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
