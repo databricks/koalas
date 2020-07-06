@@ -4992,6 +4992,77 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
+    def tail(self, n=5):
+        """
+        Return the last `n` rows.
+
+        This function returns last `n` rows from the object based on
+        position. It is useful for quickly verifying data, for example,
+        after sorting or appending rows.
+
+        For negative values of `n`, this function returns all rows except
+        the first `n` rows, equivalent to ``df[n:]``.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        type of caller
+            The last `n` rows of the caller object.
+
+        See Also
+        --------
+        DataFrame.head : The first `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> kser = ks.Series([1, 2, 3, 4, 5])
+        >>> kser
+        0    1
+        1    2
+        2    3
+        3    4
+        4    5
+        Name: 0, dtype: int64
+
+        >>> kser.tail(3)
+        2    3
+        3    4
+        4    5
+        Name: 0, dtype: int64
+        """
+        if not isinstance(n, int):
+            raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))
+        if n == 0:
+            return ks.Series([])
+        if n < 0:
+            n = len(self) + n
+        sdf = self._internal.spark_frame
+        data_spark_column_name = self._internal.data_spark_column_names[0]
+        index_spark_column_names = self._internal.index_spark_column_names
+        rows = sdf.tail(n)
+        data = [row[data_spark_column_name] for row in rows]
+
+        if len(index_spark_column_names) == 1:
+            index = pd.Index([row[index_spark_column_names[0]] for row in rows])
+        else:
+            # MultiIndex
+            tuples = [
+                tuple(
+                    [
+                        row[index_spark_column_name]
+                        for index_spark_column_name in index_spark_column_names
+                    ]
+                )
+                for row in rows
+            ]
+            index = pd.MultiIndex.from_tuples(tuples)
+
+        return ks.Series(data, index)
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 
