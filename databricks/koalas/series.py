@@ -73,6 +73,7 @@ from databricks.koalas.utils import (
     validate_axis,
     validate_bool_kwarg,
     verify_temp_column_name,
+    default_session,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
@@ -5034,6 +5035,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4    5
         Name: 0, dtype: int64
         """
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            raise RuntimeError("tail can be used in PySpark >= 3.0")
         if not isinstance(n, int):
             raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))
         if n == 0:
@@ -5044,24 +5047,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         data_spark_column_name = self._internal.data_spark_column_names[0]
         index_spark_column_names = self._internal.index_spark_column_names
         rows = sdf.tail(n)
-        data = [row[data_spark_column_name] for row in rows]
+        new_sdf = default_session().createDataFrame(rows, sdf.schema)
 
-        if len(index_spark_column_names) == 1:
-            index = pd.Index([row[index_spark_column_names[0]] for row in rows])
-        else:
-            # MultiIndex
-            tuples = [
-                tuple(
-                    [
-                        row[index_spark_column_name]
-                        for index_spark_column_name in index_spark_column_names
-                    ]
-                )
-                for row in rows
-            ]
-            index = pd.MultiIndex.from_tuples(tuples)
-
-        return ks.Series(data, index)
+        return first_series(DataFrame(self._internal.with_new_sdf(new_sdf)))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

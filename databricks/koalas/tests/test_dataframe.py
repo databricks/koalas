@@ -3717,3 +3717,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         for p_items, k_items in zip(pdf.iteritems(), kdf.iteritems()):
             self.assert_eq(repr(p_items), repr(k_items))
+
+    def test_tail(self):
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
+            pdf = pd.DataFrame(range(1000))
+            kdf = ks.from_pandas(pdf)
+
+            self.assert_eq(repr(pdf.tail()), repr(kdf.tail()))
+            self.assert_eq(repr(pdf.tail(10)), repr(kdf.tail(10)))
+            self.assert_eq(repr(pdf.tail(-990)), repr(kdf.tail(-990)))
+            self.assert_eq(repr(pdf.tail(0)), repr(kdf.tail(0)))
+            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+                kdf.tail("10")

@@ -1800,12 +1800,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(repr(p_items), repr(k_items))
 
     def test_tail(self):
-        pser = pd.Series(range(1000))
-        kser = ks.from_pandas(pser)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
+            pser = pd.Series(range(1000))
+            kser = ks.from_pandas(pser)
 
-        self.assert_eq(pser.tail(), kser.tail())
-        self.assert_eq(pser.tail(10), kser.tail(10))
-        self.assert_eq(pser.tail(-10), kser.tail(-10))
-        self.assert_eq(pser.tail(0), kser.tail(0))
-        with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
-            kser.tail("10")
+            self.assert_eq(pser.tail(), kser.tail())
+            self.assert_eq(pser.tail(10), kser.tail(10))
+            self.assert_eq(pser.tail(-990), kser.tail(-990))
+            self.assert_eq(pser.tail(0), kser.tail(0))
+            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+                kser.tail("10")
