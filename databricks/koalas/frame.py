@@ -10253,7 +10253,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Viewing the last 5 lines
 
-        >>> df.tail()
+        >>> df.tail()  # doctest: +SKIP
            animal
         4  monkey
         5  parrot
@@ -10263,7 +10263,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Viewing the last `n` lines (three in this case)
 
-        >>> df.tail(3)
+        >>> df.tail(3)  # doctest: +SKIP
           animal
         6  shark
         7  whale
@@ -10271,7 +10271,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         For negative values of `n`
 
-        >>> df.tail(-3)
+        >>> df.tail(-3)  # doctest: +SKIP
            animal
         3    lion
         4  monkey

@@ -5029,7 +5029,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4    5
         Name: 0, dtype: int64
 
-        >>> kser.tail(3)
+        >>> kser.tail(3)  # doctest: +SKIP
         2    3
         3    4
         4    5
