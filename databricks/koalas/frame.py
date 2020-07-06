@@ -10289,8 +10289,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if n < 0:
             n = len(self) + n
         sdf = self._internal.spark_frame
-        data_spark_column_name = self._internal.data_spark_column_names[0]
-        index_spark_column_names = self._internal.index_spark_column_names
         rows = sdf.tail(n)
         new_sdf = default_session().createDataFrame(rows, sdf.schema)
 
