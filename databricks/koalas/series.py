@@ -1978,7 +1978,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Uniques are returned in order of appearance. Hash table-based unique,
         therefore does NOT sort.
 
-        .. note:: This method returns newly creased Series whereas pandas returns
+        .. note:: This method returns newly created Series whereas pandas returns
                   the unique values as a NumPy array.
 
         Returns
@@ -1993,11 +1993,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> kser = ks.Series([2, 1, 3, 3], name='A')
-        >>> kser.unique().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-        <BLANKLINE>
-        ...  1
-        ...  2
-        ...  3
+        >>> kser.unique().sort_values()
+        0    1
+        2    2
+        1    3
         Name: A, dtype: int64
 
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
@@ -2005,11 +2004,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: datetime64[ns]
 
         >>> kser.name = ('x', 'a')
-        >>> kser.unique().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-        <BLANKLINE>
-        ...  1
-        ...  2
-        ...  3
+        >>> kser.unique().sort_values()
+        0    1
+        2    2
+        1    3
         Name: (x, a), dtype: int64
         """
         sdf = self._internal.spark_frame.select(self.spark.column).distinct()
