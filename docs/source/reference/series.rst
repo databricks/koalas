@@ -170,6 +170,7 @@ Reindexing / Selection / Label manipulation
    Series.reset_index
    Series.sample
    Series.take
+   Series.tail
    Series.where
    Series.mask
    Series.truncate

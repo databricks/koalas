@@ -64,7 +64,6 @@ class MissingPandasLikeSeries(object):
     slice_shift = _unsupported_function("slice_shift")
     swapaxes = _unsupported_function("swapaxes")
     swaplevel = _unsupported_function("swaplevel")
-    tail = _unsupported_function("tail")
     to_hdf = _unsupported_function("to_hdf")
     to_period = _unsupported_function("to_period")
     to_sql = _unsupported_function("to_sql")

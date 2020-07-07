@@ -72,6 +72,7 @@ from databricks.koalas.utils import (
     validate_axis,
     validate_bool_kwarg,
     verify_temp_column_name,
+    default_session,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
@@ -4863,6 +4864,50 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def items(self) -> Iterable:
         """This is an alias of ``iteritems``."""
         return self.iteritems()
+
+    def tail(self, n=5):
+        """
+        Return the last `n` rows.
+
+        This function returns last `n` rows from the object based on
+        position. It is useful for quickly verifying data, for example,
+        after sorting or appending rows.
+
+        For negative values of `n`, this function returns all rows except
+        the first `n` rows, equivalent to ``df[n:]``.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        type of caller
+            The last `n` rows of the caller object.
+
+        See Also
+        --------
+        DataFrame.head : The first `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> kser = ks.Series([1, 2, 3, 4, 5])
+        >>> kser
+        0    1
+        1    2
+        2    3
+        3    4
+        4    5
+        Name: 0, dtype: int64
+
+        >>> kser.tail(3)  # doctest: +SKIP
+        2    3
+        3    4
+        4    5
+        Name: 0, dtype: int64
+        """
+        return first_series(self.to_frame().tail(n=n))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

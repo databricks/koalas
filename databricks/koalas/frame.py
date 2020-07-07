@@ -70,6 +70,7 @@ from databricks.koalas.utils import (
     scol_for,
     validate_axis,
     verify_temp_column_name,
+    default_session,
 )
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
@@ -9741,6 +9742,90 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_label_names=None,
             )
             return first_series(DataFrame(internal))
+
+    def tail(self, n=5):
+        """
+        Return the last `n` rows.
+
+        This function returns last `n` rows from the object based on
+        position. It is useful for quickly verifying data, for example,
+        after sorting or appending rows.
+
+        For negative values of `n`, this function returns all rows except
+        the first `n` rows, equivalent to ``df[n:]``.
+
+        Parameters
+        ----------
+        n : int, default 5
+            Number of rows to select.
+
+        Returns
+        -------
+        type of caller
+            The last `n` rows of the caller object.
+
+        See Also
+        --------
+        DataFrame.head : The first `n` rows of the caller object.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'animal': ['alligator', 'bee', 'falcon', 'lion',
+        ...                    'monkey', 'parrot', 'shark', 'whale', 'zebra']})
+        >>> df
+              animal
+        0  alligator
+        1        bee
+        2     falcon
+        3       lion
+        4     monkey
+        5     parrot
+        6      shark
+        7      whale
+        8      zebra
+
+        Viewing the last 5 lines
+
+        >>> df.tail()  # doctest: +SKIP
+           animal
+        4  monkey
+        5  parrot
+        6   shark
+        7   whale
+        8   zebra
+
+        Viewing the last `n` lines (three in this case)
+
+        >>> df.tail(3)  # doctest: +SKIP
+          animal
+        6  shark
+        7  whale
+        8  zebra
+
+        For negative values of `n`
+
+        >>> df.tail(-3)  # doctest: +SKIP
+           animal
+        3    lion
+        4  monkey
+        5  parrot
+        6   shark
+        7   whale
+        8   zebra
+        """
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            raise RuntimeError("tail can be used in PySpark >= 3.0")
+        if not isinstance(n, int):
+            raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))
+        if n < 0:
+            n = len(self) + n
+        if n <= 0:
+            return ks.DataFrame(self._internal.with_filter(F.lit(False)))
+        sdf = self._internal.spark_frame
+        rows = sdf.tail(n)
+        new_sdf = default_session().createDataFrame(rows, sdf.schema)
+
+        return DataFrame(self._internal.with_new_sdf(new_sdf))
 
     def _to_internal_pandas(self):
         """

@@ -63,6 +63,7 @@ Indexing, iteration
    DataFrame.iterrows
    DataFrame.keys
    DataFrame.pop
+   DataFrame.tail
    DataFrame.xs
    DataFrame.get
    DataFrame.where
