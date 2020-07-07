@@ -141,6 +141,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kser.name, "x")  # no mutation
         self.assert_eq(kser.rename(), pser.rename())
 
+        self.assert_eq((kser.rename("y") + 1).head(), (pser.rename("y") + 1).head())
+
         kser.rename("z", inplace=True)
         pser.rename("z", inplace=True)
         self.assertEqual(kser.name, "z")
@@ -243,6 +245,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.fillna(0, inplace=True)
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
+
+        kser = kdf.x.rename("y")
+        pser = pdf.x.rename("y")
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser.head(), pser.head())
 
         pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
         kser = ks.from_pandas(pser)

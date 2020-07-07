@@ -35,7 +35,6 @@ from pandas.api.types import is_list_like
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
-from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -386,7 +385,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         :return: the copied Series
         """
         internal = self._kdf._internal.copy(
-            column_labels=[self._column_label], data_spark_columns=[scol]
+            column_labels=[self._column_label],
+            data_spark_columns=[scol.alias(name_like_string(self._column_label))],
         )
         return first_series(DataFrame(internal))
 
@@ -427,7 +427,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # Arithmetic Operators
     def add(self, other):
-        return (self + other).rename(self.name)
+        return self + other
 
     add.__doc__ = _flex_doc_SERIES.format(
         desc="Addition",
@@ -449,7 +449,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def div(self, other):
-        return (self / other).rename(self.name)
+        return self / other
 
     div.__doc__ = _flex_doc_SERIES.format(
         desc="Floating division",
@@ -473,7 +473,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def truediv(self, other):
-        return (self / other).rename(self.name)
+        return self / other
 
     truediv.__doc__ = _flex_doc_SERIES.format(
         desc="Floating division",
@@ -495,7 +495,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def mul(self, other):
-        return (self * other).rename(self.name)
+        return self * other
 
     mul.__doc__ = _flex_doc_SERIES.format(
         desc="Multiplication",
@@ -519,7 +519,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def sub(self, other):
-        return (self - other).rename(self.name)
+        return self - other
 
     sub.__doc__ = _flex_doc_SERIES.format(
         desc="Subtraction",
@@ -543,7 +543,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def mod(self, other):
-        return (self % other).rename(self.name)
+        return self % other
 
     mod.__doc__ = _flex_doc_SERIES.format(
         desc="Modulo",
@@ -565,7 +565,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def pow(self, other):
-        return (self ** other).rename(self.name)
+        return self ** other
 
     pow.__doc__ = _flex_doc_SERIES.format(
         desc="Exponential power of series",
@@ -587,7 +587,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def floordiv(self, other):
-        return (self // other).rename(self.name)
+        return self // other
 
     floordiv.__doc__ = _flex_doc_SERIES.format(
         desc="Integer division",
@@ -634,7 +634,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        return (self == other).rename(self.name)
+        return self == other
 
     equals = eq
 
@@ -660,7 +660,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        return (self > other).rename(self.name)
+        return self > other
 
     def ge(self, other):
         """
@@ -684,7 +684,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        return (self >= other).rename(self.name)
+        return self >= other
 
     def lt(self, other):
         """
@@ -708,7 +708,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        return (self < other).rename(self.name)
+        return self < other
 
     def le(self, other):
         """
@@ -732,7 +732,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        return (self <= other).rename(self.name)
+        return self <= other
 
     def ne(self, other):
         """
@@ -756,7 +756,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d     True
         Name: b, dtype: bool
         """
-        return (self != other).rename(self.name)
+        return self != other
 
     def divmod(self, other):
         """
@@ -960,7 +960,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 current = current.otherwise(F.lit(tmp_val))
             else:
                 current = current.otherwise(F.lit(None).cast(self.spark.data_type))
-            return self._with_new_scol(current).rename(self.name)
+            return self._with_new_scol(current)
         else:
             return self.apply(arg)
 
@@ -1659,10 +1659,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         if inplace:
             self._kdf._update_internal_frame(
-                self._kdf._internal.with_new_spark_column(self._column_label, scol)
+                self._kdf._internal.with_new_spark_column(
+                    self._column_label, scol.alias(name_like_string(self.name))
+                )
             )
         else:
-            return self._with_new_scol(scol).rename(self.name)
+            return self._with_new_scol(scol)
 
     def dropna(self, axis=0, inplace=False, **kwargs):
         """
@@ -1761,7 +1763,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 scol = F.when(scol < lower, lower).otherwise(scol)
             if upper is not None:
                 scol = F.when(scol > upper, upper).otherwise(scol)
-            return self._with_new_scol(scol.alias(self._internal.data_spark_column_names[0]))
+            return self._with_new_scol(scol)
         else:
             return self
 
@@ -2946,9 +2948,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if not isinstance(decimals, int):
             raise ValueError("decimals must be an integer")
-        column_name = self.name
         scol = F.round(self.spark.column, decimals)
-        return self._with_new_scol(scol).rename(column_name)
+        return self._with_new_scol(scol)
 
     # TODO: add 'interpolation' parameter.
     def quantile(self, q=0.5, accuracy=10000):
@@ -3188,7 +3189,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 Window.unboundedPreceding, Window.unboundedFollowing
             )
             scol = stat_func(F.row_number().over(window1)).over(window2)
-        kser = self._with_new_scol(scol).rename(self.name)
+        kser = self._with_new_scol(scol)
         return kser.astype(np.float64)
 
     def filter(self, items=None, like=None, regex=None, axis=None):
@@ -3281,7 +3282,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             .rowsBetween(-periods, -periods)
         )
         scol = self.spark.column - F.lag(self.spark.column, periods).over(window)
-        return self._with_new_scol(scol).rename(self.name)
+        return self._with_new_scol(scol)
 
     def idxmax(self, skipna=True):
         """
@@ -4440,7 +4441,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         cond = F.when(this.isNull(), that).otherwise(this)
         # If `self` and `other` come from same frame, the anchor should be kept
         if same_anchor(self, other):
-            return self._with_new_scol(cond).rename(self.name)
+            return self._with_new_scol(cond)
         index_scols = combined._internal.index_spark_columns
         sdf = combined._internal.spark_frame.select(
             *index_scols, cond.alias(self._internal.data_spark_column_names[0])
@@ -4941,7 +4942,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 F.lit(None),
             ).otherwise(func(self.spark.column).over(window))
 
-        return self._with_new_scol(scol).rename(self.name)
+        return self._with_new_scol(scol)
 
     def _cumprod(self, skipna, part_cols=()):
         from pyspark.sql.functions import pandas_udf
@@ -4957,7 +4958,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return F.sum(F.log(negative_check(scol)))
 
         kser = self._cum(cumprod, skipna, part_cols)
-        return kser._with_new_scol(F.exp(kser.spark.column)).rename(self.name)
+        return kser._with_new_scol(F.exp(kser.spark.column))
 
     # ----------------------------------------------------------------------
     # Accessor Methods

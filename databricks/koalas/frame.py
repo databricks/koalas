@@ -2550,9 +2550,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     functionType=PandasUDFType.SCALAR,
                 )
                 kser = self._kser_for(input_label)
-                applied.append(
-                    kser._with_new_scol(scol=pudf(kser.spark.column)).rename(input_label)
-                )
+                applied.append(kser._with_new_scol(scol=pudf(kser.spark.column)))
 
             internal = self._internal.with_new_columns(applied)
             return DataFrame(internal)
