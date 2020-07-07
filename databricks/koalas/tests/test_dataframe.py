@@ -3723,9 +3723,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf = pd.DataFrame(range(1000))
             kdf = ks.from_pandas(pdf)
 
-            self.assert_eq(repr(pdf.tail()), repr(kdf.tail()))
-            self.assert_eq(repr(pdf.tail(10)), repr(kdf.tail(10)))
-            self.assert_eq(repr(pdf.tail(-990)), repr(kdf.tail(-990)))
-            self.assert_eq(repr(pdf.tail(0)), repr(kdf.tail(0)))
+            self.assert_eq(pdf.tail(), kdf.tail(), almost=True)
+            self.assert_eq(pdf.tail(10), kdf.tail(10), almost=True)
+            self.assert_eq(pdf.tail(-990), kdf.tail(-990), almost=True)
+            self.assert_eq(pdf.tail(0), kdf.tail(0), almost=True)
+            self.assert_eq(pdf.tail(-1001), kdf.tail(-1001), almost=True)
+            self.assert_eq(pdf.tail(1001), kdf.tail(1001), almost=True)
             with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
                 kdf.tail("10")

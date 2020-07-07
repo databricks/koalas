@@ -5035,19 +5035,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4    5
         Name: 0, dtype: int64
         """
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
-            raise RuntimeError("tail can be used in PySpark >= 3.0")
-        if not isinstance(n, int):
-            raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))
-        if n == 0:
-            return first_series(ks.DataFrame(self._internal.with_filter(F.lit(False))))
-        if n < 0:
-            n = len(self) + n
-        sdf = self._internal.spark_frame
-        rows = sdf.tail(n)
-        new_sdf = default_session().createDataFrame(rows, sdf.schema)
-
-        return first_series(DataFrame(self._internal.with_new_sdf(new_sdf)))
+        return first_series(self.to_frame().tail(n=n))
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

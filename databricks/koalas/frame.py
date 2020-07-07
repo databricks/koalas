@@ -10284,10 +10284,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise RuntimeError("tail can be used in PySpark >= 3.0")
         if not isinstance(n, int):
             raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))
-        if n == 0:
-            return ks.DataFrame(self._internal.with_filter(F.lit(False)))
         if n < 0:
             n = len(self) + n
+        if n <= 0:
+            return ks.DataFrame(self._internal.with_filter(F.lit(False)))
         sdf = self._internal.spark_frame
         rows = sdf.tail(n)
         new_sdf = default_session().createDataFrame(rows, sdf.schema)

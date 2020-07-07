@@ -1808,5 +1808,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pser.tail(10), kser.tail(10))
             self.assert_eq(pser.tail(-990), kser.tail(-990))
             self.assert_eq(pser.tail(0), kser.tail(0))
+            self.assert_eq(pser.tail(1001), kser.tail(1001))
+            self.assert_eq(pser.tail(-1001), kser.tail(-1001))
             with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
                 kser.tail("10")
