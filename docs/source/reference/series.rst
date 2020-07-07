@@ -99,7 +99,6 @@ Function application, GroupBy & Window
    Series.agg
    Series.aggregate
    Series.transform
-   Series.transform_batch
    Series.map
    Series.groupby
    Series.rolling
@@ -172,6 +171,7 @@ Reindexing / Selection / Label manipulation
    Series.reset_index
    Series.sample
    Series.take
+   Series.tail
    Series.where
    Series.mask
    Series.truncate
@@ -401,3 +401,14 @@ Serialization / IO / Conversion
    Series.to_csv
    Series.to_excel
    Series.to_frame
+
+Koalas-specific
+---------------
+``Series.koalas`` provides Koalas-specific features that exists only in Koalas.
+These can be accessed by ``Series.koalas.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.koalas.transform_batch
+

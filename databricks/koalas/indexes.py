@@ -135,7 +135,7 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        sdf = self._internal.spark_frame.select(scol)  # type: ignore
+        sdf = self._internal.spark_frame.select(scol.alias(SPARK_DEFAULT_INDEX_NAME))
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=OrderedDict(zip(sdf.columns, self._internal.index_names)),  # type: ignore

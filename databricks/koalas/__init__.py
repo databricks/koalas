@@ -115,12 +115,10 @@ def _auto_patch_spark():
 
             usage_logging.attach(logger_module)
         except Exception as e:
-            from pyspark.util import _exception_message
-
             logger = logging.getLogger("databricks.koalas.usage_logger")
             logger.warning(
                 "Tried to attach usage logger `{}`, but an exception was raised: {}".format(
-                    logger_module, _exception_message(e)
+                    logger_module, str(e)
                 )
             )
 

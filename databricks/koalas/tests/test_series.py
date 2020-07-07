@@ -141,6 +141,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kser.name, "x")  # no mutation
         self.assert_eq(kser.rename(), pser.rename())
 
+        self.assert_eq((kser.rename("y") + 1).head(), (pser.rename("y") + 1).head())
+
         kser.rename("z", inplace=True)
         pser.rename("z", inplace=True)
         self.assertEqual(kser.name, "z")
@@ -243,6 +245,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser.fillna(0, inplace=True)
         pser.fillna(0, inplace=True)
         self.assert_eq(kser, pser)
+
+        kser = kdf.x.rename("y")
+        pser = pdf.x.rename("y")
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser.head(), pser.head())
 
         pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
         kser = ks.from_pandas(pser)
@@ -1831,3 +1839,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 "at least one level must be left.",
             ):
                 kser.droplevel([0, 1, 2])
+
+    def test_tail(self):
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
+            pser = pd.Series(range(1000), name="Koalas")
+            kser = ks.from_pandas(pser)
+
+            self.assert_eq(pser.tail(), kser.tail())
+            self.assert_eq(pser.tail(10), kser.tail(10))
+            self.assert_eq(pser.tail(-990), kser.tail(-990))
+            self.assert_eq(pser.tail(0), kser.tail(0))
+            self.assert_eq(pser.tail(1001), kser.tail(1001))
+            self.assert_eq(pser.tail(-1001), kser.tail(-1001))
+            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+                kser.tail("10")

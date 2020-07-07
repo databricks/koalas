@@ -342,7 +342,8 @@ def align_diff_series(func, this_series, *args, how="full"):
     )
 
     internal = combined._internal.copy(
-        column_labels=this_series._internal.column_labels, data_spark_columns=[scol]
+        column_labels=this_series._internal.column_labels,
+        data_spark_columns=[scol.alias(name_like_string(this_series.name))],
     )
     return first_series(DataFrame(internal))
 
