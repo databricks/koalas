@@ -1211,7 +1211,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         }
         for arg_name_mpl, arg_name_ply in args_map[backend_name]:
             if arg_name_mpl in args_map[backend_name]:
-                kwargs[arg_name_ply] = kawrgs.pop(arg_name_mpl)
+                kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
 
         return data.to_pandas(), kwargs
 
@@ -1628,7 +1628,7 @@ class KoalasFramePlotMethods(PandasObject):
         }
         for arg_name_mpl, arg_name_ply in args_map[backend_name]:
             if arg_name_mpl in args_map[backend_name]:
-                kwargs[arg_name_ply] = kawrgs.pop(arg_name_mpl)
+                kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
 
         return data_preprocessor_map[backend_name][kind](data), kwargs
 
