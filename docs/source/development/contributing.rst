@@ -139,10 +139,30 @@ and third block is for another argument. As a example, please refer `DataFrame.r
 
 These blocks should be consistently separated in Koalas, and more doctests should be added if the coverage of the doctests or the number of examples to show is not enough even though they are different from pandas'.
 
-Release Instructions
-====================
+Release Guide
+=============
 
-Only project maintainers can do the following.
+Release Cadence
+---------------
+
+In general, minor releases occur about every month. Therefore, Koalas 1.3.0 would generally be released about a month after 1.2.0.
+Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule
+The chart below is the expected release dates of minor releases.
+
++-----------+---------+
+| Date      | Version |
++===========+=========+
+| 7/16 2020 | 1.1.0   |
++-----------+---------+
+| 8/28 2020 | 1.2.0   |
++-----------+---------+
+| 10/9 2020 | 1.3.0   |
++-----------+---------+
+
+Release Instructions
+--------------------
+
+Only project maintainers can do the following to publish a release.
 
 1. Make sure version is set correctly in `databricks/koalas/version.py`.
 
