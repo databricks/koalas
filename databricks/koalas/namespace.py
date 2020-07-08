@@ -21,7 +21,6 @@ from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
-import itertools
 
 import numpy as np
 import pandas as pd
@@ -1611,7 +1610,7 @@ def get_dummies(
 
 
 # TODO: there are many parameters to implement and support. See pandas's pd.concat.
-def concat(objs, axis=0, join="outer", ignore_index=False):
+def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     """
     Concatenate pandas objects along a particular axis with optional set logic
     along the other axes.
@@ -1631,6 +1630,8 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
         concatenating objects where the concatenation axis does not have
         meaningful indexing information. Note the index values on the other
         axes are still respected in the join.
+    sort : bool, default False
+        Sort non-concatenation axis if it is not already aligned.
 
     Returns
     -------
@@ -1714,6 +1715,15 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     1      d       4    dog
 
     >>> ks.concat([df1, df3])
+      letter  number animal
+    0      a       1   None
+    1      b       2   None
+    0      c       3    cat
+    1      d       4    dog
+
+    Sort the columns.
+
+    >>> ks.concat([df1, df3], sort=True)
       animal letter  number
     0   None      a       1
     1   None      b       2
@@ -1834,9 +1844,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     # DataFrame, Series ... & Series, Series ...
     # In this case, we should return DataFrame.
     new_objs = []
+    num_series = 0
     for obj in objs:
         if isinstance(obj, Series):
-            obj = obj.rename(SPARK_DEFAULT_SERIES_NAME).to_dataframe()
+            num_series += 1
+            obj = obj.to_frame(SPARK_DEFAULT_SERIES_NAME)
         new_objs.append(obj)
     objs = new_objs
 
@@ -1859,35 +1871,40 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                     )
                 )
 
-    column_labelses_of_kdfs = [kdf._internal.column_labels for kdf in objs]
+    column_labels_of_kdfs = [kdf._internal.column_labels for kdf in objs]
     if ignore_index:
         index_names_of_kdfs = [[] for _ in objs]
     else:
         index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
     if all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs) and all(
-        idx == column_labelses_of_kdfs[0] for idx in column_labelses_of_kdfs
+        idx == column_labels_of_kdfs[0] for idx in column_labels_of_kdfs
     ):
         # If all columns are in the same order and values, use it.
         kdfs = objs
     else:
         if join == "inner":
-            interested_columns = set.intersection(*map(set, column_labelses_of_kdfs))
+            interested_columns = set.intersection(*map(set, column_labels_of_kdfs))
             # Keep the column order with its firsts DataFrame.
-            merged_columns = sorted(
-                list(
-                    map(
-                        lambda c: column_labelses_of_kdfs[0][column_labelses_of_kdfs[0].index(c)],
-                        interested_columns,
-                    )
-                )
-            )
+            merged_columns = [
+                label for label in column_labels_of_kdfs[0] if label in interested_columns
+            ]
+
+            # When multi-index column, although pandas is flaky if `join="inner" and sort=False`,
+            # always sort to follow the `join="outer"` case behavior.
+            if (len(merged_columns) > 0 and len(merged_columns[0]) > 1) or sort:
+                merged_columns = sorted(merged_columns)
 
             kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
             # If there are columns unmatched, just sort the column names.
-            merged_columns = sorted(
-                list(set(itertools.chain.from_iterable(column_labelses_of_kdfs)))
-            )
+            merged_columns = column_labels_of_kdfs[0].copy()
+            for labels in column_labels_of_kdfs[1:]:
+                merged_columns.extend(label for label in labels if label not in merged_columns)
+
+            # Always sort when multi-index columns or there are more than two Series,
+            # and if there is only one Series, never sort.
+            if len(merged_columns[0]) > 1 or num_series > 1 or (num_series != 1 and sort):
+                merged_columns = sorted(merged_columns)
 
             kdfs = []
             for kdf in objs:
