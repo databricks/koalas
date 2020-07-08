@@ -1999,9 +1999,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         ...  2
         ...  3
         Name: A, dtype: int64
+
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
         0   2016-01-01
         Name: 0, dtype: datetime64[ns]
+
         >>> kser.name = ('x', 'a')
         >>> kser.unique().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
         <BLANKLINE>
