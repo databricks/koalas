@@ -1695,14 +1695,12 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
 
     Combine ``DataFrame`` and ``Series`` objects with different columns.
 
-    >>> ks.concat([df2, s1, s2])
-          0 letter  number
-    0  None      c     3.0
-    1  None      d     4.0
-    0     a   None     NaN
-    1     b   None     NaN
-    0     c   None     NaN
-    1     d   None     NaN
+    >>> ks.concat([df2, s1])
+      letter  number     0
+    0      c     3.0  None
+    1      d     4.0  None
+    0   None     NaN     a
+    1   None     NaN     b
 
     Combine ``DataFrame`` objects with overlapping columns
     and return everything. Columns outside the intersection will
