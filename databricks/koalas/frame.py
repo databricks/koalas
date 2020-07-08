@@ -9907,8 +9907,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if isinstance(value, (DataFrame, Series)) and not same_anchor(value, self):
             # Different Series or DataFrames
-            key = self._index_normalized_label(key)
-            value = self._index_normalized_frame(value)
+            level = self._internal.column_labels_level
+            key = DataFrame._index_normalized_label(level, key)
+            value = DataFrame._index_normalized_frame(level, value)
 
             def assign_columns(kdf, this_column_labels, that_column_labels):
                 assert len(key) == len(that_column_labels)
@@ -9933,14 +9934,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         self._update_internal_frame(kdf._internal)
 
-    def _index_normalized_label(self, labels):
+    @staticmethod
+    def _index_normalized_label(level, labels):
         """
         Returns a label that is normalized against the current column index level.
         For example, the key "abc" can be ("abc", "", "") if the current Frame has
         a multi-index for its column
         """
-        level = self._internal.column_labels_level
-
         if isinstance(labels, str):
             labels = [(labels,)]
         elif isinstance(labels, tuple):
@@ -9956,16 +9956,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         return [tuple(list(label) + ([""] * (level - len(label)))) for label in labels]
 
-    def _index_normalized_frame(self, kser_or_kdf):
+    @staticmethod
+    def _index_normalized_frame(level, kser_or_kdf):
         """
         Returns a frame that is normalized against the current column index level.
         For example, the name in `pd.Series([...], name="abc")` can be can be
         ("abc", "", "") if the current DataFrame has a multi-index for its column
         """
-
         from databricks.koalas.series import Series
 
-        level = self._internal.column_labels_level
         if isinstance(kser_or_kdf, Series):
             kdf = kser_or_kdf.to_frame()
         else:

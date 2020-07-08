@@ -197,7 +197,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         for ignore_index, join in itertools.product(ignore_indexes, joins):
             for obj in objs:
                 kdfs, pdfs = obj
-                with self.subTest(ignore_index=ignore_index, join=join, objs=obj):
+                with self.subTest(ignore_index=ignore_index, join=join, objs=pdfs):
                     actual = ks.concat(kdfs, axis=1, ignore_index=ignore_index, join=join)
                     expected = pd.concat(pdfs, axis=1, ignore_index=ignore_index, join=join)
                     self.assert_eq(
