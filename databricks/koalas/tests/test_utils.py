@@ -55,9 +55,6 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaises(TypeError):
             self.to_html(unsupported_param=1)
 
-        # Support for **kwargs
-        self.to_clipboard(sep=",", index=False)
-
     def test_lazy_property(self):
         obj = TestClassForLazyProp()
         # If lazy prop is not working, the second test would fail (because it'd be 2)
