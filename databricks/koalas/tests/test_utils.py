@@ -44,6 +44,9 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf, self.to_clipboard, pd.DataFrame.to_clipboard, args
         )
 
+        # Support for **kwargs
+        self.to_clipboard(sep=",", index=False)
+
     def test_validate_arguments_and_invoke_function(self):
         # This should pass and run fine
         self.to_html()
