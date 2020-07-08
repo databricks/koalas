@@ -382,7 +382,7 @@ class KoalasBoxPlot(BoxPlot):
         showcaps=None,
         showbox=None,
         showfliers=None,
-        **kwargs,
+        **kwargs
     ):
         # Missing arguments default to rcParams.
         if whis is None:
