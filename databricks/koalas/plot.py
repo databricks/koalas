@@ -1123,20 +1123,10 @@ import importlib
 
 def _find_backend(backend: str):
     """
-    Find a pandas plotting backend>
-    Parameters
-    ----------
-    backend : str
-        The identifier for the backend. Either an entrypoint item registered
-        with pkg_resources, or a module name.
-    Notes
-    -----
-    Modifies _backends with imported backends as a side effect.
-    Returns
-    -------
-    types.ModuleType
-        The imported backend.
+    Find a pandas plotting backend
     """
+    # function copied from pandas.plotting._core
+
     import pkg_resources  # Delay import for performance.
 
     for entry_point in pkg_resources.iter_entry_points("koalas_plotting_backends"):
@@ -1149,7 +1139,6 @@ def _find_backend(backend: str):
     try:
         return _backends[backend]
     except KeyError:
-        # Fall back to unregistered, module name approach.
         try:
             module = importlib.import_module(backend)
         except ImportError:
@@ -1170,6 +1159,8 @@ def _find_backend(backend: str):
 
 
 def _get_plot_backend(backend=None):
+    # function copied from pandas.plotting._core
+
     backend = backend or get_option("plotting.backend")
 
     if backend == "matplotlib":

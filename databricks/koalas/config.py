@@ -223,7 +223,7 @@ _options = [
     Option(
         key="plotting.backend",
         doc=(
-            "'plotting.sample_ratio' sets the proportion of data that will be plotted for sample-"
+            "Backend to use for plotting. Default is matplotlib."
         ),
         default="matplotlib",
         types=str,
