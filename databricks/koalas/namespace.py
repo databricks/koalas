@@ -20,6 +20,7 @@ Wrappers around spark that correspond to common pandas functions.
 from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
+from distutils.version import LooseVersion
 from functools import reduce
 
 import numpy as np
@@ -1901,9 +1902,15 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
             for labels in column_labels_of_kdfs[1:]:
                 merged_columns.extend(label for label in labels if label not in merged_columns)
 
-            # Always sort when multi-index columns or there are more than two Series,
-            # and if there is only one Series, never sort.
-            if len(merged_columns[0]) > 1 or num_series > 1 or (num_series != 1 and sort):
+            if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+                # Always sort when multi-index columns, and if there are Series, never sort.
+                sort = len(merged_columns[0]) > 1 or (num_series == 0 and sort)
+            else:
+                # Always sort when multi-index columns or there are more than two Series,
+                # and if there is only one Series, never sort.
+                sort = len(merged_columns[0]) > 1 or num_series > 1 or (num_series != 1 and sort)
+
+            if sort:
                 merged_columns = sorted(merged_columns)
 
             kdfs = []
