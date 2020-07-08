@@ -1118,6 +1118,82 @@ def _plot(data, x=None, y=None, subplots=False, ax=None, kind="line", **kwds):
     return plot_obj.result
 
 
+_backends = {}
+import importlib
+
+def _find_backend(backend: str):
+    """
+    Find a pandas plotting backend>
+    Parameters
+    ----------
+    backend : str
+        The identifier for the backend. Either an entrypoint item registered
+        with pkg_resources, or a module name.
+    Notes
+    -----
+    Modifies _backends with imported backends as a side effect.
+    Returns
+    -------
+    types.ModuleType
+        The imported backend.
+    """
+    import pkg_resources  # Delay import for performance.
+
+    for entry_point in pkg_resources.iter_entry_points("koalas_plotting_backends"):
+        if entry_point.name == "matplotlib":
+            # matplotlib is an optional dependency. When
+            # missing, this would raise.
+            continue
+        _backends[entry_point.name] = entry_point.load()
+
+    try:
+        return _backends[backend]
+    except KeyError:
+        # Fall back to unregistered, module name approach.
+        try:
+            module = importlib.import_module(backend)
+        except ImportError:
+            # We re-raise later on.
+            pass
+        else:
+            if hasattr(module, "plot"):
+                # Validate that the interface is implemented when the option
+                # is set, rather than at plot time.
+                _backends[backend] = module
+                return module
+
+    raise ValueError(
+        f"Could not find plotting backend '{backend}'. Ensure that you've installed "
+        f"the package providing the '{backend}' entrypoint, or that the package has a "
+        "top-level `.plot` method."
+    )
+
+
+def _get_plot_backend(backend=None):
+    backend = backend or get_option("plotting.backend")
+
+    if backend == "matplotlib":
+        # Because matplotlib is an optional dependency and first-party backend,
+        # we need to attempt an import here to raise an ImportError if needed.
+        try:
+            import databricks.koalas.plot as module
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for plotting when the "
+                'default backend "matplotlib" is selected.'
+            ) from None
+
+        _backends["matplotlib"] = module
+
+    if backend in _backends:
+        return _backends[backend]
+
+    module = _find_backend(backend)
+    _backends[backend] = module
+    return module
+
+
+
 class KoalasSeriesPlotMethods(PandasObject):
     """
     Series plotting accessor and method.
@@ -1126,6 +1202,27 @@ class KoalasSeriesPlotMethods(PandasObject):
     with the ``kind`` argument:
     ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
     """
+
+    @staticmethod
+    def _get_args_map(backend_name, data, kwargs):
+        """Appropriate call args mapping for the backend
+        """
+        # make the arguments values of matplotlib compatible with that of plotly
+        args_map = {
+            "plotly": [
+                ("logx", "log_x"),
+                ("logy", "log_y"),
+                ("xlim", "range_x"),
+                ("ylim", "range_y"),
+                ("yerr", "error_y"),
+                ("xerr", "error_x"),
+            ]
+        }
+        for arg_name_mpl, arg_name_ply in args_map[backend_name]:
+            if arg_name_mpl in args_map[backend_name]:
+                kwargs[arg_name_ply] = kawrgs.pop(arg_name_mpl)
+
+        return data.to_pandas(), kwargs
 
     def __init__(self, data):
         self.data = data
@@ -1157,6 +1254,14 @@ class KoalasSeriesPlotMethods(PandasObject):
         secondary_y=False,
         **kwds
     ):
+        plot_backend = _get_plot_backend(kwds.pop("backend", None))
+        # when using another backend, let the backend take the charge
+        if plot_backend.__name__ == "plotly":
+            self.data, kwds = self._get_args_map(
+                plot_backend.__name__, self.data, kwds
+            )
+            return plot_backend.plot(self.data, kind=kind, **kwds)
+
         return plot_series(
             self.data,
             kind=kind,
@@ -1507,6 +1612,38 @@ class KoalasFramePlotMethods(PandasObject):
     ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
     """
 
+    @staticmethod
+    def _get_args_map(backend_name, data, kind, kwargs):
+        """Appropriate call args and data preprocessing mapping for the backend
+        """
+        data_preprocessor_map = {
+            "plotly": {
+                "pie": TopNPlot().get_top_n,
+                "bar": TopNPlot().get_top_n,
+                "barh": TopNPlot().get_top_n,
+                "scatter": TopNPlot().get_top_n,
+                "area": SampledPlot().get_sampled,
+                "line": SampledPlot().get_sampled,
+
+            }
+        }
+        # make the arguments values of matplotlib compatible with that of plotly
+        args_map = {
+            "plotly": [
+                ("logx", "log_x"),
+                ("logy", "log_y"),
+                ("xlim", "range_x"),
+                ("ylim", "range_y"),
+                ("yerr", "error_y"),
+                ("xerr", "error_x"),
+            ]
+        }
+        for arg_name_mpl, arg_name_ply in args_map[backend_name]:
+            if arg_name_mpl in args_map[backend_name]:
+                kwargs[arg_name_ply] = kawrgs.pop(arg_name_mpl)
+
+        return data_preprocessor_map[backend_name][kind](data), kwargs
+
     def __init__(self, data):
         self.data = data
 
@@ -1543,6 +1680,14 @@ class KoalasFramePlotMethods(PandasObject):
         sort_columns=False,
         **kwds
     ):
+        plot_backend = _get_plot_backend(kwds.pop("backend", None))
+        # when using another backend, let the backend take the charge
+        if plot_backend.__name__ == "plotly":
+            self.data, kwds = self._get_args_map(
+                plot_backend.__name__, self.data,  kind, kwds
+            )
+            return plot_backend.plot(self.data, x=x, y=y, kind=kind, **kwds)
+
         return plot_frame(
             self.data,
             x=x,

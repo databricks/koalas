@@ -220,6 +220,14 @@ _options = [
             "'plotting.sample_ratio' should be 1.0 >= value >= 0.0.",
         ),
     ),
+    Option(
+        key="plotting.backend",
+        doc=(
+            "'plotting.sample_ratio' sets the proportion of data that will be plotted for sample-"
+        ),
+        default="matplotlib",
+        types=str,
+    ),
 ]  # type: List[Option]
 
 _options_dict = dict(zip((option.key for option in _options), _options))  # type: Dict[str, Option]

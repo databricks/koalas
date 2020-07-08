@@ -85,7 +85,6 @@ from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.typedef import infer_return_type, as_spark_type, DataFrameType, SeriesType
 from databricks.koalas.plot import KoalasFramePlotMethods
-from databricks.koalas.plotly import KoalasFramePlotlyMethods
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
@@ -808,7 +807,6 @@ class DataFrame(Frame, Generic[T]):
 
     # create accessor for plot
     plot = CachedAccessor("plot", KoalasFramePlotMethods)
-    plotly = CachedAccessor("plotly", KoalasFramePlotlyMethods)
 
     # create accessor for Spark related methods.
     spark = CachedAccessor("spark", SparkFrameMethods)
