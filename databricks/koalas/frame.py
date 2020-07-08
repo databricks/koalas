@@ -808,7 +808,7 @@ class DataFrame(Frame, Generic[T]):
 
     # create accessor for plot
     plot = CachedAccessor("plot", KoalasFramePlotMethods)
-    plotly = CachedAccessor("plot", KoalasFramePlotlyMethods)
+    plotly = CachedAccessor("plotly", KoalasFramePlotlyMethods)
 
     # create accessor for Spark related methods.
     spark = CachedAccessor("spark", SparkFrameMethods)

@@ -32,13 +32,15 @@ from pyspark.sql import functions as F
 from databricks.koalas.missing import unsupported_function
 from databricks.koalas.config import get_option
 
-
-
 from pandas.plotting._core import PlotAccessor
 
 # Overriding the list as all plots are not implemented by plotly
-_all_kinds = [*PlotAccessor._all_kinds]
-
+# Overriding the list PlotAccessor._all_kinds
+_all_kinds = [
+    'line','bar','barh','area' 
+    'hist','box','scatter', 'histogram'
+    # 'kde', 'density', 'pie','hexbin'
+    ]
 
 
 class TopNPlot:
@@ -69,11 +71,7 @@ class TopNPlot:
                 title="showing top {} elements only".format(max_rows),
                 xaxis_title="x Axis Title",
                 yaxis_title="y Axis Title",
-                font=dict(
-                    family="Courier New, monospace",
-                    size=18,
-                    color="#7f7f7f"
-                )
+                font=dict(size=6)
             )
 
 
@@ -105,11 +103,7 @@ class SampledPlot:
                 title="showing the sampled result by fraction %s" % self.fraction,
                 xaxis_title="x Axis Title",
                 yaxis_title="y Axis Title",
-                font=dict(
-                    family="Courier New, monospace",
-                    size=18,
-                    color="#7f7f7f"
-                )
+                font=dict(size=6)
             )
 
 
@@ -205,16 +199,10 @@ def plotly_frame(
     y=None,
     kind="line",
     ax=None,
-    subplots=None,
-    sharex=None,
-    sharey=False,
     layout=None,
     figsize=None,
     use_index=True,
     title=None,
-    grid=None,
-    legend=True,
-    style=None,
     logx=False,
     logy=False,
     loglog=False,
@@ -222,18 +210,15 @@ def plotly_frame(
     yticks=None,
     xlim=None,
     ylim=None,
-    rot=None,
     fontsize=None,
     colormap=None,
     table=False,
     yerr=None,
     xerr=None,
-    secondary_y=False,
-    sort_columns=False,
     **kwds
 ):
     """
-    Make plots of DataFrames using matplotlib / pylab.
+    Make plots of DataFrames using plotly.
 
     Each plot kind has a corresponding method on the
     ``DataFrame.plot`` accessor:
@@ -249,18 +234,14 @@ def plotly_frame(
         - 'bar' : vertical bar plot
         - 'barh' : horizontal bar plot
         - 'hist' : histogram
-        - 'box' : boxplot
-        - 'kde' : Kernel Density Estimation plot
-        - 'density' : same as 'kde'
+        - 'box' : boxplot'
         - 'area' : area plot
         - 'pie' : pie plot
         - 'scatter' : scatter plot
-    ax : matplotlib axes object
-        If not passed, uses gca()
     x : label or position, default None
     y : label, position or list of label, positions, default None
         Allows plotting of one column versus another.
-    figsize : a tuple (width, height) in inches
+    figsize : a tuple (width, height) in pixels
     use_index : boolean, default True
         Use index as ticks for x axis
     title : string or list
@@ -269,10 +250,6 @@ def plotly_frame(
         print each item in the list above the corresponding subplot.
     grid : boolean, default None (matlab style default)
         Axis grid lines
-    legend : False/True/'reverse'
-        Place legend on axis subplots
-    style : list or dict
-        matplotlib line style per column
     logx : boolean, default False
         Use log scaling on x axis
     logy : boolean, default False
@@ -285,38 +262,10 @@ def plotly_frame(
         Values to use for the yticks
     xlim : 2-tuple/list
     ylim : 2-tuple/list
-    sharex: bool or None, default is None
-        Whether to share x axis or not.
-    sharey: bool, default is False
-        Whether to share y axis or not.
-    rot : int, default None
-        Rotation for ticks (xticks for vertical, yticks for horizontal plots)
-    fontsize : int, default None
-        Font size for xticks and yticks
-    colormap : str or matplotlib colormap object, default None
-        Colormap to select colors from. If string, load colormap with that name
-        from matplotlib.
-    colorbar : boolean, optional
-        If True, plot colorbar (only relevant for 'scatter' and 'hexbin' plots)
-    position : float
-        Specify relative alignments for bar plot layout.
-        From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
-    table : boolean, Series or DataFrame, default False
-        If True, draw a table using the data in the DataFrame and the data will
-        be transposed to meet matplotlib's default layout.
-        If a Series or DataFrame is passed, use passed data to draw a table.
     yerr : DataFrame, Series, array-like, dict and str
         See :ref:`Plotting with Error Bars <visualization.errorbars>` for
         detail.
     xerr : same types as yerr.
-    label : label argument to provide to plot
-    secondary_y : boolean or sequence of ints, default False
-        If True then y-axis will be on the right
-    mark_right : boolean, default True
-        When using a secondary_y axis, automatically mark the column
-        labels with "(right)" in the legend
-    sort_columns: bool, default is False
-        When True, will sort values on plots.
     **kwds : keywords
         Options to pass to matplotlib plotting method
 
@@ -332,22 +281,36 @@ def plotly_frame(
       for bar plot layout by `position` keyword.
       From 0 (left/bottom-end) to 1 (right/top-end). Default is 0.5 (center)
     """
+    if loglog:
+        log_x, log_y = True, True
+    if figsize:
+        width, height = figsize
+    else:
+        width, height = None, None
 
     return _plot(
-        data,
-        kind=kind,
+        data_frame=data,
         x=x,
         y=y,
-        # ax=ax,
-        # figsize=figsize,
+        kind=kind,
+        log_x=logx,
+        log_y=logy,
+        range_x=xlim,
+        range_y=ylim,
+        error_y=yerr,
+        error_x=xerr,
+        title=title,
+        width=width,
+        height=height,
+        figsize=figsize,
+        **kwds
+
+        # color_continuous_scale=color_continuous_scale,
         # use_index=use_index,
-        # title=title,
         # grid=grid,
         # legend=legend,
         # subplots=subplots,
         # style=style,
-        # logx=logx,
-        # logy=logy,
         # loglog=loglog,
         # xticks=xticks,
         # yticks=yticks,
@@ -364,7 +327,6 @@ def plotly_frame(
         # secondary_y=secondary_y,
         # layout=layout,
         # sort_columns=sort_columns,
-        # **kwds
     )
 
 
