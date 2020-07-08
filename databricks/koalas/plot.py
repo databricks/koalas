@@ -1155,7 +1155,7 @@ def _find_backend(backend: str):
     raise ValueError(
         f"Could not find plotting backend '{backend}'. Ensure that you've installed ",
         f"the package providing the '{backend}' entrypoint, or that the package has a ",
-        "top-level `.plot` method."
+        "top-level `.plot` method.",
     )
 
 
