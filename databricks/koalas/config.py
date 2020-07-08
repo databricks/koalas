@@ -222,7 +222,11 @@ _options = [
     ),
     Option(
         key="plotting.backend",
-        doc=("Backend to use for plotting. Default is matplotlib."),
+        doc=(
+            "Backend to use for plotting. Default is matplotlib.-"
+            "Supports any package that has a top-level `.plot` method."
+            "Available options: [matplotlib, plotly, pandas_bokeh, pandas_altair]-"
+        ),
         default="matplotlib",
         types=str,
     ),
