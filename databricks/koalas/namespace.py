@@ -46,11 +46,12 @@ from pyspark.sql.types import (
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import (
+    align_diff_frames,
     default_session,
     name_like_string,
+    same_anchor,
     scol_for,
     validate_axis,
-    align_diff_frames,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import InternalFrame, SPARK_DEFAULT_SERIES_NAME
@@ -1381,10 +1382,10 @@ def to_datetime(
         )
 
     if isinstance(arg, Series):
-        return arg.transform_batch(pandas_to_datetime)
+        return arg.koalas.transform_batch(pandas_to_datetime)
     if isinstance(arg, DataFrame):
         kdf = arg[["year", "month", "day"]]
-        return kdf.transform_batch(pandas_to_datetime)
+        return kdf.koalas.transform_batch(pandas_to_datetime)
     return pd.to_datetime(
         arg,
         errors=errors,
@@ -1765,56 +1766,61 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 "and ks.DataFrame are valid".format(name=type(objs).__name__)
             )
 
+    if join not in ["inner", "outer"]:
+        raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
+
     axis = validate_axis(axis)
     if axis == 1:
-        if isinstance(objs[0], ks.Series):
-            concat_kdf = objs[0].to_frame()
-        else:
-            concat_kdf = objs[0]
+        kdfs = [obj.to_frame() if isinstance(obj, Series) else obj for obj in objs]
 
-        with ks.option_context("compute.ops_on_diff_frames", True):
+        level = min(kdf._internal.column_labels_level for kdf in kdfs)
+        kdfs = [
+            DataFrame._index_normalized_frame(level, kdf)
+            if kdf._internal.column_labels_level > level
+            else kdf
+            for kdf in kdfs
+        ]
 
-            def resolve_func(kdf, this_column_labels, that_column_labels):
-                duplicated_names = set(
-                    this_column_label[1:] for this_column_label in this_column_labels
-                ).intersection(
-                    set(that_column_label[1:] for that_column_label in that_column_labels)
-                )
-                assert (
-                    len(duplicated_names) > 0
-                ), "inner or full join type does not include non-common columns"
-                pretty_names = [name_like_string(column_label) for column_label in duplicated_names]
+        concat_kdf = kdfs[0]
+        column_labels = concat_kdf._internal.column_labels.copy()
+
+        kdfs_not_same_anchor = []
+        for kdf in kdfs[1:]:
+            duplicated = [label for label in kdf._internal.column_labels if label in column_labels]
+            if len(duplicated) > 0:
+                pretty_names = [name_like_string(label) for label in duplicated]
                 raise ValueError(
                     "Labels have to be unique; however, got duplicated labels %s." % pretty_names
                 )
+            column_labels.extend(kdf._internal.column_labels)
 
-            for kser_or_kdf in objs[1:]:
-                # TODO: there is a corner case to optimize - when the series are from
-                #   the same DataFrame.
-                # FIXME: force to create a new Spark DataFrame to make sure the anchors are
-                #   different.
-                that_kdf = DataFrame(kser_or_kdf._internal.resolved_copy)
-
-                this_index_level = concat_kdf._internal.column_labels_level
-                that_index_level = that_kdf._internal.column_labels_level
-
-                if this_index_level > that_index_level:
-                    concat_kdf = that_kdf._index_normalized_frame(concat_kdf)
-                if this_index_level < that_index_level:
-                    that_kdf = concat_kdf._index_normalized_frame(that_kdf)
-
-                if join == "inner":
-                    concat_kdf = align_diff_frames(
-                        resolve_func, concat_kdf, that_kdf, fillna=False, how="inner",
+            if same_anchor(concat_kdf, kdf):
+                concat_kdf = DataFrame(
+                    concat_kdf._internal.with_new_columns(
+                        concat_kdf._internal.data_spark_columns + kdf._internal.data_spark_columns,
+                        concat_kdf._internal.column_labels + kdf._internal.column_labels,
                     )
-                elif join == "outer":
-                    concat_kdf = align_diff_frames(
-                        resolve_func, concat_kdf, that_kdf, fillna=False, how="full",
-                    )
-                else:
-                    raise ValueError(
-                        "Only can inner (intersect) or outer (union) join the other axis."
-                    )
+                )
+            else:
+                kdfs_not_same_anchor.append(kdf)
+
+        if len(kdfs_not_same_anchor) > 0:
+            with ks.option_context("compute.ops_on_diff_frames", True):
+
+                def resolve_func(kdf, this_column_labels, that_column_labels):
+                    raise AssertionError("This should not happen.")
+
+                for kdf in kdfs_not_same_anchor:
+                    if join == "inner":
+                        concat_kdf = align_diff_frames(
+                            resolve_func, concat_kdf, kdf, fillna=False, how="inner",
+                        )
+                    elif join == "outer":
+                        concat_kdf = align_diff_frames(
+                            resolve_func, concat_kdf, kdf, fillna=False, how="full",
+                        )
+
+            concat_kdf = concat_kdf[column_labels]
 
         if ignore_index:
             concat_kdf.columns = list(map(str, _range(len(concat_kdf.columns))))
@@ -1904,8 +1910,6 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 )
 
                 kdfs.append(kdf[merged_columns])
-        else:
-            raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
         sdfs = [kdf._internal.spark_frame.select(kdf._internal.data_spark_columns) for kdf in kdfs]

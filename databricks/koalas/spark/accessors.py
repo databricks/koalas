@@ -116,7 +116,7 @@ class SparkIndexOpsMethods(object):
                 "The output of the function [%s] should be of a "
                 "pyspark.sql.Column; however, got [%s]." % (func, type(output))
             )
-        new_ser = self._data._with_new_scol(scol=output).rename(self._data.name)
+        new_ser = self._data._with_new_scol(scol=output)
         # Trigger the resolution so it throws an exception if anything does wrong
         # within the function, for example,
         # `df1.a.spark.transform(lambda _: F.col("non-existent"))`.

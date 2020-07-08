@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
+from pyspark import sql as spark
 from pyspark.sql import functions as F, Window, Column
 from pyspark.sql.types import DateType, DoubleType, FloatType, LongType, StringType, TimestampType
 
@@ -140,6 +141,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     @property
     def _kdf(self) -> DataFrame:
         return self._anchor
+
+    @abstractmethod
+    def _with_new_scol(self, scol: spark.Column):
+        pass
 
     spark = CachedAccessor("spark", SparkIndexOpsMethods)
 
@@ -733,7 +738,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 " to isin(), you passed a [{values_type}]".format(values_type=type(values).__name__)
             )
 
-        return self._with_new_scol(self.spark.column.isin(list(values))).rename(self.name)
+        return self._with_new_scol(self.spark.column.isin(list(values)))
 
     def isnull(self):
         """
@@ -767,11 +772,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(self, MultiIndex):
             raise NotImplementedError("isna is not defined for MultiIndex")
         if isinstance(self.spark.data_type, (FloatType, DoubleType)):
-            return self._with_new_scol(
-                self.spark.column.isNull() | F.isnan(self.spark.column)
-            ).rename(self.name)
+            return self._with_new_scol(self.spark.column.isNull() | F.isnan(self.spark.column))
         else:
-            return self._with_new_scol(self.spark.column.isNull()).rename(self.name)
+            return self._with_new_scol(self.spark.column.isNull())
 
     isna = isnull
 
@@ -1005,7 +1008,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
-        return self._with_new_scol(col).rename(self.name)
+        return self._with_new_scol(col)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
