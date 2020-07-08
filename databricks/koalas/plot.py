@@ -1199,9 +1199,19 @@ class KoalasSeriesPlotMethods(PandasObject):
     """
 
     @staticmethod
-    def _get_args_map(backend_name, data, kwargs):
+    def _get_args_map(backend_name, data, kind, kwargs):
         """Appropriate call args mapping for the backend
         """
+        data_preprocessor_map = {
+            "plotly": {
+                "pie": TopNPlot().get_top_n,
+                "bar": TopNPlot().get_top_n,
+                "barh": TopNPlot().get_top_n,
+                "scatter": TopNPlot().get_top_n,
+                "area": SampledPlot().get_sampled,
+                "line": SampledPlot().get_sampled,
+            }
+        }
         # make the arguments values of matplotlib compatible with that of plotly
         args_map = {
             "plotly": [
@@ -1217,7 +1227,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             if arg_name_mpl in args_map[backend_name]:
                 kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
 
-        return data.to_pandas(), kwargs
+        return data_preprocessor_map[backend_name][kind](data), kwargs
 
     def __init__(self, data):
         self.data = data
@@ -1252,8 +1262,8 @@ class KoalasSeriesPlotMethods(PandasObject):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ == "plotly":
-            self.data, kwds = self._get_args_map(plot_backend.__name__, self.data, kwds)
-            return plot_backend.plot(self.data, kind=kind, **kwds)
+            plot_data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
+            return plot_backend.plot(plot_data, kind=kind, **kwds)
 
         return plot_series(
             self.data,
@@ -1675,8 +1685,8 @@ class KoalasFramePlotMethods(PandasObject):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ == "plotly":
-            self.data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
-            return plot_backend.plot(self.data, x=x, y=y, kind=kind, **kwds)
+            plot_data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
+            return plot_backend.plot(plot_data, x=x, y=y, kind=kind, **kwds)
 
         return plot_frame(
             self.data,
