@@ -1153,8 +1153,12 @@ def _find_backend(backend: str):
                 return module
 
     raise ValueError(
-        f"Could not find plotting backend '{backend}'. Ensure that you've installed ",
-        f"the package providing the '{backend}' entrypoint, or that the package has a ",
+        "Could not find plotting backend '{backend}'. Ensure that you've installed ".format(
+            backend=backend
+        ),
+        "the package providing the '{backend}' entrypoint, or that the package has a ".format(
+            backend=backend
+        ),
         "top-level `.plot` method.",
     )
 
