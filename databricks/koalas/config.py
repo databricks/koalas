@@ -222,9 +222,7 @@ _options = [
     ),
     Option(
         key="plotting.backend",
-        doc=(
-            "Backend to use for plotting. Default is matplotlib."
-        ),
+        doc=("Backend to use for plotting. Default is matplotlib."),
         default="matplotlib",
         types=str,
     ),

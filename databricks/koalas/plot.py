@@ -382,7 +382,7 @@ class KoalasBoxPlot(BoxPlot):
         showcaps=None,
         showbox=None,
         showfliers=None,
-        **kwargs
+        **kwargs,
     ):
         # Missing arguments default to rcParams.
         if whis is None:
@@ -430,7 +430,7 @@ class KoalasBoxPlot(BoxPlot):
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
-            F.mean(colname).alias("{}_mean".format(colname))
+            F.mean(colname).alias("{}_mean".format(colname)),
         ).toPandas()
 
         # Computes IQR and Tukey's fences
@@ -784,7 +784,7 @@ def plot_series(
     xerr=None,
     label=None,
     secondary_y=False,  # Series unique
-    **kwds
+    **kwds,
 ):
     """
     Make plots of Series using matplotlib / pylab.
@@ -913,7 +913,7 @@ def plot_series(
         xerr=xerr,
         label=label,
         secondary_y=secondary_y,
-        **kwds
+        **kwds,
     )
 
 
@@ -948,7 +948,7 @@ def plot_frame(
     xerr=None,
     secondary_y=False,
     sort_columns=False,
-    **kwds
+    **kwds,
 ):
     """
     Make plots of DataFrames using matplotlib / pylab.
@@ -1082,7 +1082,7 @@ def plot_frame(
         secondary_y=secondary_y,
         layout=layout,
         sort_columns=sort_columns,
-        **kwds
+        **kwds,
     )
 
 
@@ -1121,6 +1121,7 @@ def _plot(data, x=None, y=None, subplots=False, ax=None, kind="line", **kwds):
 _backends = {}
 import importlib
 
+
 def _find_backend(backend: str):
     """
     Find a pandas plotting backend
@@ -1152,8 +1153,8 @@ def _find_backend(backend: str):
                 return module
 
     raise ValueError(
-        f"Could not find plotting backend '{backend}'. Ensure that you've installed "
-        f"the package providing the '{backend}' entrypoint, or that the package has a "
+        f"Could not find plotting backend '{backend}'. Ensure that you've installed ",
+        f"the package providing the '{backend}' entrypoint, or that the package has a ",
         "top-level `.plot` method."
     )
 
@@ -1182,7 +1183,6 @@ def _get_plot_backend(backend=None):
     module = _find_backend(backend)
     _backends[backend] = module
     return module
-
 
 
 class KoalasSeriesPlotMethods(PandasObject):
@@ -1243,14 +1243,12 @@ class KoalasSeriesPlotMethods(PandasObject):
         xerr=None,
         label=None,
         secondary_y=False,
-        **kwds
+        **kwds,
     ):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ == "plotly":
-            self.data, kwds = self._get_args_map(
-                plot_backend.__name__, self.data, kwds
-            )
+            self.data, kwds = self._get_args_map(plot_backend.__name__, self.data, kwds)
             return plot_backend.plot(self.data, kind=kind, **kwds)
 
         return plot_series(
@@ -1278,7 +1276,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             xerr=xerr,
             label=label,
             secondary_y=secondary_y,
-            **kwds
+            **kwds,
         )
 
     __call__.__doc__ = plot_series.__doc__
@@ -1615,7 +1613,6 @@ class KoalasFramePlotMethods(PandasObject):
                 "scatter": TopNPlot().get_top_n,
                 "area": SampledPlot().get_sampled,
                 "line": SampledPlot().get_sampled,
-
             }
         }
         # make the arguments values of matplotlib compatible with that of plotly
@@ -1669,14 +1666,12 @@ class KoalasFramePlotMethods(PandasObject):
         xerr=None,
         secondary_y=False,
         sort_columns=False,
-        **kwds
+        **kwds,
     ):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ == "plotly":
-            self.data, kwds = self._get_args_map(
-                plot_backend.__name__, self.data,  kind, kwds
-            )
+            self.data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
             return plot_backend.plot(self.data, x=x, y=y, kind=kind, **kwds)
 
         return plot_frame(
@@ -1710,7 +1705,7 @@ class KoalasFramePlotMethods(PandasObject):
             xerr=xerr,
             secondary_y=secondary_y,
             sort_columns=sort_columns,
-            **kwds
+            **kwds,
         )
 
     def line(self, x=None, y=None, **kwargs):
