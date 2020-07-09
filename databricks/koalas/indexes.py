@@ -679,6 +679,8 @@ class Index(IndexOpsMixin):
         scol = self.spark.column
         if name is not None:
             scol = scol.alias(name_like_string(name))
+        elif len(kdf._internal.index_map) == 1:
+            name = self.name
         column_labels = (
             [(SPARK_DEFAULT_SERIES_NAME,)]
             if len(kdf._internal.index_map) > 1
