@@ -1185,34 +1185,34 @@ def _get_plot_backend(backend=None):
     _backends[backend] = module
     return module
 
-    def _get_args_map(backend_name, data, kind, kwargs):
-        """Appropriate call args mapping for the backend
-        """
-        data_preprocessor_map = {
-            "pie": TopNPlot().get_top_n,
-            "bar": TopNPlot().get_top_n,
-            "barh": TopNPlot().get_top_n,
-            "scatter": TopNPlot().get_top_n,
-            "area": SampledPlot().get_sampled,
-            "line": SampledPlot().get_sampled,
-        }
-        # make the arguments values of matplotlib compatible with that of plotting backend
-        args_map = {
-            "plotly": [
-                ("logx", "log_x"),
-                ("logy", "log_y"),
-                ("xlim", "range_x"),
-                ("ylim", "range_y"),
-                ("yerr", "error_y"),
-                ("xerr", "error_x"),
-            ]
-        }
-        if backend_name in args_map:
-            for arg_name_mpl, arg_name_ply in args_map[backend_name]:
-                if arg_name_mpl in args_map[backend_name]:
-                    kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
+def _get_args_map(backend_name, data, kind, kwargs):
+    """Appropriate call args mapping for the backend
+    """
+    data_preprocessor_map = {
+        "pie": TopNPlot().get_top_n,
+        "bar": TopNPlot().get_top_n,
+        "barh": TopNPlot().get_top_n,
+        "scatter": TopNPlot().get_top_n,
+        "area": SampledPlot().get_sampled,
+        "line": SampledPlot().get_sampled,
+    }
+    # make the arguments values of matplotlib compatible with that of plotting backend
+    args_map = {
+        "plotly": [
+            ("logx", "log_x"),
+            ("logy", "log_y"),
+            ("xlim", "range_x"),
+            ("ylim", "range_y"),
+            ("yerr", "error_y"),
+            ("xerr", "error_x"),
+        ]
+    }
+    if backend_name in args_map:
+        for arg_name_mpl, arg_name_ply in args_map[backend_name]:
+            if arg_name_mpl in args_map[backend_name]:
+                kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
 
-        return data_preprocessor_map[kind](data), kwargs
+    return data_preprocessor_map[kind](data), kwargs
 
 
 class KoalasSeriesPlotMethods(PandasObject):
