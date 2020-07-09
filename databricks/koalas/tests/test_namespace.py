@@ -70,10 +70,12 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.concat([kdf, kdf.reset_index()]), pd.concat([pdf, pdf.reset_index()]))
+        self.assert_eq(
+            ks.concat([kdf, kdf.reset_index().sort_index()]), pd.concat([pdf, pdf.reset_index()])
+        )
 
         self.assert_eq(
-            ks.concat([kdf, kdf[["A"]]], ignore_index=True),
+            ks.concat([kdf, kdf[["A"]]], ignore_index=True).sort_index(),
             pd.concat([pdf, pdf[["A"]]], ignore_index=True),
         )
 
@@ -100,10 +102,13 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf3.columns = columns
         kdf3.columns = columns
 
-        self.assert_eq(ks.concat([kdf3, kdf3.reset_index()]), pd.concat([pdf3, pdf3.reset_index()]))
+        self.assert_eq(
+            ks.concat([kdf3, kdf3.reset_index().sort_index()]),
+            pd.concat([pdf3, pdf3.reset_index()]),
+        )
 
         self.assert_eq(
-            ks.concat([kdf3, kdf3[[("X", "A")]]], ignore_index=True),
+            ks.concat([kdf3, kdf3[[("X", "A")]]], ignore_index=True).sort_index(),
             pd.concat([pdf3, pdf3[[("X", "A")]]], ignore_index=True),
         )
 
@@ -201,7 +206,11 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
                     actual = ks.concat(kdfs, axis=1, ignore_index=ignore_index, join=join)
                     expected = pd.concat(pdfs, axis=1, ignore_index=ignore_index, join=join)
                     self.assert_eq(
-                        repr(actual.sort_values(list(actual.columns)).reset_index(drop=True)),
+                        repr(
+                            actual.sort_values(list(actual.columns))
+                            .reset_index(drop=True)
+                            .sort_index()
+                        ),
                         repr(expected.sort_values(list(expected.columns)).reset_index(drop=True)),
                     )
 

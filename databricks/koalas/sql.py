@@ -92,7 +92,7 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
 
     >>> mydf = ks.range(10)
     >>> x = range(4)
-    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}")
+    >>> ks.sql("SELECT * from {mydf} WHERE id IN {x}").sort_index()
        id
     0   0
     1   1
@@ -103,7 +103,7 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
 
     >>> def statement():
     ...     mydf2 = ks.DataFrame({"x": range(2)})
-    ...     return ks.sql("SELECT * from {mydf2}")
+    ...     return ks.sql("SELECT * from {mydf2}").sort_index()
     >>> statement()
        x
     0  0
@@ -117,7 +117,7 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     ...   ON m1.key = m2.key
     ...   ORDER BY m1.a, m2.b''',
     ...   table1=ks.DataFrame({"a": [1,2], "key": ["a", "b"]}),
-    ...   table2=pd.DataFrame({"b": [3,4,5], "key": ["a", "b", "b"]}))
+    ...   table2=pd.DataFrame({"b": [3,4,5], "key": ["a", "b", "b"]})).sort_index()
        a  b
     0  1  3
     1  2  4
@@ -126,7 +126,7 @@ def sql(query: str, globals=None, locals=None, **kwargs) -> DataFrame:
     Also, it is possible to query using Series.
 
     >>> myser = ks.Series({'a': [1.0, 2.0, 3.0], 'b': [15.0, 30.0, 45.0]})
-    >>> ks.sql("SELECT * from {myser}")
+    >>> ks.sql("SELECT * from {myser}").sort_index()
                         0
     0     [1.0, 2.0, 3.0]
     1  [15.0, 30.0, 45.0]
