@@ -229,7 +229,6 @@ _options = [
         ),
         default="matplotlib",
         types=str,
-        check_func=(lambda v: isinstance(v, str), "'plotting.backend' should b a string",),
     ),
 ]  # type: List[Option]
 
