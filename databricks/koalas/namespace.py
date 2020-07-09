@@ -1834,6 +1834,9 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
         if ignore_index:
             concat_kdf.columns = list(map(str, _range(len(concat_kdf.columns))))
 
+        if sort:
+            concat_kdf = concat_kdf.sort_index()
+
         return concat_kdf
 
     # Series, Series ...
@@ -1895,10 +1898,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
 
             kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
-            # If there are columns unmatched, just sort the column names.
-            merged_columns = column_labels_of_kdfs[0].copy()
-            for labels in column_labels_of_kdfs[1:]:
+            merged_columns = []
+            for labels in column_labels_of_kdfs:
                 merged_columns.extend(label for label in labels if label not in merged_columns)
+
+            assert len(merged_columns) > 0
 
             if LooseVersion(pd.__version__) < LooseVersion("0.24"):
                 # Always sort when multi-index columns, and if there are Series, never sort.
