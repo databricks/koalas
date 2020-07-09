@@ -682,10 +682,7 @@ class Index(IndexOpsMixin):
         column_labels = (
             [(SPARK_DEFAULT_SERIES_NAME,)]
             if len(kdf._internal.index_map) > 1
-            else [
-                (SPARK_DEFAULT_SERIES_NAME,) if name is None else name
-                for name in kdf._internal.index_names
-            ]
+            else [(SPARK_DEFAULT_SERIES_NAME,) if name is None else (name,)]
         )
         internal = kdf._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None

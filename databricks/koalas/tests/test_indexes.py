@@ -75,7 +75,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         self.assert_eq(kidx.to_series(), pidx.to_series())
-        self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
+        self.assert_eq(repr(kidx.to_series(name="a")), repr(pidx.to_series(name="a")))
 
         self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
 
