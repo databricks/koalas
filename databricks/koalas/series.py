@@ -1984,7 +1984,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Uniques are returned in order of appearance. Hash table-based unique,
         therefore does NOT sort.
 
-        .. note:: This method returns newly creased Series whereas pandas returns
+        .. note:: This method returns newly created Series whereas pandas returns
                   the unique values as a NumPy array.
 
         Returns
