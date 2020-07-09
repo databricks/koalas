@@ -221,15 +221,14 @@ This is conceptually equivalent to the PySpark example as below:
     different dataframes because it is not guaranteed to have the same indexes in two dataframes.
     If you use this default index and turn on `compute.ops_on_diff_frames`, the result
     from the operations between two different DataFrames will likely be an unexpected
-    output due to the indeterministic index values. 
+    output due to the indeterministic index values.
 
 
 Available options
 -----------------
 
-
 =============================== ============== =====================================================
-Option                          Default        Description                                          
+Option                          Default        Description
 =============================== ============== =====================================================
 display.max_rows                1000           This sets the maximum number of rows Koalas should
                                                output when printing out various output. For example,

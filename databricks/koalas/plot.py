@@ -17,7 +17,6 @@
 import importlib
 from distutils.version import LooseVersion
 
-_backends = {}
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -1120,9 +1119,12 @@ def _plot(data, x=None, y=None, subplots=False, ax=None, kind="line", **kwds):
     return plot_obj.result
 
 
+_backends = {}
+
+
 def _find_backend(backend):
     """
-    Find a koalas plotting backend
+    Find a Koalas plotting backend
     """
     # function copied from pandas.plotting._core
 
@@ -1150,11 +1152,6 @@ def _find_backend(backend):
                 # is set, rather than at plot time.
                 _backends[backend] = module
                 return module
-
-    # if failed to load plotting backend, set it back to default
-    from databricks.koalas import set_option
-
-    set_option("plotting.backend", "matplotlib")
 
     raise ValueError(
         "Could not find plotting backend '{backend}'. Ensure that you've installed "
@@ -1199,7 +1196,7 @@ def _get_plot_backend(backend=None):
             "area": SampledPlot().get_sampled,
             "line": SampledPlot().get_sampled,
         }
-        # make the arguments values of matplotlib compatible with that of plotly
+        # make the arguments values of matplotlib compatible with that of plotting backend
         args_map = {
             "plotly": [
                 ("logx", "log_x"),
@@ -1260,7 +1257,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ != "databricks.koalas.plot":
-            plot_data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
+            plot_data, kwds = _get_args_map(plot_backend.__name__, self.data, kind, kwds)
             return plot_backend.plot(plot_data, kind=kind, **kwds)
 
         return plot_series(
@@ -1652,7 +1649,7 @@ class KoalasFramePlotMethods(PandasObject):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ != "databricks.koalas.plot":
-            plot_data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
+            plot_data, kwds = _get_args_map(plot_backend.__name__, self.data, kind, kwds)
             return plot_backend.plot(plot_data, x=x, y=y, kind=kind, **kwds)
 
         return plot_frame(

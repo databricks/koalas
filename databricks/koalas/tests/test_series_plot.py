@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-import pytest
 import base64
 from io import BytesIO
 
@@ -74,21 +73,21 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         plot_backends = ["plotly", "pandas_bokeh"]
 
         for backend in plot_backends:
-            ks.set_option("plotting.backend", backend)
-            self.assertEqual(ks.options.plotting.backend, backend)
+            with ks.option_context("plotting.backend", backend):
+                self.assertEqual(ks.options.plotting.backend, backend)
 
-            module = ks.plot._get_plot_backend(backend)
-            self.assertEqual(module.__name__, backend)
+                module = ks.plot._get_plot_backend(backend)
+                self.assertEqual(module.__name__, backend)
 
     def test_plot_backends_incorrect(self):
         default_plot_backend = "matplotlib"
         fake_plot_backend = "none_plotting_module"
 
-        ks.set_option("plotting.backend", fake_plot_backend)
-        self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
+        with ks.option_context("plotting.backend", fake_plot_backend):
+            self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
 
-        with pytest.raises(ValueError):
-            ks.plot._get_plot_backend(fake_plot_backend)
+            with self.assertRaises(ValueError):
+                ks.plot._get_plot_backend(fake_plot_backend)
 
         # plotting backend returns to default after failing to load custom
         assert ks.options.plotting.backend == default_plot_backend
