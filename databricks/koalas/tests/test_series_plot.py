@@ -76,7 +76,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         for backend in plot_backends:
             ks.set_option("plotting.backend", backend)
             self.assertEqual(ks.options.plotting.backend, backend)
-            
+
             module = ks.plot._get_plot_backend(backend)
             self.assertEqual(module.__name__, backend)
 
@@ -86,7 +86,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
         ks.set_option("plotting.backend", fake_plot_backend)
         self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
-        
+
         with pytest.raises(ValueError):
             ks.plot._get_plot_backend(fake_plot_backend)
 
