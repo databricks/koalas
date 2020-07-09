@@ -44,6 +44,9 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf, self.to_clipboard, pd.DataFrame.to_clipboard, args
         )
 
+        # Support for **kwargs
+        self.to_clipboard(sep=",", index=False)
+
     def test_validate_arguments_and_invoke_function(self):
         # This should pass and run fine
         self.to_html()
@@ -54,9 +57,6 @@ class UtilsTest(ReusedSQLTestCase, SQLTestUtils):
         # to a non-default value
         with self.assertRaises(TypeError):
             self.to_html(unsupported_param=1)
-
-        # Support for **kwargs
-        self.to_clipboard(sep=",", index=False)
 
     def test_lazy_property(self):
         obj = TestClassForLazyProp()
