@@ -227,10 +227,11 @@ This is conceptually equivalent to the PySpark example as below:
 Available options
 -----------------
 
+
 =============================== ============== =====================================================
-Option                          Default        Description
+Option                          Default        Description                                          
 =============================== ============== =====================================================
-display.max_rows                1000           This sets the maximum number of rows koalas should
+display.max_rows                1000           This sets the maximum number of rows Koalas should
                                                output when printing out various output. For example,
                                                this value determines the number of rows to be shown
                                                at the repr() in a dataframe. Set `None` to unlimit
@@ -268,4 +269,8 @@ plotting.sample_ratio           None           'plotting.sample_ratio' sets the 
                                                that will be plotted for sample-based plots such as
                                                `plot.line` and `plot.area`. This option defaults to
                                                'plotting.max_rows' option.
+plotting.backend                'matplotlib'   Backend to use for plotting. Default is matplotlib.
+                                               Supports any package that has a top-level `.plot`
+                                               method. Some options are: [matplotlib, plotly,
+                                               pandas_bokeh, pandas_altair].
 =============================== ============== =====================================================

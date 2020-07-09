@@ -223,12 +223,16 @@ _options = [
     Option(
         key="plotting.backend",
         doc=(
-            "Backend to use for plotting. Default is matplotlib.-"
-            "Supports any package that has a top-level `.plot` method."
-            "Available options: [matplotlib, plotly, pandas_bokeh, pandas_altair]-"
+            "Backend to use for plotting. Default is matplotlib. "
+            "Supports any package that has a top-level `.plot` method. "
+            "Some options are: [matplotlib, plotly, pandas_bokeh, pandas_altair]."
         ),
         default="matplotlib",
         types=str,
+        check_func=(
+            lambda v: isinstance(v, str),
+            "'plotting.backend' should b a string",
+        ),
     ),
 ]  # type: List[Option]
 

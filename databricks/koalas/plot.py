@@ -14,8 +14,10 @@
 # limitations under the License.
 #
 
+import importlib
 from distutils.version import LooseVersion
 
+_backends = {}
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -430,7 +432,7 @@ class KoalasBoxPlot(BoxPlot):
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
-            F.mean(colname).alias("{}_mean".format(colname)),
+            F.mean(colname).alias("{}_mean".format(colname))
         ).toPandas()
 
         # Computes IQR and Tukey's fences
@@ -913,7 +915,7 @@ def plot_series(
         xerr=xerr,
         label=label,
         secondary_y=secondary_y,
-        **kwds,
+        **kwds
     )
 
 
@@ -948,7 +950,7 @@ def plot_frame(
     xerr=None,
     secondary_y=False,
     sort_columns=False,
-    **kwds
+    **kwds,
 ):
     """
     Make plots of DataFrames using matplotlib / pylab.
@@ -1082,7 +1084,7 @@ def plot_frame(
         secondary_y=secondary_y,
         layout=layout,
         sort_columns=sort_columns,
-        **kwds,
+        **kwds
     )
 
 
@@ -1118,17 +1120,14 @@ def _plot(data, x=None, y=None, subplots=False, ax=None, kind="line", **kwds):
     return plot_obj.result
 
 
-_backends = {}
-import importlib
-
-
-def _find_backend(backend: str):
+def _find_backend(backend):
     """
-    Find a pandas plotting backend
+    Find a koalas plotting backend
     """
     # function copied from pandas.plotting._core
 
-    import pkg_resources  # Delay import for performance.
+    # Delay import for performance.
+    import pkg_resources
 
     for entry_point in pkg_resources.iter_entry_points("koalas_plotting_backends"):
         if entry_point.name == "matplotlib":
@@ -1153,13 +1152,9 @@ def _find_backend(backend: str):
                 return module
 
     raise ValueError(
-        "Could not find plotting backend '{backend}'. Ensure that you've installed ".format(
-            backend=backend
-        ),
-        "the package providing the '{backend}' entrypoint, or that the package has a ".format(
-            backend=backend
-        ),
-        "top-level `.plot` method.",
+        "Could not find plotting backend '{backend}'. Ensure that you've installed "
+        "the package providing the '{backend}' entrypoint, or that the package has a "
+        "top-level `.plot` method.".format(backend=backend)
     )
 
 
@@ -1176,7 +1171,7 @@ def _get_plot_backend(backend=None):
         except ImportError:
             raise ImportError(
                 "matplotlib is required for plotting when the "
-                'default backend "matplotlib" is selected.'
+                "default backend 'matplotlib' is selected."
             ) from None
 
         _backends["matplotlib"] = module
@@ -1189,28 +1184,16 @@ def _get_plot_backend(backend=None):
     return module
 
 
-class KoalasSeriesPlotMethods(PandasObject):
-    """
-    Series plotting accessor and method.
-
-    Plotting methods can also be accessed by calling the accessor as a method
-    with the ``kind`` argument:
-    ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
-    """
-
-    @staticmethod
     def _get_args_map(backend_name, data, kind, kwargs):
         """Appropriate call args mapping for the backend
         """
         data_preprocessor_map = {
-            "plotly": {
-                "pie": TopNPlot().get_top_n,
-                "bar": TopNPlot().get_top_n,
-                "barh": TopNPlot().get_top_n,
-                "scatter": TopNPlot().get_top_n,
-                "area": SampledPlot().get_sampled,
-                "line": SampledPlot().get_sampled,
-            }
+            "pie": TopNPlot().get_top_n,
+            "bar": TopNPlot().get_top_n,
+            "barh": TopNPlot().get_top_n,
+            "scatter": TopNPlot().get_top_n,
+            "area": SampledPlot().get_sampled,
+            "line": SampledPlot().get_sampled,
         }
         # make the arguments values of matplotlib compatible with that of plotly
         args_map = {
@@ -1223,12 +1206,22 @@ class KoalasSeriesPlotMethods(PandasObject):
                 ("xerr", "error_x"),
             ]
         }
-        for arg_name_mpl, arg_name_ply in args_map[backend_name]:
-            if arg_name_mpl in args_map[backend_name]:
-                kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
+        if backend_name in args_map:
+            for arg_name_mpl, arg_name_ply in args_map[backend_name]:
+                if arg_name_mpl in args_map[backend_name]:
+                    kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
 
-        return data_preprocessor_map[backend_name][kind](data), kwargs
+        return data_preprocessor_map[kind](data), kwargs
 
+
+class KoalasSeriesPlotMethods(PandasObject):
+    """
+    Series plotting accessor and method.
+
+    Plotting methods can also be accessed by calling the accessor as a method
+    with the ``kind`` argument:
+    ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
+    """
     def __init__(self, data):
         self.data = data
 
@@ -1257,11 +1250,11 @@ class KoalasSeriesPlotMethods(PandasObject):
         xerr=None,
         label=None,
         secondary_y=False,
-        **kwds,
+        **kwds
     ):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
-        if plot_backend.__name__ == "plotly":
+        if plot_backend.__name__ != "databricks.koalas.plot":
             plot_data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
             return plot_backend.plot(plot_data, kind=kind, **kwds)
 
@@ -1290,7 +1283,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             xerr=xerr,
             label=label,
             secondary_y=secondary_y,
-            **kwds,
+            **kwds
         )
 
     __call__.__doc__ = plot_series.__doc__
@@ -1614,38 +1607,6 @@ class KoalasFramePlotMethods(PandasObject):
     with the ``kind`` argument:
     ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
     """
-
-    @staticmethod
-    def _get_args_map(backend_name, data, kind, kwargs):
-        """Appropriate call args and data preprocessing mapping for the backend
-        """
-        data_preprocessor_map = {
-            "plotly": {
-                "pie": TopNPlot().get_top_n,
-                "bar": TopNPlot().get_top_n,
-                "barh": TopNPlot().get_top_n,
-                "scatter": TopNPlot().get_top_n,
-                "area": SampledPlot().get_sampled,
-                "line": SampledPlot().get_sampled,
-            }
-        }
-        # make the arguments values of matplotlib compatible with that of plotly
-        args_map = {
-            "plotly": [
-                ("logx", "log_x"),
-                ("logy", "log_y"),
-                ("xlim", "range_x"),
-                ("ylim", "range_y"),
-                ("yerr", "error_y"),
-                ("xerr", "error_x"),
-            ]
-        }
-        for arg_name_mpl, arg_name_ply in args_map[backend_name]:
-            if arg_name_mpl in args_map[backend_name]:
-                kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
-
-        return data_preprocessor_map[backend_name][kind](data), kwargs
-
     def __init__(self, data):
         self.data = data
 
@@ -1680,11 +1641,11 @@ class KoalasFramePlotMethods(PandasObject):
         xerr=None,
         secondary_y=False,
         sort_columns=False,
-        **kwds,
+        **kwds
     ):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
-        if plot_backend.__name__ == "plotly":
+        if plot_backend.__name__ != "databricks.koalas.plot":
             plot_data, kwds = self._get_args_map(plot_backend.__name__, self.data, kind, kwds)
             return plot_backend.plot(plot_data, x=x, y=y, kind=kind, **kwds)
 
@@ -1719,7 +1680,7 @@ class KoalasFramePlotMethods(PandasObject):
             xerr=xerr,
             secondary_y=secondary_y,
             sort_columns=sort_columns,
-            **kwds,
+            **kwds
         )
 
     def line(self, x=None, y=None, **kwargs):
