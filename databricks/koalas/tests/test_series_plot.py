@@ -70,14 +70,13 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
 
     def test_plot_backends(self):
         default_plot_backend = "matplotlib"
-        plot_backends = ["plotly", "pandas_bokeh"]
+        plot_backend = "plotly"
 
-        for backend in plot_backends:
-            with ks.option_context("plotting.backend", backend):
-                self.assertEqual(ks.options.plotting.backend, backend)
+        with ks.option_context("plotting.backend", plot_backend):
+            self.assertEqual(ks.options.plotting.backend, plot_backend)
 
-                module = ks.plot._get_plot_backend(backend)
-                self.assertEqual(module.__name__, backend)
+            module = ks.plot._get_plot_backend(plot_backend)
+            self.assertEqual(module.__name__, plot_backend)
 
     def test_plot_backends_incorrect(self):
         default_plot_backend = "matplotlib"
