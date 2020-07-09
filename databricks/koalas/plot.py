@@ -1185,6 +1185,7 @@ def _get_plot_backend(backend=None):
     _backends[backend] = module
     return module
 
+
 def _get_args_map(backend_name, data, kind, kwargs):
     """Appropriate call args mapping for the backend
     """
