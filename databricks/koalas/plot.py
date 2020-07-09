@@ -384,7 +384,7 @@ class KoalasBoxPlot(BoxPlot):
         showcaps=None,
         showbox=None,
         showfliers=None,
-        **kwargs
+        **kwargs,
     ):
         # Missing arguments default to rcParams.
         if whis is None:
@@ -432,7 +432,7 @@ class KoalasBoxPlot(BoxPlot):
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
-            F.mean(colname).alias("{}_mean".format(colname))
+            F.mean(colname).alias("{}_mean".format(colname)),
         ).toPandas()
 
         # Computes IQR and Tukey's fences
@@ -786,7 +786,7 @@ def plot_series(
     xerr=None,
     label=None,
     secondary_y=False,  # Series unique
-    **kwds
+    **kwds,
 ):
     """
     Make plots of Series using matplotlib / pylab.
@@ -915,7 +915,7 @@ def plot_series(
         xerr=xerr,
         label=label,
         secondary_y=secondary_y,
-        **kwds
+        **kwds,
     )
 
 
@@ -1084,7 +1084,7 @@ def plot_frame(
         secondary_y=secondary_y,
         layout=layout,
         sort_columns=sort_columns,
-        **kwds
+        **kwds,
     )
 
 
@@ -1151,6 +1151,10 @@ def _find_backend(backend):
                 _backends[backend] = module
                 return module
 
+    # if failed to load plotting backend, set it back to default
+    from databricks.koalas import set_option
+    set_option("plotting.backend", "matplotlib")
+
     raise ValueError(
         "Could not find plotting backend '{backend}'. Ensure that you've installed "
         "the package providing the '{backend}' entrypoint, or that the package has a "
@@ -1182,7 +1186,6 @@ def _get_plot_backend(backend=None):
     module = _find_backend(backend)
     _backends[backend] = module
     return module
-
 
     def _get_args_map(backend_name, data, kind, kwargs):
         """Appropriate call args mapping for the backend
@@ -1222,6 +1225,7 @@ class KoalasSeriesPlotMethods(PandasObject):
     with the ``kind`` argument:
     ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
     """
+
     def __init__(self, data):
         self.data = data
 
@@ -1250,7 +1254,7 @@ class KoalasSeriesPlotMethods(PandasObject):
         xerr=None,
         label=None,
         secondary_y=False,
-        **kwds
+        **kwds,
     ):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
@@ -1283,7 +1287,7 @@ class KoalasSeriesPlotMethods(PandasObject):
             xerr=xerr,
             label=label,
             secondary_y=secondary_y,
-            **kwds
+            **kwds,
         )
 
     __call__.__doc__ = plot_series.__doc__
@@ -1607,6 +1611,7 @@ class KoalasFramePlotMethods(PandasObject):
     with the ``kind`` argument:
     ``df.plot(kind='hist')`` is equivalent to ``df.plot.hist()``
     """
+
     def __init__(self, data):
         self.data = data
 
@@ -1641,7 +1646,7 @@ class KoalasFramePlotMethods(PandasObject):
         xerr=None,
         secondary_y=False,
         sort_columns=False,
-        **kwds
+        **kwds,
     ):
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
@@ -1680,7 +1685,7 @@ class KoalasFramePlotMethods(PandasObject):
             xerr=xerr,
             secondary_y=secondary_y,
             sort_columns=sort_columns,
-            **kwds
+            **kwds,
         )
 
     def line(self, x=None, y=None, **kwargs):
