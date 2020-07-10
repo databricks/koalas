@@ -158,6 +158,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.drop
+   DataFrame.droplevel
    DataFrame.drop_duplicates
    DataFrame.duplicated
    DataFrame.equals

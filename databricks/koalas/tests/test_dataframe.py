@@ -92,6 +92,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
         self.assert_eq(kser, pser)
 
+    def test_assign_list(self):
+        pdf, kdf = self.df_pair
+
+        pser = pdf.a
+        kser = kdf.a
+
+        pdf["x"] = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+        kdf["x"] = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        self.assert_eq(kser, pser)
+
+        with self.assertRaisesRegex(ValueError, "Length of values does not match length of index"):
+            kdf["z"] = [10, 20, 30, 40, 50, 60, 70, 80]
+
     def test_dataframe_multiindex_columns(self):
         pdf = pd.DataFrame(
             {
@@ -552,6 +567,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             ks.DataFrame(ks.range(1)._internal.spark_frame.selectExpr("1 as `a.b`"))["a.b"],
             ks.Series([1]),
         )
+
+    def test_droplevel(self):
+        # droplevel is new in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            pdf = (
+                pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
+                .set_index([0, 1])
+                .rename_axis(["a", "b"])
+            )
+
+            pdf.columns = pd.MultiIndex.from_tuples(
+                [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
+            )
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(pdf.droplevel("a"), kdf.droplevel("a"))
+            self.assert_eq(pdf.droplevel("level_1", axis=1), kdf.droplevel("level_1", axis=1))
+            self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
+            self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
 
     def test_drop(self):
         pdf = pd.DataFrame({"x": [1, 2], "y": [3, 4], "z": [5, 6]}, index=np.random.rand(2))

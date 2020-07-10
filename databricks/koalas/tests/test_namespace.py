@@ -66,20 +66,35 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             ks.to_datetime([1, 2, 3], unit="D", origin=pd.Timestamp("1960-01-01")),
         )
 
-    def test_concat(self):
-        pdf = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]})
+    def test_concat_index_axis(self):
+        pdf = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5], "C": [6, 7, 8]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.concat([kdf, kdf.reset_index()]), pd.concat([pdf, pdf.reset_index()]))
+        ignore_indexes = [True, False]
+        joins = ["inner", "outer"]
+        sorts = [True, False]
 
-        self.assert_eq(
-            ks.concat([kdf, kdf[["A"]]], ignore_index=True),
-            pd.concat([pdf, pdf[["A"]]], ignore_index=True),
-        )
+        objs = [
+            ([kdf, kdf], [pdf, pdf]),
+            ([kdf, kdf.reset_index()], [pdf, pdf.reset_index()]),
+            ([kdf.reset_index(), kdf], [pdf.reset_index(), pdf]),
+            ([kdf, kdf[["C", "A"]]], [pdf, pdf[["C", "A"]]]),
+            ([kdf[["C", "A"]], kdf], [pdf[["C", "A"]], pdf]),
+            ([kdf, kdf["C"]], [pdf, pdf["C"]]),
+            ([kdf["C"], kdf], [pdf["C"], pdf]),
+            ([kdf["C"], kdf, kdf["A"]], [pdf["C"], pdf, pdf["A"]]),
+            ([kdf, kdf["C"], kdf["A"]], [pdf, pdf["C"], pdf["A"]]),
+        ]
 
-        self.assert_eq(
-            ks.concat([kdf, kdf[["A"]]], join="inner"), pd.concat([pdf, pdf[["A"]]], join="inner")
-        )
+        for ignore_index, join, sort in itertools.product(ignore_indexes, joins, sorts):
+            for obj in objs:
+                kdfs, pdfs = obj
+                with self.subTest(ignore_index=ignore_index, join=join, sort=sort, objs=pdfs):
+                    self.assert_eq(
+                        ks.concat(kdfs, ignore_index=ignore_index, join=join, sort=sort),
+                        pd.concat(pdfs, ignore_index=ignore_index, join=join, sort=sort),
+                        almost=(join == "outer"),
+                    )
 
         self.assertRaisesRegex(TypeError, "first argument must be", lambda: ks.concat(kdf))
         self.assertRaisesRegex(TypeError, "cannot concatenate object", lambda: ks.concat([kdf, 1]))
@@ -96,26 +111,46 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf3 = pdf.copy()
         kdf3 = kdf.copy()
 
-        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")])
+        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
         pdf3.columns = columns
         kdf3.columns = columns
 
-        self.assert_eq(ks.concat([kdf3, kdf3.reset_index()]), pd.concat([pdf3, pdf3.reset_index()]))
+        objs = [
+            ([kdf3, kdf3], [pdf3, pdf3]),
+            ([kdf3, kdf3.reset_index()], [pdf3, pdf3.reset_index()]),
+            ([kdf3.reset_index(), kdf3], [pdf3.reset_index(), pdf3]),
+            ([kdf3, kdf3[[("Y", "C"), ("X", "A")]]], [pdf3, pdf3[[("Y", "C"), ("X", "A")]]]),
+            ([kdf3[[("Y", "C"), ("X", "A")]], kdf3], [pdf3[[("Y", "C"), ("X", "A")]], pdf3]),
+        ]
 
-        self.assert_eq(
-            ks.concat([kdf3, kdf3[[("X", "A")]]], ignore_index=True),
-            pd.concat([pdf3, pdf3[[("X", "A")]]], ignore_index=True),
-        )
+        for ignore_index, sort in itertools.product(ignore_indexes, sorts):
+            for obj in objs:
+                kdfs, pdfs = obj
+                with self.subTest(ignore_index=ignore_index, join="outer", sort=sort, objs=pdfs):
+                    self.assert_eq(
+                        ks.concat(kdfs, ignore_index=ignore_index, join="outer", sort=sort),
+                        pd.concat(pdfs, ignore_index=ignore_index, join="outer", sort=sort),
+                    )
 
-        self.assert_eq(
-            ks.concat([kdf3, kdf3[[("X", "A")]]], join="inner"),
-            pd.concat([pdf3, pdf3[[("X", "A")]]], join="inner"),
-        )
+        # Skip tests for `join="inner" and sort=False` since pandas is flaky.
+        for ignore_index in ignore_indexes:
+            for obj in objs:
+                kdfs, pdfs = obj
+                with self.subTest(ignore_index=ignore_index, join="inner", sort=True, objs=pdfs):
+                    self.assert_eq(
+                        ks.concat(kdfs, ignore_index=ignore_index, join="inner", sort=True),
+                        pd.concat(pdfs, ignore_index=ignore_index, join="inner", sort=True),
+                    )
 
         self.assertRaisesRegex(
             ValueError,
             "MultiIndex columns should have the same levels",
             lambda: ks.concat([kdf, kdf3]),
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            "MultiIndex columns should have the same levels",
+            lambda: ks.concat([kdf3[("Y", "C")], kdf3]),
         )
 
         pdf4 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5], "C": [10, 20, 30]})
