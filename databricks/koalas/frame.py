@@ -10032,6 +10032,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         yield (kdf._kser_for(this_label), this_label)
 
             kdf = align_diff_frames(assign_columns, self, value, fillna=False, how="left")
+        elif isinstance(value, list):
+            if len(self) != len(value):
+                raise ValueError("Length of values does not match length of index")
+
+            # TODO: avoid using default index?
+            with option_context(
+                "compute.default_index_type",
+                "distributed-sequence",
+                "compute.ops_on_diff_frames",
+                True,
+            ):
+                kdf = self.reset_index()
+                kdf[key] = ks.DataFrame(value)
+                kdf = kdf.set_index(kdf.columns[: len(self._internal.index_map)])
+                kdf.index.names = self.index.names
+
         elif isinstance(key, list):
             assert isinstance(value, DataFrame)
             # Same DataFrames.
