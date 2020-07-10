@@ -88,9 +88,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
             with self.assertRaises(ValueError):
                 ks.plot._get_plot_backend(fake_plot_backend)
 
-        # plotting backend returns to default after failing to load custom
-        assert ks.options.plotting.backend == default_plot_backend
-
     def test_bar_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1

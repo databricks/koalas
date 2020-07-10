@@ -1189,6 +1189,8 @@ def _get_plot_backend(backend=None):
 def _get_args_map(backend_name, data, kind, kwargs):
     """Appropriate call args mapping for the backend
     """
+    from databricks.koalas import DataFrame, Series
+
     data_preprocessor_map = {
         "pie": TopNPlot().get_top_n,
         "bar": TopNPlot().get_top_n,
@@ -1200,6 +1202,7 @@ def _get_args_map(backend_name, data, kind, kwargs):
     # make the arguments values of matplotlib compatible with that of plotting backend
     args_map = {
         "plotly": [
+            ("ax", None),
             ("logx", "log_x"),
             ("logy", "log_y"),
             ("xlim", "range_x"),
@@ -1208,10 +1211,77 @@ def _get_args_map(backend_name, data, kind, kwargs):
             ("xerr", "error_x"),
         ]
     }
+
+    if isinstance(data, Series):
+        positional_args = {
+            ("ax", None),
+            ("figsize", None),
+            ("use_index", True),
+            ("title", None),
+            ("grid", None),
+            ("legend", False),
+            ("style", None),
+            ("logx", False),
+            ("logy", False),
+            ("loglog", False),
+            ("xticks", None),
+            ("yticks", None),
+            ("xlim", None),
+            ("ylim", None),
+            ("rot", None),
+            ("fontsize", None),
+            ("colormap", None),
+            ("table", False),
+            ("yerr", None),
+            ("xerr", None),
+            ("label", None),
+            ("secondary_y", False),
+        }
+    elif isinstance(data, DataFrame):
+        positional_args = {
+            ("ax", None),
+            ("subplots", None),
+            ("sharex", None),
+            ("sharey", False),
+            ("layout", None),
+            ("figsize", None),
+            ("use_index", True),
+            ("title", None),
+            ("grid", None),
+            ("legend", True),
+            ("style", None),
+            ("logx", False),
+            ("logy", False),
+            ("loglog", False),
+            ("xticks", None),
+            ("yticks", None),
+            ("xlim", None),
+            ("ylim", None),
+            ("rot", None),
+            ("fontsize", None),
+            ("colormap", None),
+            ("table", False),
+            ("yerr", None),
+            ("xerr", None),
+            ("secondary_y", False),
+            ("sort_columns", False),
+        }
+    # removing keys that are not required
+    kwargs.pop("self", None)
+    kwargs.pop("kwds", None)
+    kwargs.pop("kind", None)
+
     if backend_name in args_map:
         for arg_name_mpl, arg_name_ply in args_map[backend_name]:
-            if arg_name_mpl in args_map[backend_name]:
+            if arg_name_ply is None:
+                kwargs.pop(arg_name_mpl, None)
+            else:
                 kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
+
+    # Values not being same as default implies user is explicitly passing the arguments
+    for arg, def_val in positional_args:
+        if arg in kwargs and kwargs[arg] == def_val:
+            kwargs.pop(arg, None)
 
     return data_preprocessor_map[kind](data), kwargs
 
@@ -1255,10 +1325,12 @@ class KoalasSeriesPlotMethods(PandasObject):
         secondary_y=False,
         **kwds
     ):
+        positional_args = locals()
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ != "databricks.koalas.plot":
-            plot_data, kwds = _get_args_map(plot_backend.__name__, self.data, kind, kwds)
+            args = {**positional_args, **kwds}
+            plot_data, kwds = _get_args_map(plot_backend.__name__, self.data, kind, args)
             return plot_backend.plot(plot_data, kind=kind, **kwds)
 
         return plot_series(
@@ -1647,11 +1719,13 @@ class KoalasFramePlotMethods(PandasObject):
         sort_columns=False,
         **kwds
     ):
+        positional_args = locals()
         plot_backend = _get_plot_backend(kwds.pop("backend", None))
         # when using another backend, let the backend take the charge
         if plot_backend.__name__ != "databricks.koalas.plot":
-            plot_data, kwds = _get_args_map(plot_backend.__name__, self.data, kind, kwds)
-            return plot_backend.plot(plot_data, x=x, y=y, kind=kind, **kwds)
+            args = {**positional_args, **kwds}
+            plot_data, kwds = _get_args_map(plot_backend.__name__, self.data, kind, args)
+            return plot_backend.plot(plot_data, kind=kind, **kwds)
 
         return plot_frame(
             self.data,

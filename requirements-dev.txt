@@ -29,4 +29,3 @@ scikit-learn
 openpyxl
 xlrd
 plotly
-pandas_bokeh
