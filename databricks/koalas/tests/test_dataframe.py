@@ -92,6 +92,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
         self.assert_eq(kser, pser)
 
+    def test_assign_list(self):
+        pdf, kdf = self.df_pair
+
+        pser = pdf.a
+        kser = kdf.a
+
+        pdf["x"] = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+        kdf["x"] = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        self.assert_eq(kser, pser)
+
+        with self.assertRaisesRegex(ValueError, "Length of values does not match length of index"):
+            kdf["z"] = [10, 20, 30, 40, 50, 60, 70, 80]
+
     def test_dataframe_multiindex_columns(self):
         pdf = pd.DataFrame(
             {
