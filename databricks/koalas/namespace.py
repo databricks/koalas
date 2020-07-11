@@ -481,6 +481,8 @@ def read_delta(
     3      13
     4      14
     """
+    from delta.tables import DeltaTable
+
     if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
         options = options.get("options")  # type: ignore
 
@@ -488,6 +490,10 @@ def read_delta(
         options["versionAsOf"] = version
     if timestamp is not None:
         options["timestampAsOf"] = timestamp
+    if version is None and timestamp is None:
+        delta_table = DeltaTable.forPath(default_session(), path)
+        latest_version = delta_table.history(1).select("version").head()[0]
+        options["versionAsOf"] = latest_version
     return read_spark_io(path, format="delta", index_col=index_col, **options)
 
 

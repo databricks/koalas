@@ -600,6 +600,10 @@ class InternalFrame(object):
         #         ...
         #     }
         sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
+
+        # Cache the DataFrame to fix the partition ID.
+        sdf.cache()
+
         counts = map(
             lambda x: (x["key"], x["count"]),
             sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect(),
