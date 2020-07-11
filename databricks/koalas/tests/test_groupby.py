@@ -1537,10 +1537,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             acc += 1
             return np.sum(x)
 
-        # TODO: is it possible to avoid executing the UDF multiple times with distributed-sequence?
-        with ks.option_context("compute.default_index_type", "sequence"):
-            actual = kdf.groupby("d").apply(sum_with_acc_frame).sort_index()
-            actual.columns = ["d", "v"]
+        actual = kdf.groupby("d").apply(sum_with_acc_frame).sort_index()
+        actual.columns = ["d", "v"]
         self.assert_eq(actual, pdf.groupby("d").apply(sum).sort_index().reset_index(drop=True))
         self.assert_eq(acc.value, 2)
 
@@ -1549,12 +1547,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             acc += 1
             return np.sum(x)
 
-        # TODO: is it possible to avoid executing the UDF multiple times with distributed-sequence?
-        with ks.option_context("compute.default_index_type", "sequence"):
-            self.assert_eq(
-                kdf.groupby("d")["v"].apply(sum_with_acc_series).sort_index(),
-                pdf.groupby("d")["v"].apply(sum).sort_index().reset_index(drop=True),
-            )
+        self.assert_eq(
+            kdf.groupby("d")["v"].apply(sum_with_acc_series).sort_index(),
+            pdf.groupby("d")["v"].apply(sum).sort_index().reset_index(drop=True),
+        )
         self.assert_eq(acc.value, 4)
 
     def test_transform(self):
