@@ -1201,15 +1201,14 @@ def _get_args_map(backend_name, data, kind, kwargs):
     }
     # make the arguments values of matplotlib compatible with that of plotting backend
     args_map = {
-        "plotly": [
-            ("ax", None),
-            ("logx", "log_x"),
-            ("logy", "log_y"),
-            ("xlim", "range_x"),
-            ("ylim", "range_y"),
-            ("yerr", "error_y"),
-            ("xerr", "error_x"),
-        ]
+        "plotly": {
+            "logx": "log_x",
+            "logy": "log_y",
+            "xlim": "range_x",
+            "ylim": "range_y",
+            "yerr": "error_y",
+            "xerr": "error_x",
+        }
     }
 
     if isinstance(data, Series):
@@ -1271,18 +1270,14 @@ def _get_args_map(backend_name, data, kind, kwargs):
     kwargs.pop("kwds", None)
     kwargs.pop("kind", None)
 
-    if backend_name in args_map:
-        for arg_name_mpl, arg_name_ply in args_map[backend_name]:
-            if arg_name_ply is None:
-                kwargs.pop(arg_name_mpl, None)
-            else:
-                kwargs[arg_name_ply] = kwargs.pop(arg_name_mpl)
-
-    # Values not being same as default implies user is explicitly passing the arguments
     for arg, def_val in positional_args:
+        # map the argument if possible
+        if backend_name in args_map:
+            if arg in kwargs and arg in args_map[backend_name]:
+                kwargs[args_map[backend_name][arg]] = kwargs.pop(arg)
+        # remove argument is default and not mapped
         if arg in kwargs and kwargs[arg] == def_val:
             kwargs.pop(arg, None)
-
     return data_preprocessor_map[kind](data), kwargs
 
 

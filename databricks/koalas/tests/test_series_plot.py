@@ -69,7 +69,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         return b64_data
 
     def test_plot_backends(self):
-        default_plot_backend = "matplotlib"
         plot_backend = "plotly"
 
         with ks.option_context("plotting.backend", plot_backend):
@@ -79,7 +78,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(module.__name__, plot_backend)
 
     def test_plot_backends_incorrect(self):
-        default_plot_backend = "matplotlib"
         fake_plot_backend = "none_plotting_module"
 
         with ks.option_context("plotting.backend", fake_plot_backend):
