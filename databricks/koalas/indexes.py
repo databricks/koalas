@@ -2385,19 +2385,21 @@ class MultiIndex(Index):
         else:
             raise TypeError("'name' must be a list / sequence of column names.")
 
-        sdf = self._internal.spark_frame.select(
-            [
-                scol.alias(name_like_string(label))
-                for scol, label in zip(self._internal.index_spark_columns, name)
-            ]
-            + [NATURAL_ORDER_COLUMN_NAME]
-        )
-
         if index:
+            sdf = self._internal.spark_frame
+            for label, index_spark_column in zip(name, self._internal.index_spark_columns):
+                sdf = sdf.withColumn(label[0], index_spark_column)
             index_map = OrderedDict(
                 (name_like_string(label), n) for label, n in zip(name, self._internal.index_names)
             )
         else:
+            sdf = self._internal.spark_frame.select(
+                [
+                    scol.alias(name_like_string(label))
+                    for scol, label in zip(self._internal.index_spark_columns, name)
+                ]
+                + [NATURAL_ORDER_COLUMN_NAME]
+            )
             index_map = None  # type: ignore
 
         internal = InternalFrame(
