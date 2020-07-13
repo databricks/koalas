@@ -4914,37 +4914,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         y    3
         Name: 0, dtype: int64
         """
-        if not isinstance(level, (tuple, list)):
-            if not isinstance(level, (str, int)):
-                raise KeyError("Level {} not found".format(level))
-            level = [level]
-
-        spark_frame = self._internal.spark_frame
-        index_map = self._internal.index_map.copy()
-        index_names = self.index.names
-        nlevels = self.index.nlevels
-        for n in level:
-            if isinstance(n, str):
-                if n not in index_names:
-                    raise KeyError("Level {} not found".format(n))
-                n = index_names.index(n)
-            elif isinstance(n, int):
-                if n >= nlevels:
-                    raise IndexError(
-                        "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
-                    )
-            index_spark_column = self._internal.index_spark_column_names[n]
-            spark_frame = spark_frame.drop(index_spark_column)
-            index_map.pop(index_spark_column)
-
-        if len(level) == nlevels:
-            raise ValueError(
-                "Cannot remove {0} levels from an index with {0} levels: "
-                "at least one level must be left.".format(nlevels)
-            )
-        internal = self._internal.copy(spark_frame=spark_frame, index_map=index_map)
-
-        return first_series(DataFrame(internal))
+        return first_series(self.to_frame().droplevel(level=level, axis=0))
 
     def tail(self, n=5):
         """

@@ -5749,6 +5749,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1 2      3   4
         5 6      7   8
         9 10    11  12
+
         >>> df.droplevel('a')  # doctest: +NORMALIZE_WHITESPACE
         level_1   c   d
         level_2   e   f
@@ -5767,40 +5768,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
         kdf = self.copy()
         if axis == 0:
-            names = self.index.names
-            nlevels = self.index.nlevels
             if not isinstance(level, (tuple, list)):
+                if not isinstance(level, (str, int)):
+                    raise KeyError("Level {} not found".format(level))
                 level = [level]
 
+            spark_frame = self._internal.spark_frame
+            index_map = self._internal.index_map.copy()
+            index_names = self.index.names
+            nlevels = self.index.nlevels
             for n in level:
-                if isinstance(n, int) and (n > nlevels - 1):
-                    raise IndexError(
-                        "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
-                    )
-                if isinstance(n, (str, tuple)) and (n not in names):
-                    raise KeyError("Level {} not found".format(n))
+                if isinstance(n, str):
+                    if n not in index_names:
+                        raise KeyError("Level {} not found".format(n))
+                    n = index_names.index(n)
+                elif isinstance(n, int):
+                    if n >= nlevels:
+                        raise IndexError(
+                            "Too many levels: Index has only {} levels, not {}".format(
+                                nlevels, n + 1
+                            )
+                        )
+                index_spark_column = self._internal.index_spark_column_names[n]
+                spark_frame = spark_frame.drop(index_spark_column)
+                index_map.pop(index_spark_column)
 
-            if len(level) >= nlevels:
+            if len(level) == nlevels:
                 raise ValueError(
-                    "Cannot remove {} levels from an index with {} "
-                    "levels: at least one level must be "
-                    "left.".format(len(level), nlevels)
+                    "Cannot remove {0} levels from an index with {0} levels: "
+                    "at least one level must be left.".format(nlevels)
                 )
-            drop_spark_index_columns = list()
-            index_spark_column_names = kdf._internal.index_spark_column_names
-            for n in level:
-                if isinstance(n, int):
-                    index_order = n
-                elif isinstance(n, (str, tuple)):
-                    index_order = kdf.index.names.index(n)
-                drop_spark_index_columns.append(index_spark_column_names[index_order])
-            sdf = kdf._internal.spark_frame
-            sdf = sdf.drop(*drop_spark_index_columns)
-            index_map = kdf._internal.index_map.copy()
-            for drop_spark_index_column in drop_spark_index_columns:
-                index_map.pop(drop_spark_index_column)
-            internal_frame = kdf._internal.copy(spark_frame=sdf, index_map=index_map)
-            kdf = DataFrame(internal_frame)
+            internal = self._internal.copy(spark_frame=spark_frame, index_map=index_map)
+            kdf = DataFrame(internal)
         elif axis == 1:
             names = self.columns.names
             nlevels = self.columns.nlevels
