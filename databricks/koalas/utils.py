@@ -191,7 +191,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         return DataFrame(
             InternalFrame(
                 spark_frame=joined_df,
-                index_map=OrderedDict(zip(index_columns, this._internal.index_names)),
+                index_map=OrderedDict(zip(index_column_names, this._internal.index_names)),
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
                 column_label_names=column_label_names,
