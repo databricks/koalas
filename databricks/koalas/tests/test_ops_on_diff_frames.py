@@ -458,6 +458,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+        pdf = pd.DataFrame({"a": [1, 2, 3], "Koalas": [0, 1, 2]}).set_index("Koalas", drop=False)
+        kdf = ks.from_pandas(pdf)
+
+        kdf.index.name = None
+        kdf["NEW"] = ks.Series([100, 200, 300])
+
+        pdf.index.name = None
+        pdf["NEW"] = pd.Series([100, 200, 300])
+
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
     def test_assignment_frame(self):
         kdf = ks.from_pandas(self.pdf1)
         pdf = self.pdf1
