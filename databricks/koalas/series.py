@@ -4865,6 +4865,57 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
+    def droplevel(self, level):
+        """
+        Return Series with requested index level(s) removed.
+
+        Parameters
+        ----------
+        level : int, str, or list-like
+            If a string is given, must be the name of a level
+            If list-like, elements must be names or positional indexes
+            of levels.
+
+        Returns
+        -------
+        Series
+            Series with requested index level(s) removed.
+
+        Examples
+        --------
+        >>> kser = ks.Series(
+        ...     [1, 2, 3],
+        ...     index=pd.MultiIndex.from_tuples(
+        ...         [("x", "a"), ("x", "b"), ("y", "c")], names=["level_1", "level_2"]
+        ...     ),
+        ... )
+        >>> kser
+        level_1  level_2
+        x        a          1
+                 b          2
+        y        c          3
+        Name: 0, dtype: int64
+
+        Removing specific index level by level
+
+        >>> kser.droplevel(0)
+        level_2
+        a    1
+        b    2
+        c    3
+        Name: 0, dtype: int64
+
+        Removing specific index level by name
+
+        >>> kser.droplevel("level_2")
+        level_1
+        x    1
+        x    2
+        y    3
+        Name: 0, dtype: int64
+        """
+        return first_series(self.to_frame().droplevel(level=level, axis=0))
+
     def tail(self, n=5):
         """
         Return the last `n` rows.
