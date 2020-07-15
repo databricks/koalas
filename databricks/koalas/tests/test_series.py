@@ -1820,11 +1820,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
 
             self.assert_eq(pser.droplevel(0), kser.droplevel(0))
+            self.assert_eq(pser.droplevel("level_1"), kser.droplevel("level_1"))
             self.assert_eq(pser.droplevel(-1), kser.droplevel(-1))
             self.assert_eq(pser.droplevel([0]), kser.droplevel([0]))
+            self.assert_eq(pser.droplevel(["level_1"]), kser.droplevel(["level_1"]))
             self.assert_eq(pser.droplevel((0,)), kser.droplevel((0,)))
+            self.assert_eq(pser.droplevel(("level_1",)), kser.droplevel(("level_1",)))
             self.assert_eq(pser.droplevel([0, 2]), kser.droplevel([0, 2]))
+            self.assert_eq(
+                pser.droplevel(["level_1", "level_3"]), kser.droplevel(["level_1", "level_3"])
+            )
             self.assert_eq(pser.droplevel((1, 2)), kser.droplevel((1, 2)))
+            self.assert_eq(
+                pser.droplevel(("level_2", "level_3")), kser.droplevel(("level_2", "level_3"))
+            )
 
             with self.assertRaisesRegex(KeyError, "Level {0, 1, 2} not found"):
                 kser.droplevel({0, 1, 2})
