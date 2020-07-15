@@ -1820,6 +1820,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
 
             self.assert_eq(pser.droplevel(0), kser.droplevel(0))
+            self.assert_eq(pser.droplevel(-1), kser.droplevel(-1))
             self.assert_eq(pser.droplevel([0]), kser.droplevel([0]))
             self.assert_eq(pser.droplevel((0,)), kser.droplevel((0,)))
             self.assert_eq(pser.droplevel([0, 2]), kser.droplevel([0, 2]))
@@ -1834,11 +1835,30 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             ):
                 kser.droplevel(10)
             with self.assertRaisesRegex(
+                IndexError,
+                "Too many levels: Index has only 3 levels, -10 is not a valid level number",
+            ):
+                kser.droplevel(-10)
+            with self.assertRaisesRegex(
                 ValueError,
                 "Cannot remove 3 levels from an index with 3 levels: "
                 "at least one level must be left.",
             ):
                 kser.droplevel([0, 1, 2])
+            with self.assertRaisesRegex(
+                ValueError,
+                "Cannot remove 5 levels from an index with 3 levels: "
+                "at least one level must be left.",
+            ):
+                kser.droplevel([1, 1, 1, 1, 1])
+
+            # Tupled names
+            pser.index.names = [("a", "1"), ("b", "2"), ("c", "3")]
+            kser = ks.from_pandas(pser)
+
+            self.assert_eq(
+                pser.droplevel([("a", "1"), ("c", "3")]), kser.droplevel([("a", "1"), ("c", "3")])
+            )
 
     def test_tail(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):

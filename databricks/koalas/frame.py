@@ -5777,27 +5777,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index_map = self._internal.index_map.copy()
             index_names = self.index.names
             nlevels = self.index.nlevels
+            int_levels = list()
             for n in level:
-                if isinstance(n, str):
+                if isinstance(n, (str, tuple)):
                     if n not in index_names:
                         raise KeyError("Level {} not found".format(n))
                     n = index_names.index(n)
                 elif isinstance(n, int):
+                    if n < 0:
+                        n = n + nlevels
+                        if n < 0:
+                            raise IndexError(
+                                "Too many levels: Index has only {} levels, "
+                                "{} is not a valid level number".format(nlevels, (n - nlevels))
+                            )
                     if n >= nlevels:
                         raise IndexError(
                             "Too many levels: Index has only {} levels, not {}".format(
-                                nlevels, n + 1
+                                nlevels, (n + 1)
                             )
                         )
-                index_spark_column = self._internal.index_spark_column_names[n]
+                int_levels.append(n)
+
+            if len(int_levels) >= nlevels:
+                raise ValueError(
+                    "Cannot remove {} levels from an index with {} levels: "
+                    "at least one level must be left.".format(len(int_levels), nlevels)
+                )
+
+            for int_level in int_levels:
+                index_spark_column = self._internal.index_spark_column_names[int_level]
                 spark_frame = spark_frame.drop(index_spark_column)
                 index_map.pop(index_spark_column)
-
-            if len(level) == nlevels:
-                raise ValueError(
-                    "Cannot remove {0} levels from an index with {0} levels: "
-                    "at least one level must be left.".format(nlevels)
-                )
             internal = self._internal.copy(spark_frame=spark_frame, index_map=index_map)
             kdf = DataFrame(internal)
         elif axis == 1:

@@ -581,10 +581,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
             )
             kdf = ks.from_pandas(pdf)
+
             self.assert_eq(pdf.droplevel("a"), kdf.droplevel("a"))
+            self.assert_eq(pdf.droplevel(0), kdf.droplevel(0))
+            self.assert_eq(pdf.droplevel(-1), kdf.droplevel(-1))
             self.assert_eq(pdf.droplevel("level_1", axis=1), kdf.droplevel("level_1", axis=1))
+            self.assert_eq(pdf.droplevel(0, axis=1), kdf.droplevel(0, axis=1))
             self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
             self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
+            self.assertRaises(ValueError, lambda: kdf.droplevel([1, 1, 1, 1, 1]))
+            self.assertRaises(IndexError, lambda: kdf.droplevel(-3))
+
+            # Tupled names
+            pdf.index.names = [("a", "b"), ("x", "y")]
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(pdf.droplevel([("a", "b")]), kdf.droplevel([("a", "b")]))
 
     def test_drop(self):
         pdf = pd.DataFrame({"x": [1, 2], "y": [3, 4], "z": [5, 6]}, index=np.random.rand(2))
