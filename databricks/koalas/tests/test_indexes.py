@@ -81,7 +81,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx.name = "Koalas"
         kidx.name = "Koalas"
         self.assert_eq(repr(kidx.to_series()), repr(pidx.to_series()))
-        self.assert_eq(repr(kidx.to_series(name="a")), repr(pidx.to_series(name="a")))
+        self.assert_eq(repr(kidx.to_series(name=("x", "a"))), repr(pidx.to_series(name=("x", "a"))))
 
         # With tupled name
         pidx.name = ("x", "a")
