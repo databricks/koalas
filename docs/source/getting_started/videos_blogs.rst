@@ -5,9 +5,38 @@ Koalas Talks and Blogs
 Blog Posts
 ----------
 
+- `Introducing Koalas 1.0 (Jun 24, 2020) <https://databricks.com/blog/2020/06/24/introducing-koalas-1-0.html>`_
 - `10 Minutes from pandas to Koalas on Apache Spark (Mar 31, 2020) <https://databricks.com/blog/2020/03/31/10-minutes-from-pandas-to-koalas-on-apache-spark.html>`_
 - `Guest Blog: How Virgin Hyperloop One Reduced Processing Time from Hours to Minutes with Koalas (Aug 22, 2019) <https://databricks.com/blog/2019/08/22/guest-blog-how-virgin-hyperloop-one-reduced-processing-time-from-hours-to-minutes-with-koalas.html>`_
 - `Koalas: Easy Transition from pandas to Apache Spark (Apr 24, 2019) <https://databricks.com/blog/2019/04/24/koalas-easy-transition-from-pandas-to-apache-spark.html>`_
+
+
+Spark + AI Summit 2020 (Jun 24, 2020)
+-------------------------------------
+
+Introducing Apache Spark 3.0: A retrospective of the Last 10 Years, and a Look Forward to the Next 10 Years to Come.
+====================================================================================================================
+
+.. raw:: html
+
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/OLJKIogf2nU?start=555" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+Koalas: Making an Easy Transition from Pandas to Apache Spark
+=============================================================
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/G_-9VbyHcx8" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
+Koalas: Pandas on Apache Spark
+==============================
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/iUpBSHoqzLM" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
 Webinar @ Databricks (Mar 27, 2020)
