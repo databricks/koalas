@@ -82,7 +82,11 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
     """
     from databricks.koalas.config import get_option
     from databricks.koalas.frame import DataFrame
-    from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
+    from databricks.koalas.internal import (
+        InternalFrame,
+        NATURAL_ORDER_COLUMN_NAME,
+        SPARK_INDEX_NAME_FORMAT,
+    )
     from databricks.koalas.series import Series
 
     if all(isinstance(arg, Series) for arg in args):
@@ -116,7 +120,10 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         that_sdf = that._internal.resolved_copy.spark_frame.alias("that")
 
         # If the same named index is found, that's used.
-        for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
+        index_column_names = []
+        for i, ((this_column, this_name), (that_column, that_name)) in enumerate(
+            this_and_that_index_map
+        ):
             if this_name == that_name:
                 # We should merge the Spark columns into one
                 # to mimic pandas' behavior.
@@ -124,8 +131,11 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
                 that_scol = scol_for(that_sdf, that_column)
                 join_scol = this_scol == that_scol
                 join_scols.append(join_scol)
+
+                column_name = SPARK_INDEX_NAME_FORMAT(i)
+                index_column_names.append(column_name)
                 merged_index_scols.append(
-                    F.when(this_scol.isNotNull(), this_scol).otherwise(that_scol).alias(this_column)
+                    F.when(this_scol.isNotNull(), this_scol).otherwise(that_scol).alias(column_name)
                 )
             else:
                 raise ValueError("Index names must be exactly matched currently.")
@@ -156,7 +166,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             + order_column
         )
 
-        index_columns = set(this._internal.index_spark_column_names)
+        index_columns = set(index_column_names)
         new_data_columns = [
             col
             for col in joined_df.columns
@@ -179,8 +189,9 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             else None
         )
         return DataFrame(
-            this._internal.copy(
+            InternalFrame(
                 spark_frame=joined_df,
+                index_map=OrderedDict(zip(index_column_names, this._internal.index_names)),
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
                 column_label_names=column_label_names,
