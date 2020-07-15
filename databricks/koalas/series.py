@@ -1605,11 +1605,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4       c
         Name: x, dtype: object
         """
-        return self._fillna(value, method, axis, inplace, limit)
+        kser = self._fillna(value=value, method=method, axis=axis, limit=limit)
 
-    def _fillna(self, value=None, method=None, axis=None, inplace=False, limit=None, part_cols=()):
-        axis = validate_axis(axis)
+        if method is not None:
+            kser = DataFrame(kser._kdf._internal.resolved_copy)._kser_for(self._column_label)
+
         inplace = validate_bool_kwarg(inplace, "inplace")
+        if inplace:
+            self._kdf._update_internal_frame(kser._kdf._internal, requires_same_anchor=False)
+        else:
+            return kser._with_new_scol(kser.spark.column)
+
+    def _fillna(self, value=None, method=None, axis=None, limit=None, part_cols=()):
+        axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
         if (value is None) and (method is None):
@@ -1623,10 +1631,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             cond = scol.isNull() | F.isnan(scol)
         else:
             if not self.spark.nullable:
-                if inplace:
-                    return
-                else:
-                    return self
+                return self.copy()
             cond = scol.isNull()
 
         if value is not None:
@@ -1658,14 +1663,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
             scol = F.when(cond, func(scol, True).over(window)).otherwise(scol)
 
-        if inplace:
-            self._kdf._update_internal_frame(
-                self._kdf._internal.with_new_spark_column(
-                    self._column_label, scol.alias(name_like_string(self.name))
-                )
+        return DataFrame(
+            self._kdf._internal.with_new_spark_column(
+                self._column_label, scol.alias(name_like_string(self.name))
             )
-        else:
-            return self._with_new_scol(scol)
+        )._kser_for(self._column_label)
 
     def dropna(self, axis=0, inplace=False, **kwargs):
         """

@@ -2710,30 +2710,54 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_ffill(self):
+        idx = np.random.rand(6)
         pdf = pd.DataFrame(
             {
                 "x": [np.nan, 2, 3, 4, np.nan, 6],
                 "y": [1, 2, np.nan, 4, np.nan, np.nan],
                 "z": [1, 2, 3, 4, np.nan, np.nan],
             },
-            index=np.random.rand(6),
+            index=idx,
         )
         kdf = ks.from_pandas(pdf)
+
         self.assert_eq(kdf.ffill(), pdf.ffill())
         self.assert_eq(kdf.ffill(limit=1), pdf.ffill(limit=1))
 
+        pser = pdf.y
+        kser = kdf.y
+
+        kdf.ffill(inplace=True)
+        pdf.ffill(inplace=True)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kser[idx[2]], pser[idx[2]])
+
     def test_bfill(self):
+        idx = np.random.rand(6)
         pdf = pd.DataFrame(
             {
                 "x": [np.nan, 2, 3, 4, np.nan, 6],
                 "y": [1, 2, np.nan, 4, np.nan, np.nan],
                 "z": [1, 2, 3, 4, np.nan, np.nan],
             },
-            index=np.random.rand(6),
+            index=idx,
         )
         kdf = ks.from_pandas(pdf)
+
         self.assert_eq(kdf.bfill(), pdf.bfill())
         self.assert_eq(kdf.bfill(limit=1), pdf.bfill(limit=1))
+
+        pser = pdf.x
+        kser = kdf.x
+
+        kdf.bfill(inplace=True)
+        pdf.bfill(inplace=True)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kser[idx[0]], pser[idx[0]])
 
     def test_filter(self):
         pdf = pd.DataFrame(
