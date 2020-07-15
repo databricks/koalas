@@ -183,6 +183,7 @@ def read_csv(
     squeeze=False,
     mangle_dupe_cols=True,
     dtype=None,
+    nrows=None,
     parse_dates=False,
     quotechar=None,
     escapechar=None,
@@ -228,6 +229,8 @@ def read_csv(
     dtype : Type name or dict of column -> type, default None
         Data type for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32} Use str or object
         together with suitable na_values settings to preserve and not interpret dtype.
+    nrows : int, default None
+        Number of rows to read from the CSV file.
     parse_dates : boolean or list of ints or names or list of lists or dict, default `False`.
         Currently only `False` is allowed.
     quotechar : str (length 1), optional
@@ -340,6 +343,9 @@ def read_csv(
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
+
+    if nrows is not None:
+        sdf = sdf.limit(nrows)
 
     index_map = _get_index_map(sdf, index_col)
     kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
