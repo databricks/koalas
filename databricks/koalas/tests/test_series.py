@@ -227,7 +227,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
 
     def test_fillna(self):
-        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)
 
         pser = pdf.x
@@ -1781,24 +1781,36 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(np.abs(kser), np.abs(pser))
 
     def test_bfill(self):
-        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        kser = kdf.x
 
         self.assert_eq(kser.bfill(), pser.bfill())
+        self.assert_eq(kser.bfill()[0], pser.bfill()[0])
 
         kser.bfill(inplace=True)
         pser.bfill(inplace=True)
         self.assert_eq(kser, pser)
+        self.assert_eq(kser[0], pser[0])
+        self.assert_eq(kdf, pdf)
 
     def test_ffill(self):
-        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
+        kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kser.ffill()), repr(pser.ffill()))
+        pser = pdf.x
+        kser = kdf.x
+
+        self.assert_eq(kser.ffill(), pser.ffill(), almost=True)
+        self.assert_eq(kser.ffill()[4], pser.ffill()[4])
 
         kser.ffill(inplace=True)
         pser.ffill(inplace=True)
-        self.assert_eq(repr(kser), repr(pser))
+        self.assert_eq(kser, pser, almost=True)
+        self.assert_eq(kser[4], pser[4])
+        self.assert_eq(kdf, pdf)
 
     def test_iteritems(self):
         pser = pd.Series(["A", "B", "C"])

@@ -4708,11 +4708,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  0.0  1.0  2.0  5
         3  0.0  3.0  1.0  4
         """
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+
         if value is not None:
-            axis = validate_axis(axis)
-            inplace = validate_bool_kwarg(inplace, "inplace")
-            if axis != 0:
-                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
             if limit is not None:
@@ -4729,26 +4729,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     label = kser._internal.column_labels[0]
                     for k, v in value.items():
                         if k == label[: len(k)]:
-                            return kser.fillna(
-                                value=value[k], method=method, axis=axis, inplace=False, limit=limit
+                            return kser._fillna(
+                                value=value[k], method=method, axis=axis, limit=limit
                             )
                     else:
                         return kser
 
             else:
-                op = lambda kser: kser.fillna(
-                    value=value, method=method, axis=axis, inplace=False, limit=limit
-                )
+                op = lambda kser: kser._fillna(value=value, method=method, axis=axis, limit=limit)
         elif method is not None:
-            op = lambda kser: kser.fillna(
-                value=value, method=method, axis=axis, inplace=False, limit=limit
-            )
+            op = lambda kser: kser._fillna(value=value, method=method, axis=axis, limit=limit)
         else:
             raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
 
-        kdf = self._apply_series_op(op)
+        kdf = self._apply_series_op(op, should_resolve=(method is not None))
+
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if inplace:
-            self._update_internal_frame(kdf._internal)
+            self._update_internal_frame(kdf._internal, requires_same_anchor=False)
         else:
             return kdf
 
