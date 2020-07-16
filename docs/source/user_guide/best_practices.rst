@@ -147,7 +147,7 @@ Additionally, it is strongly discouraged to use case sensitive column names. Koa
    ...
    Reference 'a' is ambiguous, could be: a, a.;
 
-However, you can turn on ``spark.sql.caseSensitive`` in spark configuration to enable it if you use on your own risk.
+However, you can turn on ``spark.sql.caseSensitive`` in Spark configuration to enable it if you use on your own risk.
 
 .. code-block:: python
 
@@ -273,4 +273,3 @@ The example above can be also changed to directly using Koalas APIs as below:
    New York    441.0
    Helsinki    144.0
    Name: 0, dtype: float64
-
