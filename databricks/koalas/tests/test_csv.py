@@ -220,6 +220,12 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                 lambda: ks.read_csv(fn, comment=[1]),
             )
 
+    def test_read_csv_with_limit(self):
+        with self.csv_file(self.csv_text_with_comments) as fn:
+            expected = pd.read_csv(fn, comment="#", nrows=2)
+            actual = ks.read_csv(fn, comment="#", nrows=2)
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
     def test_read_csv_with_sep(self):
         with self.csv_file(self.tab_delimited_csv_text) as fn:
             expected = pd.read_csv(fn, sep="\t")
