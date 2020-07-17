@@ -84,8 +84,8 @@ from databricks.koalas.internal import (
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
 from databricks.koalas.typedef import infer_return_type, as_spark_type, DataFrameType, SeriesType
-from databricks.koalas.plot import KoalasFramePlotMethods
-from databricks.koalas.new_plot import PlotAccessor
+from databricks.koalas.plot import PlotAccessor
+
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
 # Two patterns basically seek the footer string from Pandas'
@@ -806,8 +806,7 @@ class DataFrame(Frame, Generic[T]):
         return self + other
 
     # create accessor for plot
-    plot = CachedAccessor("plot", KoalasFramePlotMethods)
-    new_plot = CachedAccessor("new_plot", PlotAccessor)
+    plot = CachedAccessor("plot", PlotAccessor)
 
     # create accessor for Spark related methods.
     spark = CachedAccessor("spark", SparkFrameMethods)
@@ -818,12 +817,12 @@ class DataFrame(Frame, Generic[T]):
     def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
-    hist.__doc__ = KoalasFramePlotMethods.hist.__doc__
+    hist.__doc__ = PlotAccessor.hist.__doc__
 
     def kde(self, bw_method=None, ind=None, **kwds):
         return self.plot.kde(bw_method, ind, **kwds)
 
-    kde.__doc__ = KoalasFramePlotMethods.kde.__doc__
+    kde.__doc__ = PlotAccessor.kde.__doc__
 
     add.__doc__ = _flex_doc_FRAME.format(
         desc="Addition", op_name="+", equiv="dataframe + other", reverse="radd"
