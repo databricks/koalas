@@ -28,4 +28,4 @@ pytest-cov
 scikit-learn
 openpyxl
 xlrd
-plotly
+plotly>=4.8
