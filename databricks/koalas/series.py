@@ -4860,33 +4860,30 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def cov(self, other: "Series", min_periods: Optional[int] = None) -> float:
         """
-        Return the covariance between two series.
+        Compute covariance with Series, excluding missing values.
 
         Parameters
         ----------
         other : Series
-        min_periods : int
+            Series with which to compute the covariance.
+        min_periods : int, optional
+            Minimum number of observations needed to have a valid result.
+
+        Returns
+        -------
+        float
+            Covariance between Series and other normalized by N-1
+            (unbiased estimator).
 
         Examples
         --------
-        >>> s1 = ks.Series([1, 2, 3, 4])
-        >>> s2 = ks.Series([5, 6, 7, 8])
-        >>> s1
-        0    1
-        1    2
-        2    3
-        3    4
-        Name: 0, dtype: int64
-
-        >>> s2
-        0    5
-        1    6
-        2    7
-        3    8
-        Name: 0, dtype: int64
-
+        >>> import databricks.koalas as ks
+        >>> ks.set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([0.90010907, 0.13484424, 0.62036035])
+        >>> s2 = ks.Series([0.12528585, 0.26962463, 0.51111198])
         >>> s1.cov(s2)
-        1.666666...
+        -0.01685762652715874
+        >>> ks.reset_option("compute.ops_on_diff_frames")
         """
 
         if not isinstance(other, Series):
