@@ -1564,8 +1564,9 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._apply_series_op(
             lambda sg: sg._kser._fillna(
-                value, method, axis, inplace, limit, part_cols=sg._groupkeys_scols,
-            )
+                value=value, method=method, axis=axis, limit=limit, part_cols=sg._groupkeys_scols
+            ),
+            should_resolve=(method is not None),
         )
 
     def bfill(self, limit=None):

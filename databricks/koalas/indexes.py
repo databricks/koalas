@@ -679,14 +679,13 @@ class Index(IndexOpsMixin):
         scol = self.spark.column
         if name is not None:
             scol = scol.alias(name_like_string(name))
+        elif len(kdf._internal.index_map) == 1:
+            name = self.name
         column_labels = (
             [(SPARK_DEFAULT_SERIES_NAME,)]
-            if len(kdf._internal.index_map) > 1
-            else [
-                (SPARK_DEFAULT_SERIES_NAME,) if name is None else name
-                for name in kdf._internal.index_names
-            ]
-        )
+            if len(kdf._internal.index_map) > 1 or name is None
+            else [name if isinstance(name, tuple) else (name,)]
+        )  # type: List[Tuple[str, ...]]
         internal = kdf._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
         )
@@ -748,20 +747,32 @@ class Index(IndexOpsMixin):
                 name = self._internal.index_names[0]
         elif isinstance(name, str):
             name = (name,)
-        scol = self.spark.column.alias(name_like_string(name))
 
-        sdf = self._internal.spark_frame.select(scol, NATURAL_ORDER_COLUMN_NAME)
+        return self._to_frame(index=index, names=[name])
 
+    def _to_frame(self, index, names):
         if index:
-            index_map = OrderedDict({name_like_string(name): self._internal.index_names[0]})
+            index_map = self._internal.index_map
+            data_columns = self._internal.index_spark_column_names
+            sdf = self._internal.spark_frame.select(
+                self._internal.index_spark_columns + [NATURAL_ORDER_COLUMN_NAME]
+            )
         else:
-            index_map = None  # type: ignore
+            index_map = None
+            data_columns = [name_like_string(label) for label in names]
+            sdf = self._internal.spark_frame.select(
+                [
+                    scol.alias(col)
+                    for scol, col in zip(self._internal.index_spark_columns, data_columns)
+                ]
+                + [NATURAL_ORDER_COLUMN_NAME]
+            )
 
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=index_map,
-            column_labels=[name],
-            data_spark_columns=[scol_for(sdf, name_like_string(name))],
+            column_labels=names,
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
         return DataFrame(internal)
 
@@ -1517,7 +1528,10 @@ class Index(IndexOpsMixin):
         # |                1|              9|
         # +-----------------+---------------+
 
-        return sdf.orderBy(self.spark.column.desc(), F.col(sequence_col).asc()).first()[0]
+        return sdf.orderBy(
+            scol_for(sdf, self._internal.data_spark_column_names[0]).desc(),
+            F.col(sequence_col).asc(),
+        ).first()[0]
 
     def argmin(self):
         """
@@ -1544,7 +1558,10 @@ class Index(IndexOpsMixin):
         sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
-        return sdf.orderBy(self.spark.column.asc(), F.col(sequence_col).asc()).first()[0]
+        return sdf.orderBy(
+            scol_for(sdf, self._internal.data_spark_column_names[0]).asc(),
+            F.col(sequence_col).asc(),
+        ).first()[0]
 
     def set_names(self, names, level=None, inplace=False):
         """
@@ -2379,28 +2396,7 @@ class MultiIndex(Index):
         else:
             raise TypeError("'name' must be a list / sequence of column names.")
 
-        sdf = self._internal.spark_frame.select(
-            [
-                scol.alias(name_like_string(label))
-                for scol, label in zip(self._internal.index_spark_columns, name)
-            ]
-            + [NATURAL_ORDER_COLUMN_NAME]
-        )
-
-        if index:
-            index_map = OrderedDict(
-                (name_like_string(label), n) for label, n in zip(name, self._internal.index_names)
-            )
-        else:
-            index_map = None  # type: ignore
-
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=index_map,
-            column_labels=name,
-            data_spark_columns=[scol_for(sdf, name_like_string(label)) for label in name],
-        )
-        return DataFrame(internal)
+        return self._to_frame(index=index, names=name)
 
     def to_pandas(self) -> pd.MultiIndex:
         """

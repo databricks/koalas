@@ -581,10 +581,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
             )
             kdf = ks.from_pandas(pdf)
+
             self.assert_eq(pdf.droplevel("a"), kdf.droplevel("a"))
+            self.assert_eq(pdf.droplevel(0), kdf.droplevel(0))
+            self.assert_eq(pdf.droplevel(-1), kdf.droplevel(-1))
             self.assert_eq(pdf.droplevel("level_1", axis=1), kdf.droplevel("level_1", axis=1))
+            self.assert_eq(pdf.droplevel(0, axis=1), kdf.droplevel(0, axis=1))
             self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
             self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
+            self.assertRaises(ValueError, lambda: kdf.droplevel([1, 1, 1, 1, 1]))
+            self.assertRaises(IndexError, lambda: kdf.droplevel(-3))
+
+            # Tupled names
+            pdf.index.names = [("a", "b"), ("x", "y")]
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(pdf.droplevel([("a", "b")]), kdf.droplevel([("a", "b")]))
 
     def test_drop(self):
         pdf = pd.DataFrame({"x": [1, 2], "y": [3, 4], "z": [5, 6]}, index=np.random.rand(2))
@@ -2736,30 +2747,54 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_ffill(self):
+        idx = np.random.rand(6)
         pdf = pd.DataFrame(
             {
                 "x": [np.nan, 2, 3, 4, np.nan, 6],
                 "y": [1, 2, np.nan, 4, np.nan, np.nan],
                 "z": [1, 2, 3, 4, np.nan, np.nan],
             },
-            index=np.random.rand(6),
+            index=idx,
         )
         kdf = ks.from_pandas(pdf)
+
         self.assert_eq(kdf.ffill(), pdf.ffill())
         self.assert_eq(kdf.ffill(limit=1), pdf.ffill(limit=1))
 
+        pser = pdf.y
+        kser = kdf.y
+
+        kdf.ffill(inplace=True)
+        pdf.ffill(inplace=True)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kser[idx[2]], pser[idx[2]])
+
     def test_bfill(self):
+        idx = np.random.rand(6)
         pdf = pd.DataFrame(
             {
                 "x": [np.nan, 2, 3, 4, np.nan, 6],
                 "y": [1, 2, np.nan, 4, np.nan, np.nan],
                 "z": [1, 2, 3, 4, np.nan, np.nan],
             },
-            index=np.random.rand(6),
+            index=idx,
         )
         kdf = ks.from_pandas(pdf)
+
         self.assert_eq(kdf.bfill(), pdf.bfill())
         self.assert_eq(kdf.bfill(limit=1), pdf.bfill(limit=1))
+
+        pser = pdf.x
+        kser = kdf.x
+
+        kdf.bfill(inplace=True)
+        pdf.bfill(inplace=True)
+
+        self.assert_eq(kdf, pdf)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kser[idx[0]], pser[idx[0]])
 
     def test_filter(self):
         pdf = pd.DataFrame(

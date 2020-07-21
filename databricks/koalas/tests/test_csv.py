@@ -220,6 +220,12 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
                 lambda: ks.read_csv(fn, comment=[1]),
             )
 
+    def test_read_csv_with_limit(self):
+        with self.csv_file(self.csv_text_with_comments) as fn:
+            expected = pd.read_csv(fn, comment="#", nrows=2)
+            actual = ks.read_csv(fn, comment="#", nrows=2)
+            self.assertPandasAlmostEqual(expected, actual.toPandas())
+
     def test_read_csv_with_sep(self):
         with self.csv_file(self.tab_delimited_csv_text) as fn:
             expected = pd.read_csv(fn, sep="\t")
@@ -353,3 +359,25 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
         with open(output_path) as f:
             self.assertEqual(f.read(), expected)
+
+    def test_to_csv_with_partition_cols(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
+        kdf = ks.DataFrame(pdf)
+
+        kdf.to_csv(self.tmp_dir, partition_cols="b", num_files=1)
+
+        partition_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("b=")]
+        assert len(partition_paths) > 0
+        for partition_path in partition_paths:
+            column, value = partition_path.split("=")
+            expected = pdf[pdf[column] == value].drop("b", axis=1).to_csv(index=False)
+
+            output_paths = [
+                path
+                for path in os.listdir("%s/%s" % (self.tmp_dir, partition_path))
+                if path.startswith("part-")
+            ]
+            assert len(output_paths) > 0
+            output_path = "%s/%s/%s" % (self.tmp_dir, partition_path, output_paths[0])
+            with open(output_path) as f:
+                self.assertEqual(f.read(), expected)

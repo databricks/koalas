@@ -1236,6 +1236,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
 
     def test_ffill(self):
+        idx = np.random.rand(4 * 3)
         pdf = pd.DataFrame(
             {
                 "A": [1, 1, 2, 2] * 3,
@@ -1243,7 +1244,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 "C": [None, None, None, 1] * 3,
                 "D": [0, 1, 5, 4] * 3,
             },
-            index=np.random.rand(4 * 3),
+            index=idx,
         )
         kdf = ks.from_pandas(pdf)
 
@@ -1269,6 +1270,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("A")["B"].ffill().sort_index(),
             almost=True,
         )
+        self.assert_eq(kdf.groupby("A")["B"].ffill()[idx[6]], pdf.groupby("A")["B"].ffill()[idx[6]])
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C"), ("Z", "D")])
@@ -1287,6 +1289,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             )
 
     def test_bfill(self):
+        idx = np.random.rand(4 * 3)
         pdf = pd.DataFrame(
             {
                 "A": [1, 1, 2, 2] * 3,
@@ -1294,7 +1297,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 "C": [None, None, None, 1] * 3,
                 "D": [0, 1, 5, 4] * 3,
             },
-            index=np.random.rand(4 * 3),
+            index=idx,
         )
         kdf = ks.from_pandas(pdf)
 
@@ -1318,6 +1321,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby("A")["B"].bfill().sort_index(), pdf.groupby("A")["B"].bfill().sort_index(),
         )
+        self.assert_eq(kdf.groupby("A")["B"].bfill()[idx[6]], pdf.groupby("A")["B"].bfill()[idx[6]])
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C"), ("Z", "D")])

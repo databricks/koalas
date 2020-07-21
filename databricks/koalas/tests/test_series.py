@@ -227,7 +227,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
 
     def test_fillna(self):
-        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)
 
         pser = pdf.x
@@ -1784,24 +1784,36 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(np.abs(kser), np.abs(pser))
 
     def test_bfill(self):
-        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.x
+        kser = kdf.x
 
         self.assert_eq(kser.bfill(), pser.bfill())
+        self.assert_eq(kser.bfill()[0], pser.bfill()[0])
 
         kser.bfill(inplace=True)
         pser.bfill(inplace=True)
         self.assert_eq(kser, pser)
+        self.assert_eq(kser[0], pser[0])
+        self.assert_eq(kdf, pdf)
 
     def test_ffill(self):
-        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
-        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
+        kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kser.ffill()), repr(pser.ffill()))
+        pser = pdf.x
+        kser = kdf.x
+
+        self.assert_eq(kser.ffill(), pser.ffill(), almost=True)
+        self.assert_eq(kser.ffill()[4], pser.ffill()[4])
 
         kser.ffill(inplace=True)
         pser.ffill(inplace=True)
-        self.assert_eq(repr(kser), repr(pser))
+        self.assert_eq(kser, pser, almost=True)
+        self.assert_eq(kser[4], pser[4])
+        self.assert_eq(kdf, pdf)
 
     def test_iteritems(self):
         pser = pd.Series(["A", "B", "C"])
@@ -1809,6 +1821,68 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         for p_items, k_items in zip(pser.iteritems(), kser.iteritems()):
             self.assert_eq(repr(p_items), repr(k_items))
+
+    def test_droplevel(self):
+        # droplevel is new in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            pser = pd.Series(
+                [1, 2, 3],
+                index=pd.MultiIndex.from_tuples(
+                    [("x", "a", "q"), ("x", "b", "w"), ("y", "c", "e")],
+                    names=["level_1", "level_2", "level_3"],
+                ),
+            )
+            kser = ks.from_pandas(pser)
+
+            self.assert_eq(pser.droplevel(0), kser.droplevel(0))
+            self.assert_eq(pser.droplevel("level_1"), kser.droplevel("level_1"))
+            self.assert_eq(pser.droplevel(-1), kser.droplevel(-1))
+            self.assert_eq(pser.droplevel([0]), kser.droplevel([0]))
+            self.assert_eq(pser.droplevel(["level_1"]), kser.droplevel(["level_1"]))
+            self.assert_eq(pser.droplevel((0,)), kser.droplevel((0,)))
+            self.assert_eq(pser.droplevel(("level_1",)), kser.droplevel(("level_1",)))
+            self.assert_eq(pser.droplevel([0, 2]), kser.droplevel([0, 2]))
+            self.assert_eq(
+                pser.droplevel(["level_1", "level_3"]), kser.droplevel(["level_1", "level_3"])
+            )
+            self.assert_eq(pser.droplevel((1, 2)), kser.droplevel((1, 2)))
+            self.assert_eq(
+                pser.droplevel(("level_2", "level_3")), kser.droplevel(("level_2", "level_3"))
+            )
+
+            with self.assertRaisesRegex(KeyError, "Level {0, 1, 2} not found"):
+                kser.droplevel({0, 1, 2})
+            with self.assertRaisesRegex(KeyError, "Level level_100 not found"):
+                kser.droplevel(["level_1", "level_100"])
+            with self.assertRaisesRegex(
+                IndexError, "Too many levels: Index has only 3 levels, not 11"
+            ):
+                kser.droplevel(10)
+            with self.assertRaisesRegex(
+                IndexError,
+                "Too many levels: Index has only 3 levels, -10 is not a valid level number",
+            ):
+                kser.droplevel(-10)
+            with self.assertRaisesRegex(
+                ValueError,
+                "Cannot remove 3 levels from an index with 3 levels: "
+                "at least one level must be left.",
+            ):
+                kser.droplevel([0, 1, 2])
+            with self.assertRaisesRegex(
+                ValueError,
+                "Cannot remove 5 levels from an index with 3 levels: "
+                "at least one level must be left.",
+            ):
+                kser.droplevel([1, 1, 1, 1, 1])
+
+            # Tupled names
+            pser.index.names = [("a", "1"), ("b", "2"), ("c", "3")]
+            kser = ks.from_pandas(pser)
+
+            self.assert_eq(
+                pser.droplevel([("a", "1"), ("c", "3")]), kser.droplevel([("a", "1"), ("c", "3")])
+            )
 
     def test_tail(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):

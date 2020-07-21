@@ -68,6 +68,24 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         plt.close(ax.figure)
         return b64_data
 
+    def test_plot_backends(self):
+        plot_backend = "plotly"
+
+        with ks.option_context("plotting.backend", plot_backend):
+            self.assertEqual(ks.options.plotting.backend, plot_backend)
+
+            module = ks.plot._get_plot_backend(plot_backend)
+            self.assertEqual(module.__name__, plot_backend)
+
+    def test_plot_backends_incorrect(self):
+        fake_plot_backend = "none_plotting_module"
+
+        with ks.option_context("plotting.backend", fake_plot_backend):
+            self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
+
+            with self.assertRaises(ValueError):
+                ks.plot._get_plot_backend(fake_plot_backend)
+
     def test_bar_plot(self):
         pdf = self.pdf1
         kdf = self.kdf1

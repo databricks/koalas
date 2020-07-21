@@ -43,7 +43,6 @@ from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -4026,7 +4025,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         name: str,
         format: Optional[str] = None,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -4038,7 +4037,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self,
         path: str,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -4115,7 +4114,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self,
         path: str,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         compression: Optional[str] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
@@ -4177,9 +4176,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             options = options.get("options")  # type: ignore
 
         builder = self.to_spark(index_col=index_col).write.mode(mode)
-        OptionUtils._set_opts(
-            builder, mode=mode, partitionBy=partition_cols, compression=compression
-        )
+        if partition_cols is not None:
+            builder.partitionBy(partition_cols)
+        builder._set_opts(compression=compression)
         builder.options(**options).format("parquet").save(path)
 
     def to_spark_io(
@@ -4187,7 +4186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path: Optional[str] = None,
         format: Optional[str] = None,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -4708,11 +4707,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  0.0  1.0  2.0  5
         3  0.0  3.0  1.0  4
         """
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
+
         if value is not None:
-            axis = validate_axis(axis)
-            inplace = validate_bool_kwarg(inplace, "inplace")
-            if axis != 0:
-                raise NotImplementedError("fillna currently only works for axis=0 or axis='index'")
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
                 raise TypeError("Unsupported type %s" % type(value))
             if limit is not None:
@@ -4729,26 +4728,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     label = kser._internal.column_labels[0]
                     for k, v in value.items():
                         if k == label[: len(k)]:
-                            return kser.fillna(
-                                value=value[k], method=method, axis=axis, inplace=False, limit=limit
+                            return kser._fillna(
+                                value=value[k], method=method, axis=axis, limit=limit
                             )
                     else:
                         return kser
 
             else:
-                op = lambda kser: kser.fillna(
-                    value=value, method=method, axis=axis, inplace=False, limit=limit
-                )
+                op = lambda kser: kser._fillna(value=value, method=method, axis=axis, limit=limit)
         elif method is not None:
-            op = lambda kser: kser.fillna(
-                value=value, method=method, axis=axis, inplace=False, limit=limit
-            )
+            op = lambda kser: kser._fillna(value=value, method=method, axis=axis, limit=limit)
         else:
             raise ValueError("Must specify a fillna 'value' or 'method' parameter.")
 
-        kdf = self._apply_series_op(op)
+        kdf = self._apply_series_op(op, should_resolve=(method is not None))
+
+        inplace = validate_bool_kwarg(inplace, "inplace")
         if inplace:
-            self._update_internal_frame(kdf._internal)
+            self._update_internal_frame(kdf._internal, requires_same_anchor=False)
         else:
             return kdf
 
@@ -5749,6 +5746,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1 2      3   4
         5 6      7   8
         9 10    11  12
+
         >>> df.droplevel('a')  # doctest: +NORMALIZE_WHITESPACE
         level_1   c   d
         level_2   e   f
@@ -5767,40 +5765,49 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
         kdf = self.copy()
         if axis == 0:
-            names = self.index.names
-            nlevels = self.index.nlevels
             if not isinstance(level, (tuple, list)):
+                if not isinstance(level, (str, int)):
+                    raise KeyError("Level {} not found".format(level))
                 level = [level]
 
+            spark_frame = self._internal.spark_frame
+            index_map = self._internal.index_map.copy()
+            index_names = self.index.names
+            nlevels = self.index.nlevels
+            int_levels = list()
             for n in level:
-                if isinstance(n, int) and (n > nlevels - 1):
-                    raise IndexError(
-                        "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
-                    )
-                if isinstance(n, (str, tuple)) and (n not in names):
-                    raise KeyError("Level {} not found".format(n))
+                if isinstance(n, (str, tuple)):
+                    if n not in index_names:
+                        raise KeyError("Level {} not found".format(n))
+                    n = index_names.index(n)
+                elif isinstance(n, int):
+                    if n < 0:
+                        n = n + nlevels
+                        if n < 0:
+                            raise IndexError(
+                                "Too many levels: Index has only {} levels, "
+                                "{} is not a valid level number".format(nlevels, (n - nlevels))
+                            )
+                    if n >= nlevels:
+                        raise IndexError(
+                            "Too many levels: Index has only {} levels, not {}".format(
+                                nlevels, (n + 1)
+                            )
+                        )
+                int_levels.append(n)
 
-            if len(level) >= nlevels:
+            if len(int_levels) >= nlevels:
                 raise ValueError(
-                    "Cannot remove {} levels from an index with {} "
-                    "levels: at least one level must be "
-                    "left.".format(len(level), nlevels)
+                    "Cannot remove {} levels from an index with {} levels: "
+                    "at least one level must be left.".format(len(int_levels), nlevels)
                 )
-            drop_spark_index_columns = list()
-            index_spark_column_names = kdf._internal.index_spark_column_names
-            for n in level:
-                if isinstance(n, int):
-                    index_order = n
-                elif isinstance(n, (str, tuple)):
-                    index_order = kdf.index.names.index(n)
-                drop_spark_index_columns.append(index_spark_column_names[index_order])
-            sdf = kdf._internal.spark_frame
-            sdf = sdf.drop(*drop_spark_index_columns)
-            index_map = kdf._internal.index_map.copy()
-            for drop_spark_index_column in drop_spark_index_columns:
-                index_map.pop(drop_spark_index_column)
-            internal_frame = kdf._internal.copy(spark_frame=sdf, index_map=index_map)
-            kdf = DataFrame(internal_frame)
+
+            for int_level in int_levels:
+                index_spark_column = self._internal.index_spark_column_names[int_level]
+                spark_frame = spark_frame.drop(index_spark_column)
+                index_map.pop(index_spark_column)
+            internal = self._internal.copy(spark_frame=spark_frame, index_map=index_map)
+            kdf = DataFrame(internal)
         elif axis == 1:
             names = self.columns.names
             nlevels = self.columns.nlevels
