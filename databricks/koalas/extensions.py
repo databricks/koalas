@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 import warnings
-from functools import wraps
 
 
 class CachedAccessor:
@@ -161,9 +160,9 @@ def register_dataframe_accessor(name):
     --------
     In your library code::
 
-        import databricks.koalas as ks
+        from databricks.koalas.extensions import register_dataframe_accessor
 
-        @ks.extensions.register_dataframe_accessor("geo")
+        @register_dataframe_accessor("geo")
         class GeoAccessor:
 
             def __init__(self, koalas_obj):
@@ -180,21 +179,17 @@ def register_dataframe_accessor(name):
             def plot(self):
                 # plot this array's data on a map
                 pass
-            ...
 
     Then, in an ipython session::
 
-        >>> import databricks.koalas as ks
-        >>> from my_ext_lib import GeoAccessor # doctest: +SKIP
-        >>> type(GeoAccessor) # doctest: +SKIP
-            <class 'databricks.koalas.extensions.GeoAccessor'>
+        >>> ## Import if the accessor is in the other file.
+        >>> # from my_ext_lib import GeoAccessor
         >>> kdf = ks.DataFrame({"longitude": np.linspace(0,10),
         ...                     "latitude": np.linspace(0, 20)})
-        >>> kdf.geo.center # doctest: +SKIP
-            (5.0, 10.0)
+        >>> kdf.geo.center  # doctest: +SKIP
+        (5.0, 10.0)
 
-        >>> kdf.geo.plot() # doctest: +SKIP
-        ...
+        >>> kdf.geo.plot()  # doctest: +SKIP
     """
     from databricks.koalas import DataFrame
 
@@ -246,9 +241,9 @@ def register_series_accessor(name):
     --------
     In your library code::
 
-        import databricks.koalas as ks
+        from databricks.koalas.extensions import register_series_accessor
 
-        @ks.extensions.register_series_accessor("geo")
+        @register_series_accessor("geo")
         class GeoAccessor:
 
             def __init__(self, koalas_obj):
@@ -257,20 +252,16 @@ def register_series_accessor(name):
             @property
             def is_valid(self):
                 # boolean check to see if series contains valid geometry
-                return True if my_validation_logic(self._obj) else False
-            ...
+                return True
 
     Then, in an ipython session::
 
-        >>> import databricks.koalas as ks
-        >>> from my_ext_lib import GeoAccessor # doctest: +SKIP
-        >>> type(GeoAccessor) # doctest: +SKIP
-            <class 'databricks.koalas.extensions.GeoAccessor'>
+        >>> ## Import if the accessor is in the other file.
+        >>> # from my_ext_lib import GeoAccessor
         >>> kdf = ks.DataFrame({"longitude": np.linspace(0,10),
         ...                     "latitude": np.linspace(0, 20)})
-        >>> kdf.longitude.geo.is_valid # doctest: +SKIP
-            True
-        ...
+        >>> kdf.longitude.geo.is_valid  # doctest: +SKIP
+        True
     """
     from databricks.koalas import Series
 
@@ -322,9 +313,9 @@ def register_index_accessor(name):
     --------
     In your library code::
 
-        import databricks.koalas as ks
+        from databricks.koalas.extensions import register_index_accessor
 
-        @ks.extensions.register_series_accessor("foo")
+        @register_index_accessor("foo")
         class CustomAccessor:
 
             def __init__(self, koalas_obj):
@@ -335,19 +326,15 @@ def register_index_accessor(name):
             def bar(self):
                 # return item value
                 return self.item
-            ...
 
     Then, in an ipython session::
 
-        >>> import databricks.koalas as ks
-        >>> from my_ext_lib import CustomAccessor # doctest: +SKIP
-        >>> type(CustomAccessor) # doctest: +SKIP
-            <class 'databricks.koalas.extensions.CustomAccessor'>
+        >>> ## Import if the accessor is in the other file.
+        >>> # from my_ext_lib import CustomAccessor
         >>> kdf = ks.DataFrame({"longitude": np.linspace(0,10),
         ...                     "latitude": np.linspace(0, 20)})
-        >>> kdf.index.foo.bar # doctest: +SKIP
-            "baz"
-        ...
+        >>> kdf.index.foo.bar  # doctest: +SKIP
+        'baz'
     """
     from databricks.koalas import Index
 
