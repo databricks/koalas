@@ -94,7 +94,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_parquet(tmp, mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_parquet(tmp)[self.test_column_order]
+            actual = ks.read_parquet(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -104,7 +106,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_parquet(tmp, mode="overwrite", partition_cols=["i32", "bhello"])
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_parquet(tmp)[self.test_column_order]
+            actual = ks.read_parquet(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -119,7 +123,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.spark.to_table("test_table", mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_table("test_table")[self.test_column_order]
+            actual = ks.read_table("test_table")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -129,7 +135,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_table("test_table", mode="overwrite", partition_cols=["i32", "bhello"])
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_table("test_table")[self.test_column_order]
+            actual = ks.read_table("test_table")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -137,21 +145,21 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
 
             # When index columns are known
             expected_idx = expected.set_index("bhello")[["f", "i32", "i64"]]
-            actual_idx = ks.read_table("test_table", "bhello")[["f", "i32", "i64"]]
+            actual_idx = ks.read_table("test_table", index_col="bhello")[["f", "i32", "i64"]]
             self.assert_eq(
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
 
             expected_idx = expected.set_index(["bhello"])[["f", "i32", "i64"]]
-            actual_idx = ks.read_table("test_table", ["bhello"])[["f", "i32", "i64"]]
+            actual_idx = ks.read_table("test_table", index_col=["bhello"])[["f", "i32", "i64"]]
             self.assert_eq(
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
 
             expected_idx = expected.set_index(["i32", "bhello"])[["f", "i64"]]
-            actual_idx = ks.read_table("test_table", ["i32", "bhello"])[["f", "i64"]]
+            actual_idx = ks.read_table("test_table", index_col=["i32", "bhello"])[["f", "i64"]]
             self.assert_eq(
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
@@ -166,7 +174,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_spark_io(tmp, format="json", mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_spark_io(tmp, format="json")[self.test_column_order]
+            actual = ks.read_spark_io(tmp, format="json")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -178,7 +188,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             )
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_spark_io(path=tmp, format="json")[self.test_column_order]
+            actual = ks.read_spark_io(path=tmp, format="json")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),

@@ -30,7 +30,6 @@ import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -576,6 +575,8 @@ class Frame(object, metaclass=ABCMeta):
         date_format=None,
         escapechar=None,
         num_files=None,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -612,6 +613,17 @@ class Frame(object, metaclass=ABCMeta):
             when appropriate.
         num_files : the number of files to be written in `path` directory when
             this is a path.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
         index_col: str or list of str, optional, default: None
             Column names to be used in Spark to represent Koalas' index. The index name
             in Koalas is ignored. By default, the index is always lost.
@@ -769,9 +781,10 @@ class Frame(object, metaclass=ABCMeta):
         if num_files is not None:
             sdf = sdf.repartition(num_files)
 
-        builder = sdf.write.mode("overwrite")
-        OptionUtils._set_opts(
-            builder,
+        builder = sdf.write.mode(mode)
+        if partition_cols is not None:
+            builder.partitionBy(partition_cols)
+        builder._set_opts(
             path=path,
             sep=sep,
             nullValue=na_rep,
@@ -787,6 +800,8 @@ class Frame(object, metaclass=ABCMeta):
         path=None,
         compression="uncompressed",
         num_files=None,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -818,6 +833,17 @@ class Frame(object, metaclass=ABCMeta):
             compression is inferred from the filename.
         num_files : the number of files to be written in `path` directory when
             this is a path.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
         index_col: str or list of str, optional, default: None
             Column names to be used in Spark to represent Koalas' index. The index name
             in Koalas is ignored. By default, the index is always lost.
@@ -875,8 +901,10 @@ class Frame(object, metaclass=ABCMeta):
         if num_files is not None:
             sdf = sdf.repartition(num_files)
 
-        builder = sdf.write.mode("overwrite")
-        OptionUtils._set_opts(builder, compression=compression)
+        builder = sdf.write.mode(mode)
+        if partition_cols is not None:
+            builder.partitionBy(partition_cols)
+        builder._set_opts(compression=compression)
         builder.options(**options).format("json").save(path)
 
     def to_excel(

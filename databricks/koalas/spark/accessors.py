@@ -23,8 +23,7 @@ from typing import TYPE_CHECKING, Optional, Union, List
 
 import pyspark
 from pyspark import StorageLevel
-from pyspark.sql import Column
-from pyspark.sql import DataFrame as SparkDataFrame
+from pyspark.sql import Column, DataFrame as SparkDataFrame
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -569,7 +568,7 @@ class SparkFrameMethods(object):
         name: str,
         format: Optional[str] = None,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -640,7 +639,7 @@ class SparkFrameMethods(object):
         path: Optional[str] = None,
         format: Optional[str] = None,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -682,7 +681,6 @@ class SparkFrameMethods(object):
         DataFrame.to_table
         DataFrame.to_spark_io
         DataFrame.spark.to_spark_io
-
 
         Examples
         --------

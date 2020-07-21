@@ -153,6 +153,28 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
         self.assertEqual("[%s]" % open(output_path).read().strip(), expected)
 
+    def test_to_json_with_partition_cols(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
+        kdf = ks.DataFrame(pdf)
+
+        kdf.to_json(self.tmp_dir, partition_cols="b", num_files=1)
+
+        partition_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("b=")]
+        assert len(partition_paths) > 0
+        for partition_path in partition_paths:
+            column, value = partition_path.split("=")
+            expected = pdf[pdf[column] == value].drop("b", axis=1).to_json(orient="records")
+
+            output_paths = [
+                path
+                for path in os.listdir("%s/%s" % (self.tmp_dir, partition_path))
+                if path.startswith("part-")
+            ]
+            assert len(output_paths) > 0
+            output_path = "%s/%s/%s" % (self.tmp_dir, partition_path, output_paths[0])
+            with open(output_path) as f:
+                self.assertEqual("[%s]" % open(output_path).read().strip(), expected)
+
     def test_to_clipboard(self):
         pdf = self.pdf
         kdf = self.kdf
