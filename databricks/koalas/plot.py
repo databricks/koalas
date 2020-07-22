@@ -785,7 +785,7 @@ def plot_series(
     xerr=None,
     label=None,
     secondary_y=False,  # Series unique
-    **kwds,
+    **kwds
 ):
     """
     Make plots of Series using matplotlib / pylab.
@@ -1292,11 +1292,9 @@ class PlotAccessor(PandasObject):
                 ("secondary_y", False),
                 ("sort_columns", False),
             }
-        # removing keys that are not required
-        things_to_remove = ["self", "kind", "data", "data", "kwargs", "backend"]
-        # no need to map and remove anything  if the backedn is the default
-        for temp in things_to_remove:
-            kwargs.pop(temp, None)
+        attrs_to_ignore = ["self", "kind", "data", "data", "kwargs", "backend"]
+        for attr in attrs_to_ignore:
+            kwargs.pop(attr, None)
 
         for arg, def_val in positional_args:
             # map the argument if possible
