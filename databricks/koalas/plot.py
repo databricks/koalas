@@ -383,7 +383,7 @@ class KoalasBoxPlot(BoxPlot):
         showcaps=None,
         showbox=None,
         showfliers=None,
-        **kwargs
+        **kwargs,
     ):
         # Missing arguments default to rcParams.
         if whis is None:
@@ -431,7 +431,7 @@ class KoalasBoxPlot(BoxPlot):
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
-            F.mean(colname).alias("{}_mean".format(colname))
+            F.mean(colname).alias("{}_mean".format(colname)),
         ).toPandas()
 
         # Computes IQR and Tukey's fences
@@ -785,7 +785,7 @@ def plot_series(
     xerr=None,
     label=None,
     secondary_y=False,  # Series unique
-    **kwds
+    **kwds,
 ):
     """
     Make plots of Series using matplotlib / pylab.
@@ -914,7 +914,7 @@ def plot_series(
         xerr=xerr,
         label=label,
         secondary_y=secondary_y,
-        **kwds
+        **kwds,
     )
 
 
@@ -949,7 +949,7 @@ def plot_frame(
     xerr=None,
     secondary_y=False,
     sort_columns=False,
-    **kwds
+    **kwds,
 ):
     """
     Make plots of DataFrames using matplotlib / pylab.
@@ -1083,7 +1083,7 @@ def plot_frame(
         secondary_y=secondary_y,
         layout=layout,
         sort_columns=sort_columns,
-        **kwds
+        **kwds,
     )
 
 
@@ -1292,9 +1292,11 @@ class PlotAccessor(PandasObject):
                 ("secondary_y", False),
                 ("sort_columns", False),
             }
+        # removing keys that are not required
         attrs_to_ignore = ["self", "kind", "data", "data", "kwargs", "backend"]
-        for attr in attrs_to_ignore:
-            kwargs.pop(attr, None)
+        # no need to map and remove anything  if the backend is the default
+        for temp in attrs_to_ignore:
+            kwargs.pop(temp, None)
 
         for arg, def_val in positional_args:
             # map the argument if possible
@@ -1629,8 +1631,8 @@ class PlotAccessor(PandasObject):
         """
         Draw one histogram of the DataFrame’s columns.
         A `histogram`_ is a representation of the distribution of data.
-        This function calls :meth:`matplotlib.pyplot.hist` or :meth:`plotting.backend.plot`, on each series in
-        the DataFrame, resulting in one histogram per column.
+        This function calls :meth:`matplotlib.pyplot.hist` or :meth:`plotting.backend.plot`,
+        on each series in the DataFrame, resulting in one histogram per column.
 
         .. _histogram: https://en.wikipedia.org/wiki/Histogram
 
