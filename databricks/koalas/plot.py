@@ -1343,9 +1343,7 @@ class KoalasPlotAccessor(PandasObject):
                 return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
             return plot_frame(data=self.data, kind=kind, **kwds)
 
-    # added this, as it was present before
     __call__.__doc__ = plot_frame.__doc__
-    __call__.__doc__ = plot_series.__doc__
 
     def line(self, x=None, y=None, **kwargs):
         """
