@@ -31,7 +31,6 @@ from pyspark.sql import functions as F
 from databricks.koalas.missing import unsupported_function
 from databricks.koalas.config import get_option
 
-
 if LooseVersion(pd.__version__) < LooseVersion("0.25"):
     from pandas.plotting._core import (
         _all_kinds,
@@ -1212,7 +1211,9 @@ class PlotAccessor(PandasObject):
     @staticmethod
     def _format_args(backend_name, data, kind, kwargs):
         """
-        TODO: Add something here
+        Format the arguments.
+        Assigns default values to plotting functions.
+        Maps the argument to the appropriate backend.
         """
         from databricks.koalas import DataFrame, Series
 
@@ -1310,7 +1311,11 @@ class PlotAccessor(PandasObject):
             else:
                 if arg not in kwargs:
                     kwargs[arg] = def_val
-        return data_preprocessor_map[kind](data), kwargs
+
+        if backend_name != "databricks.koalas.plot":
+            data = data_preprocessor_map[kind](data)
+
+        return data, kwargs
 
     def __call__(self, kind="line", backend="matplotlib", **kwargs):
 
@@ -1335,7 +1340,6 @@ class PlotAccessor(PandasObject):
         elif isinstance(self.data, DataFrame):
             if kind not in self._dataframe_kinds:
                 return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
-
             return plot_frame(data=self.data, kind=kind, **kwds)
 
     # added this, as it was present before
@@ -1487,6 +1491,8 @@ class PlotAccessor(PandasObject):
 
             >>> ax = df.plot.bar(x='lifespan', rot=0)
         """
+        from databricks.koalas import DataFrame, Series
+
         if isinstance(self.data, Series):
             return self(kind="bar", **kwds)
         elif isinstance(self.data, DataFrame):
@@ -1573,8 +1579,10 @@ class PlotAccessor(PandasObject):
             ...                    'lifespan': lifespan}, index=index)
             >>> ax = df.plot.barh(x='lifespan')
         """
+        from databricks.koalas import DataFrame, Series
+
         if isinstance(self.data, Series):
-            return self(kind="barh", **kwds)
+            return self(kind="barh", **kwargs)
         elif isinstance(self.data, DataFrame):
             return self(kind="barh", x=x, y=y, **kwargs)
 
@@ -1622,6 +1630,8 @@ class PlotAccessor(PandasObject):
             >>> df = ks.DataFrame(data, columns=list('ABCD'))
             >>> ax = df['A'].plot.box()
         """
+        from databricks.koalas import DataFrame, Series
+
         if isinstance(self.data, Series):
             return self(kind="box", **kwds)
         elif isinstance(self.data, DataFrame):
@@ -1786,6 +1796,8 @@ class PlotAccessor(PandasObject):
             ...                        freq='M'))
             >>> plot = df.plot.area()
         """
+        from databricks.koalas import DataFrame, Series
+
         if isinstance(self.data, Series):
             return self(kind="area", **kwds)
         elif isinstance(self.data, DataFrame):
@@ -1835,6 +1847,8 @@ class PlotAccessor(PandasObject):
 
             >>> plot = df.plot.pie(y='mass', figsize=(5, 5))
         """
+        from databricks.koalas import DataFrame, Series
+
         if isinstance(self.data, Series):
             return self(kind="pie", **kwds)
         else:
