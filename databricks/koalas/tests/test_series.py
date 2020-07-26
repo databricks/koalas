@@ -15,6 +15,7 @@
 #
 
 import base64
+from math import isclose
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -1903,7 +1904,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # Containing NA values
         pser = pd.Series([10, np.nan, 30, np.nan, 50])
         kser = ks.from_pandas(pser)
-        self.assert_eq(pser.prod(), kser.prod())
+        self.assert_eq(isclose(pser.prod(), kser.prod()), True)
 
         # All-NA values
         pser = pd.Series([np.nan, np.nan, np.nan])
@@ -1924,7 +1925,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         pser = pd.Series([10, np.nan, 30, np.nan, 50])
         kser = ks.from_pandas(pser)
-        self.assert_eq(pser.prod(min_count=3), kser.prod(min_count=3))
+        self.assert_eq(isclose(pser.prod(min_count=3), kser.prod(min_count=3)), True)
         # ditto.
         self.assert_eq(repr(pser.prod(min_count=4)), repr(kser.prod(min_count=4)))
 
