@@ -1937,3 +1937,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         # ditto.
         self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
+
+        with self.assertRaisesRegex(TypeError, "can't multiply sequence by non-int of type 'str'"):
+            ks.Series(["a", "b", "c"]).prod()

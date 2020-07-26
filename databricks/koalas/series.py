@@ -4990,6 +4990,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([]).prod(min_count=1)
         nan
         """
+        data_type = self.spark.data_type
+        if isinstance(data_type, StringType):
+            raise TypeError("can't multiply sequence by non-int of type 'str'")
         # When number of valid values less than `min_count`, pandas returns np.nan
         if (min_count > 0) and (len(self.dropna()) < min_count):
             return np.nan
@@ -5003,7 +5006,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
 
         result = round(spark_frame.head(1)[0][0], 6)
-        if isinstance(self.spark.data_type, LongType):
+        if isinstance(data_type, LongType):
             return int(result)
         else:
             return result
