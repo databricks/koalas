@@ -4962,6 +4962,54 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self.to_frame().tail(n=n))
 
+    def product(self, min_count=0):
+        """
+        Return the product of the values.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Parameters
+        ----------
+        min_count : int, default 0
+            The required number of valid values to perform the operation. If fewer than
+            ``min_count`` non-NA values are present the result will be NA.
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4, 5]).prod()
+        120
+
+        By default, the product of an empty or all-NA Series is ``1``
+
+        >>> ks.Series([]).prod()
+        1.0
+
+        This can be controlled with the ``min_count`` parameter
+
+        >>> ks.Series([]).prod(min_count=1)
+        nan
+        """
+        # When number of valid values less than `min_count`, pandas returns np.nan
+        if (min_count > 0) and (len(self.dropna()) < min_count):
+            return np.nan
+        # When Series is empty, pandas returns 1.0
+        if self.empty:
+            return 1.0
+
+        spark_frame = self._internal.spark_frame
+        spark_column = self.spark.column
+        cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
+        spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
+
+        result = round(spark_frame.head(1)[0][0], 6)
+        if isinstance(self.spark.data_type, LongType):
+            return int(result)
+        else:
+            return result
+
+    prod = product
+
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.
 

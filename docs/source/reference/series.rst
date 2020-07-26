@@ -88,6 +88,7 @@ Binary operator functions
    Series.ge
    Series.ne
    Series.eq
+   Series.product
    Series.dot
 
 Function application, GroupBy & Window
@@ -134,6 +135,7 @@ Computations / Descriptive Stats
    Series.nlargest
    Series.nsmallest
    Series.pct_change
+   Series.prod
    Series.nunique
    Series.is_unique
    Series.quantile

@@ -1894,3 +1894,46 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pser.tail(-1001), kser.tail(-1001))
             with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
                 kser.tail("10")
+
+    def test_product(self):
+        pser = pd.Series([10, 20, 30, 40, 50])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
+        # Containing NA values
+        pser = pd.Series([10, np.nan, 30, np.nan, 50])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
+        # All-NA values
+        pser = pd.Series([np.nan, np.nan, np.nan])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
+        # Empty Series
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
+        # With `min_count` parameter
+        pser = pd.Series([10, 20, 30, 40, 50])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(min_count=5), kser.prod(min_count=5))
+        # Using `repr` since the result of below will be `np.nan`.
+        self.assert_eq(repr(pser.prod(min_count=6)), repr(kser.prod(min_count=6)))
+
+        pser = pd.Series([10, np.nan, 30, np.nan, 50])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(min_count=3), kser.prod(min_count=3))
+        # ditto.
+        self.assert_eq(repr(pser.prod(min_count=4)), repr(kser.prod(min_count=4)))
+
+        pser = pd.Series([np.nan, np.nan, np.nan])
+        kser = ks.from_pandas(pser)
+        # ditto.
+        self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
+
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+        # ditto.
+        self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
