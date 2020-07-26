@@ -4993,7 +4993,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         data_type = self.spark.data_type
         if isinstance(data_type, StringType):
             raise TypeError("can't multiply sequence by non-int of type 'str'")
-        # When number of valid values less than `min_count`, pandas returns np.nan
+        # When number of valid values is fewer than `min_count`, pandas returns np.nan
         if (min_count > 0) and (len(self.dropna()) < min_count):
             return np.nan
         # When Series is empty, pandas returns 1.0
