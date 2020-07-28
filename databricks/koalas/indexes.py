@@ -17,7 +17,7 @@
 """
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
-from collections import OrderedDict, abc
+from collections import OrderedDict
 from distutils.version import LooseVersion
 from functools import partial
 from typing import Any, List, Tuple, Union
@@ -36,6 +36,7 @@ from pandas.api.types import (
     is_object_dtype,
 )
 from pandas.io.formats.printing import pprint_thing
+from pandas.api.types import is_hashable
 
 import pyspark
 from pyspark import sql as spark
@@ -675,7 +676,7 @@ class Index(IndexOpsMixin):
         d    d
         Name: 0, dtype: object
         """
-        if not isinstance(name, abc.Hashable):
+        if not is_hashable(name):
             raise TypeError("Series.name must be a hashable type")
         kdf = self._kdf
         scol = self.spark.column
