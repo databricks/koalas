@@ -743,10 +743,12 @@ def read_excel(
     Parameters
     ----------
     io : str, file descriptor, pathlib.Path, ExcelFile or xlrd.Book
-        The string could be a URL. If the underlying Spark is above 3.0.0, the value URL must
-        be available by the Spark; otherwise the valid URL schemes include http, ftp, s3, gcs,
-        and file. For file URLs, a host is expected.
-        For instance, a local file could be /path/to/workbook.xlsx.
+        The string could be a URL. The value URL must be available in Spark's DataFrameReader.
+
+        .. note::
+            If the underlying Spark is below 3.0, the parameter as a string is not supported.
+            You can use `ks.from_pandas(pd.read_excel(...))` as a workaround.
+
     sheet_name : str, int, list, or None, default 0
         Strings are used for sheet names. Integers are used in zero-indexed
         sheet positions. Lists of strings/integers are used to request
@@ -961,7 +963,12 @@ def read_excel(
             **kwds
         )
 
-    if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0") and isinstance(io, str):
+    if isinstance(io, str):
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
+            raise ValueError(
+                "The `io` parameter as a string is not supported if the underlying Spark is "
+                "below 3.0. You can use `ks.from_pandas(pd.read_excel(...))` as a workaround"
+            )
         # 'binaryFile' format is available since Spark 3.0.0.
         binaries = default_session().read.format("binaryFile").load(io).head(2)
         io_or_bin = binaries[0][0]

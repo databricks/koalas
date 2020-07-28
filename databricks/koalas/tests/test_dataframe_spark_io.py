@@ -216,10 +216,16 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             path1 = "{}/file1.xlsx".format(tmp)
             pdf.to_excel(path1)
 
-            self.assert_eq(ks.read_excel(path1), pd.read_excel(path1))
-            self.assert_eq(ks.read_excel(path1, index_col=0), pd.read_excel(path1, index_col=0))
+            self.assert_eq(ks.read_excel(open(path1, "rb")), pd.read_excel(open(path1, "rb")))
+            self.assert_eq(
+                ks.read_excel(open(path1, "rb"), index_col=0),
+                pd.read_excel(open(path1, "rb"), index_col=0),
+            )
 
             if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+                self.assert_eq(ks.read_excel(path1), pd.read_excel(path1))
+                self.assert_eq(ks.read_excel(path1, index_col=0), pd.read_excel(path1, index_col=0))
+
                 self.assert_eq(ks.read_excel(tmp), pd.read_excel(path1))
 
                 path2 = "{}/file2.xlsx".format(tmp)
@@ -227,6 +233,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(
                     ks.read_excel(tmp), pd.concat([pd.read_excel(path1), pd.read_excel(path2)])
                 )
+            else:
+                self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
 
         with self.temp_dir() as tmp:
             path1 = "{}/file1.xlsx".format(tmp)
@@ -234,12 +242,17 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 pdf.to_excel(writer, sheet_name="Sheet_name_1")
                 pdf.to_excel(writer, sheet_name="Sheet_name_2")
 
-            kdfs = ks.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
-            pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+            kdfs = ks.read_excel(open(path1, "rb"), sheet_name=["Sheet_name_1", "Sheet_name_2"])
+            pdfs = pd.read_excel(open(path1, "rb"), sheet_name=["Sheet_name_1", "Sheet_name_2"])
             self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
             self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
 
             if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+                kdfs = ks.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
+                self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+
                 kdfs = ks.read_excel(tmp, sheet_name=["Sheet_name_1", "Sheet_name_2"])
                 pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
                 self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
@@ -254,3 +267,5 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                     ValueError, "Can not read multiple sheets in multiple files."
                 ):
                     ks.read_excel(tmp, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+            else:
+                self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
