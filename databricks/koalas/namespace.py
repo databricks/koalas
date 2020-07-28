@@ -25,7 +25,8 @@ from functools import reduce
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
@@ -54,7 +55,11 @@ from databricks.koalas.utils import (
     validate_axis,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import InternalFrame, SPARK_DEFAULT_SERIES_NAME
+from databricks.koalas.internal import (
+    InternalFrame,
+    SPARK_INDEX_NAME_FORMAT,
+    SPARK_DEFAULT_SERIES_NAME,
+)
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.indexes import Index
 
@@ -738,9 +743,10 @@ def read_excel(
     Parameters
     ----------
     io : str, file descriptor, pathlib.Path, ExcelFile or xlrd.Book
-        The string could be a URL. Valid URL schemes include http, ftp, s3,
-        gcs, and file. For file URLs, a host is expected. For instance, a local
-        file could be /path/to/workbook.xlsx.
+        The string could be a URL. If the underlying Spark is above 3.0.0, the value URL must
+        be available by the Spark; otherwise the valid URL schemes include http, ftp, s3, gcs,
+        and file. For file URLs, a host is expected.
+        For instance, a local file could be /path/to/workbook.xlsx.
     sheet_name : str, int, list, or None, default 0
         Strings are used for sheet names. Integers are used in zero-indexed
         sheet positions. Lists of strings/integers are used to request
@@ -925,37 +931,90 @@ def read_excel(
     1  string2    2.0
     2     None    NaN
     """
-    pdfs = pd.read_excel(
-        io=io,
-        sheet_name=sheet_name,
-        header=header,
-        names=names,
-        index_col=index_col,
-        usecols=usecols,
-        squeeze=squeeze,
-        dtype=dtype,
-        engine=engine,
-        converters=converters,
-        true_values=true_values,
-        false_values=false_values,
-        skiprows=skiprows,
-        nrows=nrows,
-        na_values=na_values,
-        keep_default_na=keep_default_na,
-        verbose=verbose,
-        parse_dates=parse_dates,
-        date_parser=date_parser,
-        thousands=thousands,
-        comment=comment,
-        skipfooter=skipfooter,
-        convert_float=convert_float,
-        mangle_dupe_cols=mangle_dupe_cols,
-        **kwds
-    )
-    if isinstance(pdfs, dict):
-        return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
+
+    def pd_read_excel(io_or_bin):
+        return pd.read_excel(
+            io=io_or_bin,
+            sheet_name=sheet_name,
+            header=header,
+            names=names,
+            index_col=index_col,
+            usecols=usecols,
+            squeeze=squeeze,
+            dtype=dtype,
+            engine=engine,
+            converters=converters,
+            true_values=true_values,
+            false_values=false_values,
+            skiprows=skiprows,
+            nrows=nrows,
+            na_values=na_values,
+            keep_default_na=keep_default_na,
+            verbose=verbose,
+            parse_dates=parse_dates,
+            date_parser=date_parser,
+            thousands=thousands,
+            comment=comment,
+            skipfooter=skipfooter,
+            convert_float=convert_float,
+            mangle_dupe_cols=mangle_dupe_cols,
+            **kwds
+        )
+
+    if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0") and isinstance(io, str):
+        # 'binaryFile' format is available since Spark 3.0.0.
+        binaries = default_session().read.format("binaryFile").load(io).head(2)
+        io_or_bin = binaries[0][0]
+        single_file = len(binaries) == 1
     else:
-        return from_pandas(pdfs)
+        io_or_bin = io
+        single_file = True
+
+    pdfs = pd_read_excel(io_or_bin)
+
+    if single_file:
+        if isinstance(pdfs, dict):
+            return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
+        else:
+            return from_pandas(pdfs)
+    else:
+        if isinstance(pdfs, dict):
+            # TODO: support dict
+            raise ValueError("Can not read multiple sheets in multiple files.")
+        else:
+            kdf = from_pandas(pdfs)
+            return_schema = kdf._internal.to_internal_spark_frame.schema
+
+            def output_func(pdf):
+                pdf = pd.concat([pd_read_excel(bin) for bin in pdf[pdf.columns[0]]])
+
+                # TODO: deduplicate this logic with InternalFrame.from_pandas
+                new_index_columns = [
+                    SPARK_INDEX_NAME_FORMAT(i) for i in _range(len(pdf.index.names))
+                ]
+                new_data_columns = [name_like_string(col) for col in pdf.columns]
+
+                pdf.index.names = new_index_columns
+                reset_index = pdf.reset_index()
+                reset_index.columns = new_index_columns + new_data_columns
+                for name, col in reset_index.iteritems():
+                    dt = col.dtype
+                    if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+                        continue
+                    reset_index[name] = col.replace({np.nan: None})
+                pdf = reset_index
+
+                # Just positionally map the column names to given schema's.
+                return pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
+
+            sdf = (
+                default_session()
+                .read.format("binaryFile")
+                .load(io)
+                .mapInPandas(lambda iterator: map(output_func, iterator), schema=return_schema)
+            )
+
+            return DataFrame(kdf._internal.with_new_sdf(sdf))
 
 
 def read_html(
