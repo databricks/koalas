@@ -5011,9 +5011,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         # When number of valid values is fewer than `min_count`, pandas returns np.nan
         if (min_count > 0) and (len(self.dropna()) < min_count):
             return np.nan
-        # When Series is empty, pandas returns 1.0
-        if self.empty:
-            return 1.0
 
         spark_frame = self._internal.spark_frame
         spark_column = self.spark.column
@@ -5021,7 +5018,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
 
         result = spark_frame.head(1)[0][0]
-        if isinstance(data_type, LongType):
+        if result is None:
+            # When Series is empty, pandas returns 1.0
+            return 1.0
+        elif isinstance(data_type, LongType):
             return int(round(result))
         else:
             return result
