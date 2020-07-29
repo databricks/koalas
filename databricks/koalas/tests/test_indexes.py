@@ -1364,3 +1364,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"])
         with self.assertRaisesRegex(TypeError, "perform __abs__ with this index"):
             abs(kidx)
+
+    def test_hasnans(self):
+        pidx = pd.Index([True, False, True, True])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.hasnans, kidx.hasnans)
+
+        pidx = pd.Index([True, False, np.nan, True])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.hasnans, kidx.hasnans)

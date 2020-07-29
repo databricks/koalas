@@ -391,7 +391,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         sdf = self._internal.spark_frame
         scol = self.spark.column
 
-        return sdf.select(F.max(scol.isNull() | F.isnan(scol))).collect()[0][0]
+        return sdf.select(F.max(scol.isNull())).collect()[0][0]
 
     @property
     def is_monotonic(self):

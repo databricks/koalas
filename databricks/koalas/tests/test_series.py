@@ -1894,3 +1894,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pser.tail(-1001), kser.tail(-1001))
             with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
                 kser.tail("10")
+
+    def test_hasnans(self):
+        pser = pd.Series([True, False, True, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        pser = pd.Series([True, False, np.nan, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
