@@ -98,6 +98,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.to_series(name=["x", "a"])
+
     def test_to_frame(self):
         pidx = self.pdf.index
         kidx = self.kdf.index
