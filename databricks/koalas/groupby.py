@@ -927,12 +927,11 @@ class GroupBy(object, metaclass=ABCMeta):
         1  1.0  1.0
         2  1.0  1.0
 
-        >>> def pandas_length(x) -> int:
-        ...     return len(x)
-        >>> g.apply(pandas_length).sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0    1
-        1    2
-        Name: 0, dtype: int32
+        >>> g.apply(len).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        A
+        a    2
+        b    1
+        Name: 0, dtype: int64
 
         In case of Series, it works as below.
 
@@ -1017,6 +1016,18 @@ class GroupBy(object, metaclass=ABCMeta):
                 pser_or_pdf = pdf.groupby(groupkey_names).apply(pandas_apply, *args, **kwargs)
             kser_or_kdf = ks.from_pandas(pser_or_pdf)
             if len(pdf) <= limit:
+                if isinstance(kser_or_kdf, ks.Series) and not is_series_groupby:
+                    # Restore grouping names as the index name
+                    groupkey_scol_name = zip(
+                        self._groupkeys, kser_or_kdf._internal.index_map.items()
+                    )
+                    internal = kser_or_kdf._internal.copy(
+                        index_map=OrderedDict(
+                            (scol_name, (s.name,) if isinstance(s.name, str) else s.name)
+                            for s, (scol_name, name) in groupkey_scol_name
+                        )
+                    )
+                    kser_or_kdf = first_series(DataFrame(internal))
                 return kser_or_kdf
 
             if isinstance(kser_or_kdf, ks.Series):
@@ -1087,6 +1098,15 @@ class GroupBy(object, metaclass=ABCMeta):
         if should_infer_schema:
             # If schema is inferred, we can restore indexes too.
             internal = kdf_from_pandas._internal.with_new_sdf(sdf)
+            if should_return_series and not is_series_groupby:
+                # Restore grouping names as the index name
+                groupkey_scol_name = zip(self._groupkeys, internal.index_map.items())
+                internal = internal.copy(
+                    index_map=OrderedDict(
+                        (scol_name, (s.name,) if isinstance(s.name, str) else s.name)
+                        for s, (scol_name, name) in groupkey_scol_name
+                    )
+                )
         else:
             # Otherwise, it loses index.
             internal = InternalFrame(spark_frame=sdf, index_map=None)
@@ -1900,10 +1920,10 @@ class GroupBy(object, metaclass=ABCMeta):
         2    6
         Name: B, dtype: int32
 
-        >>> df.B.groupby(df.A).transform(plus_min)
-        0    2
-        1    3
-        2    6
+        >>> df.B.groupby(df.A).transform(abs)
+        0    1
+        1    2
+        2    3
         Name: B, dtype: int64
 
         You can also specify extra arguments to pass to the function.

@@ -23,6 +23,7 @@ import re
 import warnings
 import inspect
 import json
+import types
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
@@ -2269,6 +2270,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2    13
         Name: 0, dtype: int64
 
+        >>> df.apply(max, axis=1)
+        0    9
+        1    9
+        2    9
+        Name: 0, dtype: int64
+
         Returning a list-like will result in a Series
 
         >>> df.apply(lambda x: [1, 2], axis=1)
@@ -2303,11 +2310,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.groupby import GroupBy
         from databricks.koalas.series import first_series
 
-        if isinstance(func, np.ufunc):
+        if not isinstance(func, types.FunctionType):
+            assert callable(func), "the first argument should be a callable function."
             f = func
             func = lambda *args, **kwargs: f(*args, **kwargs)
-
-        assert callable(func), "the first argument should be a callable function."
 
         axis = validate_axis(axis)
         should_return_series = False
@@ -2503,12 +2509,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  1  4
         2  4  9
 
-        >>> df.transform(lambda x: x ** 2)  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.transform(abs)  # doctest: +NORMALIZE_WHITESPACE
            X
            A  B
         0  0  1
-        1  1  4
-        2  4  9
+        1  1  2
+        2  2  3
 
         You can also specify extra arguments.
 
@@ -2521,7 +2527,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1    21   1044
         2  1044  59069
         """
-        assert callable(func), "the first argument should be a callable function."
+        if not isinstance(func, types.FunctionType):
+            assert callable(func), "the first argument should be a callable function."
+            f = func
+            func = lambda *args, **kwargs: f(*args, **kwargs)
+
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
