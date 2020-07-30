@@ -2134,10 +2134,15 @@ class Frame(object, metaclass=ABCMeta):
             raise ValueError("Truncate: %s must be after %s" % (after, before))
 
         if isinstance(self, ks.Series):
-            result = first_series(self.to_frame().loc[before:after])
+            if indexes_increasing:
+                result = first_series(self.to_frame().loc[before:after])
+            else:
+                result = first_series(self.to_frame().loc[after:before])
         elif isinstance(self, ks.DataFrame):
-            if axis == 0:
+            if indexes_increasing and axis == 0:
                 result = self.loc[before:after]
+            elif not indexes_increasing and axis == 0:
+                result = self.loc[after:before]
             elif axis == 1:
                 result = self.loc[:, before:after]
 
