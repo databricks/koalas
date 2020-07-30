@@ -399,11 +399,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         sdf = self._internal.spark_frame
         scol = self.spark.column
 
-        if isinstance(self.spark.data_type, BooleanType):
-            # `BooleanType` cannot contain `np.nan`.
-            return sdf.select(F.max(scol.isNull())).collect()[0][0]
-        else:
+        if isinstance(self.spark.data_type, DoubleType):
+            # Check `isnan` for the DoubleType since the type of np.nan is DoubleType in PySpark.
             return sdf.select(F.max(scol.isNull() | F.isnan(scol))).collect()[0][0]
+        else:
+            return sdf.select(F.max(scol.isNull())).collect()[0][0]
 
     @property
     def is_monotonic(self):
