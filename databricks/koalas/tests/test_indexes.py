@@ -1366,6 +1366,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             abs(kidx)
 
     def test_hasnans(self):
+        # BooleanType
         pidx = pd.Index([True, False, True, True])
         kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.hasnans, kidx.hasnans)
@@ -1373,3 +1374,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index([True, False, np.nan, True])
         kidx = ks.from_pandas(pidx)
         self.assert_eq(pidx.hasnans, kidx.hasnans)
+
+        # TimestampType
+        pser = pd.Series([pd.Timestamp("2020-07-30") for _ in range(3)])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
