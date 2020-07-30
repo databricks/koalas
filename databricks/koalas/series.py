@@ -44,6 +44,9 @@ from pyspark.sql.types import (
     NumericType,
     StringType,
     StructType,
+    TimestampType,
+    IntegralType,
+    FractionalType,
 )
 from pyspark.sql.window import Window
 
@@ -5005,26 +5008,30 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> ks.Series([]).prod(min_count=1)
         nan
         """
-        data_type = self.spark.data_type
-        if isinstance(data_type, StringType):
-            raise TypeError("can't multiply sequence by non-int of type 'str'")
         # When number of valid values is fewer than `min_count`, pandas returns np.nan
         if (min_count > 0) and (len(self.dropna()) < min_count):
             return np.nan
 
-        spark_frame = self._internal.spark_frame
-        spark_column = self.spark.column
-        cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
-        spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
+        data_type = self.spark.data_type
+        if isinstance(data_type, BooleanType):
+            return self.sum() == len(self)
+        elif isinstance(data_type, (IntegralType, FractionalType)):
+            spark_frame = self._internal.spark_frame
+            spark_column = self.spark.column
 
-        result = spark_frame.head(1)[0][0]
-        if result is None:
-            # When Series is empty, pandas returns 1.0
-            return 1.0
-        elif isinstance(data_type, LongType):
-            return int(round(result))
+            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
+            spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
+
+            result = spark_frame.head(1)[0][0]
+            if result is None:
+                # When Series is empty, pandas returns 1.0
+                return 1.0
+            elif isinstance(data_type, (LongType, BooleanType)):
+                return int(round(result))
+            else:
+                return result
         else:
-            return result
+            raise TypeError("cannot perform prod with type {}".format(self.dtype))
 
     prod = product
 

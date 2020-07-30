@@ -1915,6 +1915,19 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(), kser.prod())
 
+        # Boolean Series
+        pser = pd.Series([True, True, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
+        pser = pd.Series([False, False, False])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
+        pser = pd.Series([True, False, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.prod(), kser.prod())
+
         # With `min_count` parameter
         pser = pd.Series([10, 20, 30, 40, 50])
         kser = ks.from_pandas(pser)
@@ -1938,5 +1951,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # ditto.
         self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
 
-        with self.assertRaisesRegex(TypeError, "can't multiply sequence by non-int of type 'str'"):
+        with self.assertRaisesRegex(TypeError, "cannot perform prod with type object"):
             ks.Series(["a", "b", "c"]).prod()
+        with self.assertRaisesRegex(TypeError, "cannot perform prod with type datetime64"):
+            ks.Series([pd.Timestamp("2016-01-01") for _ in range(3)]).prod()
