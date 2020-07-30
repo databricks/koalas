@@ -111,7 +111,7 @@ jobs:
           - python-version: 3.8
             spark-version: 3.0.0
             pandas-version: 1.0.5
-            pyarrow-version: 0.17.1
+            pyarrow-version: 1.0.0
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
