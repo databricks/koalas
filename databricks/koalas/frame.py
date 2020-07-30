@@ -43,7 +43,6 @@ from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -4026,7 +4025,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         name: str,
         format: Optional[str] = None,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -4038,7 +4037,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self,
         path: str,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):
@@ -4115,7 +4114,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self,
         path: str,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         compression: Optional[str] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
@@ -4177,9 +4176,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             options = options.get("options")  # type: ignore
 
         builder = self.to_spark(index_col=index_col).write.mode(mode)
-        OptionUtils._set_opts(
-            builder, mode=mode, partitionBy=partition_cols, compression=compression
-        )
+        if partition_cols is not None:
+            builder.partitionBy(partition_cols)
+        builder._set_opts(compression=compression)
         builder.options(**options).format("parquet").save(path)
 
     def to_spark_io(
@@ -4187,7 +4186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path: Optional[str] = None,
         format: Optional[str] = None,
         mode: str = "overwrite",
-        partition_cols: Union[str, List[str], None] = None,
+        partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ):

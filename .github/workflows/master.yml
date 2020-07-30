@@ -90,12 +90,12 @@ jobs:
           - python-version: 3.6
             spark-version: 2.4.6
             pandas-version: 0.24.2
-            pyarrow-version: 0.13.0
+            pyarrow-version: 0.14.1
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.6
             spark-version: 2.4.6
             pandas-version: 0.25.3
-            pyarrow-version: 0.13.0
+            pyarrow-version: 0.15.1
           - python-version: 3.7
             spark-version: 2.4.6
             pandas-version: 0.25.3
@@ -111,7 +111,7 @@ jobs:
           - python-version: 3.8
             spark-version: 3.0.0
             pandas-version: 1.1.0
-            pyarrow-version: 0.17.1
+            pyarrow-version: 1.0.0
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}

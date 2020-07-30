@@ -18,6 +18,8 @@ from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -59,12 +61,16 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             check(None, data)
             check(["i32", "i64"], data[["i32", "i64"]])
             check(["i64", "i32"], data[["i64", "i32"]])
-            check(("i32", "i64"), data[["i32", "i64"]])
-            check(["a", "b", "i32", "i64"], data[["i32", "i64"]])
-            check([], pd.DataFrame([]))
-            check(["a"], pd.DataFrame([]))
-            check("i32", pd.DataFrame([]))
-            check("float", data[["f"]])
+
+            if LooseVersion(pa.__version__) < LooseVersion("1.0.0"):
+                # TODO: `pd.read_parquet()` changed the behavior due to PyArrow 1.0.0.
+                #       We might want to adjust the behavior. Let's see how pandas handles it.
+                check(("i32", "i64"), data[["i32", "i64"]])
+                check(["a", "b", "i32", "i64"], data[["i32", "i64"]])
+                check([], pd.DataFrame([]))
+                check(["a"], pd.DataFrame([]))
+                check("i32", pd.DataFrame([]))
+                check("float", data[["f"]])
 
             # check with pyspark patch.
             if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
@@ -94,7 +100,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_parquet(tmp, mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_parquet(tmp)[self.test_column_order]
+            actual = ks.read_parquet(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -104,7 +112,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_parquet(tmp, mode="overwrite", partition_cols=["i32", "bhello"])
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_parquet(tmp)[self.test_column_order]
+            actual = ks.read_parquet(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -119,7 +129,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.spark.to_table("test_table", mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_table("test_table")[self.test_column_order]
+            actual = ks.read_table("test_table")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -129,7 +141,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_table("test_table", mode="overwrite", partition_cols=["i32", "bhello"])
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_table("test_table")[self.test_column_order]
+            actual = ks.read_table("test_table")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -137,21 +151,21 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
 
             # When index columns are known
             expected_idx = expected.set_index("bhello")[["f", "i32", "i64"]]
-            actual_idx = ks.read_table("test_table", "bhello")[["f", "i32", "i64"]]
+            actual_idx = ks.read_table("test_table", index_col="bhello")[["f", "i32", "i64"]]
             self.assert_eq(
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
 
             expected_idx = expected.set_index(["bhello"])[["f", "i32", "i64"]]
-            actual_idx = ks.read_table("test_table", ["bhello"])[["f", "i32", "i64"]]
+            actual_idx = ks.read_table("test_table", index_col=["bhello"])[["f", "i32", "i64"]]
             self.assert_eq(
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
 
             expected_idx = expected.set_index(["i32", "bhello"])[["f", "i64"]]
-            actual_idx = ks.read_table("test_table", ["i32", "bhello"])[["f", "i64"]]
+            actual_idx = ks.read_table("test_table", index_col=["i32", "bhello"])[["f", "i64"]]
             self.assert_eq(
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
@@ -166,7 +180,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected.to_spark_io(tmp, format="json", mode="overwrite", partition_cols="i32")
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_spark_io(tmp, format="json")[self.test_column_order]
+            actual = ks.read_spark_io(tmp, format="json")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -178,7 +194,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             )
             # Reset column order, as once the data is written out, Spark rearranges partition
             # columns to appear first.
-            actual = ks.read_spark_io(path=tmp, format="json")[self.test_column_order]
+            actual = ks.read_spark_io(path=tmp, format="json")
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
             self.assert_eq(
                 actual.sort_values(by="f").to_spark().toPandas(),
                 expected.sort_values(by="f").to_spark().toPandas(),
@@ -195,3 +213,64 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
+
+    def test_read_excel(self):
+        with self.temp_dir() as tmp:
+            pdf = self.test_pdf
+
+            path1 = "{}/file1.xlsx".format(tmp)
+            pdf.to_excel(path1)
+
+            self.assert_eq(ks.read_excel(open(path1, "rb")), pd.read_excel(open(path1, "rb")))
+            self.assert_eq(
+                ks.read_excel(open(path1, "rb"), index_col=0),
+                pd.read_excel(open(path1, "rb"), index_col=0),
+            )
+
+            if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+                self.assert_eq(ks.read_excel(path1), pd.read_excel(path1))
+                self.assert_eq(ks.read_excel(path1, index_col=0), pd.read_excel(path1, index_col=0))
+
+                self.assert_eq(ks.read_excel(tmp), pd.read_excel(path1))
+
+                path2 = "{}/file2.xlsx".format(tmp)
+                pdf.to_excel(path2)
+                self.assert_eq(
+                    ks.read_excel(tmp), pd.concat([pd.read_excel(path1), pd.read_excel(path2)])
+                )
+            else:
+                self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
+
+        with self.temp_dir() as tmp:
+            path1 = "{}/file1.xlsx".format(tmp)
+            with pd.ExcelWriter(path1) as writer:
+                pdf.to_excel(writer, sheet_name="Sheet_name_1")
+                pdf.to_excel(writer, sheet_name="Sheet_name_2")
+
+            kdfs = ks.read_excel(open(path1, "rb"), sheet_name=["Sheet_name_1", "Sheet_name_2"])
+            pdfs = pd.read_excel(open(path1, "rb"), sheet_name=["Sheet_name_1", "Sheet_name_2"])
+            self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
+            self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+
+            if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+                kdfs = ks.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
+                self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+
+                kdfs = ks.read_excel(tmp, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
+                self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+
+                path2 = "{}/file2.xlsx".format(tmp)
+                with pd.ExcelWriter(path2) as writer:
+                    pdf.to_excel(writer, sheet_name="Sheet_name_1")
+                    pdf.to_excel(writer, sheet_name="Sheet_name_2")
+
+                with self.assertRaisesRegex(
+                    ValueError, "Can not read multiple sheets in multiple files."
+                ):
+                    ks.read_excel(tmp, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+            else:
+                self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
