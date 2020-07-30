@@ -36,7 +36,6 @@ from pyspark.sql.types import (
     LongType,
     StringType,
     TimestampType,
-    BooleanType,
 )
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
