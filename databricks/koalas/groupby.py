@@ -2021,7 +2021,10 @@ class GroupBy(object, metaclass=ABCMeta):
                 + F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0)
             )
 
-        should_include_groupkeys = isinstance(self, DataFrameGroupBy)
+        # The behavior of GroupBy.nunique has been changed since pandas 1.1.0
+        should_include_groupkeys = False
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            should_include_groupkeys = isinstance(self, DataFrameGroupBy)
         return self._reduce_for_stat_function(
             stat_function, only_numeric=False, should_include_groupkeys=should_include_groupkeys
         )
