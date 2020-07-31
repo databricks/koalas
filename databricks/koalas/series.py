@@ -4972,21 +4972,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
             trick. Therefore, it only works for positive numbers.
 
-        .. note:: the result can be slightly difference from pandas since the rounding error.
-            In this case, use `math.isclose` to check whether the result is close to pandas' or not.
-
-             >>> result_pandas = pd.Series([10, np.nan, 30, np.nan, 50]).prod()
-             >>> result_pandas
-             15000.0
-
-             >>> result_koalas = ks.Series([10, np.nan, 30, np.nan, 50]).prod()
-             >>> result_koalas
-             15000.000000000004
-
-             >>> from math import isclose
-             >>> isclose(result_pandas, result_koalas)
-             True
-
         Parameters
         ----------
         min_count : int, default 0
@@ -5014,7 +4999,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         data_type = self.spark.data_type
         if isinstance(data_type, BooleanType):
-            return self.sum() == len(self)
+            return self.all()
         elif isinstance(data_type, (IntegralType, FractionalType)):
             spark_frame = self._internal.spark_frame
             spark_column = self.spark.column
