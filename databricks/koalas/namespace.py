@@ -934,10 +934,10 @@ def read_excel(
     2     None    NaN
     """
 
-    def pd_read_excel(io_or_bin):
+    def pd_read_excel(io_or_bin, sn):
         return pd.read_excel(
             io=io_or_bin,
-            sheet_name=sheet_name,
+            sheet_name=sn,
             header=header,
             names=names,
             index_col=index_col,
@@ -977,7 +977,7 @@ def read_excel(
         io_or_bin = io
         single_file = True
 
-    pdfs = pd_read_excel(io_or_bin)
+    pdfs = pd_read_excel(io_or_bin, sn=sheet_name)
 
     if single_file:
         if isinstance(pdfs, dict):
@@ -985,15 +985,14 @@ def read_excel(
         else:
             return from_pandas(pdfs)
     else:
-        if isinstance(pdfs, dict):
-            # TODO: support dict
-            raise ValueError("Can not read multiple sheets in multiple files.")
-        else:
-            kdf = from_pandas(pdfs)
+
+        def read_excel_on_spark(pdf, sn):
+
+            kdf = from_pandas(pdf)
             return_schema = kdf._internal.to_internal_spark_frame.schema
 
             def output_func(pdf):
-                pdf = pd.concat([pd_read_excel(bin) for bin in pdf[pdf.columns[0]]])
+                pdf = pd.concat([pd_read_excel(bin, sn=sn) for bin in pdf[pdf.columns[0]]])
 
                 # TODO: deduplicate this logic with InternalFrame.from_pandas
                 new_index_columns = [
@@ -1022,6 +1021,11 @@ def read_excel(
             )
 
             return DataFrame(kdf._internal.with_new_sdf(sdf))
+
+        if isinstance(pdfs, dict):
+            return OrderedDict([(sn, read_excel_on_spark(pdf, sn)) for sn, pdf in pdfs.items()])
+        else:
+            return read_excel_on_spark(pdfs, sheet_name)
 
 
 def read_html(
