@@ -1955,3 +1955,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             ks.Series(["a", "b", "c"]).prod()
         with self.assertRaisesRegex(TypeError, "cannot perform prod with type datetime64"):
             ks.Series([pd.Timestamp("2016-01-01") for _ in range(3)]).prod()
+
+    def test_hasnans(self):
+        # BooleanType
+        pser = pd.Series([True, False, True, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        pser = pd.Series([True, False, np.nan, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        # TimestampType
+        pser = pd.Series([pd.Timestamp("2020-07-30") for _ in range(3)])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+>>>>>>> fb2eedcfad66635039c05009586f310cc79fe17a

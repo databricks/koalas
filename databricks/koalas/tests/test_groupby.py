@@ -1406,6 +1406,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("b").apply(lambda x: x + x.min()).sort_index(),
         )
         self.assert_eq(
+            kdf.groupby("b").apply(len).sort_index(), pdf.groupby("b").apply(len).sort_index(),
+        )
+        self.assert_eq(
             kdf.groupby("b")["a"].apply(lambda x, y, z: x + x.min() + y * z, 10, z=20).sort_index(),
             pdf.groupby("b")["a"].apply(lambda x, y, z: x + x.min() + y * z, 10, z=20).sort_index(),
         )
@@ -1422,6 +1425,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(["b"])["c"].apply(lambda x: 1).sort_index(),
         )
         self.assert_eq(
+            kdf.groupby(["b"])["c"].apply(len).sort_index(),
+            pdf.groupby(["b"])["c"].apply(len).sort_index(),
+        )
+        self.assert_eq(
             kdf.groupby(kdf.b // 5).apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby(pdf.b // 5).apply(lambda x: x + x.min()).sort_index(),
         )
@@ -1432,6 +1439,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(kdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby(pdf.b // 5)[["a"]].apply(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)[["a"]].apply(len).sort_index(),
+            pdf.groupby(pdf.b // 5)[["a"]].apply(len).sort_index(),
         )
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
@@ -1449,6 +1460,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x + x.min()).sort_index(),
             pdf.groupby([("x", "a"), ("x", "b")]).apply(lambda x: x + x.min()).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(("x", "b")).apply(len).sort_index(),
+            pdf.groupby(("x", "b")).apply(len).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby([("x", "a"), ("x", "b")]).apply(len).sort_index(),
+            pdf.groupby([("x", "a"), ("x", "b")]).apply(len).sort_index(),
         )
 
     def test_apply_without_shortcut(self):
