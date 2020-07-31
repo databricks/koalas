@@ -708,6 +708,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self._test_dropna(pdf, axis=0)
 
+        # empty
+        pdf = pd.DataFrame(index=np.random.rand(6))
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.dropna(), pdf.dropna())
+        self.assert_eq(kdf.dropna(how="all"), pdf.dropna(how="all"))
+        self.assert_eq(kdf.dropna(thresh=0), pdf.dropna(thresh=0))
+        self.assert_eq(kdf.dropna(thresh=1), pdf.dropna(thresh=1))
+
         with self.assertRaisesRegex(ValueError, "No axis named foo"):
             kdf.dropna(axis="foo")
 
@@ -728,6 +737,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         ).T
 
         self._test_dropna(pdf, axis=1)
+
+        # empty
+        pdf = pd.DataFrame({"x": [], "y": [], "z": []})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.dropna(axis=1), pdf.dropna(axis=1))
+        self.assert_eq(kdf.dropna(axis=1, how="all"), pdf.dropna(axis=1, how="all"))
+        self.assert_eq(kdf.dropna(axis=1, thresh=0), pdf.dropna(axis=1, thresh=0))
+        self.assert_eq(kdf.dropna(axis=1, thresh=1), pdf.dropna(axis=1, thresh=1))
 
     def test_dtype(self):
         pdf = pd.DataFrame(

@@ -4681,15 +4681,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 column_labels = [
                     label
                     for label, cnt in zip(internal.column_labels, counts)
-                    if cnt >= int(thresh)
+                    if (cnt or 0) >= int(thresh)
                 ]
             elif how == "any":
                 column_labels = [
-                    label for label, cnt in zip(internal.column_labels, counts) if cnt == counts[-1]
+                    label
+                    for label, cnt in zip(internal.column_labels, counts)
+                    if (cnt or 0) == counts[-1]
                 ]
             elif how == "all":
                 column_labels = [
-                    label for label, cnt in zip(internal.column_labels, counts) if cnt > 0
+                    label for label, cnt in zip(internal.column_labels, counts) if (cnt or 0) > 0
                 ]
 
             kdf = self[column_labels]
