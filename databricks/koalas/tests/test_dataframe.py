@@ -634,7 +634,68 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf.drop(columns="c"))
         self.assertRaises(KeyError, lambda: kdf.drop(columns=("a", "z")))
 
-    def test_dropna(self):
+    def _test_dropna(self, pdf, axis):
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.dropna(axis=axis), pdf.dropna(axis=axis))
+        self.assert_eq(kdf.dropna(axis=axis, how="all"), pdf.dropna(axis=axis, how="all"))
+        self.assert_eq(kdf.dropna(axis=axis, subset=["x"]), pdf.dropna(axis=axis, subset=["x"]))
+        self.assert_eq(kdf.dropna(axis=axis, subset="x"), pdf.dropna(axis=axis, subset=["x"]))
+        self.assert_eq(
+            kdf.dropna(axis=axis, subset=["y", "z"]), pdf.dropna(axis=axis, subset=["y", "z"])
+        )
+        self.assert_eq(
+            kdf.dropna(axis=axis, subset=["y", "z"], how="all"),
+            pdf.dropna(axis=axis, subset=["y", "z"], how="all"),
+        )
+
+        self.assert_eq(kdf.dropna(axis=axis, thresh=2), pdf.dropna(axis=axis, thresh=2))
+        self.assert_eq(
+            kdf.dropna(axis=axis, thresh=1, subset=["y", "z"]),
+            pdf.dropna(axis=axis, thresh=1, subset=["y", "z"]),
+        )
+
+        pdf2 = pdf.copy()
+        kdf2 = kdf.copy()
+        pser = pdf2[pdf2.columns[0]]
+        kser = kdf2[kdf2.columns[0]]
+        pdf2.dropna(inplace=True)
+        kdf2.dropna(inplace=True)
+        self.assert_eq(kdf2, pdf2)
+        self.assert_eq(kser, pser, almost=True)
+
+        # multi-index
+        columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
+        if axis == 0:
+            pdf.columns = columns
+        else:
+            pdf.index = columns
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.dropna(axis=axis), pdf.dropna(axis=axis))
+        self.assert_eq(kdf.dropna(axis=axis, how="all"), pdf.dropna(axis=axis, how="all"))
+        self.assert_eq(
+            kdf.dropna(axis=axis, subset=[("a", "x")]), pdf.dropna(axis=axis, subset=[("a", "x")])
+        )
+        self.assert_eq(
+            kdf.dropna(axis=axis, subset=("a", "x")), pdf.dropna(axis=axis, subset=[("a", "x")])
+        )
+        self.assert_eq(
+            kdf.dropna(axis=axis, subset=[("a", "y"), ("b", "z")]),
+            pdf.dropna(axis=axis, subset=[("a", "y"), ("b", "z")]),
+        )
+        self.assert_eq(
+            kdf.dropna(axis=axis, subset=[("a", "y"), ("b", "z")], how="all"),
+            pdf.dropna(axis=axis, subset=[("a", "y"), ("b", "z")], how="all"),
+        )
+
+        self.assert_eq(kdf.dropna(axis=axis, thresh=2), pdf.dropna(axis=axis, thresh=2))
+        self.assert_eq(
+            kdf.dropna(axis=axis, thresh=1, subset=[("a", "y"), ("b", "z")]),
+            pdf.dropna(axis=axis, thresh=1, subset=[("a", "y"), ("b", "z")]),
+        )
+
+    def test_dropna_axis_index(self):
         pdf = pd.DataFrame(
             {
                 "x": [np.nan, 2, 3, 4, np.nan, 6],
@@ -645,34 +706,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.dropna(), pdf.dropna())
-        self.assert_eq(kdf.dropna(how="all"), pdf.dropna(how="all"))
-        self.assert_eq(kdf.dropna(subset=["x"]), pdf.dropna(subset=["x"]))
-        self.assert_eq(kdf.dropna(subset="x"), pdf.dropna(subset=["x"]))
-        self.assert_eq(kdf.dropna(subset=["y", "z"]), pdf.dropna(subset=["y", "z"]))
-        self.assert_eq(
-            kdf.dropna(subset=["y", "z"], how="all"), pdf.dropna(subset=["y", "z"], how="all")
-        )
+        self._test_dropna(pdf, axis=0)
 
-        self.assert_eq(kdf.dropna(thresh=2), pdf.dropna(thresh=2))
-        self.assert_eq(
-            kdf.dropna(thresh=1, subset=["y", "z"]), pdf.dropna(thresh=1, subset=["y", "z"])
-        )
-
-        pdf2 = pdf.copy()
-        kdf2 = kdf.copy()
-        pser = pdf2.x
-        kser = kdf2.x
-        pdf2.dropna(inplace=True)
-        kdf2.dropna(inplace=True)
-        self.assert_eq(kdf2, pdf2)
-        self.assert_eq(kser, pser, almost=True)
-
-        msg = "dropna currently only works for axis=0 or axis='index'"
-        with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.dropna(axis=1)
-        with self.assertRaisesRegex(NotImplementedError, msg):
-            kdf.dropna(axis="columns")
         with self.assertRaisesRegex(ValueError, "No axis named foo"):
             kdf.dropna(axis="foo")
 
@@ -682,28 +717,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, "must specify how or thresh"):
             kdf.dropna(how=None)
 
-        # multi-index columns
-        columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y"), ("b", "z")])
-        pdf.columns = columns
-        kdf.columns = columns
+    def test_dropna_axis_column(self):
+        pdf = pd.DataFrame(
+            {
+                "x": [np.nan, 2, 3, 4, np.nan, 6],
+                "y": [1, 2, np.nan, 4, np.nan, np.nan],
+                "z": [1, 2, 3, 4, np.nan, np.nan],
+            },
+            index=[str(r) for r in np.random.rand(6)],
+        ).T
 
-        self.assert_eq(kdf.dropna(), pdf.dropna())
-        self.assert_eq(kdf.dropna(how="all"), pdf.dropna(how="all"))
-        self.assert_eq(kdf.dropna(subset=[("a", "x")]), pdf.dropna(subset=[("a", "x")]))
-        self.assert_eq(kdf.dropna(subset=("a", "x")), pdf.dropna(subset=[("a", "x")]))
-        self.assert_eq(
-            kdf.dropna(subset=[("a", "y"), ("b", "z")]), pdf.dropna(subset=[("a", "y"), ("b", "z")])
-        )
-        self.assert_eq(
-            kdf.dropna(subset=[("a", "y"), ("b", "z")], how="all"),
-            pdf.dropna(subset=[("a", "y"), ("b", "z")], how="all"),
-        )
-
-        self.assert_eq(kdf.dropna(thresh=2), pdf.dropna(thresh=2))
-        self.assert_eq(
-            kdf.dropna(thresh=1, subset=[("a", "y"), ("b", "z")]),
-            pdf.dropna(thresh=1, subset=[("a", "y"), ("b", "z")]),
-        )
+        self._test_dropna(pdf, axis=1)
 
     def test_dtype(self):
         pdf = pd.DataFrame(
