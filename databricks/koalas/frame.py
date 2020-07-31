@@ -2509,7 +2509,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  1  4
         2  4  9
 
-        >>> df.transform(abs)  # doctest: +NORMALIZE_WHITESPACE
+        >>> (df * -1).transform(abs)  # doctest: +NORMALIZE_WHITESPACE
            X
            A  B
         0  0  1

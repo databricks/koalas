@@ -295,7 +295,7 @@ class KoalasFrameMethods(object):
         1  13  14
         2  15  16
 
-        >>> df.koalas.apply_batch(abs)
+        >>> (df * -1).koalas.apply_batch(abs)
            A  B
         0  1  2
         1  3  4
@@ -489,7 +489,7 @@ class KoalasFrameMethods(object):
         1  4  5
         2  6  7
 
-        >>> df.koalas.transform_batch(abs)
+        >>> (df * -1).koalas.transform_batch(abs)
            A  B
         0  1  2
         1  3  4
@@ -781,7 +781,7 @@ class KoalasSeriesMethods(object):
         2    15
         Name: A, dtype: int64
 
-        >>> df.A.koalas.transform_batch(abs)
+        >>> (df * -1).A.koalas.transform_batch(abs)
         0    1
         1    3
         2    5

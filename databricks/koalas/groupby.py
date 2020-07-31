@@ -1920,7 +1920,7 @@ class GroupBy(object, metaclass=ABCMeta):
         2    6
         Name: B, dtype: int32
 
-        >>> df.B.groupby(df.A).transform(abs)
+        >>> (df * -1).B.groupby(df.A).transform(abs)
         0    1
         1    2
         2    3
