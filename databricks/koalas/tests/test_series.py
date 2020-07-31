@@ -1974,4 +1974,3 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
->>>>>>> fb2eedcfad66635039c05009586f310cc79fe17a
