@@ -4554,6 +4554,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              name        toy        born
         1  Batman  Batmobile  1940-04-25
 
+        Drop the columns where at least one element is missing.
+
+        >>> df.dropna(axis='columns')
+               name
+        0    Alfred
+        1    Batman
+        2  Catwoman
+
         Drop the rows where all elements are missing.
 
         >>> df.dropna(how='all')
