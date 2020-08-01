@@ -22,6 +22,7 @@ from collections import OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
+from io import BytesIO
 
 import numpy as np
 import pandas as pd
@@ -936,7 +937,7 @@ def read_excel(
 
     def pd_read_excel(io_or_bin, sn):
         return pd.read_excel(
-            io=io_or_bin,
+            io=BytesIO(io_or_bin) if isinstance(io_or_bin, (bytes, bytearray)) else io_or_bin,
             sheet_name=sn,
             header=header,
             names=names,
@@ -970,7 +971,7 @@ def read_excel(
                 "below 3.0. You can use `ks.from_pandas(pd.read_excel(...))` as a workaround"
             )
         # 'binaryFile' format is available since Spark 3.0.0.
-        binaries = default_session().read.format("binaryFile").load(io).head(2)
+        binaries = default_session().read.format("binaryFile").load(io).select("content").head(2)
         io_or_bin = binaries[0][0]
         single_file = len(binaries) == 1
     else:
@@ -1017,6 +1018,7 @@ def read_excel(
                 default_session()
                 .read.format("binaryFile")
                 .load(io)
+                .select("content")
                 .mapInPandas(lambda iterator: map(output_func, iterator), schema=return_schema)
             )
 
