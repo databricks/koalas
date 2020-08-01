@@ -937,7 +937,7 @@ def read_excel(
 
     def pd_read_excel(io_or_bin):
         return pd.read_excel(
-            io=BytesIO(io_or_bin) if isinstance(io_or_bin, bytearray) else io_or_bin,
+            io=BytesIO(io_or_bin) if isinstance(io_or_bin, (bytes, bytearray)) else io_or_bin,
             sheet_name=sheet_name,
             header=header,
             names=names,
