@@ -23,10 +23,13 @@ from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
 from io import BytesIO
+import json
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -672,6 +675,26 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     if columns is not None:
         columns = list(columns)
 
+    index_names = None
+
+    if index_col is None and LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+        # Try to read pandas metadata
+        binary = default_session().read.format("binaryFile").load(path).select("content").head()[0]
+        metadata = pq.ParquetFile(pa.BufferReader(binary)).metadata.metadata
+        if b"pandas" in metadata:
+            pandas_metadata = json.loads(metadata[b"pandas"].decode("utf8"))
+            if all(isinstance(col, str) for col in pandas_metadata["index_columns"]):
+                index_col = []
+                index_names = []
+                for col in pandas_metadata["index_columns"]:
+                    index_col.append(col)
+                    for column in pandas_metadata["columns"]:
+                        if column["field_name"] == col:
+                            index_names.append(column["name"])
+                            break
+                    else:
+                        index_names.append(None)
+
     kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
     if columns is not None:
@@ -681,7 +704,10 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
             index_map = _get_index_map(sdf, index_col)
-            return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+            kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+
+    if index_names is not None:
+        kdf.index.names = index_names
 
     return kdf
 

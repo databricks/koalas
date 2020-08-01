@@ -15,6 +15,7 @@
 #
 
 from distutils.version import LooseVersion
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -90,6 +91,33 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 actual_idx.sort_values(by="f").to_spark().toPandas(),
                 expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
+
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"),
+        "The test only works with Spark>=3.0",
+    )
+    def test_parquet_read_with_pandas_metadata(self):
+        with self.temp_dir() as tmp:
+            expected1 = self.test_pdf
+
+            path1 = "{}/file1.parquet".format(tmp)
+            expected1.to_parquet(path1)
+
+            self.assert_eq(ks.read_parquet(path1), expected1)
+
+            expected2 = expected1.reset_index()
+
+            path2 = "{}/file2.parquet".format(tmp)
+            expected2.to_parquet(path2)
+
+            self.assert_eq(ks.read_parquet(path2), expected2)
+
+            expected3 = expected2.set_index("index", append=True)
+
+            path3 = "{}/file3.parquet".format(tmp)
+            expected3.to_parquet(path3)
+
+            self.assert_eq(ks.read_parquet(path3), expected3)
 
     def test_parquet_write(self):
         with self.temp_dir() as tmp:
