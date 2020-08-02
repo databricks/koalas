@@ -4241,7 +4241,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        **kwargs : dict of {str: callable or Series}
+        **kwargs : dict of {str: callable, Series or Index}
             The column names are keywords. If the values are
             callable, they are computed on the DataFrame and
             assigned to the new columns. The callable must not
@@ -4276,11 +4276,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         create multiple columns within the same assign.
 
         >>> assigned = df.assign(temp_f=df['temp_c'] * 9 / 5 + 32,
-        ...                      temp_k=df['temp_c'] + 273.15)
-        >>> assigned[['temp_c', 'temp_f', 'temp_k']]
-                  temp_c  temp_f  temp_k
-        Portland    17.0    62.6  290.15
-        Berkeley    25.0    77.0  298.15
+        ...                      temp_k=df['temp_c'] + 273.15,
+        ...                      temp_idx=df.index)
+        >>> assigned[['temp_c', 'temp_f', 'temp_k', 'temp_idx']]
+                  temp_c  temp_f  temp_k  temp_idx
+        Portland    17.0    62.6  290.15  Portland
+        Berkeley    25.0    77.0  298.15  Berkeley
 
         Notes
         -----
@@ -4293,10 +4294,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _assign(self, kwargs):
         assert isinstance(kwargs, dict)
-        from databricks.koalas.series import Series
+        from databricks.koalas.indexes import MultiIndex
+        from databricks.koalas.series import IndexOpsMixin
 
         for k, v in kwargs.items():
-            if not (isinstance(v, (Series, spark.Column)) or callable(v) or is_scalar(v)):
+            is_invalid_assignee = (
+                not (isinstance(v, (IndexOpsMixin, spark.Column)) or callable(v) or is_scalar(v))
+            ) or isinstance(v, MultiIndex)
+            if is_invalid_assignee:
                 raise TypeError(
                     "Column assignment doesn't support type " "{0}".format(type(v).__name__)
                 )
@@ -4306,7 +4311,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         pairs = {
             (k if isinstance(k, tuple) else (k,)): (
                 v.spark.column
-                if isinstance(v, Series)
+                if isinstance(v, IndexOpsMixin) and not isinstance(v, MultiIndex)
                 else v
                 if isinstance(v, spark.Column)
                 else F.lit(v)
