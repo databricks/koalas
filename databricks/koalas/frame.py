@@ -10089,7 +10089,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, (str, tuple, list)):
+        if isinstance(key, (str, tuple, list, pd.Index)):
             return self.loc[:, key]
         elif isinstance(key, slice):
             if any(type(n) == int or None for n in [key.start, key.stop]):
