@@ -4564,6 +4564,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              name        toy        born
         1  Batman  Batmobile  1940-04-25
 
+        Drop the columns where at least one element is missing.
+
+        >>> df.dropna(axis='columns')
+               name
+        0    Alfred
+        1    Batman
+        2  Catwoman
+
         Drop the rows where all elements are missing.
 
         >>> df.dropna(how='all')
@@ -4594,14 +4602,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         inplace = validate_bool_kwarg(inplace, "inplace")
+
+        if thresh is None:
+            if how is None:
+                raise TypeError("must specify how or thresh")
+            elif how not in ("any", "all"):
+                raise ValueError("invalid how option: {h}".format(h=how))
+
+        if subset is not None:
+            if isinstance(subset, str):
+                labels = [(subset,)]
+            elif isinstance(subset, tuple):
+                labels = [subset]
+            else:
+                labels = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+        else:
+            labels = None
+
         if axis == 0:
-            if subset is not None:
-                if isinstance(subset, str):
-                    labels = [(subset,)]
-                elif isinstance(subset, tuple):
-                    labels = [subset]
-                else:
-                    labels = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+            if labels is not None:
                 invalids = [label for label in labels if label not in self._internal.column_labels]
                 if len(invalids) > 0:
                     raise KeyError(invalids)
@@ -4622,20 +4641,74 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 pred = cnt == F.lit(len(labels))
             elif how == "all":
                 pred = cnt > F.lit(0)
-            else:
-                if how is not None:
-                    raise ValueError("invalid how option: {h}".format(h=how))
-                else:
-                    raise TypeError("must specify how or thresh")
 
             internal = self._internal.with_filter(pred)
             if inplace:
                 self._update_internal_frame(internal)
             else:
                 return DataFrame(internal)
-
         else:
-            raise NotImplementedError("dropna currently only works for axis=0 or axis='index'")
+            assert axis == 1
+
+            internal = self._internal.resolved_copy
+
+            if labels is not None:
+                if any(len(lbl) != len(internal.index_map) for lbl in labels):
+                    raise ValueError(
+                        "The length of each subset must be the same as the index size."
+                    )
+
+                cond = reduce(
+                    lambda x, y: x | y,
+                    [
+                        reduce(
+                            lambda x, y: x & y,
+                            [
+                                scol == F.lit(l)
+                                for l, scol in zip(lbl, internal.index_spark_columns)
+                            ],
+                        )
+                        for lbl in labels
+                    ],
+                )
+
+                internal = internal.with_filter(cond)
+
+            null_counts = []
+            for label in internal.column_labels:
+                scol = internal.spark_column_for(label)
+                if isinstance(internal.spark_type_for(label), (FloatType, DoubleType)):
+                    cond = scol.isNull() | F.isnan(scol)
+                else:
+                    cond = scol.isNull()
+                null_counts.append(
+                    F.sum(F.when(~cond, 1).otherwise(0)).alias(name_like_string(label))
+                )
+
+            counts = internal.spark_frame.select(null_counts + [F.count("*")]).head()
+
+            if thresh is not None:
+                column_labels = [
+                    label
+                    for label, cnt in zip(internal.column_labels, counts)
+                    if (cnt or 0) >= int(thresh)
+                ]
+            elif how == "any":
+                column_labels = [
+                    label
+                    for label, cnt in zip(internal.column_labels, counts)
+                    if (cnt or 0) == counts[-1]
+                ]
+            elif how == "all":
+                column_labels = [
+                    label for label, cnt in zip(internal.column_labels, counts) if (cnt or 0) > 0
+                ]
+
+            kdf = self[column_labels]
+            if inplace:
+                self._update_internal_frame(kdf._internal)
+            else:
+                return kdf
 
     # TODO: add 'limit' when value parameter exists
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
