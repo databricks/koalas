@@ -29,7 +29,14 @@ from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window, Column
-from pyspark.sql.types import DateType, DoubleType, FloatType, LongType, StringType, TimestampType
+from pyspark.sql.types import (
+    DateType,
+    DoubleType,
+    FloatType,
+    LongType,
+    StringType,
+    TimestampType,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
@@ -391,7 +398,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         sdf = self._internal.spark_frame
         scol = self.spark.column
 
-        return sdf.select(F.max(scol.isNull() | F.isnan(scol))).collect()[0][0]
+        if isinstance(self.spark.data_type, (DoubleType, FloatType)):
+            return sdf.select(F.max(scol.isNull() | F.isnan(scol))).collect()[0][0]
+        else:
+            return sdf.select(F.max(scol.isNull())).collect()[0][0]
 
     @property
     def is_monotonic(self):
