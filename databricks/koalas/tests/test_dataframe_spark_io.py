@@ -42,6 +42,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 "bhello": np.random.choice(["hello", "yo", "people"], size=20).astype("O"),
             },
             columns=self.test_column_order,
+            index=np.random.rand(20),
         )
         return pdf
 
@@ -216,10 +217,9 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
 
     def test_read_excel(self):
         with self.temp_dir() as tmp:
-            pdf = self.test_pdf
 
             path1 = "{}/file1.xlsx".format(tmp)
-            pdf.to_excel(path1)
+            self.test_pdf.to_excel(path1)
 
             self.assert_eq(ks.read_excel(open(path1, "rb")), pd.read_excel(open(path1, "rb")))
             self.assert_eq(
@@ -234,9 +234,12 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(ks.read_excel(tmp), pd.read_excel(path1))
 
                 path2 = "{}/file2.xlsx".format(tmp)
-                pdf.to_excel(path2)
+                self.test_pdf.to_excel(path2)
                 self.assert_eq(
-                    ks.read_excel(tmp), pd.concat([pd.read_excel(path1), pd.read_excel(path2)])
+                    ks.read_excel(tmp, index_col=0).sort_index(),
+                    pd.concat(
+                        [pd.read_excel(path1, index_col=0), pd.read_excel(path2, index_col=0)]
+                    ).sort_index(),
                 )
             else:
                 self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
@@ -244,33 +247,50 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
         with self.temp_dir() as tmp:
             path1 = "{}/file1.xlsx".format(tmp)
             with pd.ExcelWriter(path1) as writer:
-                pdf.to_excel(writer, sheet_name="Sheet_name_1")
-                pdf.to_excel(writer, sheet_name="Sheet_name_2")
+                self.test_pdf.to_excel(writer, sheet_name="Sheet_name_1")
+                self.test_pdf.to_excel(writer, sheet_name="Sheet_name_2")
 
-            kdfs = ks.read_excel(open(path1, "rb"), sheet_name=["Sheet_name_1", "Sheet_name_2"])
-            pdfs = pd.read_excel(open(path1, "rb"), sheet_name=["Sheet_name_1", "Sheet_name_2"])
-            self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
-            self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+            sheet_names = [["Sheet_name_1", "Sheet_name_2"], None]
+
+            pdfs1 = pd.read_excel(open(path1, "rb"), index_col=0, sheet_name=None)
+
+            for sheet_name in sheet_names:
+                kdfs = ks.read_excel(open(path1, "rb"), index_col=0, sheet_name=sheet_name)
+                self.assert_eq(kdfs["Sheet_name_1"], pdfs1["Sheet_name_1"])
+                self.assert_eq(kdfs["Sheet_name_2"], pdfs1["Sheet_name_2"])
 
             if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
-                kdfs = ks.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
-                pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
-                self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
-                self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+                self.assert_eq(
+                    ks.read_excel(tmp, index_col=0, sheet_name="Sheet_name_2"),
+                    pdfs1["Sheet_name_2"],
+                )
 
-                kdfs = ks.read_excel(tmp, sheet_name=["Sheet_name_1", "Sheet_name_2"])
-                pdfs = pd.read_excel(path1, sheet_name=["Sheet_name_1", "Sheet_name_2"])
-                self.assert_eq(kdfs["Sheet_name_1"], pdfs["Sheet_name_1"])
-                self.assert_eq(kdfs["Sheet_name_2"], pdfs["Sheet_name_2"])
+                for sheet_name in sheet_names:
+                    kdfs = ks.read_excel(tmp, index_col=0, sheet_name=sheet_name)
+                    self.assert_eq(kdfs["Sheet_name_1"], pdfs1["Sheet_name_1"])
+                    self.assert_eq(kdfs["Sheet_name_2"], pdfs1["Sheet_name_2"])
 
                 path2 = "{}/file2.xlsx".format(tmp)
                 with pd.ExcelWriter(path2) as writer:
-                    pdf.to_excel(writer, sheet_name="Sheet_name_1")
-                    pdf.to_excel(writer, sheet_name="Sheet_name_2")
+                    self.test_pdf.to_excel(writer, sheet_name="Sheet_name_1")
+                    self.test_pdf.to_excel(writer, sheet_name="Sheet_name_2")
 
-                with self.assertRaisesRegex(
-                    ValueError, "Can not read multiple sheets in multiple files."
-                ):
-                    ks.read_excel(tmp, sheet_name=["Sheet_name_1", "Sheet_name_2"])
+                pdfs2 = pd.read_excel(path2, index_col=0, sheet_name=None)
+
+                self.assert_eq(
+                    ks.read_excel(tmp, index_col=0, sheet_name="Sheet_name_2").sort_index(),
+                    pd.concat([pdfs1["Sheet_name_2"], pdfs2["Sheet_name_2"]]).sort_index(),
+                )
+
+                for sheet_name in sheet_names:
+                    kdfs = ks.read_excel(tmp, index_col=0, sheet_name=sheet_name)
+                    self.assert_eq(
+                        kdfs["Sheet_name_1"].sort_index(),
+                        pd.concat([pdfs1["Sheet_name_1"], pdfs2["Sheet_name_1"]]).sort_index(),
+                    )
+                    self.assert_eq(
+                        kdfs["Sheet_name_2"].sort_index(),
+                        pd.concat([pdfs1["Sheet_name_2"], pdfs2["Sheet_name_2"]]).sort_index(),
+                    )
             else:
                 self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
