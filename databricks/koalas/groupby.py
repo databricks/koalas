@@ -2019,12 +2019,12 @@ class GroupBy(object, metaclass=ABCMeta):
         4   ham       5      x
         5   ham       5      y
 
-        >>> df.groupby('id').nunique().sort_index() # doctest: +NORMALIZE_WHITESPACE
-              id  value1  value2
+        >>> df.groupby('id').nunique().sort_index() # doctest: +SKIP
+              value1  value2
         id
-        egg    1       1       1
-        ham    1       1       2
-        spam   1       2       1
+        egg        1       1
+        ham        1       2
+        spam       2       1
 
         >>> df.groupby('id')['value1'].nunique().sort_index() # doctest: +NORMALIZE_WHITESPACE
         id
