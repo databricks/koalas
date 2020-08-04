@@ -23,13 +23,17 @@ from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
 from io import BytesIO
+import json
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     ByteType,
     ShortType,
@@ -625,7 +629,7 @@ def read_spark_io(
     return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -636,6 +640,8 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         If not None, only these columns will be read from the file.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
+    pandas_metadata : bool, default: False
+        If True, try to respect the metadata if the Parquet file is written from pandas.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -672,6 +678,44 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     if columns is not None:
         columns = list(columns)
 
+    index_names = None
+
+    if index_col is None and pandas_metadata:
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
+            raise ValueError("pandas_metadata is not supported with Spark < 3.0.")
+
+        # Try to read pandas metadata
+
+        @pandas_udf("index_col array<string>, index_names array<string>", PandasUDFType.SCALAR)
+        def read_index_metadata(pser):
+            binary = pser.iloc[0]
+            metadata = pq.ParquetFile(pa.BufferReader(binary)).metadata.metadata
+            if b"pandas" in metadata:
+                pandas_metadata = json.loads(metadata[b"pandas"].decode("utf8"))
+                if all(isinstance(col, str) for col in pandas_metadata["index_columns"]):
+                    index_col = []
+                    index_names = []
+                    for col in pandas_metadata["index_columns"]:
+                        index_col.append(col)
+                        for column in pandas_metadata["columns"]:
+                            if column["field_name"] == col:
+                                index_names.append(column["name"])
+                                break
+                        else:
+                            index_names.append(None)
+                    return pd.DataFrame({"index_col": [index_col], "index_names": [index_names]})
+            return pd.DataFrame({"index_col": [None], "index_names": [None]})
+
+        index_col, index_names = (
+            default_session()
+            .read.format("binaryFile")
+            .load(path)
+            .limit(1)
+            .select(read_index_metadata("content").alias("index_metadata"))
+            .select("index_metadata.*")
+            .head()
+        )
+
     kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
     if columns is not None:
@@ -681,7 +725,10 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
             index_map = _get_index_map(sdf, index_col)
-            return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+            kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+
+    if index_names is not None:
+        kdf.index.names = index_names
 
     return kdf
 
