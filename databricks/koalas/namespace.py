@@ -33,6 +33,7 @@ import pyarrow.parquet as pq
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     ByteType,
     ShortType,
@@ -679,21 +680,36 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
 
     if index_col is None and LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
         # Try to read pandas metadata
-        binary = default_session().read.format("binaryFile").load(path).select("content").head()[0]
-        metadata = pq.ParquetFile(pa.BufferReader(binary)).metadata.metadata
-        if b"pandas" in metadata:
-            pandas_metadata = json.loads(metadata[b"pandas"].decode("utf8"))
-            if all(isinstance(col, str) for col in pandas_metadata["index_columns"]):
-                index_col = []
-                index_names = []
-                for col in pandas_metadata["index_columns"]:
-                    index_col.append(col)
-                    for column in pandas_metadata["columns"]:
-                        if column["field_name"] == col:
-                            index_names.append(column["name"])
-                            break
-                    else:
-                        index_names.append(None)
+
+        @pandas_udf("index_col array<string>, index_names array<string>", PandasUDFType.SCALAR)
+        def read_index_metadata(pser):
+            binary = pser.iloc[0]
+            metadata = pq.ParquetFile(pa.BufferReader(binary)).metadata.metadata
+            if b"pandas" in metadata:
+                pandas_metadata = json.loads(metadata[b"pandas"].decode("utf8"))
+                if all(isinstance(col, str) for col in pandas_metadata["index_columns"]):
+                    index_col = []
+                    index_names = []
+                    for col in pandas_metadata["index_columns"]:
+                        index_col.append(col)
+                        for column in pandas_metadata["columns"]:
+                            if column["field_name"] == col:
+                                index_names.append(column["name"])
+                                break
+                        else:
+                            index_names.append(None)
+                    return pd.DataFrame({"index_col": [index_col], "index_names": [index_names]})
+            return pd.DataFrame({"index_col": [None], "index_names": [None]})
+
+        index_col, index_names = (
+            default_session()
+            .read.format("binaryFile")
+            .load(path)
+            .limit(1)
+            .select(read_index_metadata("content").alias("index_metadata"))
+            .select("index_metadata.*")
+            .head()
+        )
 
     kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
