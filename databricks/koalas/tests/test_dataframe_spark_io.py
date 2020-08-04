@@ -103,21 +103,21 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             path1 = "{}/file1.parquet".format(tmp)
             expected1.to_parquet(path1)
 
-            self.assert_eq(ks.read_parquet(path1), expected1)
+            self.assert_eq(ks.read_parquet(path1, read_pandas_metadata=True), expected1)
 
             expected2 = expected1.reset_index()
 
             path2 = "{}/file2.parquet".format(tmp)
             expected2.to_parquet(path2)
 
-            self.assert_eq(ks.read_parquet(path2), expected2)
+            self.assert_eq(ks.read_parquet(path2, read_pandas_metadata=True), expected2)
 
             expected3 = expected2.set_index("index", append=True)
 
             path3 = "{}/file3.parquet".format(tmp)
             expected3.to_parquet(path3)
 
-            self.assert_eq(ks.read_parquet(path3), expected3)
+            self.assert_eq(ks.read_parquet(path3, read_pandas_metadata=True), expected3)
 
     def test_parquet_write(self):
         with self.temp_dir() as tmp:
