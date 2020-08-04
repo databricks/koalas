@@ -45,7 +45,6 @@ from pyspark.sql.types import (
     StringType,
     StructType,
     IntegralType,
-    FractionalType,
 )
 from pyspark.sql.window import Window
 
@@ -4999,7 +4998,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         data_type = self.spark.data_type
         if isinstance(data_type, BooleanType):
             return self.all()
-        elif isinstance(data_type, (IntegralType, FractionalType)):
+        elif isinstance(data_type, NumericType):
             spark_frame = self._internal.spark_frame
             spark_column = self.spark.column
 
@@ -5010,7 +5009,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             if result is None:
                 # When Series is empty, pandas returns 1.0
                 return 1.0
-            elif isinstance(data_type, (LongType, BooleanType)):
+            elif isinstance(data_type, IntegralType):
                 return int(round(result))
             else:
                 return result
