@@ -36,6 +36,7 @@ from pandas.api.types import (
     is_object_dtype,
 )
 from pandas.io.formats.printing import pprint_thing
+from pandas.api.types import is_hashable
 
 import pyspark
 from pyspark import sql as spark
@@ -675,6 +676,8 @@ class Index(IndexOpsMixin):
         d    d
         Name: 0, dtype: object
         """
+        if not is_hashable(name):
+            raise TypeError("Series.name must be a hashable type")
         kdf = self._kdf
         scol = self.spark.column
         if name is not None:

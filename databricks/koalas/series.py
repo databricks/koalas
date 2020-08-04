@@ -44,6 +44,7 @@ from pyspark.sql.types import (
     NumericType,
     StringType,
     StructType,
+    IntegralType,
 )
 from pyspark.sql.window import Window
 
@@ -4961,6 +4962,61 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
         """
         return first_series(self.to_frame().tail(n=n))
+
+    def product(self, min_count=0):
+        """
+        Return the product of the values.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Parameters
+        ----------
+        min_count : int, default 0
+            The required number of valid values to perform the operation. If fewer than
+            ``min_count`` non-NA values are present the result will be NA.
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4, 5]).prod()
+        120
+
+        By default, the product of an empty or all-NA Series is ``1``
+
+        >>> ks.Series([]).prod()
+        1.0
+
+        This can be controlled with the ``min_count`` parameter
+
+        >>> ks.Series([]).prod(min_count=1)
+        nan
+        """
+        # When number of valid values is fewer than `min_count`, pandas returns np.nan
+        if (min_count > 0) and (len(self.dropna()) < min_count):
+            return np.nan
+
+        data_type = self.spark.data_type
+        if isinstance(data_type, BooleanType):
+            return self.all()
+        elif isinstance(data_type, NumericType):
+            spark_frame = self._internal.spark_frame
+            spark_column = self.spark.column
+
+            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
+            spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
+
+            result = spark_frame.head(1)[0][0]
+            if result is None:
+                # When Series is empty, pandas returns 1.0
+                return 1.0
+            elif isinstance(data_type, IntegralType):
+                return int(round(result))
+            else:
+                return result
+        else:
+            raise TypeError("cannot perform prod with type {}".format(self.dtype))
+
+    prod = product
 
     def _cum(self, func, skipna, part_cols=()):
         # This is used to cummin, cummax, cumsum, etc.

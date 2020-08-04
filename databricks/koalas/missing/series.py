@@ -50,8 +50,6 @@ class MissingPandasLikeSeries(object):
     interpolate = _unsupported_function("interpolate")
     last = _unsupported_function("last")
     last_valid_index = _unsupported_function("last_valid_index")
-    prod = _unsupported_function("prod")
-    product = _unsupported_function("product")
     reindex = _unsupported_function("reindex")
     reindex_like = _unsupported_function("reindex_like")
     rename_axis = _unsupported_function("rename_axis")

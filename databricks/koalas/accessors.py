@@ -20,6 +20,7 @@ import inspect
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from typing import Tuple, Union, TYPE_CHECKING
+import types
 
 import numpy as np
 import pandas as pd
@@ -286,13 +287,20 @@ class KoalasFrameMethods(object):
         1    59069   1048596
         2  9765645  60466196
 
-        You can also use ``np.ufunc`` as input.
+        You can also use ``np.ufunc`` and built-in functions as input.
 
         >>> df.koalas.apply_batch(np.add, args=(10,))
             A   B
         0  11  12
         1  13  14
         2  15  16
+
+        >>> (df * -1).koalas.apply_batch(abs)
+           A  B
+        0  1  2
+        1  3  4
+        2  5  6
+
         """
         # TODO: codes here partially duplicate `DataFrame.apply`. Can we deduplicate?
 
@@ -300,11 +308,10 @@ class KoalasFrameMethods(object):
         from databricks.koalas.frame import DataFrame
         from databricks import koalas as ks
 
-        if isinstance(func, np.ufunc):
+        if not isinstance(func, types.FunctionType):
+            assert callable(func), "the first argument should be a callable function."
             f = func
             func = lambda *args, **kwargs: f(*args, **kwargs)
-
-        assert callable(func), "the first argument should be a callable function."
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
@@ -481,6 +488,12 @@ class KoalasFrameMethods(object):
         0  2  3
         1  4  5
         2  6  7
+
+        >>> (df * -1).koalas.transform_batch(abs)
+           A  B
+        0  1  2
+        1  3  4
+        2  5  6
 
         Note that you should not transform the index. The index information will not change.
 
@@ -760,16 +773,20 @@ class KoalasSeriesMethods(object):
         2    11
         Name: A, dtype: int64
 
-        You can also use ``np.ufunc`` as input.
+        You can also use ``np.ufunc`` and built-in functions as input.
 
         >>> df.A.koalas.transform_batch(np.add, 10)
         0    11
         1    13
         2    15
         Name: A, dtype: int64
-        """
-        from databricks import koalas as ks
 
+        >>> (df * -1).A.koalas.transform_batch(abs)
+        0    1
+        1    3
+        2    5
+        Name: A, dtype: int64
+        """
         assert callable(func), "the first argument should be a callable function."
 
         return_sig = None
@@ -799,7 +816,7 @@ class KoalasSeriesMethods(object):
         from databricks.koalas.series import Series
         from databricks import koalas as ks
 
-        if isinstance(func, np.ufunc):
+        if not isinstance(func, types.FunctionType):
             f = func
             func = lambda *args, **kwargs: f(*args, **kwargs)
 

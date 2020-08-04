@@ -98,6 +98,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.to_series(name=["x", "a"])
+
     def test_to_frame(self):
         pidx = self.pdf.index
         kidx = self.kdf.index
@@ -1370,3 +1374,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"])
         with self.assertRaisesRegex(TypeError, "perform __abs__ with this index"):
             abs(kidx)
+
+    def test_hasnans(self):
+        # BooleanType
+        pidx = pd.Index([True, False, True, True])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.hasnans, kidx.hasnans)
+
+        pidx = pd.Index([True, False, np.nan, True])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.hasnans, kidx.hasnans)
+
+        # TimestampType
+        pser = pd.Series([pd.Timestamp("2020-07-30") for _ in range(3)])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
