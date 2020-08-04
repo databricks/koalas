@@ -682,7 +682,7 @@ def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **op
 
     if index_col is None and pandas_metadata:
         if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
-            raise ValueError("read_pandas_metadata is not supported with Spark < 3.0.")
+            raise ValueError("pandas_metadata is not supported with Spark < 3.0.")
 
         # Try to read pandas metadata
 
