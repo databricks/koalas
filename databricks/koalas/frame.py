@@ -10089,7 +10089,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, (str, tuple, list, pd.Index)):
+
+        if isinstance(key, Series):
+            return self.loc[key.astype(bool)]
+        elif isinstance(key, str) or is_list_like(key):
+            key = list(key) if is_list_like(key) else key
             return self.loc[:, key]
         elif isinstance(key, slice):
             if any(type(n) == int or None for n in [key.start, key.stop]):
@@ -10097,8 +10101,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 # with ints.
                 return self.iloc[key]
             return self.loc[key]
-        elif isinstance(key, Series):
-            return self.loc[key.astype(bool)]
         raise NotImplementedError(key)
 
     def __setitem__(self, key, value):
