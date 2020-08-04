@@ -44,7 +44,6 @@ from pyspark.sql.types import (
     NumericType,
     StringType,
     StructType,
-    TimestampType,
     IntegralType,
     FractionalType,
 )
