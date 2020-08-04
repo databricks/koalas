@@ -629,9 +629,7 @@ def read_spark_io(
     return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(
-    path, columns=None, index_col=None, read_pandas_metadata=False, **options
-) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -642,8 +640,8 @@ def read_parquet(
         If not None, only these columns will be read from the file.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
-    read_pandas_metadata : bool, default: False
-        If True, try to read pandas metadata from the file stored by pandas.
+    pandas_metadata : bool, default: False
+        If True, try to respect the metadata if the Parquet file is written from pandas.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -682,7 +680,7 @@ def read_parquet(
 
     index_names = None
 
-    if index_col is None and read_pandas_metadata:
+    if index_col is None and pandas_metadata:
         if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
             raise ValueError("read_pandas_metadata is not supported with Spark < 3.0.")
 
