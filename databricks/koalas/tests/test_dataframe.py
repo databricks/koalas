@@ -84,7 +84,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf, kdf = self.df_pair
         column_mask = pdf.columns.isin(["a", "b"])
         index_cols = pdf.columns[column_mask]
-        self.assert_eq(pdf[index_cols].shape, kdf[index_cols].shape)
+        self.assert_eq(kdf[index_cols], pdf[index_cols])
 
     def test_inplace(self):
         pdf, kdf = self.df_pair
