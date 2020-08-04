@@ -10094,16 +10094,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, (str, tuple, list)):
+        if isinstance(key, Series):
+            return self.loc[key.astype(bool)]
+        elif isinstance(key, (str, tuple)):
             return self.loc[:, key]
+        elif is_list_like(key):
+            return self.loc[:, list(key)]
         elif isinstance(key, slice):
             if any(type(n) == int or None for n in [key.start, key.stop]):
                 # Seems like pandas Frame always uses int as positional search when slicing
                 # with ints.
                 return self.iloc[key]
             return self.loc[key]
-        elif isinstance(key, Series):
-            return self.loc[key.astype(bool)]
         raise NotImplementedError(key)
 
     def __setitem__(self, key, value):

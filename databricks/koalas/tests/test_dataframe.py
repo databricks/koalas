@@ -80,6 +80,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pd.DataFrame(pser), ks.DataFrame(kser))
 
+        # check kdf[pd.Index]
+        pdf, kdf = self.df_pair
+        column_mask = pdf.columns.isin(["a", "b"])
+        index_cols = pdf.columns[column_mask]
+        self.assert_eq(kdf[index_cols], pdf[index_cols])
+
     def test_inplace(self):
         pdf, kdf = self.df_pair
 
