@@ -566,7 +566,9 @@ class InternalFrame(object):
     @staticmethod
     def attach_sequence_column(sdf, column_name):
         scols = [scol_for(sdf, column) for column in sdf.columns]
-        sequential_index = F.row_number().over(Window.orderBy(F.monotonically_increasing_id())) - 1
+        sequential_index = (
+            F.row_number().over(Window.orderBy(F.monotonically_increasing_id())).cast("long") - 1
+        )
         return sdf.select(sequential_index.alias(column_name), *scols)
 
     @staticmethod
@@ -612,7 +614,9 @@ class InternalFrame(object):
                 )
                 return sdf.rdd.zipWithIndex().toDF(schema).select(column_name, "values.*")
         else:
-            return default_session().range(0).selectExpr("id as {}".format(column_name))
+            return default_session().createDataFrame(
+                [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
+            )
 
     def spark_column_name_for(self, label: Tuple[str, ...]) -> str:
         """ Return the actual Spark column name for the given column label. """
