@@ -19,8 +19,8 @@ An internal immutable DataFrame with some metadata to manage indexes.
 """
 import re
 from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
-from itertools import accumulate
 from collections import OrderedDict
+import py4j
 
 import numpy as np
 import pandas as pd
@@ -28,7 +28,6 @@ from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
-from pyspark.sql.functions import PandasUDFType, pandas_udf
 from pyspark.sql.types import BooleanType, DataType, StructField, StructType, LongType
 
 try:
@@ -49,7 +48,6 @@ from databricks.koalas.utils import (
     lazy_property,
     name_like_string,
     scol_for,
-    verify_temp_column_name,
 )
 
 
@@ -440,9 +438,19 @@ class InternalFrame(object):
                 "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
             )
 
+            if data_spark_columns is not None:
+                spark_frame = spark_frame.select(data_spark_columns)
+
             # Create default index.
             spark_frame = InternalFrame.attach_default_index(spark_frame)
             index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
+
+            if data_spark_columns is not None:
+                data_spark_columns = [
+                    scol_for(spark_frame, col)
+                    for col in spark_frame.columns
+                    if col != SPARK_DEFAULT_INDEX_NAME
+                ]
 
         if NATURAL_ORDER_COLUMN_NAME not in spark_frame.columns:
             spark_frame = spark_frame.withColumn(
@@ -525,7 +533,7 @@ class InternalFrame(object):
 
         >>> spark_frame = InternalFrame.attach_default_index(spark_frame)
         >>> spark_frame
-        DataFrame[__index_level_0__: int, id: bigint]
+        DataFrame[__index_level_0__: bigint, id: bigint]
 
         It throws an exception if the given column name already exists.
 
@@ -583,54 +591,28 @@ class InternalFrame(object):
         |       2|  c|
         +--------+---+
         """
+        if len(sdf.columns) > 0:
+            try:
+                jdf = sdf._jdf.toDF()
+                jrdd = jdf.rdd().zipWithIndex()
 
-        scols = [scol_for(sdf, column) for column in sdf.columns]
+                sql_ctx = sdf.sql_ctx
+                encoders = sql_ctx._jvm.org.apache.spark.sql.Encoders
+                encoder = encoders.tuple(jdf.encoder(), encoders.scalaLong())
 
-        spark_partition_column = verify_temp_column_name(sdf, "__spark_partition_id__")
-        offset_column = verify_temp_column_name(sdf, "__offset__")
-        row_number_column = verify_temp_column_name(sdf, "__row_number__")
-
-        # 1. Calculates counts per each partition ID. `counts` here is, for instance,
-        #     {
-        #         1: 83,
-        #         6: 83,
-        #         3: 83,
-        #         ...
-        #     }
-        sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
-        counts = map(
-            lambda x: (x["key"], x["count"]),
-            sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect(),
-        )
-
-        # 2. Calculates cumulative sum in an order of partition id.
-        #     Note that it does not matter if partition id guarantees its order or not.
-        #     We just need a one-by-one sequential id.
-
-        # sort by partition key.
-        sorted_counts = sorted(counts, key=lambda x: x[0])
-        # get cumulative sum in an order of partition key.
-        cumulative_counts = [0] + list(accumulate(map(lambda count: count[1], sorted_counts)))
-        # zip it with partition key.
-        sums = dict(zip(map(lambda count: count[0], sorted_counts), cumulative_counts))
-
-        # 3. Attach offset for each partition.
-        @pandas_udf(LongType(), PandasUDFType.SCALAR)
-        def offset(id):
-            current_partition_offset = sums[id.iloc[0]]
-            return pd.Series(current_partition_offset).repeat(len(id))
-
-        sdf = sdf.withColumn(offset_column, offset(spark_partition_column))
-
-        # 4. Calculate row_number in each partition.
-        w = Window.partitionBy(spark_partition_column).orderBy(F.monotonically_increasing_id())
-        row_number = F.row_number().over(w)
-        sdf = sdf.withColumn(row_number_column, row_number)
-
-        # 5. Calculate the index.
-        return sdf.select(
-            (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
-        )
+                df = spark.DataFrame(
+                    sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
+                )
+                return df.selectExpr("_2 as {}".format(column_name), "_1.*")
+            except py4j.protocol.Py4JError:
+                schema = (
+                    StructType()
+                    .add("values", sdf.schema, nullable=False)
+                    .add(column_name, LongType(), nullable=False)
+                )
+                return sdf.rdd.zipWithIndex().toDF(schema).select(column_name, "values.*")
+        else:
+            return default_session().range(0).selectExpr("id as {}".format(column_name))
 
     def spark_column_name_for(self, label: Tuple[str, ...]) -> str:
         """ Return the actual Spark column name for the given column label. """

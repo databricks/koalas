@@ -2478,11 +2478,11 @@ def broadcast(obj):
     --------
     >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
     ...                     'value': [1, 2, 3, 5]},
-    ...                    columns=['lkey', 'value'])
+    ...                    columns=['lkey', 'value']).set_index('lkey')
     >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
     ...                     'value': [5, 6, 7, 8]},
-    ...                    columns=['rkey', 'value'])
-    >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+    ...                    columns=['rkey', 'value']).set_index('rkey')
+    >>> merged = df1.merge(ks.broadcast(df2), left_index=True, right_index=True)
     >>> merged.spark.explain()  # doctest: +ELLIPSIS
     == Physical Plan ==
     ...
@@ -2491,9 +2491,7 @@ def broadcast(obj):
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
-    return DataFrame(
-        obj._internal.with_new_sdf(F.broadcast(obj._internal.resolved_copy.spark_frame))
-    )
+    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
 
 
 def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):

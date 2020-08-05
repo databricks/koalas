@@ -1531,10 +1531,14 @@ class Index(IndexOpsMixin):
         # |                1|              9|
         # +-----------------+---------------+
 
-        return sdf.orderBy(
-            scol_for(sdf, self._internal.data_spark_column_names[0]).desc(),
-            F.col(sequence_col).asc(),
-        ).first()[0]
+        return (
+            sdf.orderBy(
+                scol_for(sdf, self._internal.data_spark_column_names[0]).desc(),
+                F.col(sequence_col).asc(),
+            )
+            .select(sequence_col)
+            .first()[0]
+        )
 
     def argmin(self):
         """
@@ -1561,10 +1565,14 @@ class Index(IndexOpsMixin):
         sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
-        return sdf.orderBy(
-            scol_for(sdf, self._internal.data_spark_column_names[0]).asc(),
-            F.col(sequence_col).asc(),
-        ).first()[0]
+        return (
+            sdf.orderBy(
+                scol_for(sdf, self._internal.data_spark_column_names[0]).asc(),
+                F.col(sequence_col).asc(),
+            )
+            .select(sequence_col)
+            .first()[0]
+        )
 
     def set_names(self, names, level=None, inplace=False):
         """

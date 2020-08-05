@@ -676,8 +676,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.reset_index(), pser.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed-sequence"):
-            # the order might be changed.
-            self.assert_eq(kser.reset_index().sort_index(), pser.reset_index())
+            self.assert_eq(kser.reset_index(), pser.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed"):
             # the index is different.

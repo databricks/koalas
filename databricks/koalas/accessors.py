@@ -90,7 +90,7 @@ class KoalasFrameMethods(object):
         1  b   1
         2  c   2
 
-        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column="id").sort_index()
+        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column="id")
            x  id
         0  a   0
         1  b   1

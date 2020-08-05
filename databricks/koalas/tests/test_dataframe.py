@@ -226,8 +226,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.reset_index(), pdf.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed-sequence"):
-            # the order might be changed.
-            self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index())
+            self.assert_eq(kdf.reset_index(), pdf.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed"):
             # the index is different.
