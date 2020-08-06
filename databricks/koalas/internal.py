@@ -610,7 +610,10 @@ class InternalFrame(object):
                 df = spark.DataFrame(
                     sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
                 )
-                return df.selectExpr("_2 as {}".format(column_name), "_1.*")
+                columns = df.columns
+                return df.selectExpr(
+                    "`{}` as `{}`".format(columns[1], column_name), "`{}`.*".format(columns[0])
+                )
             except py4j.protocol.Py4JError:
                 if "KOALAS_TESTING" in os.environ:
                     raise
