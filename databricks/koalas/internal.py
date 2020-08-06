@@ -21,6 +21,7 @@ import re
 from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
 from collections import OrderedDict
+import os
 import py4j
 
 import numpy as np
@@ -607,10 +608,12 @@ class InternalFrame(object):
                 jrdd = jdf.rdd().zipWithIndex()
 
                 df = spark.DataFrame(
-                    sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
+                    sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).tDF(), sql_ctx
                 )
                 return df.selectExpr("_2 as {}".format(column_name), "_1.*")
             except py4j.protocol.Py4JError:
+                if "KOALAS_TESTING" in os.environ:
+                    raise
                 return InternalFrame._attach_distributed_sequence_column(sdf, column_name)
         else:
             return default_session().createDataFrame(
