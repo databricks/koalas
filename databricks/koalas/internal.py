@@ -602,7 +602,7 @@ class InternalFrame(object):
 
                 sql_ctx = sdf.sql_ctx
                 encoders = sql_ctx._jvm.org.apache.spark.sql.Encoders
-                encoder = encoders.tuple(jdf.encoder(), encoders.scalaLong())
+                encoder = encoders.tuple(jdf.exprEnc(), encoders.scalaLong())
 
                 jrdd = jdf.rdd().zipWithIndex()
 
