@@ -3579,69 +3579,83 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.rfloordiv(10), expected_result)
 
     def test_truncate(self):
-        # The bug has been fixed in pandas 1.1.0.
+        pdf1 = pd.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[-500, -20, -1, 0, 400, 550, 1000],
+        )
+        kdf1 = ks.from_pandas(pdf1)
+        pdf2 = pd.DataFrame(
+            {
+                "A": ["a", "b", "c", "d", "e", "f", "g"],
+                "B": ["h", "i", "j", "k", "l", "m", "n"],
+                "C": ["o", "p", "q", "r", "s", "t", "u"],
+            },
+            index=[1000, 550, 400, 0, -1, -20, -500],
+        )
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(kdf1.truncate(), pdf1.truncate())
+        self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
+        self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
+        self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
+        self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        # The bug for these tests has been fixed in pandas 1.1.0.
         if LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
-            pdf1 = pd.DataFrame(
-                {
-                    "A": ["a", "b", "c", "d", "e", "f", "g"],
-                    "B": ["h", "i", "j", "k", "l", "m", "n"],
-                    "C": ["o", "p", "q", "r", "s", "t", "u"],
-                },
-                index=[-500, -20, -1, 0, 400, 550, 1000],
-            )
-            kdf1 = ks.from_pandas(pdf1)
-            pdf2 = pd.DataFrame(
-                {
-                    "A": ["a", "b", "c", "d", "e", "f", "g"],
-                    "B": ["h", "i", "j", "k", "l", "m", "n"],
-                    "C": ["o", "p", "q", "r", "s", "t", "u"],
-                },
-                index=[1000, 550, 400, 0, -1, -20, -500],
-            )
-            kdf2 = ks.from_pandas(pdf2)
-
-            self.assert_eq(kdf1.truncate(), pdf1.truncate())
-            self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
-            self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
-            self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
-            self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
             self.assert_eq(kdf2.truncate(0, 550), pdf2.truncate(0, 550))
             self.assert_eq(kdf2.truncate(0, 550, copy=False), pdf2.truncate(0, 550, copy=False))
-            # axis = 1
-            self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
-            self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
-            self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
-            self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
-            self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
-            self.assert_eq(
-                kdf1.truncate("B", "C", copy=False, axis=1),
-                pdf1.truncate("B", "C", copy=False, axis=1),
+        else:
+            expected_kdf = ks.DataFrame(
+                {"A": ["b", "c", "d"], "B": ["i", "j", "k"], "C": ["p", "q", "r"],},
+                index=[550, 400, 0],
             )
+            self.assert_eq(kdf2.truncate(0, 550), expected_kdf)
+            self.assert_eq(kdf2.truncate(0, 550, copy=False), expected_kdf)
 
-            # MultiIndex columns
-            columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "Z")])
-            pdf1.columns = columns
-            kdf1.columns = columns
-            pdf2.columns = columns
-            kdf2.columns = columns
+        # axis = 1
+        self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
+        self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
+        self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
+        self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
+        self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
+        self.assert_eq(
+            kdf1.truncate("B", "C", copy=False, axis=1),
+            pdf1.truncate("B", "C", copy=False, axis=1),
+        )
 
-            self.assert_eq(kdf1.truncate(), pdf1.truncate())
-            self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
-            self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
-            self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
-            self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        # MultiIndex columns
+        columns = pd.MultiIndex.from_tuples([("A", "Z"), ("B", "X"), ("C", "Z")])
+        pdf1.columns = columns
+        kdf1.columns = columns
+        pdf2.columns = columns
+        kdf2.columns = columns
+
+        self.assert_eq(kdf1.truncate(), pdf1.truncate())
+        self.assert_eq(kdf1.truncate(before=-20), pdf1.truncate(before=-20))
+        self.assert_eq(kdf1.truncate(after=400), pdf1.truncate(after=400))
+        self.assert_eq(kdf1.truncate(copy=False), pdf1.truncate(copy=False))
+        self.assert_eq(kdf1.truncate(-20, 400, copy=False), pdf1.truncate(-20, 400, copy=False))
+        # The bug for these tests has been fixed in pandas 1.1.0.
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
             self.assert_eq(kdf2.truncate(0, 550), pdf2.truncate(0, 550))
             self.assert_eq(kdf2.truncate(0, 550, copy=False), pdf2.truncate(0, 550, copy=False))
-            # axis = 1
-            self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
-            self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
-            self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
-            self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
-            self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
-            self.assert_eq(
-                kdf1.truncate("B", "C", copy=False, axis=1),
-                pdf1.truncate("B", "C", copy=False, axis=1),
-            )
+        else:
+            expected_kdf.columns = columns
+            self.assert_eq(kdf2.truncate(0, 550), expected_kdf)
+            self.assert_eq(kdf2.truncate(0, 550, copy=False), expected_kdf)
+        # axis = 1
+        self.assert_eq(kdf1.truncate(axis=1), pdf1.truncate(axis=1))
+        self.assert_eq(kdf1.truncate(before="B", axis=1), pdf1.truncate(before="B", axis=1))
+        self.assert_eq(kdf1.truncate(after="A", axis=1), pdf1.truncate(after="A", axis=1))
+        self.assert_eq(kdf1.truncate(copy=False, axis=1), pdf1.truncate(copy=False, axis=1))
+        self.assert_eq(kdf2.truncate("B", "C", axis=1), pdf2.truncate("B", "C", axis=1))
+        self.assert_eq(
+            kdf1.truncate("B", "C", copy=False, axis=1),
+            pdf1.truncate("B", "C", copy=False, axis=1),
+        )
 
         # Exceptions
         kdf = ks.DataFrame(
