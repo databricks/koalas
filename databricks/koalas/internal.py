@@ -596,11 +596,12 @@ class InternalFrame(object):
         if len(sdf.columns) > 0:
             try:
                 jdf = sdf._jdf.toDF()
-                jrdd = jdf.rdd().zipWithIndex()
 
                 sql_ctx = sdf.sql_ctx
                 encoders = sql_ctx._jvm.org.apache.spark.sql.Encoders
                 encoder = encoders.tuple(jdf.encoder(), encoders.scalaLong())
+
+                jrdd = jdf.rdd().zipWithIndex()
 
                 df = spark.DataFrame(
                     sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
