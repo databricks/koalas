@@ -608,7 +608,7 @@ class InternalFrame(object):
                 jrdd = jdf.rdd().zipWithIndex()
 
                 df = spark.DataFrame(
-                    sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).tDF(), sql_ctx
+                    sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
                 )
                 return df.selectExpr("_2 as {}".format(column_name), "_1.*")
             except py4j.protocol.Py4JError:
