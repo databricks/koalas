@@ -23,13 +23,17 @@ from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
 from io import BytesIO
+import json
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     ByteType,
     ShortType,
@@ -625,7 +629,7 @@ def read_spark_io(
     return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -636,6 +640,8 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         If not None, only these columns will be read from the file.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
+    pandas_metadata : bool, default: False
+        If True, try to respect the metadata if the Parquet file is written from pandas.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -672,6 +678,44 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     if columns is not None:
         columns = list(columns)
 
+    index_names = None
+
+    if index_col is None and pandas_metadata:
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
+            raise ValueError("pandas_metadata is not supported with Spark < 3.0.")
+
+        # Try to read pandas metadata
+
+        @pandas_udf("index_col array<string>, index_names array<string>", PandasUDFType.SCALAR)
+        def read_index_metadata(pser):
+            binary = pser.iloc[0]
+            metadata = pq.ParquetFile(pa.BufferReader(binary)).metadata.metadata
+            if b"pandas" in metadata:
+                pandas_metadata = json.loads(metadata[b"pandas"].decode("utf8"))
+                if all(isinstance(col, str) for col in pandas_metadata["index_columns"]):
+                    index_col = []
+                    index_names = []
+                    for col in pandas_metadata["index_columns"]:
+                        index_col.append(col)
+                        for column in pandas_metadata["columns"]:
+                            if column["field_name"] == col:
+                                index_names.append(column["name"])
+                                break
+                        else:
+                            index_names.append(None)
+                    return pd.DataFrame({"index_col": [index_col], "index_names": [index_names]})
+            return pd.DataFrame({"index_col": [None], "index_names": [None]})
+
+        index_col, index_names = (
+            default_session()
+            .read.format("binaryFile")
+            .load(path)
+            .limit(1)
+            .select(read_index_metadata("content").alias("index_metadata"))
+            .select("index_metadata.*")
+            .head()
+        )
+
     kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
     if columns is not None:
@@ -681,7 +725,10 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
             index_map = _get_index_map(sdf, index_col)
-            return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+            kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+
+    if index_names is not None:
+        kdf.index.names = index_names
 
     return kdf
 
@@ -935,10 +982,10 @@ def read_excel(
     2     None    NaN
     """
 
-    def pd_read_excel(io_or_bin):
+    def pd_read_excel(io_or_bin, sn):
         return pd.read_excel(
             io=BytesIO(io_or_bin) if isinstance(io_or_bin, (bytes, bytearray)) else io_or_bin,
-            sheet_name=sheet_name,
+            sheet_name=sn,
             header=header,
             names=names,
             index_col=index_col,
@@ -978,7 +1025,7 @@ def read_excel(
         io_or_bin = io
         single_file = True
 
-    pdfs = pd_read_excel(io_or_bin)
+    pdfs = pd_read_excel(io_or_bin, sn=sheet_name)
 
     if single_file:
         if isinstance(pdfs, dict):
@@ -986,15 +1033,14 @@ def read_excel(
         else:
             return from_pandas(pdfs)
     else:
-        if isinstance(pdfs, dict):
-            # TODO: support dict
-            raise ValueError("Can not read multiple sheets in multiple files.")
-        else:
-            kdf = from_pandas(pdfs)
+
+        def read_excel_on_spark(pdf, sn):
+
+            kdf = from_pandas(pdf)
             return_schema = kdf._internal.to_internal_spark_frame.schema
 
             def output_func(pdf):
-                pdf = pd.concat([pd_read_excel(bin) for bin in pdf[pdf.columns[0]]])
+                pdf = pd.concat([pd_read_excel(bin, sn=sn) for bin in pdf[pdf.columns[0]]])
 
                 # TODO: deduplicate this logic with InternalFrame.from_pandas
                 new_index_columns = [
@@ -1024,6 +1070,11 @@ def read_excel(
             )
 
             return DataFrame(kdf._internal.with_new_sdf(sdf))
+
+        if isinstance(pdfs, dict):
+            return OrderedDict([(sn, read_excel_on_spark(pdf, sn)) for sn, pdf in pdfs.items()])
+        else:
+            return read_excel_on_spark(pdfs, sheet_name)
 
 
 def read_html(
