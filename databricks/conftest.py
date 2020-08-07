@@ -28,7 +28,7 @@ import pyarrow as pa
 import matplotlib.pyplot as plt
 from pyspark import __version__
 
-from databricks import koalas
+from databricks import koalas as ks
 from databricks.koalas import utils
 
 
@@ -45,6 +45,9 @@ elif LooseVersion(__version__) >= LooseVersion("2.4.2"):
 else:
     session = utils.default_session(shared_conf)
 
+if os.getenv("DEFAULT_INDEX_TYPE", "") != "":
+    ks.options.compute.default_index_type = os.getenv("DEFAULT_INDEX_TYPE")
+
 
 @pytest.fixture(scope="session", autouse=True)
 def session_termination():
@@ -56,7 +59,7 @@ def session_termination():
 
 @pytest.fixture(autouse=True)
 def add_ks(doctest_namespace):
-    doctest_namespace["ks"] = koalas
+    doctest_namespace["ks"] = ks
 
 
 @pytest.fixture(autouse=True)

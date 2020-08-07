@@ -525,7 +525,7 @@ class InternalFrame(object):
 
         >>> spark_frame = InternalFrame.attach_default_index(spark_frame)
         >>> spark_frame
-        DataFrame[__index_level_0__: int, id: bigint]
+        DataFrame[__index_level_0__: bigint, id: bigint]
 
         It throws an exception if the given column name already exists.
 
@@ -558,7 +558,9 @@ class InternalFrame(object):
     @staticmethod
     def attach_sequence_column(sdf, column_name):
         scols = [scol_for(sdf, column) for column in sdf.columns]
-        sequential_index = F.row_number().over(Window.orderBy(F.monotonically_increasing_id())) - 1
+        sequential_index = (
+            F.row_number().over(Window.orderBy(F.monotonically_increasing_id())).cast("long") - 1
+        )
         return sdf.select(sequential_index.alias(column_name), *scols)
 
     @staticmethod
@@ -598,6 +600,10 @@ class InternalFrame(object):
         #         ...
         #     }
         sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
+
+        # Checkpoint the DataFrame to fix the partition ID.
+        sdf = sdf.localCheckpoint(eager=False)
+
         counts = map(
             lambda x: (x["key"], x["count"]),
             sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect(),
