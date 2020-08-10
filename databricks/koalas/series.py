@@ -5018,14 +5018,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     prod = product
 
-    def _cum(self, func, skipna, part_cols=()):
+    def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
-        window = (
-            Window.orderBy(NATURAL_ORDER_COLUMN_NAME)
-            .partitionBy(*part_cols)
-            .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-        )
+        if ascending:
+            window = (
+                Window.orderBy(F.asc(NATURAL_ORDER_COLUMN_NAME))
+                .partitionBy(*part_cols)
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            )
+        else:
+            window = (
+                Window.orderBy(F.desc(NATURAL_ORDER_COLUMN_NAME))
+                .partitionBy(*part_cols)
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            )
 
         if skipna:
             # There is a behavior difference between pandas and PySpark. In case of cummax,

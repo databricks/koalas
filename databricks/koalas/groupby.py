@@ -640,6 +640,53 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
         )
 
+    def cumcount(self, ascending=True):
+        """
+        Cumulative count for each group.
+
+        Returns
+        -------
+        Series or DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(
+        ...     [['a'], ['a'], ['a'], ['b'], ['b'], ['a']],
+        ...     columns=list('A'))
+        >>> df
+           A
+        0  a
+        1  a
+        2  a
+        3  b
+        4  b
+        5  a
+        >>> df.groupby('A').cumcount().sort_index()
+        0    0
+        1    1
+        2    2
+        3    0
+        4    1
+        5    3
+        Name: 0, dtype: int64
+        >>> df.groupby('A').cumcount(ascending=False)
+        0    3
+        1    2
+        2    1
+        3    1
+        4    0
+        5    0
+        Name: 0, dtype: int64
+
+        """
+        ret = self._apply_series_op(
+            lambda sg: sg._kser._cum(
+                F.count, True, part_cols=sg._groupkeys_scols, ascending=ascending),
+            should_resolve=True,
+        )
+        ret -= 1
+        return ret.max(axis=1)
+
     def cummax(self):
         """
         Cumulative max for each group.
