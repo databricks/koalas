@@ -1204,7 +1204,7 @@ class KoalasPlotAccessor(PandasObject):
     _series_kinds = _common_kinds.union(set([]))
     _dataframe_kinds = _common_kinds.union(set(["scatter", "hexbin"]))
     _kind_aliases = {"density": "kde"}
-    _koalas_all_kinds = _common_kinds.union(_series_kinds).union( _dataframe_kinds)
+    _koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
 
     def __init__(self, data):
         self.data = data
