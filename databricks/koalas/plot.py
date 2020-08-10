@@ -1200,11 +1200,11 @@ class KoalasPlotAccessor(PandasObject):
 
     # from databricks.koalas import DataFrame, Series
 
-    _common_kinds = ("area", "bar", "barh", "box", "hist", "kde", "line", "pie")
-    _series_kinds = () + _common_kinds
-    _dataframe_kinds = ("scatter", "hexbin") + _common_kinds
+    _common_kinds = {"area", "bar", "barh", "box", "hist", "kde", "line", "pie"}
+    _series_kinds = _common_kinds.union(set([]))
+    _dataframe_kinds = _common_kinds.union(set(["scatter", "hexbin"]))
     _kind_aliases = {"density": "kde"}
-    _all_kinds = _common_kinds + _series_kinds + _dataframe_kinds
+    _koalas_all_kinds = _common_kinds.union(_series_kinds).union( _dataframe_kinds)
 
     def __init__(self, data):
         self.data = data
@@ -1329,7 +1329,7 @@ class KoalasPlotAccessor(PandasObject):
         if plot_backend.__name__ != "databricks.koalas.plot":
             return plot_backend.plot(plot_data, kind=kind, **kwds)
 
-        if kind not in self._all_kinds:
+        if kind not in self._koalas_all_kinds:
             raise ValueError("{} is not a valid plot kind".format(kind))
 
         from databricks.koalas import DataFrame, Series
@@ -1367,9 +1367,10 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+        axes : :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
             Return an ndarray when ``subplots=True``.
             Return an custom object when ``backend!=matplotlib``.
+
 
         See Also
         --------
@@ -1379,12 +1380,14 @@ class KoalasPlotAccessor(PandasObject):
         --------
         Basic plot.
 
+        For Series:
         .. plot::
             :context: close-figs
 
             >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.line()
 
+        For DataFrame:
         .. plot::
             :context: close-figs
 
@@ -1433,18 +1436,23 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        axes : :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+            Return an custom object when ``backend!=matplotlib``.
+
 
         Examples
         --------
         Basic plot.
 
+        For Series:
         .. plot::
             :context: close-figs
 
             >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.bar()
 
+        For DataFrame:
         .. plot::
             :context: close-figs
 
@@ -1527,12 +1535,14 @@ class KoalasPlotAccessor(PandasObject):
 
         Examples
         --------
+        For Series:
         .. plot::
             :context: close-figs
 
             >>> df = ks.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
             >>> plot = df.val.plot.barh()
 
+        For DataFrame:
         .. plot::
             :context: close-figs
 
@@ -1602,7 +1612,8 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        axes : :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
             Return an custom object when ``backend!=matplotlib``.
 
         Notes
@@ -1622,12 +1633,15 @@ class KoalasPlotAccessor(PandasObject):
         Draw a box plot from a DataFrame with four columns of randomly
         generated data.
 
+        For Series:
         .. plot::
             :context: close-figs
 
             >>> data = np.random.randn(25, 4)
             >>> df = ks.DataFrame(data, columns=list('ABCD'))
             >>> ax = df['A'].plot.box()
+
+        This is an unsupported function for DataFrame type
         """
         from databricks.koalas import DataFrame, Series
 
@@ -1660,17 +1674,30 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        axes : :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        axes : :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+            Return an custom object when ``backend!=matplotlib``.
+
 
         Examples
         --------
         Basic plot.
 
+        For Series:
         .. plot::
             :context: close-figs
 
             >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.hist()
+
+        For DataFrame:
+        .. plot::
+            :context: close-figs
+
+            >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
+            ...                    'radius': [2439.7, 6051.8, 6378.1]},
+            ...                   index=['Mercury', 'Venus', 'Earth'])
+            >>> plot = df.plot.hist(figsize=(6, 3))
         """
         return self(kind="hist", bins=bins, **kwds)
 
@@ -1693,7 +1720,9 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        matplotlib.axes.Axes or numpy.ndarray of them
+        axes : :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+            Return an custom object when ``backend!=matplotlib``.
 
         Examples
         --------
@@ -1721,7 +1750,6 @@ class KoalasPlotAccessor(PandasObject):
             >>> ax = s.plot.kde(ind=[1, 2, 3, 4, 5], bw_method=0.3)
 
         For DataFrame, it works in the same way as Series:
-
         .. plot::
             :context: close-figs
 
@@ -1767,12 +1795,14 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        matplotlib.axes.Axes or numpy.ndarray
-            Area plot, or array of area plots if subplots is True.
+        axes : :class:`matplotlib.axes.Axes` or :class:`numpy.ndarray`
+            Return an ndarray when ``subplots=True``.
+            Return an custom object when ``backend!=matplotlib``.
 
         Examples
         --------
 
+        For Series
         .. plot::
             :context: close-figs
 
@@ -1784,6 +1814,7 @@ class KoalasPlotAccessor(PandasObject):
             ...                        freq='M'))
             >>> plot = df.sales.plot.area()
 
+        For DataFrame
         .. plot::
             :context: close-figs
 
@@ -1828,19 +1859,17 @@ class KoalasPlotAccessor(PandasObject):
         Examples
         --------
 
+        For Series:
         .. plot::
             :context: close-figs
 
             >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
             ...                    'radius': [2439.7, 6051.8, 6378.1]},
             ...                   index=['Mercury', 'Venus', 'Earth'])
-            >>> plot = df.mass.plot.pie(figsize=(5, 5))
-
-        .. plot::
-            :context: close-figs
-
             >>> plot = df.mass.plot.pie(subplots=True, figsize=(6, 3))
 
+
+        For DataFrame:
         .. plot::
             :context: close-figs
 
@@ -1883,7 +1912,8 @@ class KoalasPlotAccessor(PandasObject):
 
         Returns
         -------
-        :class:`matplotlib.axes.Axes` or numpy.ndarray of them
+        axes : :class:`matplotlib.axes.Axes`
+            Return an custom object when ``backend!=matplotlib``.
 
         See Also
         --------
