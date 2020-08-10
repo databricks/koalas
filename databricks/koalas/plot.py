@@ -1344,6 +1344,7 @@ class KoalasPlotAccessor(PandasObject):
             return plot_frame(data=self.data, kind=kind, **kwds)
 
     __call__.__doc__ = plot_frame.__doc__
+    __call__.__doc__ = plot_series.__doc__
 
     def line(self, x=None, y=None, **kwargs):
         """
@@ -1381,6 +1382,7 @@ class KoalasPlotAccessor(PandasObject):
         Basic plot.
 
         For Series:
+
         .. plot::
             :context: close-figs
 
@@ -1388,6 +1390,7 @@ class KoalasPlotAccessor(PandasObject):
             >>> ax = s.plot.line()
 
         For DataFrame:
+
         .. plot::
             :context: close-figs
 
@@ -1446,6 +1449,7 @@ class KoalasPlotAccessor(PandasObject):
         Basic plot.
 
         For Series:
+
         .. plot::
             :context: close-figs
 
@@ -1453,6 +1457,7 @@ class KoalasPlotAccessor(PandasObject):
             >>> ax = s.plot.bar()
 
         For DataFrame:
+
         .. plot::
             :context: close-figs
 
@@ -1536,6 +1541,7 @@ class KoalasPlotAccessor(PandasObject):
         Examples
         --------
         For Series:
+
         .. plot::
             :context: close-figs
 
@@ -1543,6 +1549,7 @@ class KoalasPlotAccessor(PandasObject):
             >>> plot = df.val.plot.barh()
 
         For DataFrame:
+
         .. plot::
             :context: close-figs
 
@@ -1634,6 +1641,7 @@ class KoalasPlotAccessor(PandasObject):
         generated data.
 
         For Series:
+
         .. plot::
             :context: close-figs
 
@@ -1684,20 +1692,12 @@ class KoalasPlotAccessor(PandasObject):
         Basic plot.
 
         For Series:
+
         .. plot::
             :context: close-figs
 
             >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.hist()
-
-        For DataFrame:
-        .. plot::
-            :context: close-figs
-
-            >>> df = ks.DataFrame({'mass': [0.330, 4.87, 5.97],
-            ...                    'radius': [2439.7, 6051.8, 6378.1]},
-            ...                   index=['Mercury', 'Venus', 'Earth'])
-            >>> plot = df.plot.hist(figsize=(6, 3))
         """
         return self(kind="hist", bins=bins, **kwds)
 
@@ -1750,6 +1750,7 @@ class KoalasPlotAccessor(PandasObject):
             >>> ax = s.plot.kde(ind=[1, 2, 3, 4, 5], bw_method=0.3)
 
         For DataFrame, it works in the same way as Series:
+
         .. plot::
             :context: close-figs
 
@@ -1803,6 +1804,7 @@ class KoalasPlotAccessor(PandasObject):
         --------
 
         For Series
+
         .. plot::
             :context: close-figs
 
@@ -1815,6 +1817,7 @@ class KoalasPlotAccessor(PandasObject):
             >>> plot = df.sales.plot.area()
 
         For DataFrame
+
         .. plot::
             :context: close-figs
 
@@ -1860,6 +1863,7 @@ class KoalasPlotAccessor(PandasObject):
         --------
 
         For Series:
+
         .. plot::
             :context: close-figs
 
@@ -1870,6 +1874,7 @@ class KoalasPlotAccessor(PandasObject):
 
 
         For DataFrame:
+
         .. plot::
             :context: close-figs
 
