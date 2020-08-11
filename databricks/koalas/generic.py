@@ -1692,6 +1692,10 @@ class Frame(object, metaclass=ABCMeta):
         -------
         scalar : type of index
 
+        Notes
+        -----
+        This API only works with PySpark >= 3.0.
+
         Examples
         --------
 
