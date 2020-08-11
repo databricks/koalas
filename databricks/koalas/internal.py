@@ -588,7 +588,7 @@ class InternalFrame(object):
 
         >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark()
         >>> sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name="sequence")
-        >>> sdf.sort("sequence").show()  # doctest: +NORMALIZE_WHITESPACE
+        >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
         +--------+---+
         |sequence|  0|
         +--------+---+
@@ -625,6 +625,18 @@ class InternalFrame(object):
 
     @staticmethod
     def _attach_distributed_sequence_column(sdf, column_name):
+        """
+        >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark()
+        >>> sdf = InternalFrame._attach_distributed_sequence_column(sdf, column_name="sequence")
+        >>> sdf.sort("sequence").show()  # doctest: +NORMALIZE_WHITESPACE
+        +--------+---+
+        |sequence|  0|
+        +--------+---+
+        |       0|  a|
+        |       1|  b|
+        |       2|  c|
+        +--------+---+
+        """
         scols = [scol_for(sdf, column) for column in sdf.columns]
 
         spark_partition_column = verify_temp_column_name(sdf, "__spark_partition_id__")
