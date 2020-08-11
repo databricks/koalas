@@ -1343,9 +1343,6 @@ class KoalasPlotAccessor(PandasObject):
                 return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
             return plot_frame(data=self.data, kind=kind, **kwds)
 
-    __call__.__doc__ = plot_frame.__doc__
-    __call__.__doc__ = plot_series.__doc__
-
     def line(self, x=None, y=None, **kwargs):
         """
         Plot DataFrame/Series as lines.
@@ -1698,6 +1695,17 @@ class KoalasPlotAccessor(PandasObject):
 
             >>> s = ks.Series([1, 3, 2])
             >>> ax = s.plot.hist()
+
+        For DataFrame:
+
+        .. plot::
+            :context: close-figs
+            >>> df = pd.DataFrame(
+            ...     np.random.randint(1, 7, 6000),
+            ...     columns=['one'])
+            >>> df['two'] = df['one'] + np.random.randint(1, 7, 6000)
+            >>> df = ks.from_pandas(df)
+            >>> ax = df.plot.hist(bins=12, alpha=0.5)
         """
         return self(kind="hist", bins=bins, **kwds)
 
