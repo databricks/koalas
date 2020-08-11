@@ -224,6 +224,7 @@ Time series-related
 
    DataFrame.shift
    DataFrame.first_valid_index
+   DataFrame.last_valid_index
 
 Serialization / IO / Conversion
 -------------------------------

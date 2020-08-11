@@ -1974,3 +1974,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
+
+    def test_last_valid_index(self):
+        # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
+            pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+
+            # MultiIndex columns
+            midx = pd.MultiIndex(
+                [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+                [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+            )
+            pser.index = midx
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+
+            # Empty Series
+            pser = pd.Series([])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())

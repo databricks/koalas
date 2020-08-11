@@ -3859,3 +3859,23 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pdf.tail(1001), kdf.tail(1001), almost=True)
             with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
                 kdf.tail("10")
+
+    def test_last_valid_index(self):
+        # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
+            pdf = pd.DataFrame(
+                {"a": [1, 2, 3, None], "b": [1.0, 2.0, 3.0, None], "c": [100, 200, 400, None]},
+                index=["Q", "W", "E", "R"],
+            )
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
+
+            # MultiIndex columns
+            pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
+
+            # Empty Series
+            pdf = pd.Series([], name=0).to_frame()
+            kdf = ks.Series([]).to_frame()
+            self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())

@@ -1684,6 +1684,103 @@ class Frame(object, metaclass=ABCMeta):
 
         return first_valid_idx
 
+    def last_valid_index(self):
+        """
+        Return index for last non-NA/null value.
+
+        Returns
+        -------
+        scalar : type of index
+
+        Examples
+        --------
+
+        Support for DataFrame
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, None],
+        ...                     'b': [1.0, 2.0, 3.0, None],
+        ...                     'c': [100, 200, 400, None]},
+        ...                     index=['Q', 'W', 'E', 'R'])
+        >>> kdf
+             a    b      c
+        Q  1.0  1.0  100.0
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  NaN  NaN    NaN
+
+        >>> kdf.last_valid_index()
+        'E'
+
+        Support for MultiIndex columns
+
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+             a    b      c
+             x    y      z
+        Q  1.0  1.0  100.0
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  NaN  NaN    NaN
+
+        >>> kdf.last_valid_index()
+        'E'
+
+        Support for Series.
+
+        >>> s = ks.Series([1, 2, 3, None, None], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    1.0
+        200    2.0
+        300    3.0
+        400    NaN
+        500    NaN
+        Name: 0, dtype: float64
+
+        >>> s.last_valid_index()
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([250, 1.5, 320, 1, 0.3, None, None, None, None], index=midx)
+        >>> s
+        lama    speed     250.0
+                weight      1.5
+                length    320.0
+        cow     speed       1.0
+                weight      0.3
+                length      NaN
+        falcon  speed       NaN
+                weight      NaN
+                length      NaN
+        Name: 0, dtype: float64
+
+        >>> s.last_valid_index()
+        ('cow', 'weight')
+        """
+        sdf = self._internal.spark_frame
+        data_spark_columns = self._internal.data_spark_columns
+        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
+
+        last_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).tail(1)
+        # For Empty Series or DataFrame, returns None.
+        if len(last_valid_row) == 0:
+            return None
+        else:
+            last_valid_row = last_valid_row[0]
+
+        last_valid_idx = tuple(
+            last_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        )
+
+        if len(last_valid_idx) == 1:
+            last_valid_idx = last_valid_idx[0]
+
+        return last_valid_idx
+
     def median(self, axis=None, numeric_only=True, accuracy=10000):
         """
         Return the median of the values for the requested axis.
