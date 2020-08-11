@@ -1712,7 +1712,7 @@ class Frame(object, metaclass=ABCMeta):
         E  3.0  3.0  400.0
         R  NaN  NaN    NaN
 
-        >>> kdf.last_valid_index()
+        >>> kdf.last_valid_index()  # doctest: +SKIP
         'E'
 
         Support for MultiIndex columns
@@ -1726,7 +1726,7 @@ class Frame(object, metaclass=ABCMeta):
         E  3.0  3.0  400.0
         R  NaN  NaN    NaN
 
-        >>> kdf.last_valid_index()
+        >>> kdf.last_valid_index()  # doctest: +SKIP
         'E'
 
         Support for Series.
@@ -1740,7 +1740,7 @@ class Frame(object, metaclass=ABCMeta):
         500    NaN
         Name: 0, dtype: float64
 
-        >>> s.last_valid_index()
+        >>> s.last_valid_index()  # doctest: +SKIP
         300
 
         Support for MultiIndex
@@ -1762,7 +1762,7 @@ class Frame(object, metaclass=ABCMeta):
                 length      NaN
         Name: 0, dtype: float64
 
-        >>> s.last_valid_index()
+        >>> s.last_valid_index()  # doctest: +SKIP
         ('cow', 'weight')
         """
         sdf = self._internal.spark_frame
