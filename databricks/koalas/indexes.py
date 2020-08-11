@@ -728,7 +728,7 @@ class Index(IndexOpsMixin):
 
         By default, the original Index is reused. To enforce a new Index:
 
-        >>> idx.to_frame(index=False)
+        >>> idx.to_frame(index=False).sort_index()
           animal
         0    Ant
         1   Bear

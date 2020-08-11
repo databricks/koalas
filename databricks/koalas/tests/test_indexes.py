@@ -107,19 +107,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(
+            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
+        )
 
         pidx.name = "a"
         kidx.name = "a"
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(
+            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
+        )
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
             self.assert_eq(repr(kidx.to_frame(name="x")), repr(pidx.to_frame(name="x")))
             self.assert_eq(
-                repr(kidx.to_frame(index=False, name="x")),
+                repr(kidx.to_frame(index=False, name="x").sort_index()),
                 repr(pidx.to_frame(index=False, name="x")),
             )
 
@@ -127,7 +131,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.set_index("b", append=True).index
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(
+            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
+        )
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
@@ -135,7 +141,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 repr(kidx.to_frame(name=["x", "y"])), repr(pidx.to_frame(name=["x", "y"]))
             )
             self.assert_eq(
-                repr(kidx.to_frame(index=False, name=["x", "y"])),
+                repr(kidx.to_frame(index=False, name=["x", "y"]).sort_index()),
                 repr(pidx.to_frame(index=False, name=["x", "y"])),
             )
 
