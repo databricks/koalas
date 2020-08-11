@@ -1700,6 +1700,7 @@ class KoalasPlotAccessor(PandasObject):
 
         .. plot::
             :context: close-figs
+
             >>> df = pd.DataFrame(
             ...     np.random.randint(1, 7, 6000),
             ...     columns=['one'])
