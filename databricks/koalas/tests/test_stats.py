@@ -83,15 +83,15 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                 }
             )
             kdf = ks.from_pandas(pdf)
-            self.assert_eq(kdf.count(axis=1).sort_index(), pdf.count(axis=1))
-            self.assert_eq(kdf.var(axis=1).sort_index(), pdf.var(axis=1))
-            self.assert_eq(kdf.std(axis=1).sort_index(), pdf.std(axis=1))
-            self.assert_eq(kdf.max(axis=1).sort_index(), pdf.max(axis=1))
-            self.assert_eq(kdf.min(axis=1).sort_index(), pdf.min(axis=1))
-            self.assert_eq(kdf.sum(axis=1).sort_index(), pdf.sum(axis=1))
-            self.assert_eq(kdf.kurtosis(axis=1).sort_index(), pdf.kurtosis(axis=1))
-            self.assert_eq(kdf.skew(axis=1).sort_index(), pdf.skew(axis=1))
-            self.assert_eq(kdf.mean(axis=1).sort_index(), pdf.mean(axis=1))
+            self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
+            self.assert_eq(kdf.var(axis=1), pdf.var(axis=1))
+            self.assert_eq(kdf.std(axis=1), pdf.std(axis=1))
+            self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
+            self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
+            self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
+            self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
+            self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
+            self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.

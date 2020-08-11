@@ -161,7 +161,7 @@ def range(
     --------
     When the first parameter is specified, we generate a range of values up till that number.
 
-    >>> ks.range(5).sort_index()
+    >>> ks.range(5)
        id
     0   0
     1   1
@@ -171,7 +171,7 @@ def range(
 
     When start, end, and step are specified:
 
-    >>> ks.range(start = 100, end = 200, step = 20).sort_index()
+    >>> ks.range(start = 100, end = 200, step = 20)
         id
     0  100
     1  120
@@ -1789,7 +1789,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     Clear the existing index and reset it in the result
     by setting the ``ignore_index`` option to ``True``.
 
-    >>> ks.concat([s1, s2], ignore_index=True).sort_index()
+    >>> ks.concat([s1, s2], ignore_index=True)
     0    a
     1    b
     2    c
@@ -1870,7 +1870,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
 
     Combine with column axis.
 
-    >>> ks.concat([df1, df4], axis=1).sort_index()
+    >>> ks.concat([df1, df4], axis=1)
       letter  number  animal    name
     0      a       1    bird   polly
     1      b       2  monkey  george

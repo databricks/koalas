@@ -658,16 +658,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pdf.foo
         kser = kdf.foo
 
-        self.assert_eq(kser.reset_index().sort_index(), pser.reset_index())
-        self.assert_eq(
-            kser.reset_index(name="values").sort_index(), pser.reset_index(name="values")
-        )
-        self.assert_eq(kser.reset_index(drop=True).sort_index(), pser.reset_index(drop=True))
+        self.assert_eq(kser.reset_index(), pser.reset_index())
+        self.assert_eq(kser.reset_index(name="values"), pser.reset_index(name="values"))
+        self.assert_eq(kser.reset_index(drop=True), pser.reset_index(drop=True))
 
         # inplace
         kser.reset_index(drop=True, inplace=True)
         pser.reset_index(drop=True, inplace=True)
-        self.assert_eq(kser.sort_index(), pser)
+        self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
     def test_reset_index_with_default_index_types(self):
@@ -678,7 +676,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.reset_index(), pser.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed-sequence"):
-            self.assert_eq(kser.reset_index(), pser.reset_index())
+            # the order might be changed.
+            self.assert_eq(kser.reset_index().sort_index(), pser.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed"):
             # the index is different.
@@ -883,8 +882,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser1.append(kser2), pser1.append(pser2))
         self.assert_eq(kser1.append(kser3), pser1.append(pser3))
         self.assert_eq(
-            kser1.append(kser2, ignore_index=True).sort_index(),
-            pser1.append(pser2, ignore_index=True),
+            kser1.append(kser2, ignore_index=True), pser1.append(pser2, ignore_index=True)
         )
 
         kser1.append(kser3, verify_integrity=True)

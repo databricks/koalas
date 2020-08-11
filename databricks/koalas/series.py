@@ -2573,7 +2573,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         With ignore_index set to True:
 
-        >>> s1.append(s2, ignore_index=True).sort_index()
+        >>> s1.append(s2, ignore_index=True)
         0    1
         1    2
         2    3

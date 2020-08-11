@@ -53,7 +53,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
                 if as_index:
                     sort = lambda df: df.sort_index()
                 else:
-                    sort = lambda df: df.sort_values("c").reset_index(drop=True).sort_index()
+                    sort = lambda df: df.sort_values("c").reset_index(drop=True)
                 self.assert_eq(
                     sort(kdf1.groupby(kdf2.a, as_index=as_index).sum()),
                     sort(pdf1.groupby(pdf2.a, as_index=as_index).sum()),
@@ -87,8 +87,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf1.groupby(kdf2[("x", "a")], as_index=False)
             .sum()
             .sort_values(("y", "c"))
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf1.groupby(pdf2[("x", "a")], as_index=False)
             .sum()
             .sort_values(("y", "c"))
@@ -109,9 +108,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = (
-                    lambda df: df.sort_values(list(df.columns)).reset_index(drop=True).sort_index()
-                )
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
 
             with self.subTest(as_index=as_index):
                 self.assert_eq(
@@ -149,9 +146,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = (
-                    lambda df: df.sort_values(list(df.columns)).reset_index(drop=True).sort_index()
-                )
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
 
             with self.subTest(as_index=as_index):
                 self.assert_eq(
@@ -200,9 +195,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
                 {("X", "B"): "min", ("Y", "C"): "sum"}
             )
             self.assert_eq(
-                stats_kdf.sort_values(by=[("X", "B"), ("Y", "C")])
-                .reset_index(drop=True)
-                .sort_index(),
+                stats_kdf.sort_values(by=[("X", "B"), ("Y", "C")]).reset_index(drop=True),
                 stats_pdf.sort_values(by=[("X", "B"), ("Y", "C")]).reset_index(drop=True),
             )
 
@@ -213,9 +206,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             {("X", "B"): ["min", "max"], ("Y", "C"): "sum"}
         )
         self.assert_eq(
-            stats_kdf.sort_values(by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")])
-            .reset_index(drop=True)
-            .sort_index(),
+            stats_kdf.sort_values(
+                by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")]
+            ).reset_index(drop=True),
             stats_pdf.sort_values(
                 by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")]
             ).reset_index(drop=True),
@@ -231,11 +224,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf1.groupby(kdf2.A).sum().sort_index(), pdf1.groupby(pdf2.A).sum().sort_index()
         )
         self.assert_eq(
-            kdf1.groupby(kdf2.A, as_index=False)
-            .sum()
-            .sort_values("A")
-            .reset_index(drop=True)
-            .sort_index(),
+            kdf1.groupby(kdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
             pdf1.groupby(pdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
         )
 
