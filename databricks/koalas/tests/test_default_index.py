@@ -17,10 +17,10 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
-from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
-class OneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
+class OneByOneDefaultIndexTest(ReusedSQLTestCase):
     @classmethod
     def setUpClass(cls):
         super(OneByOneDefaultIndexTest, cls).setUpClass()
@@ -36,7 +36,7 @@ class OneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(ks.DataFrame(sdf).sort_index(), pd.DataFrame({"id": list(range(1000))}))
 
 
-class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
+class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase):
     @classmethod
     def setUpClass(cls):
         super(DistributedOneByOneDefaultIndexTest, cls).setUpClass()
@@ -52,7 +52,7 @@ class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(ks.DataFrame(sdf).sort_index(), pd.DataFrame({"id": list(range(1000))}))
 
 
-class DistributedDefaultIndexTest(ReusedSQLTestCase, TestUtils):
+class DistributedDefaultIndexTest(ReusedSQLTestCase):
     @classmethod
     def setUpClass(cls):
         super(DistributedDefaultIndexTest, cls).setUpClass()
