@@ -1314,7 +1314,7 @@ class iLocIndexer(LocIndexerLike):
         sdf = InternalFrame.attach_distributed_sequence_column(
             internal.spark_frame, column_name=self._sequence_col
         )
-        return internal.with_new_sdf(spark_frame=sdf)
+        return internal.copy(spark_frame=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
 
     @lazy_property
     def _sequence_col(self):
