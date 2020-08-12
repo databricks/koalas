@@ -852,6 +852,70 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).rank().sort_index(),
         )
 
+    def test_cumcount(self):
+        pdf = pd.DataFrame(
+            {"a": [1, 1, 1, 4] * 3, "b": [None, 0.1, 20.0, None] * 3, "c": [4, 3, 2, 1] * 3},
+            index=np.random.rand(4 * 3),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.groupby("b").cumcount().sort_index(), pdf.groupby("b").cumcount().sort_index()
+        )
+        # TODO: Enable the following test when ks.groupby(dropna=True)
+        # is implemented (see #1007)
+        # self.assert_eq(
+        #    kdf.groupby(["a", "b"]).cumcount().sort_index(),
+        #    pdf.groupby(["a", "b"]).cumcount().sort_index(),
+        # )
+        self.assert_eq(
+            kdf.groupby(["a", "c"]).cumcount().sort_index(),
+            pdf.groupby(["a", "c"]).cumcount().sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["b"])["a"].cumcount().sort_index(),
+            pdf.groupby(["b"])["a"].cumcount().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(["b"])[["a", "c"]].cumcount().sort_index(),
+            pdf.groupby(["b"])[["a", "c"]].cumcount().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5).cumcount().sort_index(),
+            pdf.groupby(pdf.b // 5).cumcount().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby(kdf.b // 5)["a"].cumcount().sort_index(),
+            pdf.groupby(pdf.b // 5)["a"].cumcount().sort_index(),
+            almost=True,
+        )
+        self.assert_eq(
+            kdf.groupby("b").cumcount().sum(), pdf.groupby("b").cumcount().sum(),
+        )
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(
+            kdf.groupby(("x", "b")).cumcount().sort_index(),
+            pdf.groupby(("x", "b")).cumcount().sort_index(),
+        )
+        # TODO: Enable the following test when ks.groupby(dropna=True)
+        # is implemented (see #1007)
+        # self.assert_eq(
+        #    kdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
+        #    pdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
+        # )
+        self.assert_eq(
+            kdf.groupby([("x", "a"), ("y", "c")]).cumcount().sort_index(),
+            pdf.groupby([("x", "a"), ("y", "c")]).cumcount().sort_index(),
+        )
+
     def test_cummin(self):
         pdf = pd.DataFrame(
             {

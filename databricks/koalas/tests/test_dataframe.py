@@ -2200,26 +2200,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index())
             )
 
-    def _test_cumcount(self, pdf, kdf):
-        for column in pdf.columns:
-            self.assert_eq(pdf.groupby(column).cumcount(), kdf.groupby(column).cumcount())
-            self.assert_eq(
-                pdf.groupby(column).cumcount(ascending=False),
-                kdf.groupby(column).cumcount(ascending=False),
-            )
-            self.assert_eq(
-                pdf.groupby(column).cumcount().sum(), kdf.groupby(column).cumcount().sum()
-            )
-
-    def test_cumcount(self):
-        pdf = pd.DataFrame(
-            [[1, None, 4], [1, 0.1, 3], [1, 20.0, 2], [4, None, 1]],
-            columns=list("ABC"),
-            index=np.random.rand(4),
-        )
-        kdf = ks.from_pandas(pdf)
-        self._test_cumcount(pdf, kdf)
-
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
         self.assert_eq(pdf.cummin(skipna=False), kdf.cummin(skipna=False))
