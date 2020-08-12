@@ -696,7 +696,8 @@ class GroupBy(object, metaclass=ABCMeta):
             should_resolve=True,
         )
         ret -= 1
-        return ret.max(axis=1)
+        # Cast columns to ``"int64"`` to match `pandas.core.groupby.GroupBy.cumcount`.
+        return ret.max(axis=1).astype('int64')
 
     def cummax(self):
         """
