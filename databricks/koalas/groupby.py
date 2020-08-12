@@ -642,17 +642,27 @@ class GroupBy(object, metaclass=ABCMeta):
 
     def cumcount(self, ascending=True):
         """
-        Cumulative count for each group.
+        Number each item in each group from 0 to the length of that group - 1.
+
+        Essentially this is equivalent to
+
+        >>> self.apply(lambda x: pd.Series(np.arange(len(x)), x.index))
+
+        Parameters
+        ----------
+        ascending : bool, default True
+            If False, number in reverse, from length of group - 1 to 0.
 
         Returns
         -------
-        Series or DataFrame
+        Series
+            Sequence number of each element within each group.
 
         Examples
         --------
-        >>> df = ks.DataFrame(
-        ...     [['a'], ['a'], ['a'], ['b'], ['b'], ['a']],
-        ...     columns=list('A'))
+
+        >>> df = ks.DataFrame([['a'], ['a'], ['a'], ['b'], ['b'], ['a']],
+        ...                   columns=['A'])
         >>> df
            A
         0  a
@@ -669,7 +679,7 @@ class GroupBy(object, metaclass=ABCMeta):
         4    1
         5    3
         Name: 0, dtype: int64
-        >>> df.groupby('A').cumcount(ascending=False)
+        >>> df.groupby('A').cumcount(ascending=False).sort_index()
         0    3
         1    2
         2    1
