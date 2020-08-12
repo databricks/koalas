@@ -33,6 +33,7 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 [![Latest Release](https://img.shields.io/pypi/v/koalas.svg)](https://pypi.org/project/koalas/)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/koalas.svg)](https://anaconda.org/conda-forge/koalas)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb)
+[![Downloads](https://pepy.tech/badge/koalas)](https://pepy.tech/project/koalas)
 
 
 ## Getting Started
