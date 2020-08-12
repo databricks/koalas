@@ -62,7 +62,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.missing.series import MissingPandasLikeSeries
-from databricks.koalas.plot import KoalasSeriesPlotMethods
+from databricks.koalas.plot import KoalasPlotAccessor
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import (
     combine_frames,
@@ -2602,7 +2602,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
-    hist.__doc__ = KoalasSeriesPlotMethods.hist.__doc__
+    hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
     def apply(self, func, args=(), **kwds):
         """
@@ -5119,7 +5119,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     # ----------------------------------------------------------------------
     dt = CachedAccessor("dt", DatetimeMethods)
     str = CachedAccessor("str", StringMethods)
-    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
+    plot = CachedAccessor("plot", KoalasPlotAccessor)
 
     # ----------------------------------------------------------------------
 
