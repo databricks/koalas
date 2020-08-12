@@ -24,7 +24,7 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
-from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.exceptions import PandasNotImplementedError, DataError
 from databricks.koalas.missing.groupby import (
     MissingPandasLikeDataFrameGroupBy,
     MissingPandasLikeSeriesGroupBy,
@@ -909,6 +909,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).cummin().sort_index(),
         )
 
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cummin())
+
     def test_cummax(self):
         pdf = pd.DataFrame(
             {
@@ -966,6 +969,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).cummax().sort_index(),
         )
 
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cummax())
+
     def test_cumsum(self):
         pdf = pd.DataFrame(
             {
@@ -1022,6 +1028,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby([("x", "a"), ("x", "b")]).cumsum().sort_index(),
             pdf.groupby([("x", "a"), ("x", "b")]).cumsum().sort_index(),
         )
+
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cumsum())
 
     def test_cumprod(self):
         pdf = pd.DataFrame(
@@ -1085,6 +1094,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).cumprod().sort_index(),
             almost=True,
         )
+
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cumprod())
 
     def test_nsmallest(self):
         pdf = pd.DataFrame(

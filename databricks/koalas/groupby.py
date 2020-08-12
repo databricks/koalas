@@ -68,6 +68,7 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
 )
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
+from databricks.koalas.exceptions import DataError
 
 # to keep it the same as pandas
 NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
@@ -684,10 +685,11 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: C, dtype: int64
 
         """
-        return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols),
-            should_resolve=True,
-        )
+
+        def cummax(sg):
+            return sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols)
+
+        return self._apply_series_op(cummax, should_resolve=True)
 
     def cummin(self):
         """
@@ -732,10 +734,11 @@ class GroupBy(object, metaclass=ABCMeta):
         3    10.0
         Name: B, dtype: float64
         """
-        return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols),
-            should_resolve=True,
-        )
+
+        def cummin(sg):
+            return sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols)
+
+        return self._apply_series_op(cummin, should_resolve=True)
 
     def cumprod(self):
         """
@@ -781,9 +784,11 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: B, dtype: float64
 
         """
-        return self._apply_series_op(
-            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols), should_resolve=True
-        )
+
+        def cumprod(sg):
+            return sg._kser._cumprod(True, part_cols=sg._groupkeys_scols)
+
+        return self._apply_series_op(cumprod, should_resolve=True)
 
     def cumsum(self):
         """
@@ -829,10 +834,11 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: B, dtype: float64
 
         """
-        return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols),
-            should_resolve=True,
-        )
+
+        def cumsum(sg):
+            return sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols)
+
+        return self._apply_series_op(cumsum, should_resolve=True)
 
     def apply(self, func, *args, **kwargs):
         """
@@ -2328,6 +2334,8 @@ class DataFrameGroupBy(GroupBy):
         applied = []
         for column in self._agg_columns:
             applied.append(op(column.groupby(self._groupkeys)))
+        if not applied and (op.__name__).startswith("cum"):
+            raise DataError("No numeric types to aggregate")
         internal = self._kdf._internal.with_new_columns(applied, keep_order=False)
         if should_resolve:
             internal = internal.resolved_copy

@@ -19,6 +19,14 @@ Exceptions/Errors used in Koalas.
 """
 
 
+class GroupByError(Exception):
+    pass
+
+
+class DataError(GroupByError):
+    pass
+
+
 class SparkPandasIndexingError(Exception):
     pass
 
