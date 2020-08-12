@@ -680,7 +680,7 @@ class GroupBy(object, metaclass=ABCMeta):
         3    0
         4    1
         5    3
-        Name: 0, dtype: int64
+        Name: A, dtype: int64
         >>> df.groupby('A').cumcount(ascending=False).sort_index()
         0    3
         1    2
@@ -688,18 +688,17 @@ class GroupBy(object, metaclass=ABCMeta):
         3    1
         4    0
         5    0
-        Name: 0, dtype: int64
+        Name: A, dtype: int64
 
         """
-        ret = self._apply_series_op(
-            lambda sg: sg._kser._cum(
-                F.count, True, part_cols=sg._groupkeys_scols, ascending=ascending
-            ),
-            should_resolve=True,
+        ret = (
+            self._groupkeys[0]
+            .spark.transform(lambda _: F.lit(0))
+            ._cum(F.count, True, part_cols=self._groupkeys_scols, ascending=ascending)
+            - 1
         )
-        ret -= 1
-        # Cast columns to ``"int64"`` to match `pandas.core.groupby.GroupBy.cumcount`.
-        return ret.max(axis=1).astype('int64')
+        internal = ret._internal.resolved_copy
+        return first_series(DataFrame(internal))
 
     def cummax(self):
         """
