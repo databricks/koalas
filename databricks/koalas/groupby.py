@@ -681,7 +681,8 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         ret = self._apply_series_op(
             lambda sg: sg._kser._cum(
-                F.count, True, part_cols=sg._groupkeys_scols, ascending=ascending),
+                F.count, True, part_cols=sg._groupkeys_scols, ascending=ascending
+            ),
             should_resolve=True,
         )
         ret -= 1
