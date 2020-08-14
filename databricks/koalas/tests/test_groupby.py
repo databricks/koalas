@@ -854,23 +854,21 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
     def test_cumcount(self):
         pdf = pd.DataFrame(
-            {"a": [1, 1, 1, 4] * 3, "b": [None, 0.1, 20.0, None] * 3, "c": [4, 3, 2, 1] * 3},
-            index=np.random.rand(4 * 3),
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+            index=np.random.rand(6 * 3),
         )
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
             kdf.groupby("b").cumcount().sort_index(), pdf.groupby("b").cumcount().sort_index()
         )
-        # TODO: Enable the following test when ks.groupby(dropna=True)
-        # is implemented (see #1007)
-        # self.assert_eq(
-        #    kdf.groupby(["a", "b"]).cumcount().sort_index(),
-        #    pdf.groupby(["a", "b"]).cumcount().sort_index(),
-        # )
         self.assert_eq(
-            kdf.groupby(["a", "c"]).cumcount().sort_index(),
-            pdf.groupby(["a", "c"]).cumcount().sort_index(),
+            kdf.groupby(["a", "b"]).cumcount().sort_index(),
+            pdf.groupby(["a", "b"]).cumcount().sort_index(),
         )
         self.assert_eq(
             kdf.groupby(["b"])["a"].cumcount().sort_index(),
@@ -905,15 +903,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(("x", "b")).cumcount().sort_index(),
             pdf.groupby(("x", "b")).cumcount().sort_index(),
         )
-        # TODO: Enable the following test when ks.groupby(dropna=True)
-        # is implemented (see #1007)
-        # self.assert_eq(
-        #    kdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
-        #    pdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
-        # )
         self.assert_eq(
-            kdf.groupby([("x", "a"), ("y", "c")]).cumcount().sort_index(),
-            pdf.groupby([("x", "a"), ("y", "c")]).cumcount().sort_index(),
+            kdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
+            pdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
         )
 
     def test_cummin(self):
