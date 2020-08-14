@@ -5077,9 +5077,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Columns used in the pivot operation. Only one column is supported and
             it should be a string.
         aggfunc : function (string), dict, default mean
-            If dict is passed, the resulting pivot table will have
-            columns concatenated by "_" where the first part is the value
-            of columns and the second part is the column name in values
             If dict is passed, the key is column to aggregate and value
             is function or list of functions.
         fill_value : scalar, default None
