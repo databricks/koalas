@@ -20,7 +20,7 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from functools import partial
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 import warnings
 
 import pandas as pd
@@ -688,7 +688,7 @@ class Index(IndexOpsMixin):
             [None]
             if len(kdf._internal.index_map) > 1 or name is None
             else [name if isinstance(name, tuple) else (name,)]
-        )  # type: List[Tuple[str, ...]]
+        )  # type: List[Optional[Tuple[str, ...]]]
         internal = kdf._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
         )
