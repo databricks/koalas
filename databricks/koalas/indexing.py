@@ -140,7 +140,8 @@ class AtIndexer(IndexerLike):
         elif not isinstance(row_sel, tuple):
             raise ValueError("At based indexing on multi-index can only have tuple values")
         if not (
-            isinstance(col_sel, str)
+            col_sel is None
+            or isinstance(col_sel, str)
             or (isinstance(col_sel, tuple) and all(isinstance(col, str) for col in col_sel))
         ):
             raise ValueError("At based indexing on multi-index can only have tuple values")
@@ -204,7 +205,7 @@ class iAtIndexer(IndexerLike):
     10    1
     20    2
     30    3
-    Name: 0, dtype: int64
+    dtype: int64
 
     >>> kser.iat[1]
     2
@@ -448,6 +449,9 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                     label = tuple(list(label) + ([""]) * (column_labels_level - len(label)))
                 column_labels[i] = label
 
+            if i == 0 and none_column == 1:
+                column_labels = [None]
+
             if self._internal.column_label_names is None:
                 column_label_names = None
             else:
@@ -511,7 +515,12 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             if (isinstance(key, Series) and not same_anchor(key, self._kdf_or_kser)) or (
                 isinstance(value, Series) and not same_anchor(value, self._kdf_or_kser)
             ):
-                kdf = self._kdf_or_kser._kdf.copy()
+                if self._kdf_or_kser.name is None:
+                    kdf = self._kdf_or_kser.to_frame()
+                    column_label = kdf._internal.column_labels[0]
+                else:
+                    kdf = self._kdf_or_kser._kdf.copy()
+                    column_label = self._kdf_or_kser._column_label
                 temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")
                 temp_key_col = verify_temp_column_name(kdf, "__temp_key_col__")
                 temp_value_col = verify_temp_column_name(kdf, "__temp_value_col__")
@@ -523,7 +532,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                     kdf[temp_value_col] = value
                 kdf = kdf.sort_values(temp_natural_order).drop(temp_natural_order)
 
-                kser = kdf._kser_for(self._kdf_or_kser._column_label)
+                kser = kdf._kser_for(column_label)
                 if isinstance(key, Series):
                     key = kdf[temp_key_col]
                 if isinstance(value, Series):
@@ -531,8 +540,13 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
                 type(self)(kser)[key] = value
 
+                if self._kdf_or_kser.name is None:
+                    kser = kser.rename()
+
                 self._kdf_or_kser._kdf._update_internal_frame(
-                    kdf[list(self._kdf_or_kser._kdf.columns)]._internal.resolved_copy,
+                    kser._kdf[
+                        self._kdf_or_kser._kdf._internal.column_labels
+                    ]._internal.resolved_copy,
                     requires_same_anchor=False,
                 )
                 return
@@ -1030,7 +1044,11 @@ class LocIndexer(LocIndexerLike):
         if labels is None:
             labels = [(label, label) for label in self._internal.column_labels]
         for k in key:
-            labels = [(label, lbl[1:]) for label, lbl in labels if lbl[0] == k]
+            labels = [
+                (label, None if lbl is None else lbl[1:])
+                for label, lbl in labels
+                if (lbl is None and k is None) or (lbl is not None and lbl[0] == k)
+            ]
             if len(labels) == 0:
                 if missing_keys is None:
                     raise KeyError(k)
@@ -1038,12 +1056,12 @@ class LocIndexer(LocIndexerLike):
                     missing_keys.append(key)
                     return [], [], False
 
-        if all(len(lbl) > 0 and lbl[0] == "" for _, lbl in labels):
+        if all(lbl is not None and len(lbl) > 0 and lbl[0] == "" for _, lbl in labels):
             # If the head is '', drill down recursively.
             labels = [(label, tuple([str(key), *lbl[1:]])) for i, (label, lbl) in enumerate(labels)]
             return self._get_from_multiindex_column((str(key),), missing_keys, labels)
         else:
-            returns_series = all(len(lbl) == 0 for _, lbl in labels)
+            returns_series = all(lbl is None or len(lbl) == 0 for _, lbl in labels)
             if returns_series:
                 labels = set(label for label, _ in labels)
                 assert len(labels) == 1
@@ -1051,7 +1069,9 @@ class LocIndexer(LocIndexerLike):
                 column_labels = [label]
                 data_spark_columns = [self._internal.spark_column_for(label)]
             else:
-                column_labels = [lbl for _, lbl in labels]
+                column_labels = [
+                    None if lbl is None or lbl == (None,) else lbl for _, lbl in labels
+                ]
                 data_spark_columns = [self._internal.spark_column_for(label) for label, _ in labels]
 
         return column_labels, data_spark_columns, returns_series
@@ -1181,12 +1201,12 @@ class iLocIndexer(LocIndexerLike):
 
     A scalar integer for row selection.
 
-    >>> df.iloc[0]
-    a    1
-    b    2
-    c    3
-    d    4
-    Name: 0, dtype: int64
+    >>> df.iloc[1]
+    a    100
+    b    200
+    c    300
+    d    400
+    Name: 1, dtype: int64
 
     >>> df.iloc[[0]]
        a  b  c  d

@@ -1443,7 +1443,7 @@ def to_datetime(
     >>> ks.to_datetime(df)
     0   2015-02-04
     1   2016-03-05
-    Name: 0, dtype: datetime64[ns]
+    dtype: datetime64[ns]
 
     If a date does not meet the `timestamp limitations
     <http://pandas.pydata.org/pandas-docs/stable/timeseries.html
@@ -1468,7 +1468,7 @@ def to_datetime(
     2    3/13/2000
     3    3/11/2000
     4    3/12/2000
-    Name: 0, dtype: object
+    dtype: object
 
     >>> import timeit
     >>> timeit.timeit(
@@ -1626,8 +1626,8 @@ def get_dummies(
     if isinstance(data, Series):
         if prefix is not None:
             prefix = [str(prefix)]
-        column_labels = [(data.name,)]
-        kdf = data.to_dataframe()
+        kdf = data.to_frame()
+        column_labels = kdf._internal.column_labels
         remaining_columns = []
     else:
         if isinstance(prefix, str):
@@ -1784,7 +1784,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     1    b
     0    c
     1    d
-    Name: 0, dtype: object
+    dtype: object
 
     Clear the existing index and reset it in the result
     by setting the ``ignore_index`` option to ``True``.
@@ -1794,7 +1794,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     1    b
     2    c
     3    d
-    Name: 0, dtype: object
+    dtype: object
 
     Combine two ``DataFrame`` objects with identical columns.
 
@@ -1971,9 +1971,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     # In this case, we should return DataFrame.
     new_objs = []
     num_series = 0
+    series_names = set()
     for obj in objs:
         if isinstance(obj, Series):
             num_series += 1
+            series_names.add(obj.name)
             obj = obj.to_frame(SPARK_DEFAULT_SERIES_NAME)
         new_objs.append(obj)
     objs = new_objs
@@ -2085,7 +2087,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
 
     if should_return_series:
         # If all input were Series, we should return Series.
-        return first_series(result_kdf)
+        if len(series_names) == 1:
+            name = list(series_names)[0]
+        else:
+            name = None
+        return first_series(result_kdf).rename(name)
     else:
         return result_kdf
 
@@ -2229,13 +2235,13 @@ def notna(obj):
     0    5.0
     1    6.0
     2    NaN
-    Name: 0, dtype: float64
+    dtype: float64
 
     >>> ks.notna(ser)
     0     True
     1     True
     2    False
-    Name: 0, dtype: bool
+    dtype: bool
 
     >>> ks.notna(ser.index)
     True
@@ -2409,13 +2415,13 @@ def to_numeric(arg):
     0    1.0
     1      2
     2     -3
-    Name: 0, dtype: object
+    dtype: object
 
     >>> ks.to_numeric(kser)
     0    1.0
     1    2.0
     2   -3.0
-    Name: 0, dtype: float32
+    dtype: float32
 
     If given Series contains invalid value to cast float, just cast it to `np.nan`
 
@@ -2425,14 +2431,14 @@ def to_numeric(arg):
     1      1.0
     2        2
     3       -3
-    Name: 0, dtype: object
+    dtype: object
 
     >>> ks.to_numeric(kser)
     0    NaN
     1    1.0
     2    2.0
     3   -3.0
-    Name: 0, dtype: float32
+    dtype: float32
 
     Also support for list, tuple, np.array, or a scalar
 

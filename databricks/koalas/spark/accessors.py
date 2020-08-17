@@ -426,7 +426,7 @@ class SparkFrameMethods(object):
         ...
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df = df.spark.cache()
         >>> df.to_pandas().mean(axis=1)
@@ -480,7 +480,7 @@ class SparkFrameMethods(object):
         Memory Serialized 1x Replicated
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         Set the StorageLevel to `DISK_ONLY`.
 
@@ -491,7 +491,7 @@ class SparkFrameMethods(object):
         Disk Serialized 1x Replicated
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         If a StorageLevel is not given, it uses `MEMORY_AND_DISK` by default.
 
@@ -502,7 +502,7 @@ class SparkFrameMethods(object):
         Disk Memory Serialized 1x Replicated
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df = df.spark.persist()
         >>> df.to_pandas().mean(axis=1)

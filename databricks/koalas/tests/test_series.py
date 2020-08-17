@@ -897,20 +897,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(["cat", "dog", None, "rabbit"])
         kser = ks.from_pandas(pser)
         # Currently Koalas doesn't return NaN as pandas does.
-        self.assertEqual(
-            repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None}).rename(0))
-        )
+        self.assertEqual(repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None})))
 
         d = defaultdict(lambda: "abc")
         self.assertTrue("abc" in repr(kser.map(d)))
-        self.assertEqual(repr(kser.map(d)), repr(pser.map(d).rename(0)))
+        self.assertEqual(repr(kser.map(d)), repr(pser.map(d)))
 
         def tomorrow(date) -> datetime:
             return date + timedelta(days=1)
 
         pser = pd.Series([datetime(2019, 10, 24)])
         kser = ks.from_pandas(pser)
-        self.assertEqual(repr(kser.map(tomorrow)), repr(pser.map(tomorrow).rename(0)))
+        self.assertEqual(repr(kser.map(tomorrow)), repr(pser.map(tomorrow)))
 
     def test_add_prefix(self):
         pser = pd.Series([1, 2, 3, 4], name="0")

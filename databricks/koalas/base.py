@@ -681,12 +681,12 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> ser
         0    1
         1    2
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> ser.astype('int64')
         0    1
         1    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> ser.rename("a").to_frame().set_index("a").index.astype('int64')
         Int64Index([1, 2], dtype='int64', name='a')
@@ -772,7 +772,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         0    False
         1    False
         2     True
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> ser.rename("a").to_frame().set_index("a").index.isna()
         Index([False, False, True], dtype='object', name='a')
@@ -811,13 +811,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         0    5.0
         1    6.0
         2    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> ser.notna()
         0     True
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> ser.rename("a").to_frame().set_index("a").index.notna()
         Index([True, True, False], dtype='object', name='a')
@@ -1313,13 +1313,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2    300
         3    400
         4    500
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> kser.take([0, 2, 4]).sort_index()
         0    100
         2    300
         4    500
-        Name: 0, dtype: int64
+        dtype: int64
 
         Index
 

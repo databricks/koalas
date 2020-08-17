@@ -49,6 +49,7 @@ from pyspark.sql.types import (
     DoubleType,
     FloatType,
     NumericType,
+    StringType,
     StructType,
     StructField,
     ArrayType,
@@ -595,7 +596,7 @@ class DataFrame(Frame, Generic[T]):
 
         axis = validate_axis(axis)
         if axis == 0:
-            exprs = []
+            exprs = [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)]
             new_column_labels = []
             num_args = len(signature(sfun).parameters)
             for label in self._internal.column_labels:
@@ -625,17 +626,13 @@ class DataFrame(Frame, Generic[T]):
             sdf = self._internal.spark_frame.select(*exprs)
 
             # The data is expected to be small so it's fine to transpose/use default index.
-            with ks.option_context(
-                "compute.default_index_type", "distributed", "compute.max_rows", None
-            ):
-                kdf = DataFrame(sdf)
+            with ks.option_context("compute.max_rows", None):
                 internal = InternalFrame(
-                    kdf._internal.spark_frame,
-                    index_map=kdf._internal.index_map,
+                    spark_frame=sdf,
+                    index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
                     column_labels=new_column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
-
                 return first_series(DataFrame(internal).transpose())
 
         elif axis == 1:
@@ -2156,7 +2153,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ...
             10    83
             11    83
-            Name: 0, dtype: int32
+            dtype: int32
 
         .. note:: this API executes the function once to infer the type which is
             potentially expensive, for instance, when the dataset is created after
@@ -2260,7 +2257,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0    13
         1    13
         2    13
-        Name: 0, dtype: int64
+        dtype: int64
 
         Likewise, you can omit the type hint and let Koalas infer its type.
 
@@ -2268,13 +2265,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0    13
         1    13
         2    13
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df.apply(max, axis=1)
         0    9
         1    9
         2    9
-        Name: 0, dtype: int64
+        dtype: int64
 
         Returning a list-like will result in a Series
 
@@ -2282,7 +2279,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0    [1, 2]
         1    [1, 2]
         2    [1, 2]
-        Name: 0, dtype: object
+        dtype: object
 
         In order to specify the types when `axis` is '1', it should use DataFrame[...]
         annotation. In this case, the column names are automatically generated.
@@ -2344,7 +2341,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf = kser_or_kdf
             if isinstance(kser_or_kdf, ks.Series):
                 should_return_series = True
-                kdf = kser_or_kdf.to_frame()
+                kdf = kser_or_kdf._kdf
 
             return_schema = kdf._internal.to_internal_spark_frame.schema
 
@@ -2371,6 +2368,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return_schema = return_type.tpe
             require_index_axis = isinstance(return_type, SeriesType)
             require_column_axis = isinstance(return_type, DataFrameType)
+            column_labels = None
             if require_index_axis:
                 if axis != 0:
                     raise TypeError(
@@ -2393,6 +2391,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 # any axis is fine.
                 should_return_series = True
                 return_schema = StructType([StructField(SPARK_DEFAULT_SERIES_NAME, return_schema)])
+                column_labels = [None]
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
@@ -2411,7 +2410,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_map=None, column_labels=column_labels)
 
         result = DataFrame(internal)
         if should_return_series:
@@ -2869,7 +2868,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> cond
         0    False
         1     True
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> df1.where(cond).sort_index()
              A      B
@@ -3699,12 +3698,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.nunique()
         A    3
         B    1
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df.nunique(dropna=False)
         A    3
         B    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         On big data, we recommend using the approximate algorithm to speed up this function.
         The result will be very close to the exact unique count.
@@ -3712,7 +3711,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.nunique(approx=True)
         A    3
         B    1
-        Name: 0, dtype: int64
+        dtype: int64
         """
         from databricks.koalas.series import first_series
 
@@ -3720,20 +3719,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
         sdf = self._internal.spark_frame.select(
-            [
+            [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)]
+            + [
                 self._kser_for(label)._nunique(dropna, approx, rsd)
                 for label in self._internal.column_labels
             ]
         )
 
         # The data is expected to be small so it's fine to transpose/use default index.
-        with ks.option_context(
-            "compute.default_index_type", "distributed", "compute.max_rows", None
-        ):
-            kdf = DataFrame(sdf)  # type: ks.DataFrame
+        with ks.option_context("compute.max_rows", None):
             internal = InternalFrame(
-                spark_frame=kdf._internal.spark_frame,
-                index_map=kdf._internal.index_map,
+                spark_frame=sdf,
+                index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
                 column_labels=self._internal.column_labels,
                 column_label_names=self._internal.column_label_names,
             )
@@ -3895,7 +3892,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         Mark duplicates as ``True`` except for the last occurrence.
 
@@ -3904,7 +3901,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         Mark all duplicates as ``True``.
 
@@ -3913,24 +3910,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
         from databricks.koalas.series import first_series
 
         sdf, column = self._mark_duplicates(subset, keep)
-        column_label = (SPARK_DEFAULT_SERIES_NAME,)
 
         sdf = sdf.select(
             self._internal.index_spark_columns
-            + [scol_for(sdf, column).alias(name_like_string(column_label))]
+            + [scol_for(sdf, column).alias(SPARK_DEFAULT_SERIES_NAME)]
         )
         return first_series(
             DataFrame(
                 InternalFrame(
                     spark_frame=sdf,
                     index_map=self._internal.index_map,
-                    column_labels=[column_label],
-                    data_spark_columns=[scol_for(sdf, name_like_string(column_label))],
+                    column_labels=[None],
+                    data_spark_columns=[scol_for(sdf, SPARK_DEFAULT_SERIES_NAME)],
                 )
             )
         )
@@ -5783,7 +5779,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Person    5
         Age       4
         Single    5
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df.count(axis=1)
         0    3
@@ -5791,7 +5787,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2    3
         3    3
         4    3
-        Name: 0, dtype: int64
+        dtype: int64
         """
         return self._reduce_for_stat_function(
             Frame._count_expr, name="count", axis=axis, numeric_only=False
@@ -6334,9 +6330,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        kdf = self.sort_values(by=columns, ascending=False)  # type: Optional[DataFrame]
-        assert kdf is not None
-        return kdf.head(n=n)
+        return self.sort_values(by=columns, ascending=False).head(n=n)  # type: ignore
 
     # TODO: add keep = First
     def nsmallest(self, n: int, columns: "Any") -> "DataFrame":
@@ -6401,9 +6395,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        kdf = self.sort_values(by=columns, ascending=True)  # type: Optional[DataFrame]
-        assert kdf is not None
-        return kdf.head(n=n)
+        return self.sort_values(by=columns, ascending=True).head(n=n)  # type: ignore
 
     def isin(self, values):
         """
@@ -7411,7 +7403,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         50%      2.0
         75%      3.0
         max      3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         Describing a ``DataFrame``. Only numeric fields are returned.
 
@@ -8110,7 +8102,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
              weight    0
         dog  height    3
              weight    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         **Multi level columns: simple case**
 
@@ -8170,7 +8162,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label in self._internal.column_labels:
             new_label = label[:-1]
             if len(new_label) == 0:
-                new_label = (SPARK_DEFAULT_SERIES_NAME,)
+                new_label = None
                 should_returns_series = True
             value = label[-1]
 
@@ -8276,7 +8268,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         C  0    2
            1    4
            2    6
-        Name: 0, dtype: object
+        dtype: object
 
         >>> df.columns = pd.MultiIndex.from_tuples([('X', 'A'), ('X', 'B'), ('Y', 'C')])
         >>> df.unstack().sort_index()
@@ -8289,7 +8281,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Y  C  0    2
               1    4
               2    6
-        Name: 0, dtype: object
+        dtype: object
 
         For MultiIndex case:
 
@@ -8387,7 +8379,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         exploded_df = sdf.withColumn("pairs", pairs).select(existing_index_columns + columns)
 
         return first_series(
-            DataFrame(InternalFrame(exploded_df, index_map=OrderedDict(new_index_map)))
+            DataFrame(
+                InternalFrame(
+                    exploded_df, index_map=OrderedDict(new_index_map), column_labels=[None]
+                )
+            )
         )
 
     # TODO: axis, skipna, and many arguments should be implemented.
@@ -9141,7 +9137,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a    2
         b    0
         c    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         For Multi-column Index
 
@@ -9157,11 +9153,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3  3.0  400
         3  2  1.0  200
 
-        >>> kdf.idxmax().sort_index()
+        >>> kdf.idxmax()
         a  x    2
         b  y    0
         c  z    2
-        Name: 0, dtype: int64
+        dtype: int64
         """
         max_cols = map(lambda scol: F.max(scol), self._internal.data_spark_columns)
         sdf_max = self._internal.spark_frame.select(*max_cols).head()
@@ -9220,7 +9216,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         a    0
         b    3
         c    1
-        Name: 0, dtype: int64
+        dtype: int64
 
         For Multi-column Index
 
@@ -9236,11 +9232,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  3  3.0  400
         3  2  1.0  200
 
-        >>> kdf.idxmin().sort_index()
+        >>> kdf.idxmin()
         a  x    0
         b  y    3
         c  z    1
-        Name: 0, dtype: int64
+        dtype: int64
         """
         min_cols = map(lambda scol: F.min(scol), self._internal.data_spark_columns)
         sdf_min = self._internal.spark_frame.select(*min_cols).head()
@@ -9730,7 +9726,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2     9
         3     8
         4     7
-        Name: 0, dtype: int64
+        dtype: int64
 
         Assignment is allowed though by default the original DataFrame is not
         modified.
@@ -9791,7 +9787,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # from pandas.
             self._update_internal_frame(result._internal, requires_same_anchor=False)
         elif should_return_series:
-            return first_series(result)
+            return first_series(result).rename()
         elif should_return_scalar:
             return first_series(result)[0]
         else:
@@ -9876,14 +9872,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> df.mad()
         a    0.666667
         b    0.066667
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.mad(axis=1)
         0    0.45
         1    0.90
         2    1.35
         3     NaN
-        Name: 0, dtype: float64
+        dtype: float64
         """
         from databricks.koalas.series import Series, first_series
 
@@ -9912,15 +9908,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ).alias(name_like_string(label))
                 for label in self._internal.column_labels
             ]
-            sdf = self._internal.spark_frame.select(new_columns)
+            sdf = self._internal.spark_frame.select(
+                [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + new_columns
+            )
 
-            with ks.option_context(
-                "compute.default_index_type", "distributed", "compute.max_rows", None
-            ):
-                kdf = DataFrame(sdf)
+            with ks.option_context("compute.max_rows", None):
                 internal = InternalFrame(
-                    spark_frame=kdf._internal.spark_frame,
-                    index_map=kdf._internal.index_map,
+                    spark_frame=sdf,
+                    index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
                     column_labels=self._internal.column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
@@ -9934,7 +9929,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return pd.concat(cols, axis=1).mad(axis=1)
 
             internal = self._internal.copy(
-                column_labels=[(SPARK_DEFAULT_SERIES_NAME,)],
+                column_labels=[None],
                 data_spark_columns=[
                     calculate_columns_axis(*self._internal.data_spark_columns).alias(
                         SPARK_DEFAULT_SERIES_NAME

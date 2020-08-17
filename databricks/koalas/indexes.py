@@ -666,7 +666,7 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        >>> df = pd.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'],
         ...                   index=list('abcd'))
         >>> df['dogs'].index.to_series()
@@ -674,7 +674,7 @@ class Index(IndexOpsMixin):
         b    b
         c    c
         d    d
-        Name: 0, dtype: object
+        dtype: object
         """
         if not is_hashable(name):
             raise TypeError("Series.name must be a hashable type")
@@ -685,7 +685,7 @@ class Index(IndexOpsMixin):
         elif len(kdf._internal.index_map) == 1:
             name = self.name
         column_labels = (
-            [(SPARK_DEFAULT_SERIES_NAME,)]
+            [None]
             if len(kdf._internal.index_map) > 1 or name is None
             else [name if isinstance(name, tuple) else (name,)]
         )  # type: List[Tuple[str, ...]]
@@ -893,7 +893,7 @@ class Index(IndexOpsMixin):
         falcon  weight    320.0
                 weight      1.0
                 length      NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.index.dropna()  # doctest: +SKIP
         MultiIndex([(   'cow', 'weight'),
@@ -1907,7 +1907,8 @@ class Index(IndexOpsMixin):
                         "Union between Index and MultiIndex is not yet supported"
                     )
                 elif isinstance(other, Series):
-                    other = other.to_frame().set_index(other.name).index
+                    other = other.to_frame()
+                    other = other.set_index(other.columns[0]).index
                 elif isinstance(other, DataFrame):
                     raise ValueError("Index data must be 1-dimensional")
                 else:

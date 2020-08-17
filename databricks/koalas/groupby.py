@@ -931,7 +931,7 @@ class GroupBy(object, metaclass=ABCMeta):
         A
         a    2
         b    1
-        Name: 0, dtype: int64
+        dtype: int64
 
         In case of Series, it works as below.
 
