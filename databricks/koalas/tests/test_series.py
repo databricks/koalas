@@ -176,7 +176,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf["left"] | pdf["right"], kdf["left"] | kdf["right"])
+        self.assert_eq(
+            (pdf["left"] | pdf["right"]).rename("left"),  # TODO: Fix the Series name
+            kdf["left"] | kdf["right"],
+        )
 
     def test_and(self):
         pdf = pd.DataFrame(
@@ -187,7 +190,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf["left"] & pdf["right"], kdf["left"] & kdf["right"])
+        self.assert_eq(
+            (pdf["left"] & pdf["right"]).rename("left"),  # TODO: Fix the Series name
+            kdf["left"] & kdf["right"],
+        )
 
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")

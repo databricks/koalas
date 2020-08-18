@@ -273,6 +273,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 (kdf.b, pdf.b),
                 (kdf.b + 1, pdf.b + 1),
                 (kdf.copy().b, pdf.copy().b),
+                (kdf.b.rename(), pdf.b.rename()),
             ]:
                 with self.subTest(func=func, key=pkey):
                     self.assert_eq(
@@ -288,6 +289,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                     self.assert_eq(
                         getattr((kdf.b + 1).groupby(kkey), func)().sort_index(),
                         getattr((pdf.b + 1).groupby(pkey), func)().sort_index(),
+                        almost=almost,
+                    )
+                    self.assert_eq(
+                        getattr(kdf.a.rename().groupby(kkey), func)().sort_index(),
+                        getattr(pdf.a.rename().groupby(pkey), func)().sort_index(),
                         almost=almost,
                     )
 
@@ -720,16 +726,28 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf = pd.DataFrame({"A": [1, 2, 2, 3, 3, 3], "B": [1, 1, 2, 3, 3, 3]}, columns=["A", "B"])
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
-            repr(kdf.groupby("A")["B"].value_counts().sort_index()),
-            repr(pdf.groupby("A")["B"].value_counts().sort_index()),
+            kdf.groupby("A")["B"].value_counts().sort_index(),
+            pdf.groupby("A")["B"].value_counts().sort_index(),
         )
         self.assert_eq(
-            repr(kdf.groupby("A")["B"].value_counts(sort=True, ascending=False).sort_index()),
-            repr(pdf.groupby("A")["B"].value_counts(sort=True, ascending=False).sort_index()),
+            kdf.groupby("A")["B"].value_counts(sort=True, ascending=False).sort_index(),
+            pdf.groupby("A")["B"].value_counts(sort=True, ascending=False).sort_index(),
         )
         self.assert_eq(
-            repr(kdf.groupby("A")["B"].value_counts(sort=True, ascending=True).sort_index()),
-            repr(pdf.groupby("A")["B"].value_counts(sort=True, ascending=True).sort_index()),
+            kdf.groupby("A")["B"].value_counts(sort=True, ascending=True).sort_index(),
+            pdf.groupby("A")["B"].value_counts(sort=True, ascending=True).sort_index(),
+        )
+        self.assert_eq(
+            kdf.B.rename().groupby(kdf.A).value_counts().sort_index(),
+            pdf.B.rename().groupby(pdf.A).value_counts().sort_index(),
+        )
+        self.assert_eq(
+            kdf.B.groupby(kdf.A.rename()).value_counts().sort_index(),
+            pdf.B.groupby(pdf.A.rename()).value_counts().sort_index(),
+        )
+        self.assert_eq(
+            kdf.B.rename().groupby(kdf.A.rename()).value_counts().sort_index(),
+            pdf.B.rename().groupby(pdf.A.rename()).value_counts().sort_index(),
         )
 
     def test_size(self):

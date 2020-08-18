@@ -539,7 +539,7 @@ class GroupBy(object, metaclass=ABCMeta):
         1    1
         2    2
         3    3
-        Name: count, dtype: int64
+        dtype: int64
 
         >>> df.groupby(['A', 'B']).size().sort_index()
         A  B
@@ -547,7 +547,7 @@ class GroupBy(object, metaclass=ABCMeta):
         2  1    1
            2    1
         3  3    3
-        Name: count, dtype: int64
+        dtype: int64
 
         For Series,
 
@@ -577,6 +577,7 @@ class GroupBy(object, metaclass=ABCMeta):
             index_map=OrderedDict(
                 (name, s._internal.column_labels[0]) for s, name in zip(groupkeys, groupkey_names)
             ),
+            column_labels=[None],
             data_spark_columns=[scol_for(sdf, "count")],
         )
         return first_series(DataFrame(internal))
@@ -1032,7 +1033,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
             if isinstance(kser_or_kdf, ks.Series):
                 should_return_series = True
-                kdf_from_pandas = kser_or_kdf.to_frame()
+                kdf_from_pandas = kser_or_kdf._kdf
             else:
                 kdf_from_pandas = kser_or_kdf
 
@@ -2432,7 +2433,9 @@ class SeriesGroupBy(GroupBy):
             kdf, new_by_series, _ = GroupBy._resolve_grouping_from_diff_dataframes(
                 kser.to_frame(), by
             )
-            return SeriesGroupBy(kdf[kser.name], new_by_series, as_index=as_index)
+            return SeriesGroupBy(
+                first_series(kdf).rename(kser.name), new_by_series, as_index=as_index
+            )
         else:
             new_by_series = GroupBy._resolve_grouping(kser._kdf, by)
             return SeriesGroupBy(kser, new_by_series, as_index=as_index)
@@ -2676,6 +2679,7 @@ class SeriesGroupBy(GroupBy):
             index_map=OrderedDict(
                 (name, s._internal.column_labels[0]) for s, name in zip(groupkeys, groupkey_names)
             ),
+            column_labels=[self._agg_columns[0]._column_label],
             data_spark_columns=[scol_for(sdf, agg_column)],
         )
         return first_series(DataFrame(internal))

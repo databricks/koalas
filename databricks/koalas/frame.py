@@ -648,12 +648,12 @@ class DataFrame(Frame, Generic[T]):
             def calculate_columns_axis(*cols):
                 return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
 
-            df = self._internal.spark_frame.select(
+            sdf = self._internal.spark_frame.select(
                 calculate_columns_axis(*self._internal.data_spark_columns).alias(
                     SPARK_DEFAULT_SERIES_NAME
                 )
             )
-            return DataFrame(df)[SPARK_DEFAULT_SERIES_NAME]
+            return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
 
         else:
             raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
@@ -8424,12 +8424,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         col4     True
         col5     True
         col6    False
-        Name: all, dtype: bool
+        dtype: bool
 
         Returns
         -------
         Series
         """
+        from databricks.koalas.series import first_series
+
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
@@ -8469,12 +8471,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 (SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                 for i in range(self._internal.column_labels_level)
             ),
-            column_labels=None,
+            column_labels=[None],
             data_spark_columns=[scol_for(sdf, value_column)],
             column_label_names=None,
         )
 
-        return DataFrame(internal)[value_column].rename("all")
+        return first_series(DataFrame(internal))
 
     # TODO: axis, skipna, and many arguments should be implemented.
     def any(self, axis: Union[int, str] = 0) -> bool:
@@ -8514,12 +8516,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         col4     True
         col5    False
         col6     True
-        Name: any, dtype: bool
+        dtype: bool
 
         Returns
         -------
         Series
         """
+        from databricks.koalas.series import first_series
+
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
@@ -8559,12 +8563,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 (SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
                 for i in range(self._internal.column_labels_level)
             ),
-            column_labels=None,
+            column_labels=[None],
             data_spark_columns=[scol_for(sdf, value_column)],
             column_label_names=None,
         )
 
-        return DataFrame(internal)[value_column].rename("any")
+        return first_series(DataFrame(internal))
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method="average", ascending=True):
@@ -9763,18 +9767,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("`eval` is not supported for multi-index columns")
         inplace = validate_bool_kwarg(inplace, "inplace")
         should_return_series = False
+        series_name = None
         should_return_scalar = False
 
         # Since `eval_func` doesn't have a type hint, inferring the schema is always preformed
-        # in the `apply_batch`. Hence, the variables `is_seires` and `is_scalar_` can be updated.
+        # in the `apply_batch`. Hence, the variables `should_return_series`, `series_name`,
+        # and `should_return_scalar` can be updated.
         def eval_func(pdf):
             nonlocal should_return_series
+            nonlocal series_name
             nonlocal should_return_scalar
             result_inner = pdf.eval(expr, inplace=inplace)
             if inplace:
                 result_inner = pdf
             if isinstance(result_inner, pd.Series):
                 should_return_series = True
+                series_name = result_inner.name
                 result_inner = result_inner.to_frame()
             elif is_scalar(result_inner):
                 should_return_scalar = True
@@ -9787,7 +9795,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # from pandas.
             self._update_internal_frame(result._internal, requires_same_anchor=False)
         elif should_return_series:
-            return first_series(result).rename()
+            return first_series(result).rename(series_name)
         elif should_return_scalar:
             return first_series(result)[0]
         else:

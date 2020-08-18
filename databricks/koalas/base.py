@@ -1078,8 +1078,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         For Index
 
-        >>> from databricks.koalas.indexes import Index
-        >>> idx = Index([3, 1, 2, 3, 4, np.nan])
+        >>> idx = ks.Index([3, 1, 2, 3, 4, np.nan])
         >>> idx
         Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
 
@@ -1088,7 +1087,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2.0    1
         3.0    2
         4.0    1
-        Name: count, dtype: int64
+        dtype: int64
 
         **sort**
 
@@ -1099,7 +1098,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2.0    1
         3.0    2
         4.0    1
-        Name: count, dtype: int64
+        dtype: int64
 
         **normalize**
 
@@ -1111,7 +1110,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2.0    0.2
         3.0    0.4
         4.0    0.2
-        Name: count, dtype: float64
+        dtype: float64
 
         **dropna**
 
@@ -1123,7 +1122,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         3.0    2
         4.0    1
         NaN    1
-        Name: count, dtype: int64
+        dtype: int64
 
         For MultiIndex.
 
@@ -1150,7 +1149,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         (falcon, length)    2
         (falcon, weight)    1
         (lama, weight)      3
-        Name: count, dtype: int64
+        dtype: int64
 
         >>> s.index.value_counts(normalize=True).sort_index()
         (cow, length)       0.111111
@@ -1158,11 +1157,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         (falcon, length)    0.222222
         (falcon, weight)    0.111111
         (lama, weight)      0.333333
-        Name: count, dtype: float64
+        dtype: float64
 
         If Index has name, keep the name up.
 
-        >>> idx = Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
+        >>> idx = ks.Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
         >>> idx.value_counts().sort_index()
         0    3
         1    2
@@ -1192,21 +1191,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             sum = sdf_dropna.count()
             sdf = sdf.withColumn("count", F.col("count") / F.lit(sum))
 
-        column_labels = self._internal.column_labels
-        if (column_labels[0] is None) or (None in column_labels[0]):
-            internal = InternalFrame(
-                spark_frame=sdf,
-                index_map=OrderedDict({index_name: None}),
-                data_spark_columns=[scol_for(sdf, "count")],
-            )
-        else:
-            internal = InternalFrame(
-                spark_frame=sdf,
-                index_map=OrderedDict({index_name: None}),
-                column_labels=column_labels,
-                data_spark_columns=[scol_for(sdf, "count")],
-                column_label_names=self._internal.column_label_names,
-            )
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=OrderedDict({index_name: None}),
+            column_labels=self._internal.column_labels,
+            data_spark_columns=[scol_for(sdf, "count")],
+            column_label_names=self._internal.column_label_names,
+        )
 
         return first_series(DataFrame(internal))
 

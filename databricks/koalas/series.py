@@ -1166,7 +1166,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> s = ks.Series([1, 2, 3, 4], index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+        >>> s = pd.Series([1, 2, 3, 4], index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
 
         Generate a DataFrame with default index.
 
@@ -1210,7 +1210,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if inplace and not drop:
             raise TypeError("Cannot reset_index inplace on a Series to create a DataFrame")
 
-        if name is not None:
+        if not drop and name is not None:
             kser = self.rename(name)
         else:
             kser = self
@@ -1528,7 +1528,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: animal, dtype: object
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kdf = self.to_frame().drop_duplicates(keep=keep)
+        kdf = self._kdf[[self.name]].drop_duplicates(keep=keep)
 
         if inplace:
             self._update_anchor(kdf)
@@ -1950,7 +1950,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                             )
                         )
                     else:
-                        return self.to_frame()
+                        return self._kdf[[self.name]]
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
             cond = ~reduce(lambda x, y: x | y, drop_index_scols)
@@ -2600,8 +2600,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         random_state: Optional[int] = None,
     ) -> "Series":
         return first_series(
-            self.to_dataframe().sample(n=n, frac=frac, replace=replace, random_state=random_state)
-        )
+            self.to_frame().sample(n=n, frac=frac, replace=replace, random_state=random_state)
+        ).rename(self.name)
 
     sample.__doc__ = DataFrame.sample.__doc__
 
@@ -3206,7 +3206,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         axis = validate_axis(axis)
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
-        return first_series(self.to_frame().filter(items=items, like=like, regex=regex, axis=axis))
+        return first_series(
+            self.to_frame().filter(items=items, like=like, regex=regex, axis=axis)
+        ).rename(self.name)
 
     filter.__doc__ = DataFrame.filter.__doc__
 
@@ -3663,9 +3665,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             item_string = name_like_string(item)
             sdf = sdf.withColumn(SPARK_DEFAULT_INDEX_NAME, F.lit(str(item_string)))
             internal = InternalFrame(
-                spark_frame=sdf, index_map=OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
+                spark_frame=sdf,
+                index_map=OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}),
+                column_labels=[self._column_label],
             )
-            return first_series(DataFrame(internal)).rename(self.name)
+            return first_series(DataFrame(internal))
         else:
             internal = internal.copy(
                 spark_frame=sdf,
@@ -3781,9 +3785,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf_most_value.select(
             F.col(SPARK_DEFAULT_INDEX_NAME).alias(SPARK_DEFAULT_SERIES_NAME)
         )
-        internal = InternalFrame(spark_frame=sdf, index_map=None)
+        internal = InternalFrame(
+            spark_frame=sdf, index_map=None, column_labels=[self._column_label]
+        )
 
-        return first_series(DataFrame(internal)).rename(self.name)
+        return first_series(DataFrame(internal))
 
     def keys(self):
         """
@@ -4073,10 +4079,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(other, Series):
             raise ValueError("'other' must be a Series")
 
-        combined = combine_frames(self._kdf, other.to_frame(), how="leftouter")
+        combined = combine_frames(self._kdf, other._kdf, how="leftouter")
 
-        this_scol = combined["this"]._internal.data_spark_columns[0]
-        that_scol = combined["that"]._internal.data_spark_columns[0]
+        this_scol = combined["this"]._internal.spark_column_for(self._column_label)
+        that_scol = combined["that"]._internal.spark_column_for(other._column_label)
 
         scol = (
             F.when(that_scol.isNotNull(), that_scol)
@@ -4444,9 +4450,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             combined = self._kdf
         else:
             with option_context("compute.ops_on_diff_frames", True):
-                combined = combine_frames(self.to_frame(), other)
-            this = combined["this"]._internal.data_spark_columns[0]
-            that = combined["that"]._internal.data_spark_columns[0]
+                combined = combine_frames(self._kdf, other._kdf)
+            this = combined["this"]._internal.spark_column_for(self._column_label)
+            that = combined["that"]._internal.spark_column_for(other._column_label)
         # If `self` has missing value, use value of `other`
         cond = F.when(this.isNull(), that).otherwise(this)
         # If `self` and `other` come from same frame, the anchor should be kept
@@ -4614,13 +4620,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             if repeats < 0:
                 raise ValueError("negative dimensions are not allowed")
 
-            kdf = self.to_frame()
+            kdf = self._kdf[[self.name]]
             if repeats == 0:
-                return first_series(DataFrame(kdf._internal.with_filter(F.lit(False)))).rename(
-                    self.name
-                )
+                return first_series(DataFrame(kdf._internal.with_filter(F.lit(False))))
             else:
-                return first_series(ks.concat([kdf] * repeats)).rename(self.name)
+                return first_series(ks.concat([kdf] * repeats))
 
     def asof(self, where):
         """

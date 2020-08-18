@@ -685,9 +685,7 @@ class Index(IndexOpsMixin):
         elif len(kdf._internal.index_map) == 1:
             name = self.name
         column_labels = (
-            [None]
-            if len(kdf._internal.index_map) > 1 or name is None
-            else [name if isinstance(name, tuple) else (name,)]
+            [None] if name is None else [name if isinstance(name, tuple) else (name,)]
         )  # type: List[Optional[Tuple[str, ...]]]
         internal = kdf._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
