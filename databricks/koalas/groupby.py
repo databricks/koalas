@@ -641,6 +641,66 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
         )
 
+    def cumcount(self, ascending=True):
+        """
+        Number each item in each group from 0 to the length of that group - 1.
+
+        Essentially this is equivalent to
+
+        .. code-block:: python
+
+            self.apply(lambda x: pd.Series(np.arange(len(x)), x.index))
+
+        Parameters
+        ----------
+        ascending : bool, default True
+            If False, number in reverse, from length of group - 1 to 0.
+
+        Returns
+        -------
+        Series
+            Sequence number of each element within each group.
+
+        Examples
+        --------
+
+        >>> df = ks.DataFrame([['a'], ['a'], ['a'], ['b'], ['b'], ['a']],
+        ...                   columns=['A'])
+        >>> df
+           A
+        0  a
+        1  a
+        2  a
+        3  b
+        4  b
+        5  a
+        >>> df.groupby('A').cumcount().sort_index()
+        0    0
+        1    1
+        2    2
+        3    0
+        4    1
+        5    3
+        Name: A, dtype: int64
+        >>> df.groupby('A').cumcount(ascending=False).sort_index()
+        0    3
+        1    2
+        2    1
+        3    1
+        4    0
+        5    0
+        Name: A, dtype: int64
+
+        """
+        ret = (
+            self._groupkeys[0]
+            .spark.transform(lambda _: F.lit(0))
+            ._cum(F.count, True, part_cols=self._groupkeys_scols, ascending=ascending)
+            - 1
+        )
+        internal = ret._internal.resolved_copy
+        return first_series(DataFrame(internal))
+
     def cummax(self):
         """
         Cumulative max for each group.

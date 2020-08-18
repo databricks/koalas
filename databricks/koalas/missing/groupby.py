@@ -57,7 +57,6 @@ class MissingPandasLikeDataFrameGroupBy(object):
 
     # Functions
     boxplot = _unsupported_function("boxplot")
-    cumcount = _unsupported_function("cumcount")
     get_group = _unsupported_function("get_group")
     median = _unsupported_function("median")
     ngroup = _unsupported_function("ngroup")
@@ -95,7 +94,6 @@ class MissingPandasLikeSeriesGroupBy(object):
     # Functions
     agg = _unsupported_function("agg")
     aggregate = _unsupported_function("aggregate")
-    cumcount = _unsupported_function("cumcount")
     describe = _unsupported_function("describe")
     get_group = _unsupported_function("get_group")
     median = _unsupported_function("median")

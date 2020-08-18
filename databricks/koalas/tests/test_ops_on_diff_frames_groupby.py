@@ -357,6 +357,35 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.groupby([kkey, "b"]).head(2).sort_index(),
         )
 
+    def test_cumcount(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        for ascending in [True, False]:
+            self.assert_eq(
+                kdf.groupby(kkey).cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pkey).cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kkey)["a"].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pkey)["a"].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kkey)[["a"]].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pkey)[["a"]].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+
     def test_cummin(self):
         pdf = pd.DataFrame(
             {
