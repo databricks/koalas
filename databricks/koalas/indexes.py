@@ -207,7 +207,6 @@ class Index(IndexOpsMixin):
                     ('b', 'y'),
                     ('c', 'z')],
                    )
-
         >>> midx.shape
         (3,)
         """
