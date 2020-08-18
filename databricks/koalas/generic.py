@@ -2253,20 +2253,20 @@ class Frame(object, metaclass=ABCMeta):
 
         For Series
 
-        >>> kser = kdf.C
+        >>> kser = ks.Series([None, None, None, 1])
         >>> kser
         0    NaN
         1    NaN
         2    NaN
         3    1.0
-        Name: C, dtype: float64
+        dtype: float64
 
         >>> kser.bfill()
         0    1.0
         1    1.0
         2    1.0
         3    1.0
-        Name: C, dtype: float64
+        dtype: float64
         """
         return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
 
@@ -2325,20 +2325,20 @@ class Frame(object, metaclass=ABCMeta):
 
         For Series
 
-        >>> kser = kdf.B
+        >>> kser = ks.Series([2, 4, None, 3])
         >>> kser
         0    2.0
         1    4.0
         2    NaN
         3    3.0
-        Name: B, dtype: float64
+        dtype: float64
 
         >>> kser.ffill()
         0    2.0
         1    4.0
         2    4.0
         3    3.0
-        Name: B, dtype: float64
+        dtype: float64
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
 

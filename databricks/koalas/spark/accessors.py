@@ -188,9 +188,7 @@ class SparkIndexOpsMethods(object):
 
         sdf = self._data._internal.spark_frame.drop(*HIDDEN_COLUMNS).select(output)
         # Lose index.
-        kdf = DataFrame(sdf)
-        kdf.columns = [self._data.name]
-        return first_series(kdf)
+        return first_series(DataFrame(sdf)).rename(self._data.name)
 
 
 class SparkFrameMethods(object):

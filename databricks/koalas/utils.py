@@ -520,7 +520,9 @@ def name_like_string(name: Optional[Union[str, Tuple]]) -> str:
     >>> name_like_string(name)
     '(a, b, c)'
     """
-    if name is not None and is_list_like(name):
+    if name is None:
+        name = ("__none__",)
+    elif is_list_like(name):
         name = tuple([str(n) for n in name])
     else:
         name = (str(name),)

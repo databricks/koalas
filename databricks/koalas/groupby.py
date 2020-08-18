@@ -692,7 +692,8 @@ class GroupBy(object, metaclass=ABCMeta):
         dtype: int64
         """
         ret = (
-            self._groupkeys[0].rename()
+            self._groupkeys[0]
+            .rename()
             .spark.transform(lambda _: F.lit(0))
             ._cum(F.count, True, part_cols=self._groupkeys_scols, ascending=ascending)
             - 1
@@ -1053,7 +1054,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
         if is_series_groupby:
-            name = self._kser.name
+            name = kdf.columns[-1]
             pandas_apply = SelectionMixin._builtin_table.get(func, func)
         else:
             f = SelectionMixin._builtin_table.get(func, func)
@@ -1073,18 +1074,21 @@ class GroupBy(object, metaclass=ABCMeta):
                 pser_or_pdf = pdf.groupby(groupkey_names).apply(pandas_apply, *args, **kwargs)
             kser_or_kdf = ks.from_pandas(pser_or_pdf)
             if len(pdf) <= limit:
-                if isinstance(kser_or_kdf, ks.Series) and not is_series_groupby:
-                    # Restore grouping names as the index name
-                    groupkey_scol_name = zip(
-                        self._groupkeys, kser_or_kdf._internal.index_map.items()
-                    )
-                    internal = kser_or_kdf._internal.copy(
-                        index_map=OrderedDict(
-                            (scol_name, (s.name,) if isinstance(s.name, str) else s.name)
-                            for s, (scol_name, name) in groupkey_scol_name
+                if isinstance(kser_or_kdf, ks.Series):
+                    if is_series_groupby:
+                        kser_or_kdf = kser_or_kdf.rename(self._kser.name)
+                    else:
+                        # Restore grouping names as the index name
+                        groupkey_scol_name = zip(
+                            self._groupkeys, kser_or_kdf._internal.index_map.items()
                         )
-                    )
-                    kser_or_kdf = first_series(DataFrame(internal))
+                        internal = kser_or_kdf._internal.copy(
+                            index_map=OrderedDict(
+                                (scol_name, (s.name,) if isinstance(s.name, str) else s.name)
+                                for s, (scol_name, name) in groupkey_scol_name
+                            )
+                        )
+                        kser_or_kdf = first_series(DataFrame(internal))
                 return kser_or_kdf
 
             if isinstance(kser_or_kdf, ks.Series):
@@ -1169,7 +1173,10 @@ class GroupBy(object, metaclass=ABCMeta):
             internal = InternalFrame(spark_frame=sdf, index_map=None)
 
         if should_return_series:
-            return first_series(DataFrame(internal))
+            kser = first_series(DataFrame(internal))
+            if is_series_groupby:
+                kser = kser.rename(self._kser.name)
+            return kser
         else:
             return DataFrame(internal)
 
@@ -1241,10 +1248,9 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
         if is_series_groupby:
-            name = self._kser.name
 
             def pandas_filter(pdf):
-                return pd.DataFrame(pdf.groupby(groupkey_names)[name].filter(func))
+                return pd.DataFrame(pdf.groupby(groupkey_names)[pdf.columns[-1]].filter(func))
 
         else:
             f = SelectionMixin._builtin_table.get(func, func)
@@ -2027,7 +2033,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 retain_index=True,
             )
             # If schema is inferred, we can restore indexes too.
-            internal = kdf.drop(groupkey_labels, axis=1)._internal.with_new_sdf(sdf)
+            internal = kdf_from_pandas._internal.with_new_sdf(sdf)
         else:
             return_type = infer_return_type(func).tpe
             data_columns = kdf._internal.data_spark_column_names
@@ -2545,7 +2551,9 @@ class SeriesGroupBy(GroupBy):
         return MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
     def transform(self, func, *args, **kwargs):
-        return first_series(super(SeriesGroupBy, self).transform(func, *args, **kwargs))
+        return first_series(super(SeriesGroupBy, self).transform(func, *args, **kwargs)).rename(
+            self._kser.name
+        )
 
     transform.__doc__ = GroupBy.transform.__doc__
 
@@ -2560,7 +2568,7 @@ class SeriesGroupBy(GroupBy):
     idxmax.__doc__ = GroupBy.idxmax.__doc__
 
     def head(self, n=5):
-        return first_series(super(SeriesGroupBy, self).head(n))
+        return first_series(super(SeriesGroupBy, self).head(n)).rename(self._kser.name)
 
     head.__doc__ = GroupBy.head.__doc__
 

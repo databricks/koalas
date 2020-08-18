@@ -965,7 +965,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
 
     def test_cummin(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cummin(), kser.cummin(), almost=True)
         self.assert_eq(pser.cummin(skipna=False), kser.cummin(skipna=False), almost=True)
@@ -978,7 +978,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cummin(skipna=False), kser.cummin(skipna=False), almost=True)
 
     def test_cummax(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cummax(), kser.cummax(), almost=True)
         self.assert_eq(pser.cummax(skipna=False), kser.cummax(skipna=False), almost=True)
@@ -991,7 +991,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cummax(skipna=False), kser.cummax(skipna=False), almost=True)
 
     def test_cumsum(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cumsum(), kser.cumsum(), almost=True)
         self.assert_eq(pser.cumsum(skipna=False), kser.cumsum(skipna=False), almost=True)
@@ -1004,7 +1004,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumsum(skipna=False), kser.cumsum(skipna=False), almost=True)
 
     def test_cumprod(self):
-        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cumprod(), kser.cumprod(), almost=True)
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False), almost=True)
