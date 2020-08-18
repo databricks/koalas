@@ -666,7 +666,7 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> df = pd.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
         ...                   columns=['dogs', 'cats'],
         ...                   index=list('abcd'))
         >>> df['dogs'].index.to_series()
@@ -1317,11 +1317,11 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> idx = pd.Index([3, 2, 1])
+        >>> idx = ks.Index([3, 2, 1])
         >>> idx.max()
         3
 
-        >>> idx = pd.Index(['c', 'b', 'a'])
+        >>> idx = ks.Index(['c', 'b', 'a'])
         >>> idx.max()
         'c'
 
