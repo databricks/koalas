@@ -867,50 +867,54 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(
-            kdf.groupby("b").cumcount().sort_index(), pdf.groupby("b").cumcount().sort_index()
-        )
-        self.assert_eq(
-            kdf.groupby(["a", "b"]).cumcount().sort_index(),
-            pdf.groupby(["a", "b"]).cumcount().sort_index(),
-        )
-        self.assert_eq(
-            kdf.groupby(["b"])["a"].cumcount().sort_index(),
-            pdf.groupby(["b"])["a"].cumcount().sort_index(),
-            almost=True,
-        )
-        self.assert_eq(
-            kdf.groupby(["b"])[["a", "c"]].cumcount().sort_index(),
-            pdf.groupby(["b"])[["a", "c"]].cumcount().sort_index(),
-            almost=True,
-        )
-        self.assert_eq(
-            kdf.groupby(kdf.b // 5).cumcount().sort_index(),
-            pdf.groupby(pdf.b // 5).cumcount().sort_index(),
-            almost=True,
-        )
-        self.assert_eq(
-            kdf.groupby(kdf.b // 5)["a"].cumcount().sort_index(),
-            pdf.groupby(pdf.b // 5)["a"].cumcount().sort_index(),
-            almost=True,
-        )
-        self.assert_eq(
-            kdf.groupby("b").cumcount().sum(), pdf.groupby("b").cumcount().sum(),
-        )
+        for ascending in [True, False]:
+            self.assert_eq(
+                kdf.groupby("b").cumcount(ascending=ascending).sort_index(),
+                pdf.groupby("b").cumcount(ascending=ascending).sort_index(),
+            )
+            self.assert_eq(
+                kdf.groupby(["a", "b"]).cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(["a", "b"]).cumcount(ascending=ascending).sort_index(),
+            )
+            self.assert_eq(
+                kdf.groupby(["b"])["a"].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(["b"])["a"].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(["b"])[["a", "c"]].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(["b"])[["a", "c"]].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kdf.b // 5).cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pdf.b // 5).cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kdf.b // 5)["a"].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pdf.b // 5)["a"].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby("b").cumcount(ascending=ascending).sum(),
+                pdf.groupby("b").cumcount(ascending=ascending).sum(),
+            )
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(
-            kdf.groupby(("x", "b")).cumcount().sort_index(),
-            pdf.groupby(("x", "b")).cumcount().sort_index(),
-        )
-        self.assert_eq(
-            kdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
-            pdf.groupby([("x", "a"), ("x", "b")]).cumcount().sort_index(),
-        )
+        for ascending in [True, False]:
+            self.assert_eq(
+                kdf.groupby(("x", "b")).cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(("x", "b")).cumcount(ascending=ascending).sort_index(),
+            )
+            self.assert_eq(
+                kdf.groupby([("x", "a"), ("x", "b")]).cumcount(ascending=ascending).sort_index(),
+                pdf.groupby([("x", "a"), ("x", "b")]).cumcount(ascending=ascending).sort_index(),
+            )
 
     def test_cummin(self):
         pdf = pd.DataFrame(
