@@ -2555,7 +2555,8 @@ class SeriesGroupBy(GroupBy):
         )
 
         window = Window.partitionBy(groupkey_col_names).orderBy(
-            F.col(self._kser._internal.data_spark_column_names[0]).asc(), NATURAL_ORDER_COLUMN_NAME
+            scol_for(sdf, self._kser._internal.data_spark_column_names[0]).asc(),
+            NATURAL_ORDER_COLUMN_NAME,
         )
 
         temp_rank_column = verify_temp_column_name(sdf, "__rank__")
@@ -2627,7 +2628,8 @@ class SeriesGroupBy(GroupBy):
         )
 
         window = Window.partitionBy(groupkey_col_names).orderBy(
-            F.col(self._kser._internal.data_spark_column_names[0]).desc(), NATURAL_ORDER_COLUMN_NAME
+            scol_for(sdf, self._kser._internal.data_spark_column_names[0]).desc(),
+            NATURAL_ORDER_COLUMN_NAME,
         )
 
         temp_rank_column = verify_temp_column_name(sdf, "__rank__")
