@@ -2199,6 +2199,10 @@ class Frame(object, metaclass=ABCMeta):
             internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
         )
 
+    @abstractmethod
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+        pass
+
     # TODO: add 'downcast' when value parameter exists
     def bfill(self, axis=None, inplace=False, limit=None):
         """
