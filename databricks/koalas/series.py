@@ -1221,7 +1221,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
             if inplace:
-                self._column_label = kser._column_label
                 self._update_anchor(kdf)
             else:
                 return first_series(kdf)
