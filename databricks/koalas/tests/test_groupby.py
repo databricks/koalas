@@ -1163,12 +1163,28 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            repr(kdf.groupby(["a"])["b"].nsmallest(1).sort_values()),
-            repr(pdf.groupby(["a"])["b"].nsmallest(1).sort_values()),
+            kdf.groupby(["a"])["b"].nsmallest(1).sort_values(),
+            pdf.groupby(["a"])["b"].nsmallest(1).sort_values(),
         )
         self.assert_eq(
-            repr(kdf.groupby(["a"])["b"].nsmallest(2).sort_index()),
-            repr(pdf.groupby(["a"])["b"].nsmallest(2).sort_index()),
+            kdf.groupby(["a"])["b"].nsmallest(2).sort_index(),
+            pdf.groupby(["a"])["b"].nsmallest(2).sort_index(),
+        )
+        self.assert_eq(
+            (kdf.b * 10).groupby(kdf.a).nsmallest(2).sort_index(),
+            (pdf.b * 10).groupby(pdf.a).nsmallest(2).sort_index(),
+        )
+        self.assert_eq(
+            kdf.b.rename("x").groupby(kdf.a).nsmallest(2).sort_index(),
+            pdf.b.rename("x").groupby(pdf.a).nsmallest(2).sort_index(),
+        )
+        self.assert_eq(
+            kdf.b.groupby(kdf.a.rename("x")).nsmallest(2).sort_index(),
+            pdf.b.groupby(pdf.a.rename("x")).nsmallest(2).sort_index(),
+        )
+        self.assert_eq(
+            kdf.b.rename("x").groupby(kdf.a.rename("x")).nsmallest(2).sort_index(),
+            pdf.b.rename("x").groupby(pdf.a.rename("x")).nsmallest(2).sort_index(),
         )
         with self.assertRaisesRegex(ValueError, "nsmallest do not support multi-index now"):
             kdf.set_index(["a", "b"]).groupby(["c"])["d"].nsmallest(1)
@@ -1186,12 +1202,28 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            repr(kdf.groupby(["a"])["b"].nlargest(1).sort_values()),
-            repr(pdf.groupby(["a"])["b"].nlargest(1).sort_values()),
+            kdf.groupby(["a"])["b"].nlargest(1).sort_values(),
+            pdf.groupby(["a"])["b"].nlargest(1).sort_values(),
         )
         self.assert_eq(
-            repr(kdf.groupby(["a"])["b"].nlargest(2).sort_index()),
-            repr(pdf.groupby(["a"])["b"].nlargest(2).sort_index()),
+            kdf.groupby(["a"])["b"].nlargest(2).sort_index(),
+            pdf.groupby(["a"])["b"].nlargest(2).sort_index(),
+        )
+        self.assert_eq(
+            (kdf.b * 10).groupby(kdf.a).nlargest(2).sort_index(),
+            (pdf.b * 10).groupby(pdf.a).nlargest(2).sort_index(),
+        )
+        self.assert_eq(
+            kdf.b.rename("x").groupby(kdf.a).nlargest(2).sort_index(),
+            pdf.b.rename("x").groupby(pdf.a).nlargest(2).sort_index(),
+        )
+        self.assert_eq(
+            kdf.b.groupby(kdf.a.rename("x")).nlargest(2).sort_index(),
+            pdf.b.groupby(pdf.a.rename("x")).nlargest(2).sort_index(),
+        )
+        self.assert_eq(
+            kdf.b.rename("x").groupby(kdf.a.rename("x")).nlargest(2).sort_index(),
+            pdf.b.rename("x").groupby(pdf.a.rename("x")).nlargest(2).sort_index(),
         )
         with self.assertRaisesRegex(ValueError, "nlargest do not support multi-index now"):
             kdf.set_index(["a", "b"]).groupby(["c"])["d"].nlargest(1)

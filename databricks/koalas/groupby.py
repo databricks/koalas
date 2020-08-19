@@ -2600,26 +2600,46 @@ class SeriesGroupBy(GroupBy):
         3  6    3
         Name: b, dtype: int64
         """
-        if len(self._kdf._internal.index_names) > 1:
+        if len(self._kser._internal.index_names) > 1:
             raise ValueError("nsmallest do not support multi-index now")
 
-        sdf = self._kdf._internal.spark_frame
-        name = self._agg_columns[0]._internal.data_spark_column_names[0]
-        window = Window.partitionBy(self._groupkeys_scols).orderBy(
-            self._agg_columns[0].spark.column, NATURAL_ORDER_COLUMN_NAME
+        groupkey_col_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
+        sdf = self._kser._internal.spark_frame.select(
+            [scol.alias(name) for scol, name in zip(self._groupkeys_scols, groupkey_col_names)]
+            + [
+                scol.alias(SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys)))
+                for i, scol in enumerate(self._kser._internal.index_spark_columns)
+            ]
+            + [self._kser.spark.column]
+            + [NATURAL_ORDER_COLUMN_NAME]
         )
-        sdf = sdf.withColumn("rank", F.row_number().over(window)).filter(F.col("rank") <= n)
+
+        window = Window.partitionBy(groupkey_col_names).orderBy(
+            scol_for(sdf, self._kser._internal.data_spark_column_names[0]).asc(),
+            NATURAL_ORDER_COLUMN_NAME,
+        )
+
+        temp_rank_column = verify_temp_column_name(sdf, "__rank__")
+        sdf = (
+            sdf.withColumn(temp_rank_column, F.row_number().over(window))
+            .filter(F.col(temp_rank_column) <= n)
+            .drop(temp_rank_column)
+        )
 
         internal = InternalFrame(
             spark_frame=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
             index_map=OrderedDict(
                 [
-                    (s._internal.data_spark_column_names[0], s._internal.column_labels[0])
-                    for s in self._groupkeys
+                    (col, s._internal.column_labels[0])
+                    for s, col in zip(self._groupkeys, groupkey_col_names)
                 ]
-                + list(self._kdf._internal.index_map.items())
+                + [
+                    (SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys)), name)
+                    for i, name in enumerate(self._kdf._internal.index_names)
+                ]
             ),
-            data_spark_columns=[scol_for(sdf, name)],
+            column_labels=[self._kser._column_label],
+            data_spark_columns=[scol_for(sdf, self._kser._internal.data_spark_column_names[0])],
         )
         return first_series(DataFrame(internal))
 
@@ -2653,26 +2673,46 @@ class SeriesGroupBy(GroupBy):
         3  7    4
         Name: b, dtype: int64
         """
-        if len(self._kdf._internal.index_names) > 1:
+        if len(self._kser._internal.index_names) > 1:
             raise ValueError("nlargest do not support multi-index now")
 
-        sdf = self._kdf._internal.spark_frame
-        name = self._agg_columns[0]._internal.data_spark_column_names[0]
-        window = Window.partitionBy(self._groupkeys_scols).orderBy(
-            self._agg_columns[0].spark.column.desc(), NATURAL_ORDER_COLUMN_NAME
+        groupkey_col_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
+        sdf = self._kser._internal.spark_frame.select(
+            [scol.alias(name) for scol, name in zip(self._groupkeys_scols, groupkey_col_names)]
+            + [
+                scol.alias(SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys)))
+                for i, scol in enumerate(self._kser._internal.index_spark_columns)
+            ]
+            + [self._kser.spark.column]
+            + [NATURAL_ORDER_COLUMN_NAME]
         )
-        sdf = sdf.withColumn("rank", F.row_number().over(window)).filter(F.col("rank") <= n)
+
+        window = Window.partitionBy(groupkey_col_names).orderBy(
+            scol_for(sdf, self._kser._internal.data_spark_column_names[0]).desc(),
+            NATURAL_ORDER_COLUMN_NAME,
+        )
+
+        temp_rank_column = verify_temp_column_name(sdf, "__rank__")
+        sdf = (
+            sdf.withColumn(temp_rank_column, F.row_number().over(window))
+            .filter(F.col(temp_rank_column) <= n)
+            .drop(temp_rank_column)
+        )
 
         internal = InternalFrame(
             spark_frame=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
             index_map=OrderedDict(
                 [
-                    (s._internal.data_spark_column_names[0], s._internal.column_labels[0])
-                    for s in self._groupkeys
+                    (col, s._internal.column_labels[0])
+                    for s, col in zip(self._groupkeys, groupkey_col_names)
                 ]
-                + list(self._kdf._internal.index_map.items())
+                + [
+                    (SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys)), name)
+                    for i, name in enumerate(self._kdf._internal.index_names)
+                ]
             ),
-            data_spark_columns=[scol_for(sdf, name)],
+            column_labels=[self._kser._column_label],
+            data_spark_columns=[scol_for(sdf, self._kser._internal.data_spark_column_names[0])],
         )
         return first_series(DataFrame(internal))
 
