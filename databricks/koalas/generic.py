@@ -1406,9 +1406,17 @@ class Frame(object, metaclass=ABCMeta):
 
         >>> df = ks.DataFrame({'col1': [1, 2, None], 'col2': [3, 4, None]})
         >>> df.size
-        3
+        6
+
+        >>> df = ks.DataFrame(index=[1, 2, None])
+        >>> df.size
+        0
         """
-        return len(self)  # type: ignore
+        num_columns = len(self._internal.data_spark_columns)
+        if num_columns == 0:
+            return 0
+        else:
+            return len(self) * num_columns  # type: ignore
 
     def abs(self):
         """
