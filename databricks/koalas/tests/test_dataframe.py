@@ -3885,3 +3885,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pdf.tail(1001), kdf.tail(1001), almost=True)
             with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
                 kdf.tail("10")
+
+    def test_first_valid_index(self):
+        # Empty DataFrame
+        pdf = pd.Series([], name=0).to_frame()
+        kdf = ks.Series([]).to_frame()
+        self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())

@@ -1683,6 +1683,10 @@ class Frame(object, metaclass=ABCMeta):
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
         first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
+        # For Empty Series or DataFrame, returns None.
+        if first_valid_row is None:
+            return None
+
         first_valid_idx = tuple(
             first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
         )
