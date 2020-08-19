@@ -1210,13 +1210,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if inplace and not drop:
             raise TypeError("Cannot reset_index inplace on a Series to create a DataFrame")
 
-        if not drop and name is not None:
-            kser = self.rename(name)
+        if drop:
+            kdf = self._kdf[[self.name]]
         else:
             kser = self
-        if drop:
-            kdf = kser._kdf[[kser.name]]
-        else:
+            if name is not None:
+                kser = kser.rename(name)
             kdf = kser.to_frame()
         kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
