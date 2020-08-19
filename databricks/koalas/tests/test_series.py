@@ -232,6 +232,29 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.sort_index(), pser.sort_index())
         self.assert_eq(kdf, pdf)
 
+    def test_reindex(self):
+        index = ["A", "B", "C", "D", "E"]
+        pser = pd.Series([1.0, 2.0, 3.0, 4.0, None], index=index, name="x")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser, kser)
+
+        self.assert_eq(
+            pser.reindex(["A", "B"]).sort_index(), kser.reindex(["A", "B"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pser.reindex(["A", "B", "2", "3"]).sort_index(),
+            kser.reindex(["A", "B", "2", "3"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pser.reindex(["A", "E", "2"], fill_value=0).sort_index(),
+            kser.reindex(["A", "E", "2"], fill_value=0).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kser.reindex(index=123))
+
     def test_fillna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)
