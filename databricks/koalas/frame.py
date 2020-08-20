@@ -7312,7 +7312,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(prefix, str)
         return self._apply_series_op(
-            lambda kser: kser.rename(tuple([prefix + i for i in kser._column_labels]))
+            lambda kser: kser.rename(tuple([prefix + i for i in kser._column_label]))
         )
 
     def add_suffix(self, suffix):
