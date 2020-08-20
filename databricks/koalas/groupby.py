@@ -977,6 +977,18 @@ class GroupBy(object, metaclass=ABCMeta):
         1  aa  3  10
         2  bb  6  10
 
+        >>> g.apply(sum).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+            A  B   C
+        A
+        a  aa  3  10
+        b   b  3   5
+
+        >>> g.apply(len).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        A
+        a    2
+        b    1
+        Name: 0, dtype: int64
+
         You can specify the type hint and prevent schema inference for better performance.
 
         >>> def pandas_div(x) -> ks.DataFrame[float, float]:
@@ -986,12 +998,6 @@ class GroupBy(object, metaclass=ABCMeta):
         0  1.0  1.0
         1  1.0  1.0
         2  1.0  1.0
-
-        >>> g.apply(len).sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        A
-        a    2
-        b    1
-        Name: 0, dtype: int64
 
         In case of Series, it works as below.
 
@@ -1070,27 +1076,20 @@ class GroupBy(object, metaclass=ABCMeta):
             # Here we execute with the first 1000 to get the return type.
             limit = get_option("compute.shortcut_limit")
             pdf = kdf.head(limit + 1)._to_internal_pandas()
+            groupkeys = [
+                pdf[groupkey_name].rename(kser.name)
+                for groupkey_name, kser in zip(groupkey_names, self._groupkeys)
+            ]
             if is_series_groupby:
-                pser_or_pdf = pdf.groupby(groupkey_names)[name].apply(pandas_apply, *args, **kwargs)
+                pser_or_pdf = pdf.groupby(groupkeys)[name].apply(pandas_apply, *args, **kwargs)
             else:
-                pser_or_pdf = pdf.groupby(groupkey_names).apply(pandas_apply, *args, **kwargs)
+                pser_or_pdf = pdf.groupby(groupkeys).apply(pandas_apply, *args, **kwargs)
             kser_or_kdf = ks.from_pandas(pser_or_pdf)
+
             if len(pdf) <= limit:
-                if isinstance(kser_or_kdf, ks.Series) and not is_series_groupby:
-                    # Restore grouping names as the index name
-                    groupkey_scol_name = zip(
-                        self._groupkeys, kser_or_kdf._internal.index_map.items()
-                    )
-                    internal = kser_or_kdf._internal.copy(
-                        index_map=OrderedDict(
-                            (scol_name, (s.name,) if isinstance(s.name, str) else s.name)
-                            for s, (scol_name, name) in groupkey_scol_name
-                        )
-                    )
-                    kser_or_kdf = first_series(DataFrame(internal))
                 return kser_or_kdf
 
-            if isinstance(kser_or_kdf, ks.Series):
+            if isinstance(kser_or_kdf, Series):
                 should_return_series = True
                 kdf_from_pandas = kser_or_kdf.to_frame()
             else:
