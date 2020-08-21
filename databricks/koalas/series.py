@@ -2025,7 +2025,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=None,
-            column_labels=[self._internal.column_labels[0]],
+            column_labels=[self._column_label],
             data_spark_columns=[scol_for(sdf, self._internal.data_spark_column_names[0])],
             column_label_names=self._internal.column_label_names,
         )
@@ -4166,10 +4166,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = (
-                F.when(
-                    kdf[tmp_cond_col].spark.column,
-                    kdf[self._internal.column_labels[0]].spark.column,
-                )
+                F.when(kdf[tmp_cond_col].spark.column, kdf[self._column_label].spark.column)
                 .otherwise(kdf[tmp_other_col].spark.column)
                 .alias(self._internal.data_spark_column_names[0])
             )
