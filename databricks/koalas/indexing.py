@@ -1059,7 +1059,7 @@ class LocIndexer(LocIndexerLike):
     def _select_cols_by_series(
         self, cols_sel: "Series", missing_keys: Optional[List[Tuple[str, ...]]]
     ) -> Tuple[List[Tuple[str, ...]], Optional[List[spark.Column]], bool]:
-        column_labels = [cols_sel._internal.column_labels[0]]
+        column_labels = [cols_sel._column_label]
         data_spark_columns = [cols_sel.spark.column]
         return column_labels, data_spark_columns, True
 
@@ -1086,7 +1086,7 @@ class LocIndexer(LocIndexerLike):
         from databricks.koalas.series import Series
 
         if all(isinstance(key, Series) for key in cols_sel):
-            column_labels = [key._internal.column_labels[0] for key in cols_sel]
+            column_labels = [key._column_label for key in cols_sel]
             data_spark_columns = [key.spark.column for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
             column_labels = [
