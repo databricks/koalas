@@ -51,21 +51,21 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         # Those fail in certain OSs presumably due to different
         # timezone behaviours inherited from C library.
 
-        actual = (kdf["end_date"] - kdf["start_date"] - 1).to_list()
-        expected = ((pdf["end_date"] - pdf["start_date"]) // np.timedelta64(1, "s") - 1).to_list()
-        # self.assertEqual(actual, expected)
+        actual = (kdf["end_date"] - kdf["start_date"] - 1).to_pandas()
+        expected = (pdf["end_date"] - pdf["start_date"]) // np.timedelta64(1, "s") - 1
+        # self.assert_eq(actual, expected)
 
-        actual = (kdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31") - 1).to_list()
-        expected = (
-            (pdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31")) // np.timedelta64(1, "s") - 1
-        ).to_list()
-        # self.assertEqual(actual, expected)
+        actual = (kdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31") - 1).to_pandas()
+        expected = (pdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31")) // np.timedelta64(
+            1, "s"
+        ) - 1
+        # self.assert_eq(actual, expected)
 
-        actual = (pd.Timestamp("2013-3-11 21:45:00") - kdf["start_date"] - 1).to_list()
-        expected = (
-            (pd.Timestamp("2013-3-11 21:45:00") - pdf["start_date"]) // np.timedelta64(1, "s") - 1
-        ).to_list()
-        # self.assertEqual(actual, expected)
+        actual = (pd.Timestamp("2013-3-11 21:45:00") - kdf["start_date"] - 1).to_pandas()
+        expected = (pd.Timestamp("2013-3-11 21:45:00") - pdf["start_date"]) // np.timedelta64(
+            1, "s"
+        ) - 1
+        # self.assert_eq(actual, expected)
 
         kdf = ks.DataFrame(
             {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
