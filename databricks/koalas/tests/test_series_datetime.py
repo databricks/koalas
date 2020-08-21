@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import datetime
 import unittest
 
 import numpy as np
@@ -44,16 +44,28 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
             func(self.ks_start_date).to_pandas(), func(self.pd_start_date), check_names=False
         )
 
-    @unittest.skip(
-        "It fails in certain OSs presumably due to different "
-        "timezone behaviours inherited from C library."
-    )
     def test_timestamp_subtraction(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
-        kdf["diff_seconds"] = kdf["end_date"] - kdf["start_date"] - 1
 
-        self.assertEqual(list(kdf["diff_seconds"].toPandas()), [35545499, 33644699, 31571099])
+        # Those fail in certain OSs presumably due to different
+        # timezone behaviours inherited from C library.
+
+        actual = (kdf["end_date"] - kdf["start_date"] - 1).to_list()
+        expected = ((pdf["end_date"] - pdf["start_date"]) // np.timedelta64(1, "s") - 1).to_list()
+        # self.assertEqual(actual, expected)
+
+        actual = (kdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31") - 1).to_list()
+        expected = (
+            (pdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31")) // np.timedelta64(1, "s") - 1
+        ).to_list()
+        # self.assertEqual(actual, expected)
+
+        actual = (pd.Timestamp("2013-3-11 21:45:00") - kdf["start_date"] - 1).to_list()
+        expected = (
+            (pd.Timestamp("2013-3-11 21:45:00") - pdf["start_date"]) // np.timedelta64(1, "s") - 1
+        ).to_list()
+        # self.assertEqual(actual, expected)
 
         kdf = ks.DataFrame(
             {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
@@ -65,9 +77,21 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
     def test_date_subtraction(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
-        kdf["diff_days"] = kdf["end_date"].dt.date - kdf["start_date"].dt.date
 
-        self.assert_eq(list(kdf["diff_days"].toPandas()), [411, 389, 365])
+        self.assert_eq(
+            kdf["end_date"].dt.date - kdf["start_date"].dt.date,
+            (pdf["end_date"].dt.date - pdf["start_date"].dt.date).dt.days,
+        )
+
+        self.assert_eq(
+            kdf["end_date"].dt.date - datetime.date(2012, 1, 1),
+            (pdf["end_date"].dt.date - datetime.date(2012, 1, 1)).dt.days,
+        )
+
+        self.assert_eq(
+            datetime.date(2013, 3, 11) - kdf["start_date"].dt.date,
+            (datetime.date(2013, 3, 11) - pdf["start_date"].dt.date).dt.days,
+        )
 
         kdf = ks.DataFrame(
             {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}

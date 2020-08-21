@@ -19,6 +19,7 @@ Base and utility classes for Koalas objects.
 """
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+import datetime
 from functools import wraps, partial
 from typing import Union, Callable, Any
 import warnings
@@ -46,7 +47,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_INDEX_NAME,
 )
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
-from databricks.koalas.typedef import spark_type_to_pandas_dtype
+from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
 
@@ -185,16 +186,21 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     def __sub__(self, other):
         # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
         # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-        if isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, TimestampType):
-            if not isinstance(other.spark.data_type, TimestampType):
-                raise TypeError("datetime subtraction can only be applied to datetime series.")
-            return self.astype("bigint") - other.astype("bigint")
-        elif isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, DateType):
-            if not isinstance(other.spark.data_type, DateType):
-                raise TypeError("date subtraction can only be applied to date series.")
-            return column_op(F.datediff)(self, other)
-        else:
-            return column_op(Column.__sub__)(self, other)
+        if isinstance(self.spark.data_type, TimestampType):
+            if isinstance(other, IndexOpsMixin):
+                if not isinstance(other.spark.data_type, TimestampType):
+                    raise TypeError("datetime subtraction can only be applied to datetime series.")
+                return self.astype("bigint") - other.astype("bigint")
+            elif isinstance(other, datetime.datetime):
+                return self.astype("bigint") - F.lit(other).cast(as_spark_type("bigint"))
+        elif isinstance(self.spark.data_type, DateType):
+            if isinstance(other, IndexOpsMixin):
+                if not isinstance(other.spark.data_type, DateType):
+                    raise TypeError("date subtraction can only be applied to date series.")
+                return column_op(F.datediff)(self, other)
+            elif isinstance(other, datetime.date):
+                return column_op(F.datediff)(self, F.lit(other))
+        return column_op(Column.__sub__)(self, other)
 
     __mul__ = column_op(Column.__mul__)
 
@@ -238,7 +244,17 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             return column_op(Column.__radd__)(self, other)
 
-    __rsub__ = column_op(Column.__rsub__)
+    def __rsub__(self, other):
+        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+        if isinstance(self.spark.data_type, TimestampType):
+            if isinstance(other, datetime.datetime):
+                return -(self.astype("bigint") - F.lit(other).cast(as_spark_type("bigint")))
+        elif isinstance(self.spark.data_type, DateType):
+            if isinstance(other, datetime.date):
+                return -column_op(F.datediff)(self, F.lit(other))
+        return column_op(Column.__rsub__)(self, other)
+
     __rmul__ = column_op(Column.__rmul__)
 
     def __rtruediv__(self, other):
@@ -691,8 +707,6 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> ser.rename("a").to_frame().set_index("a").index.astype('int64')
         Int64Index([1, 2], dtype='int64', name='a')
         """
-        from databricks.koalas.typedef import as_spark_type
-
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
