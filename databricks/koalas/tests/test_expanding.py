@@ -212,7 +212,7 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
 
             # DataFrame
             kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
-            midx = pd.MultiIndex.from_tuples([(1, 0), (2, 1), (2, 3), (3, 2)])
+            midx = pd.MultiIndex.from_tuples([(1, 0), (2, 1), (2, 3), (3, 2)], names=["a", None])
             expected_result = pd.DataFrame(
                 {"a": [None, None, 2.0, None], "b": [None, None, 2.0, None]}, index=midx
             )
@@ -222,7 +222,9 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kdf.groupby(kdf.a).expanding(2).count().sum(), expected_result.sum())
             expected_result = pd.DataFrame(
                 {"a": [None, None, 2.0, None], "b": [None, None, 2.0, None]},
-                index=pd.MultiIndex.from_tuples([(2, 0), (3, 1), (3, 3), (4, 2)]),
+                index=pd.MultiIndex.from_tuples(
+                    [(2, 0), (3, 1), (3, 3), (4, 2)], names=["a", None]
+                ),
             )
             self.assert_eq(
                 kdf.groupby(kdf.a + 1).expanding(2).count().sort_index(),
@@ -245,7 +247,9 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
             # MultiIndex column
             kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
             kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("a", "y")])
-            midx = pd.MultiIndex.from_tuples([(1, 0), (2, 1), (2, 3), (3, 2)])
+            midx = pd.MultiIndex.from_tuples(
+                [(1, 0), (2, 1), (2, 3), (3, 2)], names=[("a", "x"), None]
+            )
             expected_result = pd.DataFrame(
                 {"a": [None, None, 2.0, None], "b": [None, None, 2.0, None]}, index=midx
             )
@@ -254,7 +258,10 @@ class ExpandingTest(ReusedSQLTestCase, TestUtils):
                 kdf.groupby(("a", "x")).expanding(2).count().sort_index(),
                 expected_result.sort_index(),
             )
-            midx = pd.MultiIndex.from_tuples([(1, 4.0, 0), (2, 1.0, 3), (2, 2.0, 1), (3, 3.0, 2)])
+            midx = pd.MultiIndex.from_tuples(
+                [(1, 4.0, 0), (2, 1.0, 3), (2, 2.0, 1), (3, 3.0, 2)],
+                names=[("a", "x"), ("a", "y"), None],
+            )
             expected_result = pd.DataFrame(
                 {
                     ("a", "x"): [np.nan, np.nan, np.nan, np.nan],
