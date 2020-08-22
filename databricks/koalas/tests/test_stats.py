@@ -16,7 +16,6 @@
 
 import numpy as np
 import pandas as pd
-from distutils.version import LooseVersion
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
@@ -98,10 +97,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
             # DataFrame
             # we do not handle NaNs for now
-            if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-                pdf = pd._testing.makeMissingDataframe(0.3, 42).fillna(0)
-            else:
-                pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
             self.assert_eq(kdf.corr(), pdf.corr(), almost=True)

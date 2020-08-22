@@ -41,7 +41,6 @@ class OpsOnDiffFramesGroupByRollingTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             getattr(kser.groupby(kkey).rolling(2), f)().sort_index(),
             getattr(pser.groupby(pkey).rolling(2), f)().sort_index(),
-            almost=True,
         )
 
         pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
@@ -52,17 +51,14 @@ class OpsOnDiffFramesGroupByRollingTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             getattr(kdf.groupby(kkey).rolling(2), f)().sort_index(),
             getattr(pdf.groupby(pkey).rolling(2), f)().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             getattr(kdf.groupby(kkey)["b"].rolling(2), f)().sort_index(),
             getattr(pdf.groupby(pkey)["b"].rolling(2), f)().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             getattr(kdf.groupby(kkey)[["b"]].rolling(2), f)().sort_index(),
             getattr(pdf.groupby(pkey)[["b"]].rolling(2), f)().sort_index(),
-            almost=True,
         )
 
     def test_groupby_rolling_count(self):

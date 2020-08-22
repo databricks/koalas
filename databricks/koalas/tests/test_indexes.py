@@ -572,8 +572,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index([1, 2, None])
         kidx = ks.from_pandas(pidx)
 
-        self.assert_eq(pidx.fillna(0), kidx.fillna(0))
-        self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0))
+        self.assert_eq(pidx.fillna(0), kidx.fillna(0), almost=True)
+        self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0), almost=True)
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
@@ -1049,7 +1049,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
 
         self.assert_eq(kmidx.repeat(3).sort_values(), pmidx.repeat(3).sort_values())
-        self.assert_eq(kmidx.repeat(0).sort_values(), pmidx.repeat(0).sort_values())
+        self.assert_eq(kmidx.repeat(0).sort_values(), pmidx.repeat(0).sort_values(), almost=True)
 
         self.assertRaises(ValueError, lambda: kmidx.repeat(-1))
         self.assertRaises(ValueError, lambda: kmidx.repeat("abc"))
@@ -1101,17 +1101,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
         self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
+        self.assert_eq(kidx1.union([3, 4, 5, 6]), pidx1.union([3, 4, 5, 6]), almost=True)
+        self.assert_eq(kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]), almost=True)
         self.assert_eq(
-            kidx1.union([3, 4, 5, 6]), pidx1.union([3, 4, 5, 6]),
+            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])), almost=True
         )
         self.assert_eq(
-            kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]),
-        )
-        self.assert_eq(
-            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])),
-        )
-        self.assert_eq(
-            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])),
+            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])), almost=True
         )
 
         # Testing if the result is correct after sort=False.
@@ -1128,18 +1124,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kidx1.union([3, 4, 5, 6], sort=False).sort_values(),
                 pidx1.union([3, 4, 5, 6], sort=False).sort_values(),
+                almost=True,
             )
             self.assert_eq(
                 kidx2.union([1, 2, 3, 4], sort=False).sort_values(),
                 pidx2.union([1, 2, 3, 4], sort=False).sort_values(),
+                almost=True,
             )
             self.assert_eq(
                 kidx1.union(ks.Series([3, 4, 5, 6]), sort=False).sort_values(),
                 pidx1.union(pd.Series([3, 4, 5, 6]), sort=False).sort_values(),
+                almost=True,
             )
             self.assert_eq(
                 kidx2.union(ks.Series([1, 2, 3, 4]), sort=False).sort_values(),
                 pidx2.union(pd.Series([1, 2, 3, 4]), sort=False).sort_values(),
+                almost=True,
             )
 
         # Duplicated values for Index is supported in pandas >= 1.0.0
@@ -1152,18 +1152,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
             self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
             self.assert_eq(
-                kidx1.union([3, 4, 3, 3, 5, 6]), pidx1.union([3, 4, 3, 4, 5, 6]),
+                kidx1.union([3, 4, 3, 3, 5, 6]), pidx1.union([3, 4, 3, 4, 5, 6]), almost=True
             )
             self.assert_eq(
-                kidx2.union([1, 2, 3, 4, 3, 4, 3, 4]), pidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+                kidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+                pidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+                almost=True,
             )
             self.assert_eq(
                 kidx1.union(ks.Series([3, 4, 3, 3, 5, 6])),
                 pidx1.union(pd.Series([3, 4, 3, 4, 5, 6])),
+                almost=True,
             )
             self.assert_eq(
                 kidx2.union(ks.Series([1, 2, 3, 4, 3, 4, 3, 4])),
                 pidx2.union(pd.Series([1, 2, 3, 4, 3, 4, 3, 4])),
+                almost=True,
             )
 
         # MultiIndex

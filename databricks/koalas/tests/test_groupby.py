@@ -201,8 +201,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         funcs = [
-            (False, ["sum", "min", "max", "count", "mean", "first", "last"]),
-            (True, ["var", "std"]),
+            (False, ["sum", "min", "max", "count", "first", "last"]),
+            (True, ["mean", "var", "std"]),
         ]
         funcs = [(almost, f) for almost, fs in funcs for f in fs]
 
@@ -774,24 +774,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(["a", "b"]).diff().sort_index(), pdf.groupby(["a", "b"]).diff().sort_index()
         )
         self.assert_eq(
-            kdf.groupby(["b"])["a"].diff().sort_index(),
-            pdf.groupby(["b"])["a"].diff().sort_index(),
-            almost=True,
+            kdf.groupby(["b"])["a"].diff().sort_index(), pdf.groupby(["b"])["a"].diff().sort_index()
         )
         self.assert_eq(
             kdf.groupby(["b"])[["a", "b"]].diff().sort_index(),
             pdf.groupby(["b"])[["a", "b"]].diff().sort_index(),
-            almost=True,
         )
         self.assert_eq(
-            kdf.groupby(kdf.b // 5).diff().sort_index(),
-            pdf.groupby(pdf.b // 5).diff().sort_index(),
-            almost=True,
+            kdf.groupby(kdf.b // 5).diff().sort_index(), pdf.groupby(pdf.b // 5).diff().sort_index()
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5)["a"].diff().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].diff().sort_index(),
-            almost=True,
         )
 
         # multi-index columns
@@ -823,24 +817,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(["a", "b"]).rank().sort_index(), pdf.groupby(["a", "b"]).rank().sort_index()
         )
         self.assert_eq(
-            kdf.groupby(["b"])["a"].rank().sort_index(),
-            pdf.groupby(["b"])["a"].rank().sort_index(),
-            almost=True,
+            kdf.groupby(["b"])["a"].rank().sort_index(), pdf.groupby(["b"])["a"].rank().sort_index()
         )
         self.assert_eq(
             kdf.groupby(["b"])[["a", "c"]].rank().sort_index(),
             pdf.groupby(["b"])[["a", "c"]].rank().sort_index(),
-            almost=True,
         )
         self.assert_eq(
-            kdf.groupby(kdf.b // 5).rank().sort_index(),
-            pdf.groupby(pdf.b // 5).rank().sort_index(),
-            almost=True,
+            kdf.groupby(kdf.b // 5).rank().sort_index(), pdf.groupby(pdf.b // 5).rank().sort_index()
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5)["a"].rank().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].rank().sort_index(),
-            almost=True,
         )
 
         # multi-index columns
@@ -879,22 +867,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kdf.groupby(["b"])["a"].cumcount(ascending=ascending).sort_index(),
                 pdf.groupby(["b"])["a"].cumcount(ascending=ascending).sort_index(),
-                almost=True,
             )
             self.assert_eq(
                 kdf.groupby(["b"])[["a", "c"]].cumcount(ascending=ascending).sort_index(),
                 pdf.groupby(["b"])[["a", "c"]].cumcount(ascending=ascending).sort_index(),
-                almost=True,
             )
             self.assert_eq(
                 kdf.groupby(kdf.b // 5).cumcount(ascending=ascending).sort_index(),
                 pdf.groupby(pdf.b // 5).cumcount(ascending=ascending).sort_index(),
-                almost=True,
             )
             self.assert_eq(
                 kdf.groupby(kdf.b // 5)["a"].cumcount(ascending=ascending).sort_index(),
                 pdf.groupby(pdf.b // 5)["a"].cumcount(ascending=ascending).sort_index(),
-                almost=True,
             )
             self.assert_eq(
                 kdf.groupby("b").cumcount(ascending=ascending).sum(),
@@ -937,22 +921,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(["b"])["a"].cummin().sort_index(),
             pdf.groupby(["b"])["a"].cummin().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(["b"])[["a", "c"]].cummin().sort_index(),
             pdf.groupby(["b"])[["a", "c"]].cummin().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5).cummin().sort_index(),
             pdf.groupby(pdf.b // 5).cummin().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5)["a"].cummin().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].cummin().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby("b").cummin().sum().sort_index(),
@@ -994,22 +974,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(["b"])["a"].cummax().sort_index(),
             pdf.groupby(["b"])["a"].cummax().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(["b"])[["a", "c"]].cummax().sort_index(),
             pdf.groupby(["b"])[["a", "c"]].cummax().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5).cummax().sort_index(),
             pdf.groupby(pdf.b // 5).cummax().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5)["a"].cummax().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].cummax().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby("b").cummax().sum().sort_index(),
@@ -1051,22 +1027,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(["b"])["a"].cumsum().sort_index(),
             pdf.groupby(["b"])["a"].cumsum().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(["b"])[["a", "c"]].cumsum().sort_index(),
             pdf.groupby(["b"])[["a", "c"]].cumsum().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5).cumsum().sort_index(),
             pdf.groupby(pdf.b // 5).cumsum().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5)["a"].cumsum().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].cumsum().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby("b").cumsum().sum().sort_index(),
@@ -1257,12 +1229,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby("A")["C"].fillna(method="bfill").sort_index(),
             pdf.groupby("A")["C"].fillna(method="bfill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby("A")[["C"]].fillna(method="bfill").sort_index(),
             pdf.groupby("A")[["C"]].fillna(method="bfill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby("A").fillna(method="ffill").sort_index(),
@@ -1271,42 +1241,34 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby("A")["C"].fillna(method="ffill").sort_index(),
             pdf.groupby("A")["C"].fillna(method="ffill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby("A")[["C"]].fillna(method="ffill").sort_index(),
             pdf.groupby("A")[["C"]].fillna(method="ffill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.A // 5).fillna(method="bfill").sort_index(),
             pdf.groupby(pdf.A // 5).fillna(method="bfill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.A // 5)["C"].fillna(method="bfill").sort_index(),
             pdf.groupby(pdf.A // 5)["C"].fillna(method="bfill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.A // 5)[["C"]].fillna(method="bfill").sort_index(),
             pdf.groupby(pdf.A // 5)[["C"]].fillna(method="bfill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.A // 5).fillna(method="ffill").sort_index(),
             pdf.groupby(pdf.A // 5).fillna(method="ffill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.A // 5)["C"].fillna(method="ffill").sort_index(),
             pdf.groupby(pdf.A // 5)["C"].fillna(method="ffill").sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.A // 5)[["C"]].fillna(method="ffill").sort_index(),
             pdf.groupby(pdf.A // 5)[["C"]].fillna(method="ffill").sort_index(),
-            almost=True,
         )
 
         # multi-index columns
@@ -1358,9 +1320,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                 pdf.groupby("A")[["B"]].ffill().sort_index(),
             )
         self.assert_eq(
-            kdf.groupby("A")["B"].ffill().sort_index(),
-            pdf.groupby("A")["B"].ffill().sort_index(),
-            almost=True,
+            kdf.groupby("A")["B"].ffill().sort_index(), pdf.groupby("A")["B"].ffill().sort_index()
         )
         self.assert_eq(kdf.groupby("A")["B"].ffill()[idx[6]], pdf.groupby("A")["B"].ffill()[idx[6]])
 
@@ -1450,22 +1410,18 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(["b"])["a"].shift().sort_index(),
             pdf.groupby(["b"])["a"].shift().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(["a", "b"])["c"].shift().sort_index(),
             pdf.groupby(["a", "b"])["c"].shift().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5).shift().sort_index(),
             pdf.groupby(pdf.b // 5).shift().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 5)["a"].shift().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].shift().sort_index(),
-            almost=True,
         )
         # TODO: known pandas' bug when fill_value is not None pandas>=1.0.0
         # https://github.com/pandas-dev/pandas/issues/31971#issue-565171762
@@ -1473,7 +1429,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kdf.groupby(["b"])[["a", "c"]].shift(periods=-1, fill_value=0).sort_index(),
                 pdf.groupby(["b"])[["a", "c"]].shift(periods=-1, fill_value=0).sort_index(),
-                almost=True,
             )
 
         # multi-index columns
@@ -1539,6 +1494,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(kdf.b // 5)[["a"]].apply(len).sort_index(),
             pdf.groupby(pdf.b // 5)[["a"]].apply(len).sort_index(),
+            almost=True,
         )
 
         with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
