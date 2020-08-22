@@ -3809,7 +3809,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("decimals must be an integer, a dict-like or a Series")
 
         def op(kser):
-            label = kser._internal.column_labels[0]
+            label = kser._column_label
             if label in decimals:
                 return F.round(kser.spark.column, decimals[label]).alias(
                     kser._internal.data_spark_column_names[0]
@@ -4809,7 +4809,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 value = {k if isinstance(k, tuple) else (k,): v for k, v in value.items()}
 
                 def op(kser):
-                    label = kser._internal.column_labels[0]
+                    label = kser._column_label
                     for k, v in value.items():
                         if k == label[: len(k)]:
                             return kser._fillna(
@@ -7304,7 +7304,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(prefix, str)
         return self._apply_series_op(
-            lambda kser: kser.rename(tuple([prefix + i for i in kser._internal.column_labels[0]]))
+            lambda kser: kser.rename(tuple([prefix + i for i in kser._column_label]))
         )
 
     def add_suffix(self, suffix):
@@ -7349,7 +7349,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         assert isinstance(suffix, str)
         return self._apply_series_op(
-            lambda kser: kser.rename(tuple([i + suffix for i in kser._internal.column_labels[0]]))
+            lambda kser: kser.rename(tuple([i + suffix for i in kser._column_label]))
         )
 
     # TODO: include, and exclude should be implemented.

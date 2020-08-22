@@ -1144,7 +1144,7 @@ class LocIndexer(LocIndexerLike):
         from databricks.koalas.series import Series
 
         if all(isinstance(key, Series) for key in cols_sel):
-            column_labels = [key._internal.column_labels[0] for key in cols_sel]
+            column_labels = [key._column_label for key in cols_sel]
             data_spark_columns = [key.spark.column for key in cols_sel]
         elif all(isinstance(key, spark.Column) for key in cols_sel):
             column_labels = [

@@ -666,7 +666,7 @@ class RollingGroupby(Rolling):
         for groupkey in groupby._groupkeys:
             index_column_name = SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
             new_index_scols.append(groupkey.spark.column.alias(index_column_name))
-            new_index_map[index_column_name] = groupkey._internal.column_labels[0]
+            new_index_map[index_column_name] = groupkey._column_label
 
         for new_index_scol, index_name in zip(
             kdf._internal.index_spark_columns, kdf._internal.index_names
@@ -700,7 +700,7 @@ class RollingGroupby(Rolling):
         internal = kdf._internal.copy(
             spark_frame=sdf,
             index_map=new_index_map,
-            column_labels=[c._internal.column_labels[0] for c in applied],
+            column_labels=[c._column_label for c in applied],
             data_spark_columns=[
                 scol_for(sdf, c._internal.data_spark_column_names[0]) for c in applied
             ],

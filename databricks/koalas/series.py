@@ -2029,7 +2029,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=None,
-            column_labels=[self._internal.column_labels[0]],
+            column_labels=[self._column_label],
             data_spark_columns=[scol_for(sdf, self._internal.data_spark_column_names[0])],
             column_label_names=self._internal.column_label_names,
         )

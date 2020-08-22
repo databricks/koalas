@@ -1981,3 +1981,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
+
+    def test_first_valid_index(self):
+        # Empty Series
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
