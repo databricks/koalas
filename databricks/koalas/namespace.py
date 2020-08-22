@@ -2088,7 +2088,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     if should_return_series:
         # If all input were Series, we should return Series.
         if len(series_names) == 1:
-            name = list(series_names)[0]
+            name = series_names.pop()
         else:
             name = None
         return first_series(result_kdf).rename(name)
