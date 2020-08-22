@@ -62,7 +62,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.missing.series import MissingPandasLikeSeries
-from databricks.koalas.plot import KoalasSeriesPlotMethods
+from databricks.koalas.plot import KoalasPlotAccessor
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import (
     combine_frames,
@@ -2025,7 +2025,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = InternalFrame(
             spark_frame=sdf,
             index_map=None,
-            column_labels=[self._internal.column_labels[0]],
+            column_labels=[self._column_label],
             data_spark_columns=[scol_for(sdf, self._internal.data_spark_column_names[0])],
             column_label_names=self._internal.column_label_names,
         )
@@ -2573,7 +2573,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         With ignore_index set to True:
 
-        >>> s1.append(s2, ignore_index=True)
+        >>> s1.append(s2, ignore_index=True).sort_index()
         0    1
         1    2
         2    3
@@ -2602,7 +2602,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
-    hist.__doc__ = KoalasSeriesPlotMethods.hist.__doc__
+    hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
     def apply(self, func, args=(), **kwds):
         """
@@ -4166,10 +4166,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = (
-                F.when(
-                    kdf[tmp_cond_col].spark.column,
-                    kdf[self._internal.column_labels[0]].spark.column,
-                )
+                F.when(kdf[tmp_cond_col].spark.column, kdf[self._column_label].spark.column)
                 .otherwise(kdf[tmp_other_col].spark.column)
                 .alias(self._internal.data_spark_column_names[0])
             )
@@ -5018,14 +5015,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     prod = product
 
-    def _cum(self, func, skipna, part_cols=()):
+    def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
-        window = (
-            Window.orderBy(NATURAL_ORDER_COLUMN_NAME)
-            .partitionBy(*part_cols)
-            .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-        )
+        if ascending:
+            window = (
+                Window.orderBy(F.asc(NATURAL_ORDER_COLUMN_NAME))
+                .partitionBy(*part_cols)
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            )
+        else:
+            window = (
+                Window.orderBy(F.desc(NATURAL_ORDER_COLUMN_NAME))
+                .partitionBy(*part_cols)
+                .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+            )
 
         if skipna:
             # There is a behavior difference between pandas and PySpark. In case of cummax,
@@ -5119,7 +5123,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     # ----------------------------------------------------------------------
     dt = CachedAccessor("dt", DatetimeMethods)
     str = CachedAccessor("str", StringMethods)
-    plot = CachedAccessor("plot", KoalasSeriesPlotMethods)
+    plot = CachedAccessor("plot", KoalasPlotAccessor)
 
     # ----------------------------------------------------------------------
 
