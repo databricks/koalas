@@ -53,7 +53,7 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
                 if as_index:
                     sort = lambda df: df.sort_index()
                 else:
-                    sort = lambda df: df.sort_values("c").reset_index(drop=True)
+                    sort = lambda df: df.sort_values("c").reset_index(drop=True).sort_index()
                 self.assert_eq(
                     sort(kdf1.groupby(kdf2.a, as_index=as_index).sum()),
                     sort(pdf1.groupby(pdf2.a, as_index=as_index).sum()),
@@ -87,7 +87,8 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf1.groupby(kdf2[("x", "a")], as_index=False)
             .sum()
             .sort_values(("y", "c"))
-            .reset_index(drop=True),
+            .reset_index(drop=True)
+            .sort_index(),
             pdf1.groupby(pdf2[("x", "a")], as_index=False)
             .sum()
             .sort_values(("y", "c"))
@@ -108,7 +109,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
+                sort = (
+                    lambda df: df.sort_values(list(df.columns)).reset_index(drop=True).sort_index()
+                )
 
             with self.subTest(as_index=as_index):
                 self.assert_eq(
@@ -146,7 +149,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
+                sort = (
+                    lambda df: df.sort_values(list(df.columns)).reset_index(drop=True).sort_index()
+                )
 
             with self.subTest(as_index=as_index):
                 self.assert_eq(
@@ -195,7 +200,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
                 {("X", "B"): "min", ("Y", "C"): "sum"}
             )
             self.assert_eq(
-                stats_kdf.sort_values(by=[("X", "B"), ("Y", "C")]).reset_index(drop=True),
+                stats_kdf.sort_values(by=[("X", "B"), ("Y", "C")])
+                .reset_index(drop=True)
+                .sort_index(),
                 stats_pdf.sort_values(by=[("X", "B"), ("Y", "C")]).reset_index(drop=True),
             )
 
@@ -206,9 +213,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             {("X", "B"): ["min", "max"], ("Y", "C"): "sum"}
         )
         self.assert_eq(
-            stats_kdf.sort_values(
-                by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")]
-            ).reset_index(drop=True),
+            stats_kdf.sort_values(by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")])
+            .reset_index(drop=True)
+            .sort_index(),
             stats_pdf.sort_values(
                 by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")]
             ).reset_index(drop=True),
@@ -224,7 +231,11 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf1.groupby(kdf2.A).sum().sort_index(), pdf1.groupby(pdf2.A).sum().sort_index()
         )
         self.assert_eq(
-            kdf1.groupby(kdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
+            kdf1.groupby(kdf2.A, as_index=False)
+            .sum()
+            .sort_values("A")
+            .reset_index(drop=True)
+            .sort_index(),
             pdf1.groupby(pdf2.A, as_index=False).sum().sort_values("A").reset_index(drop=True),
         )
 
@@ -332,6 +343,35 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.groupby([pkey, "b"]).head(2).sort_index(),
             kdf.groupby([kkey, "b"]).head(2).sort_index(),
         )
+
+    def test_cumcount(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "b": [1, 1, 2, 3, 5, 8] * 3,
+                "c": [1, 4, 9, 16, 25, 36] * 3,
+            },
+        )
+        pkey = pd.Series([1, 1, 2, 3, 5, 8] * 3)
+        kdf = ks.from_pandas(pdf)
+        kkey = ks.from_pandas(pkey)
+
+        for ascending in [True, False]:
+            self.assert_eq(
+                kdf.groupby(kkey).cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pkey).cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kkey)["a"].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pkey)["a"].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
+            self.assert_eq(
+                kdf.groupby(kkey)[["a"]].cumcount(ascending=ascending).sort_index(),
+                pdf.groupby(pkey)[["a"]].cumcount(ascending=ascending).sort_index(),
+                almost=True,
+            )
 
     def test_cummin(self):
         pdf = pd.DataFrame(

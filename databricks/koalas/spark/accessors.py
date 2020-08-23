@@ -544,11 +544,11 @@ class SparkFrameMethods(object):
         --------
         >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
         ...                     'value': [1, 2, 3, 5]},
-        ...                    columns=['lkey', 'value'])
+        ...                    columns=['lkey', 'value']).set_index('lkey')
         >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
         ...                     'value': [5, 6, 7, 8]},
-        ...                    columns=['rkey', 'value'])
-        >>> merged = df1.merge(df2.spark.hint("broadcast"), left_on='lkey', right_on='rkey')
+        ...                    columns=['rkey', 'value']).set_index('rkey')
+        >>> merged = df1.merge(df2.spark.hint("broadcast"), left_index=True, right_index=True)
         >>> merged.spark.explain()  # doctest: +ELLIPSIS
         == Physical Plan ==
         ...
@@ -824,7 +824,7 @@ class SparkFrameMethods(object):
         The case below ends up with using the default index, which should be avoided
         if possible.
 
-        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count().sort("a"))
+        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count().sort("a")).sort_index()
            a  count
         0  1      1
         1  2      1

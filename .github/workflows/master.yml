@@ -24,11 +24,13 @@ jobs:
             spark-version: 2.3.4
             pandas-version: 0.24.2
             pyarrow-version: 0.10.0
+            default-index-type: 'distributed-sequence'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
+      DEFAULT_INDEX_TYPE: ${{ matrix.default-index-type }}
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around with xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
       # Github token is required to auto-generate the release notes from Github release notes
@@ -96,6 +98,7 @@ jobs:
             spark-version: 2.4.6
             pandas-version: 0.25.3
             pyarrow-version: 0.15.1
+            default-index-type: 'distributed-sequence'
           - python-version: 3.7
             spark-version: 2.4.6
             pandas-version: 0.25.3
@@ -104,6 +107,7 @@ jobs:
             spark-version: 2.4.6
             pandas-version: 1.0.5
             pyarrow-version: 0.15.1
+            default-index-type: 'distributed-sequence'
           - python-version: 3.7
             spark-version: 3.0.0
             pandas-version: 0.25.3
@@ -112,11 +116,13 @@ jobs:
             spark-version: 3.0.0
             pandas-version: 1.0.5
             pyarrow-version: 1.0.0
+            default-index-type: 'distributed-sequence'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
+      DEFAULT_INDEX_TYPE: ${{ matrix.default-index-type }}
       # `QT_QPA_PLATFORM` for resolving 'QXcbConnection: Could not connect to display :0.0'
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen

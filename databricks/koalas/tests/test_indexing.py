@@ -54,17 +54,17 @@ class BasicIndexingTest(ComparisonTestBase):
         self.assertRaisesRegex(KeyError, "unknown", lambda: df.set_index(["month", "unknown"]))
 
         for d in [df, df1, df2]:
-            yield d.reset_index()
-            yield d.reset_index(drop=True)
+            yield d.reset_index().sort_index()
+            yield d.reset_index(drop=True).sort_index()
 
-        yield df1.reset_index(level=0)
+        yield df1.reset_index(level=0).sort_index()
         yield df2.reset_index(level=1)
-        yield df2.reset_index(level=[1, 0])
-        yield df1.reset_index(level="month")
+        yield df2.reset_index(level=[1, 0]).sort_index()
+        yield df1.reset_index(level="month").sort_index()
         yield df2.reset_index(level="year")
-        yield df2.reset_index(level=["month", "year"])
+        yield df2.reset_index(level=["month", "year"]).sort_index()
         yield df2.reset_index(level="month", drop=True)
-        yield df2.reset_index(level=["month", "year"], drop=True)
+        yield df2.reset_index(level=["month", "year"], drop=True).sort_index()
 
         self.assertRaisesRegex(
             IndexError,
@@ -83,14 +83,14 @@ class BasicIndexingTest(ComparisonTestBase):
 
         df3 = df2.copy()
         df3.reset_index(inplace=True)
-        yield df3
+        yield df3.sort_index()
 
-        yield df1.sale.reset_index()
-        yield df1.sale.reset_index(level=0)
-        yield df2.sale.reset_index(level=[1, 0])
-        yield df1.sale.reset_index(drop=True)
-        yield df1.sale.reset_index(name="s")
-        yield df1.sale.reset_index(name="s", drop=True)
+        yield df1.sale.reset_index().sort_index()
+        yield df1.sale.reset_index(level=0).sort_index()
+        yield df2.sale.reset_index(level=[1, 0]).sort_index()
+        yield df1.sale.reset_index(drop=True).sort_index()
+        yield df1.sale.reset_index(name="s").sort_index()
+        yield df1.sale.reset_index(name="s", drop=True).sort_index()
 
         s = df1.sale
         self.assertRaisesRegex(
@@ -99,7 +99,7 @@ class BasicIndexingTest(ComparisonTestBase):
             lambda: s.reset_index(inplace=True),
         )
         s.reset_index(drop=True, inplace=True)
-        yield s
+        yield s.sort_index()
         yield df1
 
     def test_from_pandas_with_explicit_index(self):
@@ -375,7 +375,7 @@ class IndexingTest(ReusedSQLTestCase):
 
     def test_loc_noindex(self):
         kdf = self.kdf
-        kdf = kdf.reset_index()
+        kdf = kdf.reset_index().sort_index()
         pdf = self.pdf
         pdf = pdf.reset_index()
 

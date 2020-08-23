@@ -1406,9 +1406,17 @@ class Frame(object, metaclass=ABCMeta):
 
         >>> df = ks.DataFrame({'col1': [1, 2, None], 'col2': [3, 4, None]})
         >>> df.size
-        3
+        6
+
+        >>> df = ks.DataFrame(index=[1, 2, None])
+        >>> df.size
+        0
         """
-        return len(self)  # type: ignore
+        num_columns = len(self._internal.data_spark_columns)
+        if num_columns == 0:
+            return 0
+        else:
+            return len(self) * num_columns  # type: ignore
 
     def abs(self):
         """
@@ -1675,6 +1683,10 @@ class Frame(object, metaclass=ABCMeta):
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
         first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
+        # For Empty Series or DataFrame, returns None.
+        if first_valid_row is None:
+            return None
+
         first_valid_idx = tuple(
             first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
         )
@@ -2299,6 +2311,10 @@ class Frame(object, metaclass=ABCMeta):
         return validate_arguments_and_invoke_function(
             internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
         )
+
+    @abstractmethod
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+        pass
 
     # TODO: add 'downcast' when value parameter exists
     def bfill(self, axis=None, inplace=False, limit=None):

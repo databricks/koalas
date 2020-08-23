@@ -161,7 +161,7 @@ def range(
     --------
     When the first parameter is specified, we generate a range of values up till that number.
 
-    >>> ks.range(5)
+    >>> ks.range(5).sort_index()
        id
     0   0
     1   1
@@ -171,7 +171,7 @@ def range(
 
     When start, end, and step are specified:
 
-    >>> ks.range(start = 100, end = 200, step = 20)
+    >>> ks.range(start = 100, end = 200, step = 20).sort_index()
         id
     0  100
     1  120
@@ -1789,7 +1789,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     Clear the existing index and reset it in the result
     by setting the ``ignore_index`` option to ``True``.
 
-    >>> ks.concat([s1, s2], ignore_index=True)
+    >>> ks.concat([s1, s2], ignore_index=True).sort_index()
     0    a
     1    b
     2    c
@@ -1870,11 +1870,10 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
 
     Combine with column axis.
 
-    >>> ks.concat([df1, df4], axis=1)
+    >>> ks.concat([df1, df4], axis=1).sort_index()
       letter  number  animal    name
     0      a       1    bird   polly
     1      b       2  monkey  george
-
     """
     if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
         objs, Iterable
@@ -2478,11 +2477,11 @@ def broadcast(obj):
     --------
     >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
     ...                     'value': [1, 2, 3, 5]},
-    ...                    columns=['lkey', 'value'])
+    ...                    columns=['lkey', 'value']).set_index('lkey')
     >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
     ...                     'value': [5, 6, 7, 8]},
-    ...                    columns=['rkey', 'value'])
-    >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+    ...                    columns=['rkey', 'value']).set_index('rkey')
+    >>> merged = df1.merge(ks.broadcast(df2), left_index=True, right_index=True)
     >>> merged.spark.explain()  # doctest: +ELLIPSIS
     == Physical Plan ==
     ...
