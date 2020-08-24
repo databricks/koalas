@@ -184,22 +184,40 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
-        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
-        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
         if isinstance(self.spark.data_type, TimestampType):
-            if isinstance(other, IndexOpsMixin):
-                if not isinstance(other.spark.data_type, TimestampType):
-                    raise TypeError("datetime subtraction can only be applied to datetime series.")
+            # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+            msg = (
+                "Note that there is a behavior difference of timestamp subtraction. "
+                "The timestamp subtraction returns an integer in seconds, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
+            if isinstance(other, IndexOpsMixin) and isinstance(
+                other.spark.data_type, TimestampType
+            ):
+                warnings.warn(msg, UserWarning)
                 return self.astype("bigint") - other.astype("bigint")
             elif isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
                 return self.astype("bigint") - F.lit(other).cast(as_spark_type("bigint"))
+            else:
+                raise TypeError("datetime subtraction can only be applied to datetime series.")
         elif isinstance(self.spark.data_type, DateType):
-            if isinstance(other, IndexOpsMixin):
-                if not isinstance(other.spark.data_type, DateType):
-                    raise TypeError("date subtraction can only be applied to date series.")
+            # Note that date subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
+            msg = (
+                "Note that there is a behavior difference of date subtraction. "
+                "The date subtraction returns an integer in days, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
+            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, DateType):
+                warnings.warn(msg, UserWarning)
                 return column_op(F.datediff)(self, other)
             elif isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
                 return column_op(F.datediff)(self, F.lit(other))
+            else:
+                raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__sub__)(self, other)
 
     __mul__ = column_op(Column.__mul__)
@@ -245,14 +263,32 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__radd__)(self, other)
 
     def __rsub__(self, other):
-        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
-        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
         if isinstance(self.spark.data_type, TimestampType):
+            # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+            msg = (
+                "Note that there is a behavior difference of timestamp subtraction. "
+                "The timestamp subtraction returns an integer in seconds, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
             if isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
                 return -(self.astype("bigint") - F.lit(other).cast(as_spark_type("bigint")))
+            else:
+                raise TypeError("datetime subtraction can only be applied to datetime series.")
         elif isinstance(self.spark.data_type, DateType):
+            # Note that date subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
+            msg = (
+                "Note that there is a behavior difference of date subtraction. "
+                "The date subtraction returns an integer in days, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
             if isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
                 return -column_op(F.datediff)(self, F.lit(other))
+            else:
+                raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__rsub__)(self, other)
 
     __rmul__ = column_op(Column.__rmul__)
