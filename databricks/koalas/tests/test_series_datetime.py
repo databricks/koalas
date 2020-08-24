@@ -73,6 +73,10 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         expected_error_message = "datetime subtraction can only be applied to datetime series."
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kdf["a"] - kdf["b"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kdf["a"] - 1
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            1 - kdf["a"]
 
     def test_date_subtraction(self):
         pdf = self.pdf1
@@ -99,6 +103,10 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         expected_error_message = "date subtraction can only be applied to date series."
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kdf["a"].dt.date - kdf["b"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kdf["a"].dt.date - 1
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            1 - kdf["a"].dt.date
 
     @unittest.skip(
         "It fails in certain OSs presumably due to different "
