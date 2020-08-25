@@ -1066,14 +1066,14 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.mean()
         a    2.0
         b    0.2
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.mean(axis=1)
         0    0.55
         1    1.10
         2    1.65
         3     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1111,14 +1111,14 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.sum()
         a    6.0
         b    0.6
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.sum(axis=1)
         0    1.1
         1    2.2
         2    3.3
         3    0.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1195,7 +1195,7 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.kurtosis()
         a   -1.5
         b   -1.5
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1236,14 +1236,14 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.min()
         a    1.0
         b    0.1
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.min(axis=1)
         0    0.1
         1    0.2
         2    0.3
         3    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1282,14 +1282,14 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.max()
         a    3.0
         b    0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.max(axis=1)
         0    1.0
         1    2.0
         2    3.0
         3    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1327,14 +1327,14 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.std()
         a    1.0
         b    0.1
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.std(axis=1)
         0    0.636396
         1    1.272792
         2    1.909188
         3         NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1372,14 +1372,14 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.var()
         a    1.00
         b    0.01
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.var(axis=1)
         0    0.405
         1    1.620
         2    3.645
         3      NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1437,7 +1437,7 @@ class Frame(object, metaclass=ABCMeta):
         1    2.00
         2    3.33
         3    4.00
-        Name: 0, dtype: float64
+        dtype: float64
 
         Absolute numeric values in a DataFrame.
 
@@ -1454,7 +1454,6 @@ class Frame(object, metaclass=ABCMeta):
         2  6  30   30
         3  7  40   50
         """
-        # TODO: The first example above should not have "Name: 0".
         return self._apply_series_op(lambda kser: kser._with_new_scol(F.abs(kser.spark.column)))
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
@@ -1651,7 +1650,7 @@ class Frame(object, metaclass=ABCMeta):
         300    3.0
         400    4.0
         500    5.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.first_valid_index()
         300
@@ -1673,7 +1672,7 @@ class Frame(object, metaclass=ABCMeta):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.first_valid_index()
         ('cow', 'weight')
@@ -1695,6 +1694,107 @@ class Frame(object, metaclass=ABCMeta):
             first_valid_idx = first_valid_idx[0]
 
         return first_valid_idx
+
+    def last_valid_index(self):
+        """
+        Return index for last non-NA/null value.
+
+        Returns
+        -------
+        scalar : type of index
+
+        Notes
+        -----
+        This API only works with PySpark >= 3.0.
+
+        Examples
+        --------
+
+        Support for DataFrame
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, None],
+        ...                     'b': [1.0, 2.0, 3.0, None],
+        ...                     'c': [100, 200, 400, None]},
+        ...                     index=['Q', 'W', 'E', 'R'])
+        >>> kdf
+             a    b      c
+        Q  1.0  1.0  100.0
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  NaN  NaN    NaN
+
+        >>> kdf.last_valid_index()  # doctest: +SKIP
+        'E'
+
+        Support for MultiIndex columns
+
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+             a    b      c
+             x    y      z
+        Q  1.0  1.0  100.0
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  NaN  NaN    NaN
+
+        >>> kdf.last_valid_index()  # doctest: +SKIP
+        'E'
+
+        Support for Series.
+
+        >>> s = ks.Series([1, 2, 3, None, None], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    1.0
+        200    2.0
+        300    3.0
+        400    NaN
+        500    NaN
+        dtype: float64
+
+        >>> s.last_valid_index()  # doctest: +SKIP
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([250, 1.5, 320, 1, 0.3, None, None, None, None], index=midx)
+        >>> s
+        lama    speed     250.0
+                weight      1.5
+                length    320.0
+        cow     speed       1.0
+                weight      0.3
+                length      NaN
+        falcon  speed       NaN
+                weight      NaN
+                length      NaN
+        dtype: float64
+
+        >>> s.last_valid_index()  # doctest: +SKIP
+        ('cow', 'weight')
+        """
+        sdf = self._internal.spark_frame
+        data_spark_columns = self._internal.data_spark_columns
+        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
+
+        last_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).tail(1)
+        # For Empty Series or DataFrame, returns None.
+        if len(last_valid_row) == 0:
+            return None
+        else:
+            last_valid_row = last_valid_row[0]
+
+        last_valid_idx = tuple(
+            last_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        )
+
+        if len(last_valid_idx) == 1:
+            last_valid_idx = last_valid_idx[0]
+
+        return last_valid_idx
 
     def median(self, axis=None, numeric_only=True, accuracy=10000):
         """
@@ -1736,7 +1836,7 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.median()
         a    25.0
         b     3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1762,7 +1862,7 @@ class Frame(object, metaclass=ABCMeta):
         >>> df.median()
         x  a    25.0
         y  b     3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.median(axis=1)
         0    12.5
@@ -1770,7 +1870,7 @@ class Frame(object, metaclass=ABCMeta):
         2    14.0
         3    18.5
         4    15.5
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1930,7 +2030,7 @@ class Frame(object, metaclass=ABCMeta):
         >>> even_primes = primes[primes % 2 == 0]
         >>> even_primes
         0    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> even_primes.squeeze()
         2
@@ -1942,13 +2042,13 @@ class Frame(object, metaclass=ABCMeta):
         1    3
         2    5
         3    7
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> odd_primes.squeeze()
         1    3
         2    5
         3    7
-        Name: 0, dtype: int64
+        dtype: int64
 
         Squeezing is even more effective when used with DataFrames.
 
@@ -1977,21 +2077,21 @@ class Frame(object, metaclass=ABCMeta):
         Slicing a single row from a single column will produce a single
         scalar DataFrame:
 
-        >>> df_0a = df.loc[[0], ['a']]
-        >>> df_0a
+        >>> df_1a = df.loc[[1], ['a']]
+        >>> df_1a
            a
-        0  1
+        1  3
 
         Squeezing the rows produces a single scalar Series:
 
-        >>> df_0a.squeeze('rows')
-        a    1
-        Name: 0, dtype: int64
+        >>> df_1a.squeeze('rows')
+        a    3
+        Name: 1, dtype: int64
 
         Squeezing all axes will project directly into a scalar:
 
-        >>> df_0a.squeeze()
-        1
+        >>> df_1a.squeeze()
+        3
         """
         if axis is not None:
             axis = "index" if axis == "rows" else axis
@@ -2103,14 +2203,14 @@ class Frame(object, metaclass=ABCMeta):
         5    50
         6    60
         7    70
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.truncate(2, 5)
         2    20
         3    30
         4    40
         5    50
-        Name: 0, dtype: int64
+        dtype: int64
 
         A Series has index that sorted strings.
 
@@ -2124,14 +2224,14 @@ class Frame(object, metaclass=ABCMeta):
         e    50
         f    60
         g    70
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.truncate('b', 'e')
         b    20
         c    30
         d    40
         e    50
-        Name: 0, dtype: int64
+        dtype: int64
         """
         from databricks.koalas.series import first_series
 
@@ -2146,7 +2246,7 @@ class Frame(object, metaclass=ABCMeta):
             raise ValueError("Truncate: %s must be after %s" % (after, before))
 
         if isinstance(self, ks.Series):
-            result = first_series(self.to_frame().loc[before:after])
+            result = first_series(self.to_frame().loc[before:after]).rename(self.name)
         elif isinstance(self, ks.DataFrame):
             if axis == 0:
                 result = self.loc[before:after]
@@ -2270,20 +2370,20 @@ class Frame(object, metaclass=ABCMeta):
 
         For Series
 
-        >>> kser = kdf.C
+        >>> kser = ks.Series([None, None, None, 1])
         >>> kser
         0    NaN
         1    NaN
         2    NaN
         3    1.0
-        Name: C, dtype: float64
+        dtype: float64
 
         >>> kser.bfill()
         0    1.0
         1    1.0
         2    1.0
         3    1.0
-        Name: C, dtype: float64
+        dtype: float64
         """
         return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
 
@@ -2342,20 +2442,20 @@ class Frame(object, metaclass=ABCMeta):
 
         For Series
 
-        >>> kser = kdf.B
+        >>> kser = ks.Series([2, 4, None, 3])
         >>> kser
         0    2.0
         1    4.0
         2    NaN
         3    3.0
-        Name: B, dtype: float64
+        dtype: float64
 
         >>> kser.ffill()
         0    2.0
         1    4.0
         2    4.0
         3    3.0
-        Name: B, dtype: float64
+        dtype: float64
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
 

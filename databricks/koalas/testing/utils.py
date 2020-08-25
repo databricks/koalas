@@ -154,7 +154,6 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                     left,
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
-                    check_names=False,
                     check_exact=True,
                 )
             except AssertionError as e:
@@ -204,6 +203,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
                 + "\n\nRight:\n%s\n%s" % (right, right.dtype)
             )
+            self.assertEqual(str(left.name), str(right.name), msg=msg)
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)

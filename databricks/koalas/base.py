@@ -19,6 +19,7 @@ Base and utility classes for Koalas objects.
 """
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+import datetime
 from functools import wraps, partial
 from typing import Union, Callable, Any
 import warnings
@@ -46,7 +47,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_INDEX_NAME,
 )
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
-from databricks.koalas.typedef import spark_type_to_pandas_dtype
+from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
 
@@ -183,18 +184,41 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
-        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
-        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-        if isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, TimestampType):
-            if not isinstance(other.spark.data_type, TimestampType):
+        if isinstance(self.spark.data_type, TimestampType):
+            # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+            msg = (
+                "Note that there is a behavior difference of timestamp subtraction. "
+                "The timestamp subtraction returns an integer in seconds, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
+            if isinstance(other, IndexOpsMixin) and isinstance(
+                other.spark.data_type, TimestampType
+            ):
+                warnings.warn(msg, UserWarning)
+                return self.astype("bigint") - other.astype("bigint")
+            elif isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
+                return self.astype("bigint") - F.lit(other).cast(as_spark_type("bigint"))
+            else:
                 raise TypeError("datetime subtraction can only be applied to datetime series.")
-            return self.astype("bigint") - other.astype("bigint")
-        elif isinstance(other, IndexOpsMixin) and isinstance(self.spark.data_type, DateType):
-            if not isinstance(other.spark.data_type, DateType):
+        elif isinstance(self.spark.data_type, DateType):
+            # Note that date subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
+            msg = (
+                "Note that there is a behavior difference of date subtraction. "
+                "The date subtraction returns an integer in days, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
+            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, DateType):
+                warnings.warn(msg, UserWarning)
+                return column_op(F.datediff)(self, other)
+            elif isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
+                return column_op(F.datediff)(self, F.lit(other))
+            else:
                 raise TypeError("date subtraction can only be applied to date series.")
-            return column_op(F.datediff)(self, other)
-        else:
-            return column_op(Column.__sub__)(self, other)
+        return column_op(Column.__sub__)(self, other)
 
     __mul__ = column_op(Column.__mul__)
 
@@ -238,7 +262,35 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             return column_op(Column.__radd__)(self, other)
 
-    __rsub__ = column_op(Column.__rsub__)
+    def __rsub__(self, other):
+        if isinstance(self.spark.data_type, TimestampType):
+            # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+            msg = (
+                "Note that there is a behavior difference of timestamp subtraction. "
+                "The timestamp subtraction returns an integer in seconds, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
+            if isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
+                return -(self.astype("bigint") - F.lit(other).cast(as_spark_type("bigint")))
+            else:
+                raise TypeError("datetime subtraction can only be applied to datetime series.")
+        elif isinstance(self.spark.data_type, DateType):
+            # Note that date subtraction casts arguments to integer. This is to mimic pandas's
+            # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
+            msg = (
+                "Note that there is a behavior difference of date subtraction. "
+                "The date subtraction returns an integer in days, "
+                "whereas pandas returns 'timedelta64[ns]'."
+            )
+            if isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
+                warnings.warn(msg, UserWarning)
+                return -column_op(F.datediff)(self, F.lit(other))
+            else:
+                raise TypeError("date subtraction can only be applied to date series.")
+        return column_op(Column.__rsub__)(self, other)
+
     __rmul__ = column_op(Column.__rmul__)
 
     def __rtruediv__(self, other):
@@ -681,18 +733,16 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> ser
         0    1
         1    2
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> ser.astype('int64')
         0    1
         1    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> ser.rename("a").to_frame().set_index("a").index.astype('int64')
         Int64Index([1, 2], dtype='int64', name='a')
         """
-        from databricks.koalas.typedef import as_spark_type
-
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
@@ -772,7 +822,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         0    False
         1    False
         2     True
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> ser.rename("a").to_frame().set_index("a").index.isna()
         Index([False, False, True], dtype='object', name='a')
@@ -811,13 +861,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         0    5.0
         1    6.0
         2    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> ser.notna()
         0     True
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> ser.rename("a").to_frame().set_index("a").index.notna()
         Index([True, True, False], dtype='object', name='a')
@@ -1078,8 +1128,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         For Index
 
-        >>> from databricks.koalas.indexes import Index
-        >>> idx = Index([3, 1, 2, 3, 4, np.nan])
+        >>> idx = ks.Index([3, 1, 2, 3, 4, np.nan])
         >>> idx
         Float64Index([3.0, 1.0, 2.0, 3.0, 4.0, nan], dtype='float64')
 
@@ -1088,7 +1137,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2.0    1
         3.0    2
         4.0    1
-        Name: count, dtype: int64
+        dtype: int64
 
         **sort**
 
@@ -1099,7 +1148,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2.0    1
         3.0    2
         4.0    1
-        Name: count, dtype: int64
+        dtype: int64
 
         **normalize**
 
@@ -1111,7 +1160,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2.0    0.2
         3.0    0.4
         4.0    0.2
-        Name: count, dtype: float64
+        dtype: float64
 
         **dropna**
 
@@ -1123,7 +1172,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         3.0    2
         4.0    1
         NaN    1
-        Name: count, dtype: int64
+        dtype: int64
 
         For MultiIndex.
 
@@ -1150,7 +1199,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         (falcon, length)    2
         (falcon, weight)    1
         (lama, weight)      3
-        Name: count, dtype: int64
+        dtype: int64
 
         >>> s.index.value_counts(normalize=True).sort_index()
         (cow, length)       0.111111
@@ -1158,11 +1207,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         (falcon, length)    0.222222
         (falcon, weight)    0.111111
         (lama, weight)      0.333333
-        Name: count, dtype: float64
+        dtype: float64
 
         If Index has name, keep the name up.
 
-        >>> idx = Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
+        >>> idx = ks.Index([0, 0, 0, 1, 1, 2, 3], name='koalas')
         >>> idx.value_counts().sort_index()
         0    3
         1    2
@@ -1192,21 +1241,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             sum = sdf_dropna.count()
             sdf = sdf.withColumn("count", F.col("count") / F.lit(sum))
 
-        column_labels = self._internal.column_labels
-        if (column_labels[0] is None) or (None in column_labels[0]):
-            internal = InternalFrame(
-                spark_frame=sdf,
-                index_map=OrderedDict({index_name: None}),
-                data_spark_columns=[scol_for(sdf, "count")],
-            )
-        else:
-            internal = InternalFrame(
-                spark_frame=sdf,
-                index_map=OrderedDict({index_name: None}),
-                column_labels=column_labels,
-                data_spark_columns=[scol_for(sdf, "count")],
-                column_label_names=self._internal.column_label_names,
-            )
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=OrderedDict({index_name: None}),
+            column_labels=self._internal.column_labels,
+            data_spark_columns=[scol_for(sdf, "count")],
+            column_label_names=self._internal.column_label_names,
+        )
 
         return first_series(DataFrame(internal))
 
@@ -1313,13 +1354,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         2    300
         3    400
         4    500
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> kser.take([0, 2, 4]).sort_index()
         0    100
         2    300
         4    500
-        Name: 0, dtype: int64
+        dtype: int64
 
         Index
 
