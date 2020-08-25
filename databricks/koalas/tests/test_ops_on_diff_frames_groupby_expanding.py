@@ -36,7 +36,7 @@ class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
         super(OpsOnDiffFramesGroupByExpandingTest, cls).tearDownClass()
 
     def _test_groupby_expanding_func(self, f):
-        pser = pd.Series([1, 2, 3], name="a")
+        pser = pd.Series([1, 2, 3])
         pkey = pd.Series([1, 2, 3], name="a")
         kser = ks.from_pandas(pser)
         kkey = ks.from_pandas(pkey)
@@ -72,7 +72,7 @@ class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
         else:
             # Series
             kser = ks.Series([1, 2, 3])
-            kkey = ks.Series([1, 2, 3])
+            kkey = ks.Series([1, 2, 3], name="a")
             midx = pd.MultiIndex.from_tuples(
                 list(zip(kkey.to_pandas().values, kser.index.to_pandas().values)), names=["a", None]
             )
