@@ -1749,7 +1749,7 @@ class Frame(object, metaclass=ABCMeta):
         300    3.0
         400    NaN
         500    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.last_valid_index()  # doctest: +SKIP
         300
@@ -1771,7 +1771,7 @@ class Frame(object, metaclass=ABCMeta):
         falcon  speed       NaN
                 weight      NaN
                 length      NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.last_valid_index()  # doctest: +SKIP
         ('cow', 'weight')
