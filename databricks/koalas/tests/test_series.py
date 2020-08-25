@@ -176,7 +176,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf["left"] | pdf["right"], kdf["left"] | kdf["right"])
+        self.assert_eq(
+            (pdf["left"] | pdf["right"]).rename("left"),  # TODO: Fix the Series name
+            kdf["left"] | kdf["right"],
+        )
 
     def test_and(self):
         pdf = pd.DataFrame(
@@ -187,7 +190,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf["left"] & pdf["right"], kdf["left"] & kdf["right"])
+        self.assert_eq(
+            (pdf["left"] & pdf["right"]).rename("left"),  # TODO: Fix the Series name
+            kdf["left"] & kdf["right"],
+        )
 
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -897,20 +903,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(["cat", "dog", None, "rabbit"])
         kser = ks.from_pandas(pser)
         # Currently Koalas doesn't return NaN as pandas does.
-        self.assertEqual(
-            repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None}).rename(0))
-        )
+        self.assertEqual(repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None})))
 
         d = defaultdict(lambda: "abc")
         self.assertTrue("abc" in repr(kser.map(d)))
-        self.assertEqual(repr(kser.map(d)), repr(pser.map(d).rename(0)))
+        self.assertEqual(repr(kser.map(d)), repr(pser.map(d)))
 
         def tomorrow(date) -> datetime:
             return date + timedelta(days=1)
 
         pser = pd.Series([datetime(2019, 10, 24)])
         kser = ks.from_pandas(pser)
-        self.assertEqual(repr(kser.map(tomorrow)), repr(pser.map(tomorrow).rename(0)))
+        self.assertEqual(repr(kser.map(tomorrow)), repr(pser.map(tomorrow)))
 
     def test_add_prefix(self):
         pser = pd.Series([1, 2, 3, 4], name="0")
@@ -961,7 +965,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
 
     def test_cummin(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cummin(), kser.cummin(), almost=True)
         self.assert_eq(pser.cummin(skipna=False), kser.cummin(skipna=False), almost=True)
@@ -974,7 +978,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cummin(skipna=False), kser.cummin(skipna=False), almost=True)
 
     def test_cummax(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cummax(), kser.cummax(), almost=True)
         self.assert_eq(pser.cummax(skipna=False), kser.cummax(skipna=False), almost=True)
@@ -987,7 +991,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cummax(skipna=False), kser.cummax(skipna=False), almost=True)
 
     def test_cumsum(self):
-        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cumsum(), kser.cumsum(), almost=True)
         self.assert_eq(pser.cumsum(skipna=False), kser.cumsum(skipna=False), almost=True)
@@ -1000,7 +1004,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumsum(skipna=False), kser.cumsum(skipna=False), almost=True)
 
     def test_cumprod(self):
-        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0]).rename("a")
+        pser = pd.Series([1.0, None, 1.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.cumprod(), kser.cumprod(), almost=True)
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False), almost=True)

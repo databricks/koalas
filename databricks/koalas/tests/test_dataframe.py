@@ -55,11 +55,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_dataframe(self):
         pdf, kdf = self.df_pair
 
-        expected = pd.Series(
-            [2, 3, 4, 5, 6, 7, 8, 9, 10], index=pdf.index, name="(a + 1)"
-        )  # TODO: name='a'
-
-        self.assert_eq(kdf["a"] + 1, expected)
+        self.assert_eq(kdf["a"] + 1, pdf["a"] + 1)
 
         self.assert_eq(kdf.columns, pd.Index(["a", "b"]))
 
@@ -318,7 +314,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf[("a",)], pdf[("a",)])
         self.assert_eq(kdf[("e", "g")], pdf[("e", "g")])
-        self.assert_eq(kdf[("i",)], pdf[("i",)])
+        # self.assert_eq(kdf[("i",)], pdf[("i",)])
+        self.assert_eq(kdf[("i", "")], pdf[("i", "")])
 
         self.assertRaises(KeyError, lambda: kdf[("a", "b")])
 
@@ -571,7 +568,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_dot_in_column_name(self):
         self.assert_eq(
             ks.DataFrame(ks.range(1)._internal.spark_frame.selectExpr("1 as `a.b`"))["a.b"],
-            ks.Series([1]),
+            ks.Series([1], name="a.b"),
         )
 
     def test_droplevel(self):
@@ -893,23 +890,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         # Assert NaNs are dropped by default
-        nunique_result = kdf.nunique()
-        self.assert_eq(nunique_result, pd.Series([3, 1], index=["A", "B"], name="0"))
-        self.assert_eq(nunique_result, pdf.nunique())
+        self.assert_eq(kdf.nunique(), pdf.nunique())
 
         # Assert including NaN values
-        nunique_result = kdf.nunique(dropna=False)
-        self.assert_eq(nunique_result, pd.Series([3, 2], index=["A", "B"], name="0"))
-        self.assert_eq(nunique_result, pdf.nunique(dropna=False))
+        self.assert_eq(kdf.nunique(dropna=False), pdf.nunique(dropna=False))
 
         # Assert approximate counts
         self.assert_eq(
-            ks.DataFrame({"A": range(100)}).nunique(approx=True),
-            pd.Series([103], index=["A"], name="0"),
+            ks.DataFrame({"A": range(100)}).nunique(approx=True), pd.Series([103], index=["A"]),
         )
         self.assert_eq(
             ks.DataFrame({"A": range(100)}).nunique(approx=True, rsd=0.01),
-            pd.Series([100], index=["A"], name="0"),
+            pd.Series([100], index=["A"]),
         )
 
         # Assert unsupported axis value yet
@@ -2786,11 +2778,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
         kdf.columns = columns
+        self.assert_eq(pdf.duplicated().sort_index(), kdf.duplicated().sort_index())
         self.assert_eq(
-            pd.Series(pdf.duplicated(), name="x").sort_index(), kdf.duplicated().sort_index()
-        )
-        self.assert_eq(
-            pd.Series(pdf.duplicated(subset=[("x", "b")]), name="x").sort_index(),
+            pdf.duplicated(subset=[("x", "b")]).sort_index(),
             kdf.duplicated(subset=[("x", "b")]).sort_index(),
         )
 

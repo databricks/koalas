@@ -145,6 +145,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
                 + "\n\nRight:\n%s\n%s" % (right, right.dtype)
             )
+            self.assertEqual(str(left.name), str(right.name), msg=msg)
             self.assertTrue((left == right).all(), msg=msg)
         elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
             msg = (
@@ -183,6 +184,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
                 + "\n\nRight:\n%s\n%s" % (right, right.dtype)
             )
+            self.assertEqual(str(left.name), str(right.name), msg=msg)
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)
