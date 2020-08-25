@@ -3540,7 +3540,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         axises = [None, 0, 1, "rows", "index", "columns"]
 
         # Multiple columns
-        pdf = pd.DataFrame([[1, 2], [3, 4]], columns=["a", "b"])
+        pdf = pd.DataFrame([[1, 2], [3, 4]], columns=["a", "b"], index=["x", "y"])
         kdf = ks.from_pandas(pdf)
         for axis in axises:
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
@@ -3552,7 +3552,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))
 
         # Single column with single value
-        pdf = pd.DataFrame([[1]], columns=["a"])
+        pdf = pd.DataFrame([[1]], columns=["a"], index=["x"])
         kdf = ks.from_pandas(pdf)
         for axis in axises:
             self.assert_eq(pdf.squeeze(axis), kdf.squeeze(axis))

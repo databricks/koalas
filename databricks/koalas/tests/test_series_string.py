@@ -45,9 +45,7 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func_on_series(func, self.pser, almost=almost)
 
     def check_func_on_series(self, func, pser, almost=False):
-        actual = func(ks.from_pandas(pser))
-        expected = func(pser)
-        self.assert_eq(actual, expected, almost=almost)
+        self.assert_eq(func(ks.from_pandas(pser)), func(pser), almost=almost)
 
     def test_string_add_str_num(self):
         pdf = pd.DataFrame(dict(col1=["a"], col2=[1]))

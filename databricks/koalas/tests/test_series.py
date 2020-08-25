@@ -1228,13 +1228,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.update(10)
 
     def test_where(self):
-        pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
+        pser1 = pd.Series([0, 1, 2, 3, 4])
         kser1 = ks.from_pandas(pser1)
 
         self.assert_eq(pser1.where(pser1 > 3), kser1.where(kser1 > 3).sort_index())
 
     def test_mask(self):
-        pser1 = pd.Series([0, 1, 2, 3, 4], name=0)
+        pser1 = pd.Series([0, 1, 2, 3, 4])
         kser1 = ks.from_pandas(pser1)
 
         self.assert_eq(pser1.mask(pser1 > 3), kser1.mask(kser1 > 3).sort_index())

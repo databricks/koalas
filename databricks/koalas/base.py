@@ -212,10 +212,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             )
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, DateType):
                 warnings.warn(msg, UserWarning)
-                return column_op(F.datediff)(self, other)
+                return column_op(F.datediff)(self, other).astype("bigint")
             elif isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
                 warnings.warn(msg, UserWarning)
-                return column_op(F.datediff)(self, F.lit(other))
+                return column_op(F.datediff)(self, F.lit(other)).astype("bigint")
             else:
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__sub__)(self, other)
@@ -286,7 +286,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             )
             if isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
                 warnings.warn(msg, UserWarning)
-                return -column_op(F.datediff)(self, F.lit(other))
+                return -column_op(F.datediff)(self, F.lit(other)).astype("bigint")
             else:
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__rsub__)(self, other)
