@@ -901,10 +901,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             kdf[("1", "2", "3")] = ks.Series([100, 200, 300, 200])
 
     def test_dot(self):
-        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
-        pser = kser.to_pandas()
-        kser_other = ks.Series([90, 91, 85], index=[2, 4, 1])
-        pser_other = kser_other.to_pandas()
+        pser = pd.Series([90, 91, 85], index=[2, 4, 1])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([90, 91, 85], index=[2, 4, 1])
+        kser_other = ks.from_pandas(pser_other)
 
         self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
 
@@ -930,10 +930,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        pser = kser.to_pandas()
-        kser_other = ks.Series([-450, 20, 12, -30, -250, 15, -320, 100, 3], index=midx)
-        pser_other = kser_other.to_pandas()
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([-450, 20, 12, -30, -250, 15, -320, 100, 3], index=midx)
+        kser_other = ks.from_pandas(pser_other)
 
         self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
 

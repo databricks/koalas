@@ -1247,8 +1247,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             [["a", "b", "c"], ["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.xs(("a", "lama", "speed")), pser.xs(("a", "lama", "speed")))
 
@@ -1343,16 +1343,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.keys(), pser.keys())
 
     def test_index(self):
         # to check setting name of Index properly.
         idx = pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9])
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=idx)
-        pser = kser.to_pandas()
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=idx)
+        kser = ks.from_pandas(pser)
 
         kser.name = "koalas"
         pser.name = "koalas"
@@ -1364,8 +1364,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.index.names, pser.index.names)
 
     def test_pct_change(self):
-        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
-        pser = kser.to_pandas()
+        pser = pd.Series([90, 91, 85], index=[2, 4, 1])
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), almost=True)
         self.assert_eq(
@@ -1380,8 +1380,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.pct_change(), pser.pct_change(), almost=True)
         self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), almost=True)
@@ -1394,8 +1394,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_axes(self):
-        kser = ks.Series([90, 91, 85], index=[2, 4, 1])
-        pser = kser.to_pandas()
+        pser = pd.Series([90, 91, 85], index=[2, 4, 1])
+        kser = ks.from_pandas(pser)
         self.assert_list_eq(kser.axes, pser.axes)
 
         # for MultiIndex
@@ -1403,15 +1403,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
         self.assert_list_eq(kser.axes, pser.axes)
 
     def test_combine_first(self):
-        kser1 = ks.Series({"falcon": 330.0, "eagle": 160.0})
-        kser2 = ks.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
-        pser1 = kser1.to_pandas()
-        pser2 = kser2.to_pandas()
+        pser1 = pd.Series({"falcon": 330.0, "eagle": 160.0})
+        pser2 = pd.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
 
         self.assert_eq(
             kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
@@ -1438,26 +1438,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser1 = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx1)
-        kser2 = ks.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx2)
-        pser1 = kser1.to_pandas()
-        pser2 = kser2.to_pandas()
+        pser1 = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx1)
+        pser2 = pd.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx2)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
 
         self.assert_eq(
             kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
         # Series come from same DataFrame
-        kdf = ks.DataFrame(
+        pdf = pd.DataFrame(
             {
                 "A": {"falcon": 330.0, "eagle": 160.0},
                 "B": {"falcon": 345.0, "eagle": 200.0, "duck": 30.0},
             }
         )
-        kser1 = kdf.A
-        kser2 = kdf.B
-        pser1 = kser1.to_pandas()
-        pser2 = kser2.to_pandas()
+        pser1 = pdf.A
+        pser2 = pdf.B
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
 
         self.assert_eq(
             kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
@@ -1601,25 +1601,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_squeeze(self):
         # Single value
-        kser = ks.Series([90])
-        pser = kser.to_pandas()
+        pser = pd.Series([90])
+        kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
         # Single value with MultiIndex
         midx = pd.MultiIndex.from_tuples([("a", "b", "c")])
-        kser = ks.Series([90], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([90], index=midx)
+        kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
         # Multiple values
-        kser = ks.Series([90, 91, 85])
-        pser = kser.to_pandas()
+        pser = pd.Series([90, 91, 85])
+        kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
         # Multiple values with MultiIndex
         midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        kser = ks.Series([90, 91, 85], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series([90, 91, 85], index=midx)
+        kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
     def test_div_zero_and_nan(self):
@@ -1675,28 +1675,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.mad(), kser.mad())
 
     def test_to_frame(self):
-        kser = ks.Series(["a", "b", "c"])
-        pser = kser.to_pandas()
+        pser = pd.Series(["a", "b", "c"])
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.to_frame(name="a"), kser.to_frame(name="a"))
 
         # for MultiIndex
         midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        kser = ks.Series(["a", "b", "c"], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series(["a", "b", "c"], index=midx)
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.to_frame(name="a"), kser.to_frame(name="a"))
 
     def test_shape(self):
-        kser = ks.Series(["a", "b", "c"])
-        pser = kser.to_pandas()
+        pser = pd.Series(["a", "b", "c"])
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.shape, kser.shape)
 
         # for MultiIndex
         midx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        kser = ks.Series(["a", "b", "c"], index=midx)
-        pser = kser.to_pandas()
+        pser = pd.Series(["a", "b", "c"], index=midx)
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(pser.shape, kser.shape)
 
