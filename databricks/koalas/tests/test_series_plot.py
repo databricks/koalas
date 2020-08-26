@@ -251,7 +251,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         expected_histogram = np.array([5, 4, 1, 0, 0, 0, 0, 0, 0, 1])
         histogram = KoalasHistPlot._compute_hist(kdf[["a"]].to_spark(), bins)
         self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
-        self.assert_eq(pd.Series(expected_histogram, name="__a_bucket"), histogram)
+        self.assert_eq(pd.Series(expected_histogram, name="__a_bucket"), histogram, almost=True)
 
     def test_area_plot(self):
         pdf = pd.DataFrame(

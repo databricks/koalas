@@ -2093,10 +2093,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = self._internal.copy(
             spark_frame=transposed_df,
-            index_map=OrderedDict((col, None) for col in internal_index_columns),
+            index_map=OrderedDict(
+                (col, name if name is None or isinstance(name, tuple) else (name,))
+                for col, name in zip(
+                    internal_index_columns,
+                    self._internal.column_label_names
+                    if self._internal.column_label_names is not None
+                    else ([None] * len(internal_index_columns)),
+                )
+            ),
             column_labels=[tuple(json.loads(col)["a"]) for col in new_data_columns],
             data_spark_columns=[scol_for(transposed_df, col) for col in new_data_columns],
-            column_label_names=None,
+            column_label_names=self._internal.index_names,
         )
 
         return DataFrame(internal)

@@ -42,7 +42,9 @@ class ReshapeTest(ReusedSQLTestCase):
         ]:
             kdf_or_kser = ks.from_pandas(pdf_or_ps)
 
-            self.assert_eq(ks.get_dummies(kdf_or_kser), pd.get_dummies(pdf_or_ps), almost=True)
+            self.assert_eq(
+                ks.get_dummies(kdf_or_kser), pd.get_dummies(pdf_or_ps, dtype=np.int8), almost=True
+            )
 
         kser = ks.Series([1, 1, 1, 2, 2, 1, 3, 4])
         with self.assertRaisesRegex(
@@ -65,14 +67,13 @@ class ReshapeTest(ReusedSQLTestCase):
         # Explicitly exclude object columns
         self.assert_eq(
             ks.get_dummies(kdf, columns=["a", "c"]),
-            pd.get_dummies(pdf, columns=["a", "c"]),
-            almost=True,
+            pd.get_dummies(pdf, columns=["a", "c"], dtype=np.int8),
         )
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
-        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b), almost=True)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b, dtype=np.int8))
         self.assert_eq(
-            ks.get_dummies(kdf, columns=["b"]), pd.get_dummies(pdf, columns=["b"]), almost=True
+            ks.get_dummies(kdf, columns=["b"]), pd.get_dummies(pdf, columns=["b"], dtype=np.int8)
         )
 
     def test_get_dummies_date_datetime(self):
@@ -92,23 +93,23 @@ class ReshapeTest(ReusedSQLTestCase):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
-        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d), almost=True)
-        self.assert_eq(ks.get_dummies(kdf.dt), pd.get_dummies(pdf.dt), almost=True)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8), almost=True)
+        self.assert_eq(ks.get_dummies(kdf.dt), pd.get_dummies(pdf.dt, dtype=np.int8), almost=True)
 
     def test_get_dummies_boolean(self):
         pdf = pd.DataFrame({"b": [True, False, True]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
-        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b), almost=True)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b, dtype=np.int8), almost=True)
 
     def test_get_dummies_decimal(self):
         pdf = pd.DataFrame({"d": [Decimal(1.0), Decimal(2.0), Decimal(1)]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
-        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d), almost=True)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8), almost=True)
 
     def test_get_dummies_kwargs(self):
         # pser = pd.Series([1, 1, 1, 2, 2, 1, 3, 4], dtype='category')
@@ -116,13 +117,12 @@ class ReshapeTest(ReusedSQLTestCase):
         kser = ks.from_pandas(pser)
         self.assert_eq(
             ks.get_dummies(kser, prefix="X", prefix_sep="-"),
-            pd.get_dummies(pser, prefix="X", prefix_sep="-"),
-            almost=True,
+            pd.get_dummies(pser, prefix="X", prefix_sep="-", dtype=np.int8),
         )
 
         self.assert_eq(
             ks.get_dummies(kser, drop_first=True),
-            pd.get_dummies(pser, drop_first=True),
+            pd.get_dummies(pser, drop_first=True, dtype=np.int8),
             almost=True,
         )
 
@@ -130,11 +130,13 @@ class ReshapeTest(ReusedSQLTestCase):
         # pser = pd.Series([1, 1, 1, 2, np.nan, 3, np.nan, 5], dtype='category')
         pser = pd.Series([1, 1, 1, 2, np.nan, 3, np.nan, 5])
         kser = ks.from_pandas(pser)
-        self.assert_eq(ks.get_dummies(kser), pd.get_dummies(pser), almost=True)
+        self.assert_eq(ks.get_dummies(kser), pd.get_dummies(pser, dtype=np.int8), almost=True)
 
         # dummy_na
         self.assert_eq(
-            ks.get_dummies(kser, dummy_na=True), pd.get_dummies(pser, dummy_na=True), almost=True
+            ks.get_dummies(kser, dummy_na=True),
+            pd.get_dummies(pser, dummy_na=True, dtype=np.int8),
+            almost=True,
         )
 
     def test_get_dummies_prefix(self):
@@ -143,32 +145,27 @@ class ReshapeTest(ReusedSQLTestCase):
 
         self.assert_eq(
             ks.get_dummies(kdf, prefix=["foo", "bar"]),
-            pd.get_dummies(pdf, prefix=["foo", "bar"]),
-            almost=True,
+            pd.get_dummies(pdf, prefix=["foo", "bar"], dtype=np.int8),
         )
 
         self.assert_eq(
             ks.get_dummies(kdf, prefix=["foo"], columns=["B"]),
-            pd.get_dummies(pdf, prefix=["foo"], columns=["B"]),
-            almost=True,
+            pd.get_dummies(pdf, prefix=["foo"], columns=["B"], dtype=np.int8),
         )
 
         self.assert_eq(
             ks.get_dummies(kdf, prefix={"A": "foo", "B": "bar"}),
-            pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}),
-            almost=True,
+            pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}, dtype=np.int8),
         )
 
         self.assert_eq(
             ks.get_dummies(kdf, prefix={"B": "foo", "A": "bar"}),
-            pd.get_dummies(pdf, prefix={"B": "foo", "A": "bar"}),
-            almost=True,
+            pd.get_dummies(pdf, prefix={"B": "foo", "A": "bar"}, dtype=np.int8),
         )
 
         self.assert_eq(
             ks.get_dummies(kdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"]),
-            pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"]),
-            almost=True,
+            pd.get_dummies(pdf, prefix={"A": "foo", "B": "bar"}, columns=["A", "B"], dtype=np.int8),
         )
 
         with self.assertRaisesRegex(NotImplementedError, "string types"):
@@ -182,14 +179,13 @@ class ReshapeTest(ReusedSQLTestCase):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(
-            ks.get_dummies(kser, prefix="foo"), pd.get_dummies(pser, prefix="foo"), almost=True
+            ks.get_dummies(kser, prefix="foo"), pd.get_dummies(pser, prefix="foo", dtype=np.int8)
         )
 
         # columns are ignored.
         self.assert_eq(
             ks.get_dummies(kser, prefix=["foo"], columns=["B"]),
-            pd.get_dummies(pser, prefix=["foo"], columns=["B"]),
-            almost=True,
+            pd.get_dummies(pser, prefix=["foo"], columns=["B"], dtype=np.int8),
         )
 
     def test_get_dummies_dtype(self):
@@ -208,7 +204,7 @@ class ReshapeTest(ReusedSQLTestCase):
             exp = pd.get_dummies(pdf)
             exp = exp.astype({"A_a": "float64", "A_b": "float64"})
         res = ks.get_dummies(kdf, dtype="float64")
-        self.assert_eq(res, exp, almost=True)
+        self.assert_eq(res, exp)
 
     def test_get_dummies_multiindex_columns(self):
         pdf = pd.DataFrame(
@@ -220,22 +216,26 @@ class ReshapeTest(ReusedSQLTestCase):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf), almost=True)
+        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8), almost=True)
         self.assert_eq(
             ks.get_dummies(kdf, columns=[("y", "c", "3"), ("x", "a", "1")]),
-            pd.get_dummies(pdf, columns=[("y", "c", "3"), ("x", "a", "1")]),
+            pd.get_dummies(pdf, columns=[("y", "c", "3"), ("x", "a", "1")], dtype=np.int8),
             almost=True,
         )
         self.assert_eq(
-            ks.get_dummies(kdf, columns=["x"]), pd.get_dummies(pdf, columns=["x"]), almost=True
+            ks.get_dummies(kdf, columns=["x"]),
+            pd.get_dummies(pdf, columns=["x"], dtype=np.int8),
+            almost=True,
         )
         self.assert_eq(
             ks.get_dummies(kdf, columns=("x", "a")),
-            pd.get_dummies(pdf, columns=("x", "a")),
+            pd.get_dummies(pdf, columns=("x", "a"), dtype=np.int8),
             almost=True,
         )
         self.assert_eq(
-            ks.get_dummies(kdf, columns=["x"]), pd.get_dummies(pdf, columns=["x"]), almost=True
+            ks.get_dummies(kdf, columns=["x"]),
+            pd.get_dummies(pdf, columns=["x"], dtype=np.int8),
+            almost=True,
         )
 
         self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=["z"]))

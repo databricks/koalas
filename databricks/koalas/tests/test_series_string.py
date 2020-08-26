@@ -16,7 +16,6 @@
 
 
 import pandas as pd
-import pandas.testing as mt
 import numpy as np
 import re
 
@@ -42,17 +41,11 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
             ]
         )
 
-    def check_func(self, func):
-        self.check_func_on_series(func, self.pser)
+    def check_func(self, func, almost=False):
+        self.check_func_on_series(func, self.pser, almost=almost)
 
-    def check_func_on_series(self, func, pser, result_is_dataframe=False):
-        kser = ks.from_pandas(pser)
-        if result_is_dataframe:
-            mt.assert_frame_equal(
-                func(kser).to_pandas(), func(pser).rename(columns=str), check_names=False
-            )
-        else:
-            mt.assert_series_equal(func(kser).to_pandas(), func(pser), check_names=False)
+    def check_func_on_series(self, func, pser, almost=False):
+        self.assert_eq(func(ks.from_pandas(pser)), func(pser), almost=almost)
 
     def test_string_add_str_num(self):
         pdf = pd.DataFrame(dict(col1=["a"], col2=[1]))
@@ -198,8 +191,10 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.find("a", start=0, end=1))
 
     def test_string_findall(self):
-        self.check_func(lambda x: x.str.findall("es|as"))
-        self.check_func(lambda x: x.str.findall("wh.*", flags=re.IGNORECASE))
+        self.check_func_on_series(lambda x: x.str.findall("es|as").apply(str), self.pser[:-1])
+        self.check_func_on_series(
+            lambda x: x.str.findall("wh.*", flags=re.IGNORECASE).apply(str), self.pser[:-1]
+        )
 
     def test_string_index(self):
         pser = pd.Series(["tea", "eat"])
@@ -293,26 +288,22 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.slice_replace(start=1, stop=3, repl="X"))
 
     def test_string_split(self):
-        self.check_func(lambda x: x.str.split())
-        self.check_func(lambda x: x.str.split(r"p*"))
+        self.check_func_on_series(lambda x: x.str.split().apply(str), self.pser[:-1])
+        self.check_func_on_series(lambda x: x.str.split(r"p*").apply(str), self.pser[:-1])
         pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
-        self.check_func_on_series(lambda x: x.str.split(n=2), pser)
-        self.check_func_on_series(lambda x: x.str.split(pat="-", n=2), pser)
-        self.check_func_on_series(
-            lambda x: x.str.split(n=2, expand=True), pser, result_is_dataframe=True,
-        )
+        self.check_func_on_series(lambda x: x.str.split(n=2).apply(str), pser)
+        self.check_func_on_series(lambda x: x.str.split(pat="-", n=2).apply(str), pser)
+        self.check_func_on_series(lambda x: x.str.split(n=2, expand=True), pser, almost=True)
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.split(expand=True))
 
     def test_string_rsplit(self):
-        self.check_func(lambda x: x.str.rsplit())
-        self.check_func(lambda x: x.str.rsplit(r"p*"))
+        self.check_func_on_series(lambda x: x.str.rsplit().apply(str), self.pser[:-1])
+        self.check_func_on_series(lambda x: x.str.rsplit(r"p*").apply(str), self.pser[:-1])
         pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
-        self.check_func_on_series(lambda x: x.str.rsplit(n=2), pser)
-        self.check_func_on_series(lambda x: x.str.rsplit(pat="-", n=2), pser)
-        self.check_func_on_series(
-            lambda x: x.str.rsplit(n=2, expand=True), pser, result_is_dataframe=True
-        )
+        self.check_func_on_series(lambda x: x.str.rsplit(n=2).apply(str), pser)
+        self.check_func_on_series(lambda x: x.str.rsplit(pat="-", n=2).apply(str), pser)
+        self.check_func_on_series(lambda x: x.str.rsplit(n=2, expand=True), pser, almost=True)
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.rsplit(expand=True))
 

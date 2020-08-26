@@ -133,27 +133,46 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
 
     def assertPandasEqual(self, left, right):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
-            msg = (
-                "DataFrames are not equal: "
-                + "\n\nLeft:\n%s\n%s" % (left, left.dtypes)
-                + "\n\nRight:\n%s\n%s" % (right, right.dtypes)
-            )
-            self.assertTrue(left.equals(right), msg=msg)
+            try:
+                pd.util.testing.assert_frame_equal(
+                    left,
+                    right,
+                    check_index_type=("equiv" if len(left.index) > 0 else False),
+                    check_column_type=("equiv" if len(left.columns) > 0 else False),
+                    check_exact=True,
+                )
+            except AssertionError as e:
+                msg = (
+                    str(e)
+                    + "\n\nLeft:\n%s\n%s" % (left, left.dtypes)
+                    + "\n\nRight:\n%s\n%s" % (right, right.dtypes)
+                )
+                raise AssertionError(msg) from e
         elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
-            msg = (
-                "Series are not equal: "
-                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
-                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
-            )
-            self.assertEqual(str(left.name), str(right.name), msg=msg)
-            self.assertTrue((left == right).all(), msg=msg)
+            try:
+                pd.util.testing.assert_series_equal(
+                    left,
+                    right,
+                    check_index_type=("equiv" if len(left.index) > 0 else False),
+                    check_exact=True,
+                )
+            except AssertionError as e:
+                msg = (
+                    str(e)
+                    + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                    + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+                )
+                raise AssertionError(msg) from e
         elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
-            msg = (
-                "Indices are not equal: "
-                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
-                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
-            )
-            self.assertTrue((left == right).all(), msg=msg)
+            try:
+                pd.util.testing.assert_index_equal(left, right, check_exact=True)
+            except AssertionError as e:
+                msg = (
+                    str(e)
+                    + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                    + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+                )
+                raise AssertionError(msg) from e
         else:
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
 
@@ -189,6 +208,15 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)
             for lval, rval in zip(left.dropna(), right.dropna()):
+                self.assertAlmostEqual(lval, rval, msg=msg)
+        elif isinstance(left, pd.MultiIndex) and isinstance(left, pd.MultiIndex):
+            msg = (
+                "MultiIndices are not almost equal: "
+                + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
+                + "\n\nRight:\n%s\n%s" % (right, right.dtype)
+            )
+            self.assertEqual(len(left), len(right), msg=msg)
+            for lval, rval in zip(left, right):
                 self.assertAlmostEqual(lval, rval, msg=msg)
         elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
             msg = (

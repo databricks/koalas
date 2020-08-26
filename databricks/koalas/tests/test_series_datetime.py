@@ -18,7 +18,6 @@ import unittest
 
 import numpy as np
 import pandas as pd
-import pandas.testing as mt
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
@@ -40,9 +39,7 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         return ks.from_pandas(self.pd_start_date)
 
     def check_func(self, func):
-        mt.assert_series_equal(
-            func(self.ks_start_date).to_pandas(), func(self.pd_start_date), check_names=False
-        )
+        self.assert_eq(func(self.ks_start_date), func(self.pd_start_date))
 
     def test_timestamp_subtraction(self):
         pdf = self.pdf1
