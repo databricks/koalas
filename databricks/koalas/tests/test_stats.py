@@ -26,13 +26,15 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_stat_functions(self, pdf, kdf):
         functions = ["max", "min", "mean", "sum"]
         for funcname in functions:
-            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), almost=True)
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), almost=True)
+            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)())
 
         functions = ["std", "var"]
         for funcname in functions:
-            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), almost=True)
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), almost=True)
+            self.assert_eq(
+                getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), less_precise=True
+            )
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), less_precise=True)
 
         # NOTE: To test skew, kurt, and median, just make sure they run.
         #       The numbers are different in spark and pandas.
@@ -100,7 +102,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
-            self.assert_eq(kdf.corr(), pdf.corr(), almost=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), less_precise=True)
 
             # Series
             pser_a = pdf.A
@@ -116,7 +118,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.columns = columns
             kdf.columns = columns
 
-            self.assert_eq(kdf.corr(), pdf.corr(), almost=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), less_precise=True)
 
             # Series
             pser_xa = pdf[("X", "A")]
@@ -124,7 +126,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             kser_xa = kdf[("X", "A")]
             kser_xb = kdf[("X", "B")]
 
-            self.assertAlmostEqual(kser_xa.corr(kser_xb), pser_xa.corr(pser_xb))
+            self.assert_eq(kser_xa.corr(kser_xb), pser_xa.corr(pser_xb), almost=True)
 
     def test_cov_corr_meta(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
@@ -155,8 +157,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sum(), pdf.sum())
         self.assert_eq(kdf.mean(), pdf.mean())
 
-        self.assert_eq(kdf.var(), pdf.var(), almost=True)
-        self.assert_eq(kdf.std(), pdf.std(), almost=True)
+        self.assert_eq(kdf.var(), pdf.var(), less_precise=True)
+        self.assert_eq(kdf.std(), pdf.std(), less_precise=True)
 
     def test_stats_on_boolean_series(self):
         pser = pd.Series([True, False, True])

@@ -201,10 +201,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         funcs = [
-            (False, ["sum", "min", "max", "count", "first", "last"]),
-            (True, ["mean", "var", "std"]),
+            ((False, False), ["sum", "min", "max", "count", "first", "last"]),
+            ((False, True), ["mean"]),
+            ((True, False), ["var", "std"]),
         ]
-        funcs = [(almost, f) for almost, fs in funcs for f in fs]
+        funcs = [(less_precise, almost, f) for (less_precise, almost), fs in funcs for f in fs]
 
         for as_index in [True, False]:
             if as_index:
@@ -214,18 +215,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                     lambda df: df.sort_values(list(df.columns)).reset_index(drop=True).sort_index()
                 )
 
-            for almost, func in funcs:
+            for less_precise, almost, func in funcs:
                 for kkey, pkey in [("b", "b"), (kdf.b, pdf.b)]:
                     with self.subTest(as_index=as_index, func=func, key=pkey):
                         if as_index is True or func != "std":
                             self.assert_eq(
                                 sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
                                 sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
+                                less_precise=less_precise,
                                 almost=almost,
                             )
                             self.assert_eq(
                                 sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
                                 sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
+                                less_precise=less_precise,
                                 almost=almost,
                             )
                         else:
@@ -233,11 +236,13 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                             self.assert_eq(
                                 sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
                                 sort(pdf.groupby(pkey, as_index=True).a.std().reset_index()),
+                                less_precise=less_precise,
                                 almost=almost,
                             )
                             self.assert_eq(
                                 sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
                                 sort(pdf.groupby(pkey, as_index=True).std().reset_index()),
+                                less_precise=less_precise,
                                 almost=almost,
                             )
 
@@ -246,29 +251,33 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                         self.assert_eq(
                             sort(getattr(kdf.groupby(kkey, as_index=as_index).a, func)()),
                             sort(getattr(pdf.groupby(pkey, as_index=as_index).a, func)()),
+                            less_precise=less_precise,
                             almost=almost,
                         )
                         self.assert_eq(
                             sort(getattr(kdf.groupby(kkey, as_index=as_index), func)()),
                             sort(getattr(pdf.groupby(pkey, as_index=as_index), func)()),
+                            less_precise=less_precise,
                             almost=almost,
                         )
 
-            for almost, func in funcs:
+            for less_precise, almost, func in funcs:
                 for i in [0, 4, 7]:
                     with self.subTest(as_index=as_index, func=func, i=i):
                         self.assert_eq(
                             sort(getattr(kdf.groupby(kdf.b > i, as_index=as_index).a, func)()),
                             sort(getattr(pdf.groupby(pdf.b > i, as_index=as_index).a, func)()),
+                            less_precise=less_precise,
                             almost=almost,
                         )
                         self.assert_eq(
                             sort(getattr(kdf.groupby(kdf.b > i, as_index=as_index), func)()),
                             sort(getattr(pdf.groupby(pdf.b > i, as_index=as_index), func)()),
+                            less_precise=less_precise,
                             almost=almost,
                         )
 
-        for almost, func in funcs:
+        for less_precise, almost, func in funcs:
             for kkey, pkey in [
                 (kdf.b, pdf.b),
                 (kdf.b + 1, pdf.b + 1),
@@ -279,21 +288,25 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                     self.assert_eq(
                         getattr(kdf.a.groupby(kkey), func)().sort_index(),
                         getattr(pdf.a.groupby(pkey), func)().sort_index(),
+                        less_precise=less_precise,
                         almost=almost,
                     )
                     self.assert_eq(
                         getattr((kdf.a + 1).groupby(kkey), func)().sort_index(),
                         getattr((pdf.a + 1).groupby(pkey), func)().sort_index(),
+                        less_precise=less_precise,
                         almost=almost,
                     )
                     self.assert_eq(
                         getattr((kdf.b + 1).groupby(kkey), func)().sort_index(),
                         getattr((pdf.b + 1).groupby(pkey), func)().sort_index(),
+                        less_precise=less_precise,
                         almost=almost,
                     )
                     self.assert_eq(
                         getattr(kdf.a.rename().groupby(kkey), func)().sort_index(),
                         getattr(pdf.a.rename().groupby(pkey), func)().sort_index(),
+                        less_precise=less_precise,
                         almost=almost,
                     )
 
@@ -508,8 +521,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             agg_cols = [col.name for col in kdf.groupby("a")._agg_columns]
             formatted_percentiles = ["25%", "50%", "75%"]
             self.assert_eq(
-                repr(describe_kdf.drop(list(product(agg_cols, formatted_percentiles)))),
-                repr(describe_pdf.drop(columns=formatted_percentiles, level=1)),
+                describe_kdf.drop(list(product(agg_cols, formatted_percentiles))),
+                describe_pdf.drop(columns=formatted_percentiles, level=1),
+                less_precise=True,
             )
 
             # 2. Check that percentile columns are equal.
@@ -519,8 +533,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             quantile_pdf = quantile_pdf.unstack(level=1).astype(float)
             non_percentile_stats = ["count", "mean", "std", "min", "max"]
             self.assert_eq(
-                repr(describe_kdf.drop(list(product(agg_cols, non_percentile_stats)))),
-                repr(quantile_pdf.rename(columns="{:.0%}".format, level=1)),
+                describe_kdf.drop(list(product(agg_cols, non_percentile_stats))),
+                quantile_pdf.rename(columns="{:.0%}".format, level=1),
             )
 
         # not support for string type yet
@@ -1526,17 +1540,14 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.a.rename().groupby(kdf.b).shift().sort_index(),
             pdf.a.rename().groupby(pdf.b).shift().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.a.groupby(kdf.b.rename()).shift().sort_index(),
             pdf.a.groupby(pdf.b.rename()).shift().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.a.rename().groupby(kdf.b.rename()).shift().sort_index(),
             pdf.a.rename().groupby(pdf.b.rename()).shift().sort_index(),
-            almost=True,
         )
 
         # multi-index columns

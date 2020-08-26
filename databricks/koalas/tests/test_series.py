@@ -1316,9 +1316,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([90, 91, 85], index=[2, 4, 1])
         pser = kser.to_pandas()
 
-        self.assert_eq(kser.pct_change(), pser.pct_change(), almost=True)
-        self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), almost=True)
-        self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), almost=True)
+        self.assert_eq(kser.pct_change(), pser.pct_change(), less_precise=True)
+        self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), less_precise=True)
+        self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), less_precise=True)
         self.assert_eq(kser.pct_change(periods=-100000000), pser.pct_change(periods=-100000000))
         self.assert_eq(kser.pct_change(periods=100000000), pser.pct_change(periods=100000000))
 
@@ -1330,9 +1330,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
         pser = kser.to_pandas()
 
-        self.assert_eq(kser.pct_change(), pser.pct_change(), almost=True)
-        self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), almost=True)
-        self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), almost=True)
+        self.assert_eq(kser.pct_change(), pser.pct_change(), less_precise=True)
+        self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), less_precise=True)
+        self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), less_precise=True)
         self.assert_eq(kser.pct_change(periods=-100000000), pser.pct_change(periods=-100000000))
         self.assert_eq(kser.pct_change(periods=100000000), pser.pct_change(periods=100000000))
 

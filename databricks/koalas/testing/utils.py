@@ -131,7 +131,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
         # Please see databricks/koalas/conftest.py.
         pass
 
-    def assertPandasEqual(self, left, right):
+    def assertPandasEqual(self, left, right, less_precise=False):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
             try:
                 pd.util.testing.assert_frame_equal(
@@ -139,7 +139,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
                     check_column_type=("equiv" if len(left.columns) > 0 else False),
-                    check_exact=True,
+                    check_exact=(not less_precise),
                 )
             except AssertionError as e:
                 msg = (
@@ -154,7 +154,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                     left,
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
-                    check_exact=True,
+                    check_exact=(not less_precise),
                 )
             except AssertionError as e:
                 msg = (
@@ -165,7 +165,9 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 raise AssertionError(msg) from e
         elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
             try:
-                pd.util.testing.assert_index_equal(left, right, check_exact=True)
+                pd.util.testing.assert_index_equal(
+                    left, right, check_exact=(not less_precise),
+                )
             except AssertionError as e:
                 msg = (
                     str(e)
@@ -232,13 +234,14 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
         else:
             raise ValueError("Unexpected values: (%s, %s)" % (left, right))
 
-    def assert_eq(self, left, right, almost=False):
+    def assert_eq(self, left, right, less_precise=False, almost=False):
         """
         Asserts if two arbitrary objects are equal or not. If given objects are Koalas DataFrame
         or Series, they are converted into pandas' and compared.
 
         :param left: object to compare
         :param right: object to compare
+        :param less_precise: if this is enabled, the comparison is done less precisely.
         :param almost: if this is enabled, the comparison is delegated to `unittest`'s
                        `assertAlmostEqual`. See its documentation for more details.
         """
@@ -248,7 +251,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             if almost:
                 self.assertPandasAlmostEqual(lpdf, rpdf)
             else:
-                self.assertPandasEqual(lpdf, rpdf)
+                self.assertPandasEqual(lpdf, rpdf, less_precise)
         else:
             if almost:
                 self.assertAlmostEqual(lpdf, rpdf)
