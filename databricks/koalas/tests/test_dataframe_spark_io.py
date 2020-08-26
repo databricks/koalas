@@ -58,7 +58,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
                     expected = pd.read_parquet(tmp, columns=columns)
                 actual = ks.read_parquet(tmp, columns=columns)
-                self.assertPandasEqual(expected, actual.toPandas())
+                self.assertPandasEqual(expected, actual.to_pandas())
 
             check(None, data)
             check(["i32", "i64"], data[["i32", "i64"]])
@@ -80,7 +80,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             else:
                 expected = data
             actual = ks.read_parquet(tmp)
-            self.assertPandasEqual(expected, actual.toPandas())
+            self.assertPandasEqual(expected, actual.to_pandas())
 
             # When index columns are known
             pdf = self.test_pdf
@@ -89,8 +89,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected_idx = expected.set_index("bhello")[["f", "i32", "i64"]]
             actual_idx = ks.read_parquet(tmp, index_col="bhello")[["f", "i32", "i64"]]
             self.assert_eq(
-                actual_idx.sort_values(by="f").to_spark().toPandas(),
-                expected_idx.sort_values(by="f").to_spark().toPandas(),
+                actual_idx.sort_values(by="f").to_spark().to_pandas(),
+                expected_idx.sort_values(by="f").to_spark().to_pandas(),
             )
 
     @unittest.skipIf(
@@ -133,8 +133,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().toPandas(),
-                expected.sort_values(by="f").to_spark().toPandas(),
+                actual.sort_values(by="f").to_spark().to_pandas(),
+                expected.sort_values(by="f").to_spark().to_pandas(),
             )
 
             # Write out partitioned by two columns
@@ -145,8 +145,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().toPandas(),
-                expected.sort_values(by="f").to_spark().toPandas(),
+                actual.sort_values(by="f").to_spark().to_pandas(),
+                expected.sort_values(by="f").to_spark().to_pandas(),
             )
 
     def test_table(self):
@@ -162,8 +162,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().toPandas(),
-                expected.sort_values(by="f").to_spark().toPandas(),
+                actual.sort_values(by="f").to_spark().to_pandas(),
+                expected.sort_values(by="f").to_spark().to_pandas(),
             )
 
             # Write out partitioned by two columns
@@ -174,30 +174,30 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().toPandas(),
-                expected.sort_values(by="f").to_spark().toPandas(),
+                actual.sort_values(by="f").to_spark().to_pandas(),
+                expected.sort_values(by="f").to_spark().to_pandas(),
             )
 
             # When index columns are known
             expected_idx = expected.set_index("bhello")[["f", "i32", "i64"]]
             actual_idx = ks.read_table("test_table", index_col="bhello")[["f", "i32", "i64"]]
             self.assert_eq(
-                actual_idx.sort_values(by="f").to_spark().toPandas(),
-                expected_idx.sort_values(by="f").to_spark().toPandas(),
+                actual_idx.sort_values(by="f").to_spark().to_pandas(),
+                expected_idx.sort_values(by="f").to_spark().to_pandas(),
             )
 
             expected_idx = expected.set_index(["bhello"])[["f", "i32", "i64"]]
             actual_idx = ks.read_table("test_table", index_col=["bhello"])[["f", "i32", "i64"]]
             self.assert_eq(
-                actual_idx.sort_values(by="f").to_spark().toPandas(),
-                expected_idx.sort_values(by="f").to_spark().toPandas(),
+                actual_idx.sort_values(by="f").to_spark().to_pandas(),
+                expected_idx.sort_values(by="f").to_spark().to_pandas(),
             )
 
             expected_idx = expected.set_index(["i32", "bhello"])[["f", "i64"]]
             actual_idx = ks.read_table("test_table", index_col=["i32", "bhello"])[["f", "i64"]]
             self.assert_eq(
-                actual_idx.sort_values(by="f").to_spark().toPandas(),
-                expected_idx.sort_values(by="f").to_spark().toPandas(),
+                actual_idx.sort_values(by="f").to_spark().to_pandas(),
+                expected_idx.sort_values(by="f").to_spark().to_pandas(),
             )
 
     def test_spark_io(self):
@@ -213,8 +213,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().toPandas(),
-                expected.sort_values(by="f").to_spark().toPandas(),
+                actual.sort_values(by="f").to_spark().to_pandas(),
+                expected.sort_values(by="f").to_spark().to_pandas(),
             )
 
             # Write out partitioned by two columns
@@ -227,8 +227,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().toPandas(),
-                expected.sort_values(by="f").to_spark().toPandas(),
+                actual.sort_values(by="f").to_spark().to_pandas(),
+                expected.sort_values(by="f").to_spark().to_pandas(),
             )
 
             # When index columns are known
@@ -239,8 +239,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected_idx = expected.set_index("bhello")[col_order]
             actual_idx = ks.read_spark_io(tmp, format="json", index_col="bhello")[col_order]
             self.assert_eq(
-                actual_idx.sort_values(by="f").to_spark().toPandas(),
-                expected_idx.sort_values(by="f").to_spark().toPandas(),
+                actual_idx.sort_values(by="f").to_spark().to_pandas(),
+                expected_idx.sort_values(by="f").to_spark().to_pandas(),
             )
 
     def test_read_excel(self):

@@ -92,12 +92,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         b = pd.Series([None, None, None], dtype="str")
 
         self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-        self.assertTrue(ks.from_pandas(a).toPandas().isnull().all())
+        self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
         self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
         with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
             self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-            self.assertTrue(ks.from_pandas(a).toPandas().isnull().all())
+            self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
     def test_head_tail(self):
