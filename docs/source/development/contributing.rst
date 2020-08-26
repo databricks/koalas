@@ -149,13 +149,15 @@ In general, minor releases occur about every month. Therefore, Koalas 1.3.0 woul
 Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule
 The chart below is the expected release dates of minor releases.
 
-+-----------+---------+
-| Date      | Version |
-+===========+=========+
-| 8/28 2020 | 1.2.0   |
-+-----------+---------+
-| 10/9 2020 | 1.3.0   |
-+-----------+---------+
++------------+---------+
+| Date       | Version |
++============+=========+
+| 8/28 2020  | 1.2.0   |
++------------+---------+
+| 10/9 2020  | 1.3.0   |
++------------+---------+
+| 11/20 2020 | 1.4.0   |
++------------+---------+
 
 Release Instructions
 --------------------
