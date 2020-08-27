@@ -525,7 +525,7 @@ class InternalFrame(object):
 
         >>> spark_frame = InternalFrame.attach_default_index(spark_frame)
         >>> spark_frame
-        DataFrame[__index_level_0__: int, id: bigint]
+        DataFrame[__index_level_0__: bigint, id: bigint]
 
         It throws an exception if the given column name already exists.
 
@@ -558,7 +558,9 @@ class InternalFrame(object):
     @staticmethod
     def attach_sequence_column(sdf, column_name):
         scols = [scol_for(sdf, column) for column in sdf.columns]
-        sequential_index = F.row_number().over(Window.orderBy(F.monotonically_increasing_id())) - 1
+        sequential_index = (
+            F.row_number().over(Window.orderBy(F.monotonically_increasing_id())).cast("long") - 1
+        )
         return sdf.select(sequential_index.alias(column_name), *scols)
 
     @staticmethod
@@ -598,6 +600,10 @@ class InternalFrame(object):
         #         ...
         #     }
         sdf = sdf.withColumn(spark_partition_column, F.spark_partition_id())
+
+        # Checkpoint the DataFrame to fix the partition ID.
+        sdf = sdf.localCheckpoint(eager=False)
+
         counts = map(
             lambda x: (x["key"], x["count"]),
             sdf.groupby(sdf[spark_partition_column].alias("key")).count().collect(),
@@ -834,7 +840,7 @@ class InternalFrame(object):
 
         if column_labels is None:
             if all(isinstance(scol_or_kser, Series) for scol_or_kser in scols_or_ksers):
-                column_labels = [kser._internal.column_labels[0] for kser in scols_or_ksers]
+                column_labels = [kser._column_label for kser in scols_or_ksers]
             else:
                 assert len(scols_or_ksers) == len(self.column_labels), (
                     len(scols_or_ksers),
@@ -843,7 +849,7 @@ class InternalFrame(object):
                 column_labels = []
                 for scol_or_kser, label in zip(scols_or_ksers, self.column_labels):
                     if isinstance(scol_or_kser, Series):
-                        column_labels.append(scol_or_kser._internal.column_labels[0])
+                        column_labels.append(scol_or_kser._column_label)
                     else:
                         column_labels.append(label)
         else:

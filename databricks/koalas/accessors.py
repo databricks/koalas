@@ -479,7 +479,7 @@ class KoalasFrameMethods(object):
         0    3
         1    5
         2    7
-        Name: 0, dtype: int32
+        dtype: int32
 
         You can also omit the type hints so Koalas infers the return schema as below:
 
@@ -639,7 +639,7 @@ class KoalasFrameMethods(object):
                 )
                 columns = self._kdf._internal.spark_columns
                 internal = self._kdf._internal.copy(
-                    column_labels=[(SPARK_DEFAULT_SERIES_NAME,)],
+                    column_labels=[None],
                     data_spark_columns=[
                         (pudf(F.struct(*columns)) if should_by_pass else pudf(*columns)).alias(
                             SPARK_DEFAULT_SERIES_NAME

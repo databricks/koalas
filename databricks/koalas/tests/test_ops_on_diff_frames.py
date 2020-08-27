@@ -39,28 +39,28 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     @property
     def pdf1(self):
         return pd.DataFrame(
-            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0]},
             index=[0, 1, 3, 5, 6, 8, 9, 10, 11],
         )
 
     @property
     def pdf2(self):
         return pd.DataFrame(
-            {"a": [9, 8, 7, 6, 5, 4, 3, 2, 1], "b": [0, 0, 0, 4, 5, 6, 1, 2, 3],},
+            {"a": [9, 8, 7, 6, 5, 4, 3, 2, 1], "b": [0, 0, 0, 4, 5, 6, 1, 2, 3]},
             index=list(range(9)),
         )
 
     @property
     def pdf3(self):
         return pd.DataFrame(
-            {"b": [1, 1, 1, 1, 1, 1, 1, 1, 1], "c": [1, 1, 1, 1, 1, 1, 1, 1, 1],},
+            {"b": [1, 1, 1, 1, 1, 1, 1, 1, 1], "c": [1, 1, 1, 1, 1, 1, 1, 1, 1]},
             index=list(range(9)),
         )
 
     @property
     def pdf4(self):
         return pd.DataFrame(
-            {"e": [2, 2, 2, 2, 2, 2, 2, 2, 2], "f": [2, 2, 2, 2, 2, 2, 2, 2, 2],},
+            {"e": [2, 2, 2, 2, 2, 2, 2, 2, 2], "f": [2, 2, 2, 2, 2, 2, 2, 2, 2]},
             index=list(range(9)),
         )
 
@@ -172,22 +172,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = self.pser2
 
         # Series
-        self.assert_eq(
-            (kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).rename("a").sort_index(), almost=True
-        )
+        self.assert_eq((kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).rename("a").sort_index())
+
+        self.assert_eq((kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).rename("a").sort_index())
 
         self.assert_eq(
-            (kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).rename("a").sort_index(), almost=True
-        )
-
-        self.assert_eq(
-            (kdf1["a"] / kdf2["a"]).sort_index(),
-            (pdf1["a"] / pdf2["a"]).rename("a").sort_index(),
-            almost=True,
+            (kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).rename("a").sort_index()
         )
 
         # DataFrame
-        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index(), almost=True)
+        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
 
         # Multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
@@ -200,32 +194,29 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1[("x", "a")] - kdf2[("x", "b")]).sort_index(),
             (pdf1[("x", "a")] - pdf2[("x", "b")]).rename(("x", "a")).sort_index(),
-            almost=True,
         )
 
         self.assert_eq(
             (kdf1[("x", "a")] - kdf2["x"]["b"]).sort_index(),
             (pdf1[("x", "a")] - pdf2["x"]["b"]).rename(("x", "a")).sort_index(),
-            almost=True,
         )
 
         self.assert_eq(
             (kdf1["x"]["a"] - kdf2[("x", "b")]).sort_index(),
             (pdf1["x"]["a"] - pdf2[("x", "b")]).rename("a").sort_index(),
-            almost=True,
         )
 
         # DataFrame
-        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index(), almost=True)
+        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
 
         # MultiIndex Series
-        self.assert_eq((kser1 + kser2).sort_index(), (pser1 + pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 + kser2).sort_index(), (pser1 + pser2).sort_index())
 
-        self.assert_eq((kser1 - kser2).sort_index(), (pser1 - pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 - kser2).sort_index(), (pser1 - pser2).sort_index())
 
-        self.assert_eq((kser1 * kser2).sort_index(), (pser1 * pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 * kser2).sort_index(), (pser1 * pser2).sort_index())
 
-        self.assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index(), almost=True)
+        self.assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
 
     def test_arithmetic_chain(self):
         kdf1 = self.kdf1
@@ -245,19 +236,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             (kdf1.a - kdf2.b - kdf3.c).sort_index(),
             (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(),
-            almost=True,
         )
 
         self.assert_eq(
             (kdf1.a * (kdf2.a * kdf3.c)).sort_index(),
             (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(),
-            almost=True,
         )
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
             (pdf1["a"] / pdf2["a"] / pdf3["c"]).rename("a").sort_index(),
-            almost=True,
         )
 
         # DataFrame
@@ -281,7 +269,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (pdf1[("x", "a")] - pdf2[("x", "b")] - pdf3[("y", "c")])
             .rename(("x", "a"))
             .sort_index(),
-            almost=True,
         )
 
         self.assert_eq(
@@ -289,7 +276,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (pdf1[("x", "a")] * (pdf2[("x", "b")] * pdf3[("y", "c")]))
             .rename(("x", "a"))
             .sort_index(),
-            almost=True,
         )
 
         # DataFrame
@@ -298,53 +284,33 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
         # MultiIndex Series
-        self.assert_eq(
-            (kser1 + kser2 - kser3).sort_index(), (pser1 + pser2 - pser3).sort_index(), almost=True
-        )
+        self.assert_eq((kser1 + kser2 - kser3).sort_index(), (pser1 + pser2 - pser3).sort_index())
 
-        self.assert_eq(
-            (kser1 * kser2 * kser3).sort_index(), (pser1 * pser2 * pser3).sort_index(), almost=True
-        )
+        self.assert_eq((kser1 * kser2 * kser3).sort_index(), (pser1 * pser2 * pser3).sort_index())
 
-        self.assert_eq(
-            (kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index(), almost=True
-        )
+        self.assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
 
-        self.assert_eq(
-            (kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index(), almost=True
-        )
+        self.assert_eq((kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index())
 
     def test_mod(self):
-        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        pser = pd.Series([100, None, -300, None, 500, -700])
         pser_other = pd.Series([-150] * 6)
         kser = ks.from_pandas(pser)
         kser_other = ks.from_pandas(pser_other)
 
-        self.assert_eq(
-            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
-        )
-        self.assert_eq(
-            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
-        )
-        self.assert_eq(
-            repr(kser.mod(kser_other).sort_index()), repr(pser.mod(pser_other).rename("Koalas"))
-        )
+        self.assert_eq(kser.mod(kser_other).sort_index(), pser.mod(pser_other))
+        self.assert_eq(kser.mod(kser_other).sort_index(), pser.mod(pser_other))
+        self.assert_eq(kser.mod(kser_other).sort_index(), pser.mod(pser_other))
 
     def test_rmod(self):
-        pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
+        pser = pd.Series([100, None, -300, None, 500, -700])
         pser_other = pd.Series([-150] * 6)
         kser = ks.from_pandas(pser)
         kser_other = ks.from_pandas(pser_other)
 
-        self.assert_eq(
-            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
-        )
-        self.assert_eq(
-            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
-        )
-        self.assert_eq(
-            repr(kser.rmod(kser_other).sort_index()), repr(pser.rmod(pser_other).rename("Koalas"))
-        )
+        self.assert_eq(kser.rmod(kser_other).sort_index(), pser.rmod(pser_other))
+        self.assert_eq(kser.rmod(kser_other).sort_index(), pser.rmod(pser_other))
+        self.assert_eq(kser.rmod(kser_other).sort_index(), pser.rmod(pser_other))
 
     def test_getitem_boolean_series(self):
         pdf1 = pd.DataFrame(
@@ -556,14 +522,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf6 = self.pdf6
 
         # Series
-        self.assert_eq(
-            (kdf5.c - kdf6.e).sort_index(), (pdf5.c - pdf6.e).rename("c").sort_index(), almost=True
-        )
+        self.assert_eq((kdf5.c - kdf6.e).sort_index(), (pdf5.c - pdf6.e).rename("c").sort_index())
 
         self.assert_eq(
-            (kdf5["c"] / kdf6["e"]).sort_index(),
-            (pdf5["c"] / pdf6["e"]).rename("c").sort_index(),
-            almost=True,
+            (kdf5["c"] / kdf6["e"]).sort_index(), (pdf5["c"] / pdf6["e"]).rename("c").sort_index()
         )
 
         # DataFrame

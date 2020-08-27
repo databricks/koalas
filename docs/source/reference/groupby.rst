@@ -33,6 +33,7 @@ Computations / Descriptive Stats
    GroupBy.all
    GroupBy.any
    GroupBy.count
+   GroupBy.cumcount
    GroupBy.cummax
    GroupBy.cummin
    GroupBy.cumprod

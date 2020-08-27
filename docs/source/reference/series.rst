@@ -219,6 +219,7 @@ Time series-related
    Series.asof
    Series.shift
    Series.first_valid_index
+   Series.last_valid_index
 
 Spark-related
 -------------

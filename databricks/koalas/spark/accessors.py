@@ -188,9 +188,7 @@ class SparkIndexOpsMethods(object):
 
         sdf = self._data._internal.spark_frame.drop(*HIDDEN_COLUMNS).select(output)
         # Lose index.
-        kdf = DataFrame(sdf)
-        kdf.columns = [self._data.name]
-        return first_series(kdf)
+        return first_series(DataFrame(sdf)).rename(self._data.name)
 
 
 class SparkFrameMethods(object):
@@ -426,7 +424,7 @@ class SparkFrameMethods(object):
         ...
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df = df.spark.cache()
         >>> df.to_pandas().mean(axis=1)
@@ -480,7 +478,7 @@ class SparkFrameMethods(object):
         Memory Serialized 1x Replicated
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         Set the StorageLevel to `DISK_ONLY`.
 
@@ -491,7 +489,7 @@ class SparkFrameMethods(object):
         Disk Serialized 1x Replicated
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         If a StorageLevel is not given, it uses `MEMORY_AND_DISK` by default.
 
@@ -502,7 +500,7 @@ class SparkFrameMethods(object):
         Disk Memory Serialized 1x Replicated
         dogs    4
         cats    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> df = df.spark.persist()
         >>> df.to_pandas().mean(axis=1)
@@ -544,11 +542,11 @@ class SparkFrameMethods(object):
         --------
         >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
         ...                     'value': [1, 2, 3, 5]},
-        ...                    columns=['lkey', 'value'])
+        ...                    columns=['lkey', 'value']).set_index('lkey')
         >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
         ...                     'value': [5, 6, 7, 8]},
-        ...                    columns=['rkey', 'value'])
-        >>> merged = df1.merge(df2.spark.hint("broadcast"), left_on='lkey', right_on='rkey')
+        ...                    columns=['rkey', 'value']).set_index('rkey')
+        >>> merged = df1.merge(df2.spark.hint("broadcast"), left_index=True, right_index=True)
         >>> merged.spark.explain()  # doctest: +ELLIPSIS
         == Physical Plan ==
         ...
@@ -824,7 +822,7 @@ class SparkFrameMethods(object):
         The case below ends up with using the default index, which should be avoided
         if possible.
 
-        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count().sort("a"))
+        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count().sort("a")).sort_index()
            a  count
         0  1      1
         1  2      1
