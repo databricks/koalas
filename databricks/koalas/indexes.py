@@ -375,9 +375,11 @@ class Index(IndexOpsMixin):
     def toPandas(self):
         warnings.warn(
             "Index.toPandas is deprecated as of Index.to_pandas. Please use the API instead.",
-            FutureWarning,
+            DeprecationWarning,
         )
         return self.to_pandas()
+
+    toPandas.__doc__ = to_pandas.__doc__
 
     def to_numpy(self, dtype=None, copy=False):
         """
@@ -2440,9 +2442,11 @@ class MultiIndex(Index):
         warnings.warn(
             "MultiIndex.toPandas is deprecated as of MultiIndex.to_pandas. "
             "Please use the API instead.",
-            FutureWarning,
+            DeprecationWarning,
         )
         return self.to_pandas()
+
+    toPandas.__doc__ = to_pandas.__doc__
 
     def nunique(self, dropna=True):
         raise NotImplementedError("isna is not defined for MultiIndex")
