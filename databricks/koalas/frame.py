@@ -6527,10 +6527,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         how: Type of merge to be performed.
             {'left', 'right', 'outer', 'inner'}, default 'inner'
 
-            left: use only keys from left frame, similar to a SQL left outer join; not preserve key
-                order unlike pandas.
-            right: use only keys from right frame, similar to a SQL right outer join; not preserve key
-                order unlike pandas.
+            left: use only keys from left frame, similar to a SQL left outer join; not preserve
+                key order unlike pandas.
+            right: use only keys from right frame, similar to a SQL right outer join; not preserve
+                key order unlike pandas.
             outer: use union of keys from both frames, similar to a SQL full outer join; sort keys
                 lexicographically.
             inner: use intersection of keys from both frames, similar to a SQL inner join;
