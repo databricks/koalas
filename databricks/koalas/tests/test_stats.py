@@ -32,9 +32,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         functions = ["std", "var"]
         for funcname in functions:
             self.assert_eq(
-                getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), less_precise=True
+                getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), check_exact=False
             )
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), less_precise=True)
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), check_exact=False)
 
         # NOTE: To test skew, kurt, and median, just make sure they run.
         #       The numbers are different in spark and pandas.
@@ -102,7 +102,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
-            self.assert_eq(kdf.corr(), pdf.corr(), less_precise=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), check_exact=False)
 
             # Series
             pser_a = pdf.A
@@ -118,7 +118,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.columns = columns
             kdf.columns = columns
 
-            self.assert_eq(kdf.corr(), pdf.corr(), less_precise=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), check_exact=False)
 
             # Series
             pser_xa = pdf[("X", "A")]
@@ -157,8 +157,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sum(), pdf.sum())
         self.assert_eq(kdf.mean(), pdf.mean())
 
-        self.assert_eq(kdf.var(), pdf.var(), less_precise=True)
-        self.assert_eq(kdf.std(), pdf.std(), less_precise=True)
+        self.assert_eq(kdf.var(), pdf.var(), check_exact=False)
+        self.assert_eq(kdf.std(), pdf.std(), check_exact=False)
 
     def test_stats_on_boolean_series(self):
         pser = pd.Series([True, False, True])
