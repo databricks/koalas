@@ -1443,8 +1443,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     # Alias to maintain backward compatibility with Spark
     def toPandas(self):
         warnings.warn(
-            "Series.toPandas is deprecated as of Series.to_pandas. "
-            "Please use the API instead.",
+            "Series.toPandas is deprecated as of Series.to_pandas. Please use the API instead.",
             FutureWarning,
         )
         return self.to_pandas()
