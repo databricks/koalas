@@ -1103,7 +1103,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_to_pandas(self):
         pdf, kdf = self.df_pair
-        self.assert_eq(kdf.to_pandas(), pdf)
+        self.assert_eq(kdf.toPandas(), pdf)
         self.assert_eq(kdf.to_pandas(), pdf)
 
     def test_isin(self):

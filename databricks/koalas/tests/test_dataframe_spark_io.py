@@ -89,8 +89,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             expected_idx = expected.set_index("bhello")[["f", "i32", "i64"]]
             actual_idx = ks.read_parquet(tmp, index_col="bhello")[["f", "i32", "i64"]]
             self.assert_eq(
-                actual_idx.sort_values(by="f").to_spark().to_pandas(),
-                expected_idx.sort_values(by="f").to_spark().to_pandas(),
+                actual_idx.sort_values(by="f").to_spark().toPandas(),
+                expected_idx.sort_values(by="f").to_spark().toPandas(),
             )
 
     @unittest.skipIf(
