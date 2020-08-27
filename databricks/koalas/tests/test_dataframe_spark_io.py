@@ -133,8 +133,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().to_pandas(),
-                expected.sort_values(by="f").to_spark().to_pandas(),
+                actual.sort_values(by="f").to_spark().toPandas(),
+                expected.sort_values(by="f").to_spark().toPandas(),
             )
 
             # Write out partitioned by two columns
@@ -145,8 +145,8 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertFalse((actual.columns == self.test_column_order).all())
             actual = actual[self.test_column_order]
             self.assert_eq(
-                actual.sort_values(by="f").to_spark().to_pandas(),
-                expected.sort_values(by="f").to_spark().to_pandas(),
+                actual.sort_values(by="f").to_spark().toPandas(),
+                expected.sort_values(by="f").to_spark().toPandas(),
             )
 
     def test_table(self):
