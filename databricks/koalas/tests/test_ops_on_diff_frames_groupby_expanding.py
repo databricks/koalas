@@ -36,7 +36,7 @@ class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
         super(OpsOnDiffFramesGroupByExpandingTest, cls).tearDownClass()
 
     def _test_groupby_expanding_func(self, f):
-        pser = pd.Series([1, 2, 3], name="a")
+        pser = pd.Series([1, 2, 3])
         pkey = pd.Series([1, 2, 3], name="a")
         kser = ks.from_pandas(pser)
         kkey = ks.from_pandas(pkey)
@@ -44,7 +44,6 @@ class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             getattr(kser.groupby(kkey).expanding(2), f)().sort_index(),
             getattr(pser.groupby(pkey).expanding(2), f)().sort_index(),
-            almost=True,
         )
 
         pdf = pd.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
@@ -55,17 +54,14 @@ class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             getattr(kdf.groupby(kkey).expanding(2), f)().sort_index(),
             getattr(pdf.groupby(pkey).expanding(2), f)().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             getattr(kdf.groupby(kkey)["b"].expanding(2), f)().sort_index(),
             getattr(pdf.groupby(pkey)["b"].expanding(2), f)().sort_index(),
-            almost=True,
         )
         self.assert_eq(
             getattr(kdf.groupby(kkey)[["b"]].expanding(2), f)().sort_index(),
             getattr(pdf.groupby(pkey)[["b"]].expanding(2), f)().sort_index(),
-            almost=True,
         )
 
     def test_groupby_expanding_count(self):
@@ -76,40 +72,34 @@ class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
         else:
             # Series
             kser = ks.Series([1, 2, 3])
-            kkey = ks.Series([1, 2, 3])
+            kkey = ks.Series([1, 2, 3], name="a")
             midx = pd.MultiIndex.from_tuples(
-                list(zip(kkey.to_pandas().values, kser.index.to_pandas().values))
+                list(zip(kkey.to_pandas().values, kser.index.to_pandas().values)), names=["a", None]
             )
             expected_result = pd.Series([np.nan, np.nan, np.nan], index=midx)
             self.assert_eq(
-                kser.groupby(kkey).expanding(2).count().sort_index(),
-                expected_result.sort_index(),
-                almost=True,
+                kser.groupby(kkey).expanding(2).count().sort_index(), expected_result.sort_index()
             )
 
             # DataFrame
             kdf = ks.DataFrame({"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0]})
             kkey = ks.Series([1, 2, 3, 2], name="a")
-            midx = pd.MultiIndex.from_tuples([(1, 0), (2, 1), (2, 3), (3, 2)])
+            midx = pd.MultiIndex.from_tuples([(1, 0), (2, 1), (2, 3), (3, 2)], names=["a", None])
             expected_result = pd.DataFrame(
                 {"a": [None, None, 2.0, None], "b": [None, None, 2.0, None]}, index=midx
             )
             self.assert_eq(
-                kdf.groupby(kkey).expanding(2).count().sort_index(),
-                expected_result.sort_index(),
-                almost=True,
+                kdf.groupby(kkey).expanding(2).count().sort_index(), expected_result.sort_index()
             )
             expected_result = pd.Series([None, None, 2.0, None], index=midx, name="b")
             self.assert_eq(
                 kdf.groupby(kkey)["b"].expanding(2).count().sort_index(),
                 expected_result.sort_index(),
-                almost=True,
             )
             expected_result = pd.DataFrame({"b": [None, None, 2.0, None]}, index=midx)
             self.assert_eq(
                 kdf.groupby(kkey)[["b"]].expanding(2).count().sort_index(),
                 expected_result.sort_index(),
-                almost=True,
             )
 
     def test_groupby_expanding_min(self):

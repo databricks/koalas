@@ -20,7 +20,7 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 from collections import OrderedDict
 from distutils.version import LooseVersion
 from functools import partial
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 import warnings
 
 import pandas as pd
@@ -207,7 +207,6 @@ class Index(IndexOpsMixin):
                     ('b', 'y'),
                     ('c', 'z')],
                    )
-
         >>> midx.shape
         (3,)
         """
@@ -674,7 +673,7 @@ class Index(IndexOpsMixin):
         b    b
         c    c
         d    d
-        Name: 0, dtype: object
+        dtype: object
         """
         if not is_hashable(name):
             raise TypeError("Series.name must be a hashable type")
@@ -685,10 +684,8 @@ class Index(IndexOpsMixin):
         elif len(kdf._internal.index_map) == 1:
             name = self.name
         column_labels = (
-            [(SPARK_DEFAULT_SERIES_NAME,)]
-            if len(kdf._internal.index_map) > 1 or name is None
-            else [name if isinstance(name, tuple) else (name,)]
-        )  # type: List[Tuple[str, ...]]
+            [None] if name is None else [name if isinstance(name, tuple) else (name,)]
+        )  # type: List[Optional[Tuple[str, ...]]]
         internal = kdf._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
         )
@@ -893,7 +890,7 @@ class Index(IndexOpsMixin):
         falcon  weight    320.0
                 weight      1.0
                 length      NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.index.dropna()  # doctest: +SKIP
         MultiIndex([(   'cow', 'weight'),
@@ -1319,11 +1316,11 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> idx = pd.Index([3, 2, 1])
+        >>> idx = ks.Index([3, 2, 1])
         >>> idx.max()
         3
 
-        >>> idx = pd.Index(['c', 'b', 'a'])
+        >>> idx = ks.Index(['c', 'b', 'a'])
         >>> idx.max()
         'c'
 
@@ -1907,7 +1904,8 @@ class Index(IndexOpsMixin):
                         "Union between Index and MultiIndex is not yet supported"
                     )
                 elif isinstance(other, Series):
-                    other = other.to_frame().set_index(other.name).index
+                    other = other.to_frame()
+                    other = other.set_index(other.columns[0]).index
                 elif isinstance(other, DataFrame):
                     raise ValueError("Index data must be 1-dimensional")
                 else:

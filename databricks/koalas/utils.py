@@ -20,7 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Callable, Dict, List, Tuple, Union, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -93,13 +93,13 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         assert all(
             same_anchor(arg, args[0]) for arg in args
         ), "Currently only one different DataFrame (from given Series) is supported"
-        if same_anchor(this, args[0]):
-            return  # We don't need to combine. All series is in this.
+        assert not same_anchor(this, args[0]), "We don't need to combine. All series is in this."
         that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
-        if same_anchor(this, args[0]):
-            return  # We don't need to combine. `this` and `that` are same.
+        assert not same_anchor(
+            this, args[0]
+        ), "We don't need to combine. `this` and `that` are same."
         that = args[0]
     else:
         raise AssertionError("args should be single DataFrame or " "single/multiple Series")
@@ -173,13 +173,16 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
         ]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
+
+        def fill_label(label):
+            if label is None:
+                return ([""] * (level - 1)) + [None]
+            else:
+                return ([""] * (level - len(label))) + list(label)
+
         column_labels = [
-            tuple(["this"] + ([""] * (level - len(label))) + list(label))
-            for label in this._internal.column_labels
-        ] + [
-            tuple(["that"] + ([""] * (level - len(label))) + list(label))
-            for label in that._internal.column_labels
-        ]
+            tuple(["this"] + fill_label(label)) for label in this._internal.column_labels
+        ] + [tuple(["that"] + fill_label(label)) for label in that._internal.column_labels]
         column_label_names = (
             (
                 ([None] * (1 + level - len(this._internal.column_labels_level)))
@@ -499,7 +502,7 @@ def column_labels_level(column_labels: List[Tuple[str, ...]]) -> int:
         return list(levels)[0]
 
 
-def name_like_string(name: Union[str, Tuple]) -> str:
+def name_like_string(name: Optional[Union[str, Tuple]]) -> str:
     """
     Return the name-like strings from str or tuple of str
 
@@ -517,7 +520,9 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     >>> name_like_string(name)
     '(a, b, c)'
     """
-    if is_list_like(name):
+    if name is None:
+        name = ("__none__",)
+    elif is_list_like(name):
         name = tuple([str(n) for n in name])
     else:
         name = (str(name),)
