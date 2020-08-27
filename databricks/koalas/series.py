@@ -1441,7 +1441,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return first_series(self._internal.to_pandas_frame.copy())
 
     # Alias to maintain backward compatibility with Spark
-    toPandas = to_pandas
+    def toPandas(self):
+        warnings.warn(
+            "Series.toPandas is deprecated as of Series.to_pandas. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.to_pandas()
 
     def to_list(self):
         """
