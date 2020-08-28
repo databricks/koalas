@@ -1318,7 +1318,7 @@ class KoalasPlotAccessor(PandasObject):
 
         return data, kwargs
 
-    def __call__(self, kind="line", backend="matplotlib", **kwargs):
+    def __call__(self, kind="line", backend=None, **kwargs):
 
         positional_args = locals()
         plot_backend = _get_plot_backend(backend)
