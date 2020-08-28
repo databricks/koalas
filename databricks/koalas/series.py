@@ -1444,7 +1444,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def toPandas(self):
         warnings.warn(
             "Series.toPandas is deprecated as of Series.to_pandas. Please use the API instead.",
-            DeprecationWarning,
+            FutureWarning,
         )
         return self.to_pandas()
 

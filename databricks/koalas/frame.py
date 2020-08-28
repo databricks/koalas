@@ -4230,7 +4230,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         warnings.warn(
             "DataFrame.toPandas is deprecated as of DataFrame.to_pandas. "
             "Please use the API instead.",
-            DeprecationWarning,
+            FutureWarning,
         )
         return self.to_pandas()
 

@@ -375,7 +375,7 @@ class Index(IndexOpsMixin):
     def toPandas(self):
         warnings.warn(
             "Index.toPandas is deprecated as of Index.to_pandas. Please use the API instead.",
-            DeprecationWarning,
+            FutureWarning,
         )
         return self.to_pandas()
 
@@ -2442,7 +2442,7 @@ class MultiIndex(Index):
         warnings.warn(
             "MultiIndex.toPandas is deprecated as of MultiIndex.to_pandas. "
             "Please use the API instead.",
-            DeprecationWarning,
+            FutureWarning,
         )
         return self.to_pandas()
 
