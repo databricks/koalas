@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
 

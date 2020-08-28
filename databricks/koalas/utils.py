@@ -30,7 +30,8 @@ from pyspark.sql.types import FloatType
 import pandas as pd
 from pandas.api.types import is_list_like
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+# For running doctests and reference resolution in PyCharm.
+from databricks import koalas as ks  # noqa: F401
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.

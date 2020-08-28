@@ -17,8 +17,6 @@ from collections import OrderedDict
 from functools import partial
 from typing import Any
 
-from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
-from databricks.koalas.utils import name_like_string
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 from databricks.koalas.missing.window import (
@@ -28,8 +26,10 @@ from databricks.koalas.missing.window import (
     MissingPandasLikeExpandingGroupby,
 )
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
+# For running doctests and reference resolution in PyCharm.
+from databricks import koalas as ks  # noqa: F401
+
+from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import scol_for
 
 

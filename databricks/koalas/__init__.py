@@ -17,7 +17,7 @@ import os
 import sys
 from distutils.version import LooseVersion
 
-from databricks.koalas.version import __version__
+from databricks.koalas.version import __version__  # noqa: F401
 
 
 def assert_pyspark_version():

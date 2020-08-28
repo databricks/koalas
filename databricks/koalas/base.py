@@ -25,7 +25,7 @@ from typing import Union, Callable, Any
 import warnings
 
 import numpy as np
-import pandas as pd
+import pandas as pd  # noqa: F401
 from pandas.api.types import is_list_like
 from pandas.core.accessor import CachedAccessor
 from pyspark import sql as spark
