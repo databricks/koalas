@@ -372,7 +372,14 @@ class Index(IndexOpsMixin):
         """
         return self._internal.to_pandas_frame.index  # type: ignore
 
-    toPandas = to_pandas
+    def toPandas(self):
+        warnings.warn(
+            "Index.toPandas is deprecated as of Index.to_pandas. Please use the API instead.",
+            FutureWarning,
+        )
+        return self.to_pandas()
+
+    toPandas.__doc__ = to_pandas.__doc__
 
     def to_numpy(self, dtype=None, copy=False):
         """
@@ -2431,7 +2438,15 @@ class MultiIndex(Index):
         # series-like operations. In that case, it creates new Index object instead of MultiIndex.
         return self._kdf[[]]._to_internal_pandas().index
 
-    toPandas = to_pandas
+    def toPandas(self):
+        warnings.warn(
+            "MultiIndex.toPandas is deprecated as of MultiIndex.to_pandas. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.to_pandas()
+
+    toPandas.__doc__ = to_pandas.__doc__
 
     def nunique(self, dropna=True):
         raise NotImplementedError("isna is not defined for MultiIndex")

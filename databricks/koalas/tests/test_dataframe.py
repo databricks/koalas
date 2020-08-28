@@ -1017,9 +1017,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             "animal": ["cat", "dog", "bat", "penguin"],
             "locomotion": ["walks", "walks", "flies", "walks"],
         }
-        kdf = ks.DataFrame(data=d)
-        kdf = kdf.set_index(["class", "animal", "locomotion"])
-        pdf = kdf.to_pandas()
+        pdf = pd.DataFrame(data=d)
+        pdf = pdf.set_index(["class", "animal", "locomotion"])
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.xs(("mammal", "dog", "walks")), pdf.xs(("mammal", "dog", "walks")))
 
@@ -3271,12 +3271,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.to_spark(index_col=["x", "y", "z"])
 
     def test_keys(self):
-        kdf = ks.DataFrame(
+        pdf = pd.DataFrame(
             [[1, 2], [4, 5], [7, 8]],
             index=["cobra", "viper", "sidewinder"],
             columns=["max_speed", "shield"],
         )
-        pdf = kdf.to_pandas()
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.keys(), pdf.keys())
 
@@ -3294,12 +3294,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.quantile(0.5, numeric_only=False)
 
     def test_pct_change(self):
-        kdf = ks.DataFrame(
+        pdf = pd.DataFrame(
             {"a": [1, 2, 3, 2], "b": [4.0, 2.0, 3.0, 1.0], "c": [300, 200, 400, 200]},
             index=np.random.rand(4),
         )
-        kdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        pdf = kdf.to_pandas()
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(repr(kdf.pct_change(2)), repr(pdf.pct_change(2)))
 
@@ -3316,8 +3316,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.mask(1)
 
     def test_query(self):
-        kdf = ks.DataFrame({"A": range(1, 6), "B": range(10, 0, -2), "C": range(10, 5, -1)})
-        pdf = kdf.to_pandas()
+        pdf = pd.DataFrame({"A": range(1, 6), "B": range(10, 0, -2), "C": range(10, 5, -1)})
+        kdf = ks.from_pandas(pdf)
 
         exprs = ("A > B", "A < C", "C == B")
         for expr in exprs:

@@ -971,10 +971,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_difference(self):
         # Index
-        kidx1 = ks.Index([1, 2, 3, 4], name="koalas")
-        kidx2 = ks.Index([3, 4, 5, 6], name="koalas")
-        pidx1 = kidx1.to_pandas()
-        pidx2 = kidx2.to_pandas()
+        pidx1 = pd.Index([1, 2, 3, 4], name="koalas")
+        pidx2 = pd.Index([3, 4, 5, 6], name="koalas")
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
         self.assert_eq(
@@ -1011,14 +1011,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx1.difference(kidx2, sort=1)
 
         # MultiIndex
-        kidx1 = ks.MultiIndex.from_tuples(
+        pidx1 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["hello", "koalas", "world"]
         )
-        kidx2 = ks.MultiIndex.from_tuples(
+        pidx2 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "z", 2), ("k", "z", 3)], names=["hello", "koalas", "world"]
         )
-        pidx1 = kidx1.to_pandas()
-        pidx2 = kidx2.to_pandas()
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
         self.assert_eq(

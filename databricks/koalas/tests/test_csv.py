@@ -129,7 +129,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             def check(header="infer", names=None, usecols=None):
                 expected = pd.read_csv(fn, header=header, names=names, usecols=usecols)
                 actual = ks.read_csv(fn, header=header, names=names, usecols=usecols)
-                self.assertPandasAlmostEqual(expected, actual.toPandas())
+                self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
             check()
             check(header=None)
@@ -148,7 +148,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             # check with pyspark patch.
             expected = pd.read_csv(fn)
             actual = ks.read_csv(fn)
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
             self.assertRaisesRegex(
                 ValueError, "non-unique", lambda: ks.read_csv(fn, names=["n", "n"])
@@ -185,7 +185,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             # check with index_col
             expected = pd.read_csv(fn).set_index("name")
             actual = ks.read_csv(fn, index_col="name")
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
     def test_read_with_spark_schema(self):
         with self.csv_file(self.csv_text_2) as fn:
@@ -197,7 +197,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         with self.csv_file(self.csv_text_with_comments) as fn:
             expected = pd.read_csv(fn, comment="#")
             actual = ks.read_csv(fn, comment="#")
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
             self.assertRaisesRegex(
                 ValueError,
@@ -224,23 +224,23 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         with self.csv_file(self.csv_text_with_comments) as fn:
             expected = pd.read_csv(fn, comment="#", nrows=2)
             actual = ks.read_csv(fn, comment="#", nrows=2)
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
     def test_read_csv_with_sep(self):
         with self.csv_file(self.tab_delimited_csv_text) as fn:
             expected = pd.read_csv(fn, sep="\t")
             actual = ks.read_csv(fn, sep="\t")
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
     def test_read_csv_with_squeeze(self):
         with self.csv_file(self.csv_text) as fn:
             expected = pd.read_csv(fn, squeeze=True, usecols=["name"])
             actual = ks.read_csv(fn, squeeze=True, usecols=["name"])
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
             expected = pd.read_csv(fn, squeeze=True, usecols=["name", "amount"])
             actual = ks.read_csv(fn, squeeze=True, usecols=["name", "amount"])
-            self.assertPandasAlmostEqual(expected, actual.toPandas())
+            self.assertPandasAlmostEqual(expected, actual.to_pandas())
 
     def test_read_csv_with_mangle_dupe_cols(self):
         self.assertRaisesRegex(
