@@ -6535,14 +6535,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         how: Type of merge to be performed.
             {'left', 'right', 'outer', 'inner'}, default 'inner'
 
-            left: use only keys from left frame, similar to a SQL left outer join; preserve key
-                order.
-            right: use only keys from right frame, similar to a SQL right outer join; preserve key
-                order.
+            left: use only keys from left frame, similar to a SQL left outer join; not preserve
+                key order unlike pandas.
+            right: use only keys from right frame, similar to a SQL right outer join; not preserve
+                key order unlike pandas.
             outer: use union of keys from both frames, similar to a SQL full outer join; sort keys
                 lexicographically.
             inner: use intersection of keys from both frames, similar to a SQL inner join;
-                preserve the order of the left keys.
+                not preserve the order of the left keys unlike pandas.
         on: Column or index level names to join on. These must be found in both DataFrames. If on
             is None and not merging on indexes then this defaults to the intersection of the
             columns in both DataFrames.
@@ -6911,8 +6911,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         K3   A3  None
 
         Another option to join using the key columns is to use the on parameter. DataFrame.join
-        always uses right’s index but we can use any column in df. This method preserves the
-        original DataFrame’s index in the result.
+        always uses right’s index but we can use any column in df. This method not preserve the
+        original DataFrame’s index in the result unlike pandas.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
         >>> join_kdf.index.sort_values()
