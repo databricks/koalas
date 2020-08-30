@@ -12,3 +12,4 @@ API Reference
     window
     groupby
     ml
+    extensions

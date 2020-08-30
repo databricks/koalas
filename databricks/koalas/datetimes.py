@@ -112,7 +112,7 @@ class DatetimeMethods(object):
         def pandas_microsecond(s) -> "ks.Series[np.int64]":
             return s.dt.microsecond
 
-        return self._data.transform_batch(pandas_microsecond)
+        return self._data.koalas.transform_batch(pandas_microsecond)
 
     @property
     def nanosecond(self) -> "ks.Series":
@@ -167,13 +167,13 @@ class DatetimeMethods(object):
         2017-01-06    4
         2017-01-07    5
         2017-01-08    6
-        Name: 0, dtype: int64
+        dtype: int64
         """
 
         def pandas_dayofweek(s) -> "ks.Series[np.int64]":
             return s.dt.dayofweek
 
-        return self._data.transform_batch(pandas_dayofweek)
+        return self._data.koalas.transform_batch(pandas_dayofweek)
 
     @property
     def weekday(self) -> "ks.Series":
@@ -190,7 +190,7 @@ class DatetimeMethods(object):
         def pandas_dayofyear(s) -> "ks.Series[np.int64]":
             return s.dt.dayofyear
 
-        return self._data.transform_batch(pandas_dayofyear)
+        return self._data.koalas.transform_batch(pandas_dayofyear)
 
     @property
     def quarter(self) -> "ks.Series":
@@ -201,7 +201,7 @@ class DatetimeMethods(object):
         def pandas_quarter(s) -> "ks.Series[np.int64]":
             return s.dt.quarter
 
-        return self._data.transform_batch(pandas_quarter)
+        return self._data.koalas.transform_batch(pandas_quarter)
 
     @property
     def is_month_start(self) -> "ks.Series":
@@ -228,19 +228,19 @@ class DatetimeMethods(object):
         0   2018-02-27
         1   2018-02-28
         2   2018-03-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> s.dt.is_month_start
         0    False
         1    False
         2     True
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_is_month_start(s) -> "ks.Series[bool]":
             return s.dt.is_month_start
 
-        return self._data.transform_batch(pandas_is_month_start)
+        return self._data.koalas.transform_batch(pandas_is_month_start)
 
     @property
     def is_month_end(self) -> "ks.Series":
@@ -267,19 +267,19 @@ class DatetimeMethods(object):
         0   2018-02-27
         1   2018-02-28
         2   2018-03-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> s.dt.is_month_end
         0    False
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_is_month_end(s) -> "ks.Series[bool]":
             return s.dt.is_month_end
 
-        return self._data.transform_batch(pandas_is_month_end)
+        return self._data.koalas.transform_batch(pandas_is_month_end)
 
     @property
     def is_quarter_start(self) -> "ks.Series":
@@ -329,7 +329,7 @@ class DatetimeMethods(object):
         def pandas_is_quarter_start(s) -> "ks.Series[bool]":
             return s.dt.is_quarter_start
 
-        return self._data.transform_batch(pandas_is_quarter_start)
+        return self._data.koalas.transform_batch(pandas_is_quarter_start)
 
     @property
     def is_quarter_end(self) -> "ks.Series":
@@ -379,7 +379,7 @@ class DatetimeMethods(object):
         def pandas_is_quarter_end(s) -> "ks.Series[bool]":
             return s.dt.is_quarter_end
 
-        return self._data.transform_batch(pandas_is_quarter_end)
+        return self._data.koalas.transform_batch(pandas_is_quarter_end)
 
     @property
     def is_year_start(self) -> "ks.Series":
@@ -406,19 +406,19 @@ class DatetimeMethods(object):
         0   2017-12-30
         1   2017-12-31
         2   2018-01-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> dates.dt.is_year_start
         0    False
         1    False
         2     True
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_is_year_start(s) -> "ks.Series[bool]":
             return s.dt.is_year_start
 
-        return self._data.transform_batch(pandas_is_year_start)
+        return self._data.koalas.transform_batch(pandas_is_year_start)
 
     @property
     def is_year_end(self) -> "ks.Series":
@@ -445,19 +445,19 @@ class DatetimeMethods(object):
         0   2017-12-30
         1   2017-12-31
         2   2018-01-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> dates.dt.is_year_end
         0    False
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_is_year_end(s) -> "ks.Series[bool]":
             return s.dt.is_year_end
 
-        return self._data.transform_batch(pandas_is_year_end)
+        return self._data.koalas.transform_batch(pandas_is_year_end)
 
     @property
     def is_leap_year(self) -> "ks.Series":
@@ -484,19 +484,19 @@ class DatetimeMethods(object):
         0   2012-12-31
         1   2013-12-31
         2   2014-12-31
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> dates_series.dt.is_leap_year
         0     True
         1    False
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_is_leap_year(s) -> "ks.Series[bool]":
             return s.dt.is_leap_year
 
-        return self._data.transform_batch(pandas_is_leap_year)
+        return self._data.koalas.transform_batch(pandas_is_leap_year)
 
     @property
     def daysinmonth(self) -> "ks.Series":
@@ -507,7 +507,7 @@ class DatetimeMethods(object):
         def pandas_daysinmonth(s) -> "ks.Series[np.int64]":
             return s.dt.daysinmonth
 
-        return self._data.transform_batch(pandas_daysinmonth)
+        return self._data.koalas.transform_batch(pandas_daysinmonth)
 
     @property
     def days_in_month(self) -> "ks.Series":
@@ -561,13 +561,13 @@ class DatetimeMethods(object):
         0   2012-01-31
         1   2012-02-29
         2   2012-03-31
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
 
         def pandas_normalize(s) -> "ks.Series[np.datetime64]":
             return s.dt.normalize()
 
-        return self._data.transform_batch(pandas_normalize)
+        return self._data.koalas.transform_batch(pandas_normalize)
 
     def strftime(self, date_format) -> "ks.Series":
         """
@@ -603,19 +603,19 @@ class DatetimeMethods(object):
         0   2018-03-10 09:00:00
         1   2018-03-10 09:00:01
         2   2018-03-10 09:00:02
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.strftime('%B %d, %Y, %r')
         0    March 10, 2018, 09:00:00 AM
         1    March 10, 2018, 09:00:01 AM
         2    March 10, 2018, 09:00:02 AM
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_strftime(s) -> "ks.Series[str]":
             return s.dt.strftime(date_format)
 
-        return self._data.transform_batch(pandas_strftime)
+        return self._data.koalas.transform_batch(pandas_strftime)
 
     def round(self, freq, *args, **kwargs) -> "ks.Series":
         """
@@ -658,19 +658,19 @@ class DatetimeMethods(object):
         0   2018-01-01 11:59:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:01:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.round("H")
         0   2018-01-01 12:00:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:00:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
 
         def pandas_round(s) -> "ks.Series[np.datetime64]":
             return s.dt.round(freq, *args, **kwargs)
 
-        return self._data.transform_batch(pandas_round)
+        return self._data.koalas.transform_batch(pandas_round)
 
     def floor(self, freq, *args, **kwargs) -> "ks.Series":
         """
@@ -713,19 +713,19 @@ class DatetimeMethods(object):
         0   2018-01-01 11:59:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:01:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.floor("H")
         0   2018-01-01 11:00:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:00:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
 
         def pandas_floor(s) -> "ks.Series[np.datetime64]":
             return s.dt.floor(freq, *args, **kwargs)
 
-        return self._data.transform_batch(pandas_floor)
+        return self._data.koalas.transform_batch(pandas_floor)
 
     def ceil(self, freq, *args, **kwargs) -> "ks.Series":
         """
@@ -768,19 +768,19 @@ class DatetimeMethods(object):
         0   2018-01-01 11:59:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:01:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.ceil("H")
         0   2018-01-01 12:00:00
         1   2018-01-01 12:00:00
         2   2018-01-01 13:00:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
 
         def pandas_ceil(s) -> "ks.Series[np.datetime64]":
             return s.dt.ceil(freq, *args, **kwargs)
 
-        return self._data.transform_batch(pandas_ceil)
+        return self._data.koalas.transform_batch(pandas_ceil)
 
     def month_name(self, locale=None) -> "ks.Series":
         """
@@ -804,19 +804,19 @@ class DatetimeMethods(object):
         0   2018-01-31
         1   2018-02-28
         2   2018-03-31
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.month_name()
         0     January
         1    February
         2       March
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_month_name(s) -> "ks.Series[str]":
             return s.dt.month_name(locale=locale)
 
-        return self._data.transform_batch(pandas_month_name)
+        return self._data.koalas.transform_batch(pandas_month_name)
 
     def day_name(self, locale=None) -> "ks.Series":
         """
@@ -840,16 +840,16 @@ class DatetimeMethods(object):
         0   2018-01-01
         1   2018-01-02
         2   2018-01-03
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.day_name()
         0       Monday
         1      Tuesday
         2    Wednesday
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_day_name(s) -> "ks.Series[str]":
             return s.dt.day_name(locale=locale)
 
-        return self._data.transform_batch(pandas_day_name)
+        return self._data.koalas.transform_batch(pandas_day_name)

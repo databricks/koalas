@@ -25,6 +25,7 @@ from typing import Union
 import pandas as pd
 
 from databricks.koalas import config, namespace, sql
+from databricks.koalas.accessors import KoalasFrameMethods
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
@@ -88,6 +89,7 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         CachedSparkFrameMethods,
         SparkFrameMethods,
         SparkIndexOpsMethods,
+        KoalasFrameMethods,
     ]
 
     try:

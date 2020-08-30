@@ -22,8 +22,6 @@ from inspect import Signature
 import logging
 from typing import Any, Optional
 
-from pyspark.util import _exception_message
-
 
 def get_logger() -> Any:
     """ An entry point of the plug-in and return the usage logger. """
@@ -101,7 +99,7 @@ class KoalasUsageLogger(object):
                 class_name=class_name,
                 name=name,
                 signature=_format_signature(signature),
-                msg=_exception_message(ex),
+                msg=str(ex),
                 duration=duration * 1000,
                 function="function" if signature is not None else "property",
             )

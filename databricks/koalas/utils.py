@@ -20,7 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Callable, Dict, List, Tuple, Union, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -82,20 +82,24 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
     """
     from databricks.koalas.config import get_option
     from databricks.koalas.frame import DataFrame
-    from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
+    from databricks.koalas.internal import (
+        InternalFrame,
+        NATURAL_ORDER_COLUMN_NAME,
+        SPARK_INDEX_NAME_FORMAT,
+    )
     from databricks.koalas.series import Series
 
     if all(isinstance(arg, Series) for arg in args):
         assert all(
             same_anchor(arg, args[0]) for arg in args
         ), "Currently only one different DataFrame (from given Series) is supported"
-        if same_anchor(this, args[0]):
-            return  # We don't need to combine. All series is in this.
+        assert not same_anchor(this, args[0]), "We don't need to combine. All series is in this."
         that = args[0]._kdf[list(args)]
     elif len(args) == 1 and isinstance(args[0], DataFrame):
         assert isinstance(args[0], DataFrame)
-        if same_anchor(this, args[0]):
-            return  # We don't need to combine. `this` and `that` are same.
+        assert not same_anchor(
+            this, args[0]
+        ), "We don't need to combine. `this` and `that` are same."
         that = args[0]
     else:
         raise AssertionError("args should be single DataFrame or " "single/multiple Series")
@@ -116,7 +120,10 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         that_sdf = that._internal.resolved_copy.spark_frame.alias("that")
 
         # If the same named index is found, that's used.
-        for (this_column, this_name), (that_column, that_name) in this_and_that_index_map:
+        index_column_names = []
+        for i, ((this_column, this_name), (that_column, that_name)) in enumerate(
+            this_and_that_index_map
+        ):
             if this_name == that_name:
                 # We should merge the Spark columns into one
                 # to mimic pandas' behavior.
@@ -124,8 +131,11 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
                 that_scol = scol_for(that_sdf, that_column)
                 join_scol = this_scol == that_scol
                 join_scols.append(join_scol)
+
+                column_name = SPARK_INDEX_NAME_FORMAT(i)
+                index_column_names.append(column_name)
                 merged_index_scols.append(
-                    F.when(this_scol.isNotNull(), this_scol).otherwise(that_scol).alias(this_column)
+                    F.when(this_scol.isNotNull(), this_scol).otherwise(that_scol).alias(column_name)
                 )
             else:
                 raise ValueError("Index names must be exactly matched currently.")
@@ -156,20 +166,23 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             + order_column
         )
 
-        index_columns = set(this._internal.index_spark_column_names)
+        index_columns = set(index_column_names)
         new_data_columns = [
             col
             for col in joined_df.columns
             if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
         ]
         level = max(this._internal.column_labels_level, that._internal.column_labels_level)
+
+        def fill_label(label):
+            if label is None:
+                return ([""] * (level - 1)) + [None]
+            else:
+                return ([""] * (level - len(label))) + list(label)
+
         column_labels = [
-            tuple(["this"] + ([""] * (level - len(label))) + list(label))
-            for label in this._internal.column_labels
-        ] + [
-            tuple(["that"] + ([""] * (level - len(label))) + list(label))
-            for label in that._internal.column_labels
-        ]
+            tuple(["this"] + fill_label(label)) for label in this._internal.column_labels
+        ] + [tuple(["that"] + fill_label(label)) for label in that._internal.column_labels]
         column_label_names = (
             (
                 ([None] * (1 + level - len(this._internal.column_labels_level)))
@@ -179,8 +192,9 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             else None
         )
         return DataFrame(
-            this._internal.copy(
+            InternalFrame(
                 spark_frame=joined_df,
+                index_map=OrderedDict(zip(index_column_names, this._internal.index_names)),
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
                 column_label_names=column_label_names,
@@ -342,7 +356,8 @@ def align_diff_series(func, this_series, *args, how="full"):
     )
 
     internal = combined._internal.copy(
-        column_labels=this_series._internal.column_labels, data_spark_columns=[scol]
+        column_labels=this_series._internal.column_labels,
+        data_spark_columns=[scol.alias(name_like_string(this_series.name))],
     )
     return first_series(DataFrame(internal))
 
@@ -487,7 +502,7 @@ def column_labels_level(column_labels: List[Tuple[str, ...]]) -> int:
         return list(levels)[0]
 
 
-def name_like_string(name: Union[str, Tuple]) -> str:
+def name_like_string(name: Optional[Union[str, Tuple]]) -> str:
     """
     Return the name-like strings from str or tuple of str
 
@@ -505,7 +520,9 @@ def name_like_string(name: Union[str, Tuple]) -> str:
     >>> name_like_string(name)
     '(a, b, c)'
     """
-    if is_list_like(name):
+    if name is None:
+        name = ("__none__",)
+    elif is_list_like(name):
         name = tuple([str(n) for n in name])
     else:
         name = (str(name),)

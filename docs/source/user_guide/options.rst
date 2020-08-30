@@ -221,7 +221,7 @@ This is conceptually equivalent to the PySpark example as below:
     different dataframes because it is not guaranteed to have the same indexes in two dataframes.
     If you use this default index and turn on `compute.ops_on_diff_frames`, the result
     from the operations between two different DataFrames will likely be an unexpected
-    output due to the indeterministic index values. 
+    output due to the indeterministic index values.
 
 
 Available options
@@ -230,7 +230,7 @@ Available options
 =============================== ============== =====================================================
 Option                          Default        Description
 =============================== ============== =====================================================
-display.max_rows                1000           This sets the maximum number of rows koalas should
+display.max_rows                1000           This sets the maximum number of rows Koalas should
                                                output when printing out various output. For example,
                                                this value determines the number of rows to be shown
                                                at the repr() in a dataframe. Set `None` to unlimit
@@ -268,4 +268,8 @@ plotting.sample_ratio           None           'plotting.sample_ratio' sets the 
                                                that will be plotted for sample-based plots such as
                                                `plot.line` and `plot.area`. This option defaults to
                                                'plotting.max_rows' option.
+plotting.backend                'matplotlib'   Backend to use for plotting. Default is matplotlib.
+                                               Supports any package that has a top-level `.plot`
+                                               method. Some options are: [matplotlib, plotly,
+                                               pandas_bokeh, pandas_altair].
 =============================== ============== =====================================================

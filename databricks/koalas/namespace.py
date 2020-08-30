@@ -20,14 +20,20 @@ Wrappers around spark that correspond to common pandas functions.
 from typing import Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
+from distutils.version import LooseVersion
 from functools import reduce
-import itertools
+from io import BytesIO
+import json
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     ByteType,
     ShortType,
@@ -46,14 +52,19 @@ from pyspark.sql.types import (
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import (
+    align_diff_frames,
     default_session,
     name_like_string,
+    same_anchor,
     scol_for,
     validate_axis,
-    align_diff_frames,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
-from databricks.koalas.internal import InternalFrame, SPARK_DEFAULT_SERIES_NAME
+from databricks.koalas.internal import (
+    InternalFrame,
+    SPARK_INDEX_NAME_FORMAT,
+    SPARK_DEFAULT_SERIES_NAME,
+)
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.indexes import Index
 
@@ -150,7 +161,7 @@ def range(
     --------
     When the first parameter is specified, we generate a range of values up till that number.
 
-    >>> ks.range(5)
+    >>> ks.range(5).sort_index()
        id
     0   0
     1   1
@@ -160,7 +171,7 @@ def range(
 
     When start, end, and step are specified:
 
-    >>> ks.range(start = 100, end = 200, step = 20)
+    >>> ks.range(start = 100, end = 200, step = 20).sort_index()
         id
     0  100
     1  120
@@ -182,6 +193,7 @@ def read_csv(
     squeeze=False,
     mangle_dupe_cols=True,
     dtype=None,
+    nrows=None,
     parse_dates=False,
     quotechar=None,
     escapechar=None,
@@ -227,6 +239,8 @@ def read_csv(
     dtype : Type name or dict of column -> type, default None
         Data type for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32} Use str or object
         together with suitable na_values settings to preserve and not interpret dtype.
+    nrows : int, default None
+        Number of rows to read from the CSV file.
     parse_dates : boolean or list of ints or names or list of lists or dict, default `False`.
         Currently only `False` is allowed.
     quotechar : str (length 1), optional
@@ -339,6 +353,9 @@ def read_csv(
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
+
+    if nrows is not None:
+        sdf = sdf.limit(nrows)
 
     index_map = _get_index_map(sdf, index_col)
     kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
@@ -612,7 +629,7 @@ def read_spark_io(
     return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
 
 
-def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
+def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **options) -> DataFrame:
     """Load a parquet object from the file path, returning a DataFrame.
 
     Parameters
@@ -623,6 +640,8 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         If not None, only these columns will be read from the file.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
+    pandas_metadata : bool, default: False
+        If True, try to respect the metadata if the Parquet file is written from pandas.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -659,6 +678,44 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
     if columns is not None:
         columns = list(columns)
 
+    index_names = None
+
+    if index_col is None and pandas_metadata:
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
+            raise ValueError("pandas_metadata is not supported with Spark < 3.0.")
+
+        # Try to read pandas metadata
+
+        @pandas_udf("index_col array<string>, index_names array<string>", PandasUDFType.SCALAR)
+        def read_index_metadata(pser):
+            binary = pser.iloc[0]
+            metadata = pq.ParquetFile(pa.BufferReader(binary)).metadata.metadata
+            if b"pandas" in metadata:
+                pandas_metadata = json.loads(metadata[b"pandas"].decode("utf8"))
+                if all(isinstance(col, str) for col in pandas_metadata["index_columns"]):
+                    index_col = []
+                    index_names = []
+                    for col in pandas_metadata["index_columns"]:
+                        index_col.append(col)
+                        for column in pandas_metadata["columns"]:
+                            if column["field_name"] == col:
+                                index_names.append(column["name"])
+                                break
+                        else:
+                            index_names.append(None)
+                    return pd.DataFrame({"index_col": [index_col], "index_names": [index_names]})
+            return pd.DataFrame({"index_col": [None], "index_names": [None]})
+
+        index_col, index_names = (
+            default_session()
+            .read.format("binaryFile")
+            .load(path)
+            .limit(1)
+            .select(read_index_metadata("content").alias("index_metadata"))
+            .select("index_metadata.*")
+            .head()
+        )
+
     kdf = read_spark_io(path=path, format="parquet", options=options, index_col=index_col)
 
     if columns is not None:
@@ -668,7 +725,10 @@ def read_parquet(path, columns=None, index_col=None, **options) -> DataFrame:
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
             index_map = _get_index_map(sdf, index_col)
-            return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+            kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+
+    if index_names is not None:
+        kdf.index.names = index_names
 
     return kdf
 
@@ -731,9 +791,12 @@ def read_excel(
     Parameters
     ----------
     io : str, file descriptor, pathlib.Path, ExcelFile or xlrd.Book
-        The string could be a URL. Valid URL schemes include http, ftp, s3,
-        gcs, and file. For file URLs, a host is expected. For instance, a local
-        file could be /path/to/workbook.xlsx.
+        The string could be a URL. The value URL must be available in Spark's DataFrameReader.
+
+        .. note::
+            If the underlying Spark is below 3.0, the parameter as a string is not supported.
+            You can use `ks.from_pandas(pd.read_excel(...))` as a workaround.
+
     sheet_name : str, int, list, or None, default 0
         Strings are used for sheet names. Integers are used in zero-indexed
         sheet positions. Lists of strings/integers are used to request
@@ -918,37 +981,100 @@ def read_excel(
     1  string2    2.0
     2     None    NaN
     """
-    pdfs = pd.read_excel(
-        io=io,
-        sheet_name=sheet_name,
-        header=header,
-        names=names,
-        index_col=index_col,
-        usecols=usecols,
-        squeeze=squeeze,
-        dtype=dtype,
-        engine=engine,
-        converters=converters,
-        true_values=true_values,
-        false_values=false_values,
-        skiprows=skiprows,
-        nrows=nrows,
-        na_values=na_values,
-        keep_default_na=keep_default_na,
-        verbose=verbose,
-        parse_dates=parse_dates,
-        date_parser=date_parser,
-        thousands=thousands,
-        comment=comment,
-        skipfooter=skipfooter,
-        convert_float=convert_float,
-        mangle_dupe_cols=mangle_dupe_cols,
-        **kwds
-    )
-    if isinstance(pdfs, dict):
-        return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
+
+    def pd_read_excel(io_or_bin, sn):
+        return pd.read_excel(
+            io=BytesIO(io_or_bin) if isinstance(io_or_bin, (bytes, bytearray)) else io_or_bin,
+            sheet_name=sn,
+            header=header,
+            names=names,
+            index_col=index_col,
+            usecols=usecols,
+            squeeze=squeeze,
+            dtype=dtype,
+            engine=engine,
+            converters=converters,
+            true_values=true_values,
+            false_values=false_values,
+            skiprows=skiprows,
+            nrows=nrows,
+            na_values=na_values,
+            keep_default_na=keep_default_na,
+            verbose=verbose,
+            parse_dates=parse_dates,
+            date_parser=date_parser,
+            thousands=thousands,
+            comment=comment,
+            skipfooter=skipfooter,
+            convert_float=convert_float,
+            mangle_dupe_cols=mangle_dupe_cols,
+            **kwds
+        )
+
+    if isinstance(io, str):
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
+            raise ValueError(
+                "The `io` parameter as a string is not supported if the underlying Spark is "
+                "below 3.0. You can use `ks.from_pandas(pd.read_excel(...))` as a workaround"
+            )
+        # 'binaryFile' format is available since Spark 3.0.0.
+        binaries = default_session().read.format("binaryFile").load(io).select("content").head(2)
+        io_or_bin = binaries[0][0]
+        single_file = len(binaries) == 1
     else:
-        return from_pandas(pdfs)
+        io_or_bin = io
+        single_file = True
+
+    pdfs = pd_read_excel(io_or_bin, sn=sheet_name)
+
+    if single_file:
+        if isinstance(pdfs, dict):
+            return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
+        else:
+            return from_pandas(pdfs)
+    else:
+
+        def read_excel_on_spark(pdf, sn):
+
+            kdf = from_pandas(pdf)
+            return_schema = kdf._internal.to_internal_spark_frame.schema
+
+            def output_func(pdf):
+                pdf = pd.concat([pd_read_excel(bin, sn=sn) for bin in pdf[pdf.columns[0]]])
+
+                # TODO: deduplicate this logic with InternalFrame.from_pandas
+                new_index_columns = [
+                    SPARK_INDEX_NAME_FORMAT(i) for i in _range(len(pdf.index.names))
+                ]
+                new_data_columns = [name_like_string(col) for col in pdf.columns]
+
+                pdf.index.names = new_index_columns
+                reset_index = pdf.reset_index()
+                reset_index.columns = new_index_columns + new_data_columns
+                for name, col in reset_index.iteritems():
+                    dt = col.dtype
+                    if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+                        continue
+                    reset_index[name] = col.replace({np.nan: None})
+                pdf = reset_index
+
+                # Just positionally map the column names to given schema's.
+                return pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
+
+            sdf = (
+                default_session()
+                .read.format("binaryFile")
+                .load(io)
+                .select("content")
+                .mapInPandas(lambda iterator: map(output_func, iterator), schema=return_schema)
+            )
+
+            return DataFrame(kdf._internal.with_new_sdf(sdf))
+
+        if isinstance(pdfs, dict):
+            return OrderedDict([(sn, read_excel_on_spark(pdf, sn)) for sn, pdf in pdfs.items()])
+        else:
+            return read_excel_on_spark(pdfs, sheet_name)
 
 
 def read_html(
@@ -1317,7 +1443,7 @@ def to_datetime(
     >>> ks.to_datetime(df)
     0   2015-02-04
     1   2016-03-05
-    Name: 0, dtype: datetime64[ns]
+    dtype: datetime64[ns]
 
     If a date does not meet the `timestamp limitations
     <http://pandas.pydata.org/pandas-docs/stable/timeseries.html
@@ -1342,7 +1468,7 @@ def to_datetime(
     2    3/13/2000
     3    3/11/2000
     4    3/12/2000
-    Name: 0, dtype: object
+    dtype: object
 
     >>> import timeit
     >>> timeit.timeit(
@@ -1381,10 +1507,10 @@ def to_datetime(
         )
 
     if isinstance(arg, Series):
-        return arg.transform_batch(pandas_to_datetime)
+        return arg.koalas.transform_batch(pandas_to_datetime)
     if isinstance(arg, DataFrame):
         kdf = arg[["year", "month", "day"]]
-        return kdf.transform_batch(pandas_to_datetime)
+        return kdf.koalas.transform_batch(pandas_to_datetime)
     return pd.to_datetime(
         arg,
         errors=errors,
@@ -1500,8 +1626,8 @@ def get_dummies(
     if isinstance(data, Series):
         if prefix is not None:
             prefix = [str(prefix)]
-        column_labels = [(data.name,)]
-        kdf = data.to_dataframe()
+        kdf = data.to_frame()
+        column_labels = kdf._internal.column_labels
         remaining_columns = []
     else:
         if isinstance(prefix, str):
@@ -1610,7 +1736,7 @@ def get_dummies(
 
 
 # TODO: there are many parameters to implement and support. See pandas's pd.concat.
-def concat(objs, axis=0, join="outer", ignore_index=False):
+def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     """
     Concatenate pandas objects along a particular axis with optional set logic
     along the other axes.
@@ -1630,6 +1756,8 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
         concatenating objects where the concatenation axis does not have
         meaningful indexing information. Note the index values on the other
         axes are still respected in the join.
+    sort : bool, default False
+        Sort non-concatenation axis if it is not already aligned.
 
     Returns
     -------
@@ -1656,17 +1784,17 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     1    b
     0    c
     1    d
-    Name: 0, dtype: object
+    dtype: object
 
     Clear the existing index and reset it in the result
     by setting the ``ignore_index`` option to ``True``.
 
-    >>> ks.concat([s1, s2], ignore_index=True)
+    >>> ks.concat([s1, s2], ignore_index=True).sort_index()
     0    a
     1    b
     2    c
     3    d
-    Name: 0, dtype: object
+    dtype: object
 
     Combine two ``DataFrame`` objects with identical columns.
 
@@ -1692,14 +1820,12 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     Combine ``DataFrame`` and ``Series`` objects with different columns.
 
-    >>> ks.concat([df2, s1, s2])
-          0 letter  number
-    0  None      c     3.0
-    1  None      d     4.0
-    0     a   None     NaN
-    1     b   None     NaN
-    0     c   None     NaN
-    1     d   None     NaN
+    >>> ks.concat([df2, s1])
+      letter  number     0
+    0      c     3.0  None
+    1      d     4.0  None
+    0   None     NaN     a
+    1   None     NaN     b
 
     Combine ``DataFrame`` objects with overlapping columns
     and return everything. Columns outside the intersection will
@@ -1713,6 +1839,15 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     1      d       4    dog
 
     >>> ks.concat([df1, df3])
+      letter  number animal
+    0      a       1   None
+    1      b       2   None
+    0      c       3    cat
+    1      d       4    dog
+
+    Sort the columns.
+
+    >>> ks.concat([df1, df3], sort=True)
       animal letter  number
     0   None      a       1
     1   None      b       2
@@ -1735,11 +1870,10 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     Combine with column axis.
 
-    >>> ks.concat([df1, df4], axis=1)
+    >>> ks.concat([df1, df4], axis=1).sort_index()
       letter  number  animal    name
     0      a       1    bird   polly
     1      b       2  monkey  george
-
     """
     if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
         objs, Iterable
@@ -1765,60 +1899,67 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 "and ks.DataFrame are valid".format(name=type(objs).__name__)
             )
 
+    if join not in ["inner", "outer"]:
+        raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
+
     axis = validate_axis(axis)
     if axis == 1:
-        if isinstance(objs[0], ks.Series):
-            concat_kdf = objs[0].to_frame()
-        else:
-            concat_kdf = objs[0]
+        kdfs = [obj.to_frame() if isinstance(obj, Series) else obj for obj in objs]
 
-        with ks.option_context("compute.ops_on_diff_frames", True):
+        level = min(kdf._internal.column_labels_level for kdf in kdfs)
+        kdfs = [
+            DataFrame._index_normalized_frame(level, kdf)
+            if kdf._internal.column_labels_level > level
+            else kdf
+            for kdf in kdfs
+        ]
 
-            def resolve_func(kdf, this_column_labels, that_column_labels):
-                duplicated_names = set(
-                    this_column_label[1:] for this_column_label in this_column_labels
-                ).intersection(
-                    set(that_column_label[1:] for that_column_label in that_column_labels)
-                )
-                assert (
-                    len(duplicated_names) > 0
-                ), "inner or full join type does not include non-common columns"
-                pretty_names = [name_like_string(column_label) for column_label in duplicated_names]
+        concat_kdf = kdfs[0]
+        column_labels = concat_kdf._internal.column_labels.copy()
+
+        kdfs_not_same_anchor = []
+        for kdf in kdfs[1:]:
+            duplicated = [label for label in kdf._internal.column_labels if label in column_labels]
+            if len(duplicated) > 0:
+                pretty_names = [name_like_string(label) for label in duplicated]
                 raise ValueError(
-                    "Labels have to be unique; however, got " "duplicated labels %s." % pretty_names
+                    "Labels have to be unique; however, got duplicated labels %s." % pretty_names
                 )
+            column_labels.extend(kdf._internal.column_labels)
 
-            for kser_or_kdf in objs[1:]:
-                if isinstance(kser_or_kdf, Series):
-                    # TODO: there is a corner case to optimize - when the series are from
-                    #   the same DataFrame.
-                    that_kdf = kser_or_kdf.to_frame()
-                else:
-                    that_kdf = kser_or_kdf
-
-                this_index_level = concat_kdf._internal.column_labels_level
-                that_index_level = that_kdf._internal.column_labels_level
-
-                if this_index_level > that_index_level:
-                    concat_kdf = that_kdf._index_normalized_frame(concat_kdf)
-                if this_index_level < that_index_level:
-                    that_kdf = concat_kdf._index_normalized_frame(that_kdf)
-
-                if join == "inner":
-                    concat_kdf = align_diff_frames(
-                        resolve_func, concat_kdf, that_kdf, fillna=False, how="inner",
+            if same_anchor(concat_kdf, kdf):
+                concat_kdf = DataFrame(
+                    concat_kdf._internal.with_new_columns(
+                        concat_kdf._internal.data_spark_columns + kdf._internal.data_spark_columns,
+                        concat_kdf._internal.column_labels + kdf._internal.column_labels,
                     )
-                elif join == "outer":
-                    concat_kdf = align_diff_frames(
-                        resolve_func, concat_kdf, that_kdf, fillna=False, how="full",
-                    )
-                else:
-                    raise ValueError(
-                        "Only can inner (intersect) or outer (union) join the other axis."
-                    )
+                )
+            else:
+                kdfs_not_same_anchor.append(kdf)
+
+        if len(kdfs_not_same_anchor) > 0:
+            with ks.option_context("compute.ops_on_diff_frames", True):
+
+                def resolve_func(kdf, this_column_labels, that_column_labels):
+                    raise AssertionError("This should not happen.")
+
+                for kdf in kdfs_not_same_anchor:
+                    if join == "inner":
+                        concat_kdf = align_diff_frames(
+                            resolve_func, concat_kdf, kdf, fillna=False, how="inner",
+                        )
+                    elif join == "outer":
+                        concat_kdf = align_diff_frames(
+                            resolve_func, concat_kdf, kdf, fillna=False, how="full",
+                        )
+
+            concat_kdf = concat_kdf[column_labels]
 
         if ignore_index:
             concat_kdf.columns = list(map(str, _range(len(concat_kdf.columns))))
+
+        if sort:
+            concat_kdf = concat_kdf.sort_index()
 
         return concat_kdf
 
@@ -1829,9 +1970,13 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
     # DataFrame, Series ... & Series, Series ...
     # In this case, we should return DataFrame.
     new_objs = []
+    num_series = 0
+    series_names = set()
     for obj in objs:
         if isinstance(obj, Series):
-            obj = obj.rename(SPARK_DEFAULT_SERIES_NAME).to_dataframe()
+            num_series += 1
+            series_names.add(obj.name)
+            obj = obj.to_frame(SPARK_DEFAULT_SERIES_NAME)
         new_objs.append(obj)
     objs = new_objs
 
@@ -1854,35 +1999,47 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                     )
                 )
 
-    column_labelses_of_kdfs = [kdf._internal.column_labels for kdf in objs]
+    column_labels_of_kdfs = [kdf._internal.column_labels for kdf in objs]
     if ignore_index:
         index_names_of_kdfs = [[] for _ in objs]
     else:
         index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
     if all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs) and all(
-        idx == column_labelses_of_kdfs[0] for idx in column_labelses_of_kdfs
+        idx == column_labels_of_kdfs[0] for idx in column_labels_of_kdfs
     ):
         # If all columns are in the same order and values, use it.
         kdfs = objs
     else:
         if join == "inner":
-            interested_columns = set.intersection(*map(set, column_labelses_of_kdfs))
+            interested_columns = set.intersection(*map(set, column_labels_of_kdfs))
             # Keep the column order with its firsts DataFrame.
-            merged_columns = sorted(
-                list(
-                    map(
-                        lambda c: column_labelses_of_kdfs[0][column_labelses_of_kdfs[0].index(c)],
-                        interested_columns,
-                    )
-                )
-            )
+            merged_columns = [
+                label for label in column_labels_of_kdfs[0] if label in interested_columns
+            ]
+
+            # When multi-index column, although pandas is flaky if `join="inner" and sort=False`,
+            # always sort to follow the `join="outer"` case behavior.
+            if (len(merged_columns) > 0 and len(merged_columns[0]) > 1) or sort:
+                merged_columns = sorted(merged_columns)
 
             kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
-            # If there are columns unmatched, just sort the column names.
-            merged_columns = sorted(
-                list(set(itertools.chain.from_iterable(column_labelses_of_kdfs)))
-            )
+            merged_columns = []
+            for labels in column_labels_of_kdfs:
+                merged_columns.extend(label for label in labels if label not in merged_columns)
+
+            assert len(merged_columns) > 0
+
+            if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+                # Always sort when multi-index columns, and if there are Series, never sort.
+                sort = len(merged_columns[0]) > 1 or (num_series == 0 and sort)
+            else:
+                # Always sort when multi-index columns or there are more than two Series,
+                # and if there is only one Series, never sort.
+                sort = len(merged_columns[0]) > 1 or num_series > 1 or (num_series != 1 and sort)
+
+            if sort:
+                merged_columns = sorted(merged_columns)
 
             kdfs = []
             for kdf in objs:
@@ -1905,8 +2062,6 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
                 )
 
                 kdfs.append(kdf[merged_columns])
-        else:
-            raise ValueError("Only can inner (intersect) or outer (union) join the other axis.")
 
     if ignore_index:
         sdfs = [kdf._internal.spark_frame.select(kdf._internal.data_spark_columns) for kdf in kdfs]
@@ -1932,7 +2087,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False):
 
     if should_return_series:
         # If all input were Series, we should return Series.
-        return first_series(result_kdf)
+        if len(series_names) == 1:
+            name = series_names.pop()
+        else:
+            name = None
+        return first_series(result_kdf).rename(name)
     else:
         return result_kdf
 
@@ -2076,13 +2235,13 @@ def notna(obj):
     0    5.0
     1    6.0
     2    NaN
-    Name: 0, dtype: float64
+    dtype: float64
 
     >>> ks.notna(ser)
     0     True
     1     True
     2    False
-    Name: 0, dtype: bool
+    dtype: bool
 
     >>> ks.notna(ser.index)
     True
@@ -2256,13 +2415,13 @@ def to_numeric(arg):
     0    1.0
     1      2
     2     -3
-    Name: 0, dtype: object
+    dtype: object
 
     >>> ks.to_numeric(kser)
     0    1.0
     1    2.0
     2   -3.0
-    Name: 0, dtype: float32
+    dtype: float32
 
     If given Series contains invalid value to cast float, just cast it to `np.nan`
 
@@ -2272,14 +2431,14 @@ def to_numeric(arg):
     1      1.0
     2        2
     3       -3
-    Name: 0, dtype: object
+    dtype: object
 
     >>> ks.to_numeric(kser)
     0    NaN
     1    1.0
     2    2.0
     3   -3.0
-    Name: 0, dtype: float32
+    dtype: float32
 
     Also support for list, tuple, np.array, or a scalar
 
@@ -2324,11 +2483,11 @@ def broadcast(obj):
     --------
     >>> df1 = ks.DataFrame({'lkey': ['foo', 'bar', 'baz', 'foo'],
     ...                     'value': [1, 2, 3, 5]},
-    ...                    columns=['lkey', 'value'])
+    ...                    columns=['lkey', 'value']).set_index('lkey')
     >>> df2 = ks.DataFrame({'rkey': ['foo', 'bar', 'baz', 'foo'],
     ...                     'value': [5, 6, 7, 8]},
-    ...                    columns=['rkey', 'value'])
-    >>> merged = df1.merge(ks.broadcast(df2), left_on='lkey', right_on='rkey')
+    ...                    columns=['rkey', 'value']).set_index('rkey')
+    >>> merged = df1.merge(ks.broadcast(df2), left_index=True, right_index=True)
     >>> merged.spark.explain()  # doctest: +ELLIPSIS
     == Physical Plan ==
     ...

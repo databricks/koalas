@@ -16,7 +16,6 @@
 
 import numpy as np
 import pandas as pd
-from distutils.version import LooseVersion
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
@@ -27,13 +26,15 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_stat_functions(self, pdf, kdf):
         functions = ["max", "min", "mean", "sum"]
         for funcname in functions:
-            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), almost=True)
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), almost=True)
+            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)())
 
         functions = ["std", "var"]
         for funcname in functions:
-            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), almost=True)
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), almost=True)
+            self.assert_eq(
+                getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), check_exact=False
+            )
+            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), check_exact=False)
 
         # NOTE: To test skew, kurt, and median, just make sure they run.
         #       The numbers are different in spark and pandas.
@@ -83,28 +84,25 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                 }
             )
             kdf = ks.from_pandas(pdf)
-            self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
-            self.assert_eq(kdf.var(axis=1), pdf.var(axis=1))
-            self.assert_eq(kdf.std(axis=1), pdf.std(axis=1))
-            self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
-            self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
-            self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
-            self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
-            self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
-            self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
+            self.assert_eq(kdf.count(axis=1).sort_index(), pdf.count(axis=1))
+            self.assert_eq(kdf.var(axis=1).sort_index(), pdf.var(axis=1))
+            self.assert_eq(kdf.std(axis=1).sort_index(), pdf.std(axis=1))
+            self.assert_eq(kdf.max(axis=1).sort_index(), pdf.max(axis=1))
+            self.assert_eq(kdf.min(axis=1).sort_index(), pdf.min(axis=1))
+            self.assert_eq(kdf.sum(axis=1).sort_index(), pdf.sum(axis=1))
+            self.assert_eq(kdf.kurtosis(axis=1).sort_index(), pdf.kurtosis(axis=1))
+            self.assert_eq(kdf.skew(axis=1).sort_index(), pdf.skew(axis=1))
+            self.assert_eq(kdf.mean(axis=1).sort_index(), pdf.mean(axis=1))
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
         with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
             # DataFrame
             # we do not handle NaNs for now
-            if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-                pdf = pd._testing.makeMissingDataframe(0.3, 42).fillna(0)
-            else:
-                pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
-            self.assert_eq(kdf.corr(), pdf.corr(), almost=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), check_exact=False)
 
             # Series
             pser_a = pdf.A
@@ -120,7 +118,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.columns = columns
             kdf.columns = columns
 
-            self.assert_eq(kdf.corr(), pdf.corr(), almost=True)
+            self.assert_eq(kdf.corr(), pdf.corr(), check_exact=False)
 
             # Series
             pser_xa = pdf[("X", "A")]
@@ -128,7 +126,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             kser_xa = kdf[("X", "A")]
             kser_xb = kdf[("X", "B")]
 
-            self.assertAlmostEqual(kser_xa.corr(kser_xb), pser_xa.corr(pser_xb))
+            self.assert_eq(kser_xa.corr(kser_xb), pser_xa.corr(pser_xb), almost=True)
 
     def test_cov_corr_meta(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
@@ -159,8 +157,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.sum(), pdf.sum())
         self.assert_eq(kdf.mean(), pdf.mean())
 
-        self.assert_eq(kdf.var(), pdf.var(), almost=True)
-        self.assert_eq(kdf.std(), pdf.std(), almost=True)
+        self.assert_eq(kdf.var(), pdf.var(), check_exact=False)
+        self.assert_eq(kdf.std(), pdf.std(), check_exact=False)
 
     def test_stats_on_boolean_series(self):
         pser = pd.Series([True, False, True])

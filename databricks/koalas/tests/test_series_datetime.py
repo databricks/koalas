@@ -13,12 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+import datetime
 import unittest
 
 import numpy as np
 import pandas as pd
-import pandas.testing as mt
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
@@ -40,20 +39,32 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         return ks.from_pandas(self.pd_start_date)
 
     def check_func(self, func):
-        mt.assert_series_equal(
-            func(self.ks_start_date).to_pandas(), func(self.pd_start_date), check_names=False
-        )
+        self.assert_eq(func(self.ks_start_date), func(self.pd_start_date))
 
-    @unittest.skip(
-        "It fails in certain OSs presumably due to different "
-        "timezone behaviours inherited from C library."
-    )
     def test_timestamp_subtraction(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
-        kdf["diff_seconds"] = kdf["end_date"] - kdf["start_date"] - 1
 
-        self.assertEqual(list(kdf["diff_seconds"].toPandas()), [35545499, 33644699, 31571099])
+        # Those fail in certain OSs presumably due to different
+        # timezone behaviours inherited from C library.
+
+        actual = (kdf["end_date"] - kdf["start_date"] - 1).to_pandas()
+        expected = ((pdf["end_date"] - pdf["start_date"]) // np.timedelta64(1, "s") - 1).rename(
+            "end_date"
+        )
+        # self.assert_eq(actual, expected)
+
+        actual = (kdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31") - 1).to_pandas()
+        expected = (pdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31")) // np.timedelta64(
+            1, "s"
+        ) - 1
+        # self.assert_eq(actual, expected)
+
+        actual = (pd.Timestamp("2013-3-11 21:45:00") - kdf["start_date"] - 1).to_pandas()
+        expected = (pd.Timestamp("2013-3-11 21:45:00") - pdf["start_date"]) // np.timedelta64(
+            1, "s"
+        ) - 1
+        # self.assert_eq(actual, expected)
 
         kdf = ks.DataFrame(
             {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
@@ -61,13 +72,30 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         expected_error_message = "datetime subtraction can only be applied to datetime series."
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kdf["a"] - kdf["b"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kdf["a"] - 1
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            1 - kdf["a"]
 
     def test_date_subtraction(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
-        kdf["diff_days"] = kdf["end_date"].dt.date - kdf["start_date"].dt.date
 
-        self.assert_eq(list(kdf["diff_days"].toPandas()), [411, 389, 365])
+        # TODO: Fix the Series name
+        self.assert_eq(
+            kdf["end_date"].dt.date - kdf["start_date"].dt.date,
+            (pdf["end_date"].dt.date - pdf["start_date"].dt.date).dt.days.rename("end_date"),
+        )
+
+        self.assert_eq(
+            kdf["end_date"].dt.date - datetime.date(2012, 1, 1),
+            (pdf["end_date"].dt.date - datetime.date(2012, 1, 1)).dt.days,
+        )
+
+        self.assert_eq(
+            datetime.date(2013, 3, 11) - kdf["start_date"].dt.date,
+            (datetime.date(2013, 3, 11) - pdf["start_date"].dt.date).dt.days,
+        )
 
         kdf = ks.DataFrame(
             {"a": pd.date_range("2016-12-31", "2017-01-08", freq="D"), "b": pd.Series(range(9))}
@@ -75,6 +103,10 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         expected_error_message = "date subtraction can only be applied to date series."
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kdf["a"].dt.date - kdf["b"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kdf["a"].dt.date - 1
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            1 - kdf["a"].dt.date
 
     @unittest.skip(
         "It fails in certain OSs presumably due to different "

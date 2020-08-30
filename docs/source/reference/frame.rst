@@ -63,6 +63,7 @@ Indexing, iteration
    DataFrame.iterrows
    DataFrame.keys
    DataFrame.pop
+   DataFrame.tail
    DataFrame.xs
    DataFrame.get
    DataFrame.where
@@ -104,7 +105,6 @@ Function application, GroupBy & Window
 
    DataFrame.apply
    DataFrame.applymap
-   DataFrame.apply_batch
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
@@ -112,7 +112,6 @@ Function application, GroupBy & Window
    DataFrame.rolling
    DataFrame.expanding
    DataFrame.transform
-   DataFrame.transform_batch
    DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
@@ -159,6 +158,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.drop
+   DataFrame.droplevel
    DataFrame.drop_duplicates
    DataFrame.duplicated
    DataFrame.equals
@@ -224,6 +224,7 @@ Time series-related
 
    DataFrame.shift
    DataFrame.first_valid_index
+   DataFrame.last_valid_index
 
 Serialization / IO / Conversion
 -------------------------------
@@ -252,8 +253,6 @@ Serialization / IO / Conversion
    DataFrame.to_latex
    DataFrame.style
 
-.. _api.dataframe.plot:
-
 Spark-related
 -------------
 ``DataFrame.spark`` provides features that does not exist in pandas but
@@ -273,8 +272,10 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.explain
    DataFrame.spark.apply
 
+.. _api.dataframe.plot:
+
 Plotting
--------------------------------
+--------
 ``DataFrame.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
 
@@ -292,3 +293,15 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.density
    DataFrame.hist
    DataFrame.kde
+
+Koalas-specific
+---------------
+``DataFrame.koalas`` provides Koalas-specific features that exists only in Koalas.
+These can be accessed by ``DataFrame.koalas.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.koalas.attach_id_column
+   DataFrame.koalas.apply_batch
+   DataFrame.koalas.transform_batch

@@ -138,6 +138,31 @@ this behavior. For instance, see below:
    ...
    Reference 'a' is ambiguous, could be: a, a.;
 
+Additionally, it is strongly discouraged to use case sensitive column names. Koalas disallows it by default.
+
+.. code-block:: python
+
+   >>> import databricks.koalas as ks
+   >>> kdf = ks.DataFrame({'a': [1, 2], 'A':[3, 4]})
+   ...
+   Reference 'a' is ambiguous, could be: a, a.;
+
+However, you can turn on ``spark.sql.caseSensitive`` in Spark configuration to enable it if you use on your own risk.
+
+.. code-block:: python
+
+   >>> from pyspark.sql import SparkSession
+   >>> builder = SparkSession.builder.appName("Koalas")
+   >>> builder = builder.config("spark.sql.caseSensitive", "true")
+   >>> builder.getOrCreate()
+
+   >>> import databricks.koalas as ks
+   >>> kdf = ks.DataFrame({'a': [1, 2], 'A':[3, 4]})
+   >>> kdf
+      a  A
+   0  1  3
+   1  2  4
+
 
 Specify the index column in conversion from Spark DataFrame to Koalas DataFrame
 -------------------------------------------------------------------------------
@@ -247,5 +272,4 @@ The example above can be also changed to directly using Koalas APIs as below:
    London      400.0
    New York    441.0
    Helsinki    144.0
-   Name: 0, dtype: float64
-
+   dtype: float64

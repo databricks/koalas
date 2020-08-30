@@ -48,10 +48,10 @@ setup(
     },
     python_requires='>=3.5,<3.9',
     install_requires=[
-        'pandas>=0.23.2',
+        'pandas>=0.23.2,<1.1.0',
         'pyarrow>=0.10',
-        'numpy>=1.14',
-        'matplotlib>=3.0.0',
+        'numpy>=1.14,<1.19.0',
+        'matplotlib>=3.0.0,<3.3.0',
     ],
     author="Databricks",
     author_email="koalas@databricks.com",

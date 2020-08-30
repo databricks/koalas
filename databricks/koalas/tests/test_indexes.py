@@ -75,7 +75,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         self.assert_eq(kidx.to_series(), pidx.to_series())
-        self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
+        self.assert_eq(repr(kidx.to_series(name="a")), repr(pidx.to_series(name="a")))
+
+        # With name
+        pidx.name = "Koalas"
+        kidx.name = "Koalas"
+        self.assert_eq(repr(kidx.to_series()), repr(pidx.to_series()))
+        self.assert_eq(repr(kidx.to_series(name=("x", "a"))), repr(pidx.to_series(name=("x", "a"))))
+
+        # With tupled name
+        pidx.name = ("x", "a")
+        kidx.name = ("x", "a")
+        self.assert_eq(repr(kidx.to_series()), repr(pidx.to_series()))
+        self.assert_eq(repr(kidx.to_series(name="a")), repr(pidx.to_series(name="a")))
 
         self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
 
@@ -86,24 +98,32 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.to_series(name=["x", "a"])
+
     def test_to_frame(self):
         pidx = self.pdf.index
         kidx = self.kdf.index
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(
+            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
+        )
 
         pidx.name = "a"
         kidx.name = "a"
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(
+            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
+        )
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
             self.assert_eq(repr(kidx.to_frame(name="x")), repr(pidx.to_frame(name="x")))
             self.assert_eq(
-                repr(kidx.to_frame(index=False, name="x")),
+                repr(kidx.to_frame(index=False, name="x").sort_index()),
                 repr(pidx.to_frame(index=False, name="x")),
             )
 
@@ -111,7 +131,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.set_index("b", append=True).index
 
         self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(repr(kidx.to_frame(index=False)), repr(pidx.to_frame(index=False)))
+        self.assert_eq(
+            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
+        )
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
@@ -119,7 +141,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 repr(kidx.to_frame(name=["x", "y"])), repr(pidx.to_frame(name=["x", "y"]))
             )
             self.assert_eq(
-                repr(kidx.to_frame(index=False, name=["x", "y"])),
+                repr(kidx.to_frame(index=False, name=["x", "y"]).sort_index()),
                 repr(pidx.to_frame(index=False, name=["x", "y"])),
             )
 
@@ -580,8 +602,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index([1, 2, None])
         kidx = ks.from_pandas(pidx)
 
-        self.assert_eq(pidx.fillna(0), kidx.fillna(0))
-        self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0))
+        self.assert_eq(pidx.fillna(0), kidx.fillna(0), almost=True)
+        self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0), almost=True)
 
         with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
             kidx.fillna([1, 2])
@@ -979,10 +1001,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_difference(self):
         # Index
-        kidx1 = ks.Index([1, 2, 3, 4], name="koalas")
-        kidx2 = ks.Index([3, 4, 5, 6], name="koalas")
-        pidx1 = kidx1.to_pandas()
-        pidx2 = kidx2.to_pandas()
+        pidx1 = pd.Index([1, 2, 3, 4], name="koalas")
+        pidx2 = pd.Index([3, 4, 5, 6], name="koalas")
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
         self.assert_eq(
@@ -1019,14 +1041,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx1.difference(kidx2, sort=1)
 
         # MultiIndex
-        kidx1 = ks.MultiIndex.from_tuples(
+        pidx1 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["hello", "koalas", "world"]
         )
-        kidx2 = ks.MultiIndex.from_tuples(
+        pidx2 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "z", 2), ("k", "z", 3)], names=["hello", "koalas", "world"]
         )
-        pidx1 = kidx1.to_pandas()
-        pidx2 = kidx2.to_pandas()
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
         self.assert_eq(
@@ -1057,7 +1079,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
 
         self.assert_eq(kmidx.repeat(3).sort_values(), pmidx.repeat(3).sort_values())
-        self.assert_eq(kmidx.repeat(0).sort_values(), pmidx.repeat(0).sort_values())
+        self.assert_eq(kmidx.repeat(0).sort_values(), pmidx.repeat(0).sort_values(), almost=True)
 
         self.assertRaises(ValueError, lambda: kmidx.repeat(-1))
         self.assertRaises(ValueError, lambda: kmidx.repeat("abc"))
@@ -1109,17 +1131,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
         self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
+        self.assert_eq(kidx1.union([3, 4, 5, 6]), pidx1.union([3, 4, 5, 6]), almost=True)
+        self.assert_eq(kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]), almost=True)
         self.assert_eq(
-            kidx1.union([3, 4, 5, 6]), pidx1.union([3, 4, 5, 6]),
+            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])), almost=True
         )
         self.assert_eq(
-            kidx2.union([1, 2, 3, 4]), pidx2.union([1, 2, 3, 4]),
-        )
-        self.assert_eq(
-            kidx1.union(ks.Series([3, 4, 5, 6])), pidx1.union(pd.Series([3, 4, 5, 6])),
-        )
-        self.assert_eq(
-            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])),
+            kidx2.union(ks.Series([1, 2, 3, 4])), pidx2.union(pd.Series([1, 2, 3, 4])), almost=True
         )
 
         # Testing if the result is correct after sort=False.
@@ -1136,18 +1154,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kidx1.union([3, 4, 5, 6], sort=False).sort_values(),
                 pidx1.union([3, 4, 5, 6], sort=False).sort_values(),
+                almost=True,
             )
             self.assert_eq(
                 kidx2.union([1, 2, 3, 4], sort=False).sort_values(),
                 pidx2.union([1, 2, 3, 4], sort=False).sort_values(),
+                almost=True,
             )
             self.assert_eq(
                 kidx1.union(ks.Series([3, 4, 5, 6]), sort=False).sort_values(),
                 pidx1.union(pd.Series([3, 4, 5, 6]), sort=False).sort_values(),
+                almost=True,
             )
             self.assert_eq(
                 kidx2.union(ks.Series([1, 2, 3, 4]), sort=False).sort_values(),
                 pidx2.union(pd.Series([1, 2, 3, 4]), sort=False).sort_values(),
+                almost=True,
             )
 
         # Duplicated values for Index is supported in pandas >= 1.0.0
@@ -1160,18 +1182,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx1.union(kidx2), pidx1.union(pidx2))
             self.assert_eq(kidx2.union(kidx1), pidx2.union(pidx1))
             self.assert_eq(
-                kidx1.union([3, 4, 3, 3, 5, 6]), pidx1.union([3, 4, 3, 4, 5, 6]),
+                kidx1.union([3, 4, 3, 3, 5, 6]), pidx1.union([3, 4, 3, 4, 5, 6]), almost=True
             )
             self.assert_eq(
-                kidx2.union([1, 2, 3, 4, 3, 4, 3, 4]), pidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+                kidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+                pidx2.union([1, 2, 3, 4, 3, 4, 3, 4]),
+                almost=True,
             )
             self.assert_eq(
                 kidx1.union(ks.Series([3, 4, 3, 3, 5, 6])),
                 pidx1.union(pd.Series([3, 4, 3, 4, 5, 6])),
+                almost=True,
             )
             self.assert_eq(
                 kidx2.union(ks.Series([1, 2, 3, 4, 3, 4, 3, 4])),
                 pidx2.union(pd.Series([1, 2, 3, 4, 3, 4, 3, 4])),
+                almost=True,
             )
 
         # MultiIndex
@@ -1382,3 +1408,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_tuples([(1, 2)], names=["level1", "level2"])
         with self.assertRaisesRegex(TypeError, "perform __abs__ with this index"):
             abs(kidx)
+
+    def test_hasnans(self):
+        # BooleanType
+        pidx = pd.Index([True, False, True, True])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.hasnans, kidx.hasnans)
+
+        pidx = pd.Index([True, False, np.nan, True])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.hasnans, kidx.hasnans)
+
+        # TimestampType
+        pser = pd.Series([pd.Timestamp("2020-07-30") for _ in range(3)])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)
+
+        pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.hasnans, kser.hasnans)

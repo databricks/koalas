@@ -38,7 +38,6 @@ class StringMethods(object):
         if not isinstance(series.spark.data_type, (StringType, BinaryType, ArrayType)):
             raise ValueError("Cannot call StringMethods on type {}".format(series.spark.data_type))
         self._data = series
-        self.name = self._data.name
 
     # Methods
     def capitalize(self) -> "ks.Series":
@@ -53,20 +52,20 @@ class StringMethods(object):
         1              CAPITALS
         2    this is a sentence
         3              SwApCaSe
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.capitalize()
         0                 Lower
         1              Capitals
         2    This is a sentence
         3              Swapcase
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_capitalize(s) -> "ks.Series[str]":
             return s.str.capitalize()
 
-        return self._data.transform_batch(pandas_capitalize)
+        return self._data.koalas.transform_batch(pandas_capitalize)
 
     def title(self) -> "ks.Series":
         """
@@ -80,20 +79,20 @@ class StringMethods(object):
         1              CAPITALS
         2    this is a sentence
         3              SwApCaSe
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.title()
         0                 Lower
         1              Capitals
         2    This Is A Sentence
         3              Swapcase
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_title(s) -> "ks.Series[str]":
             return s.str.title()
 
-        return self._data.transform_batch(pandas_title)
+        return self._data.koalas.transform_batch(pandas_title)
 
     def lower(self) -> "ks.Series":
         """
@@ -107,14 +106,14 @@ class StringMethods(object):
         1              CAPITALS
         2    this is a sentence
         3              SwApCaSe
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.lower()
         0                 lower
         1              capitals
         2    this is a sentence
         3              swapcase
-        Name: 0, dtype: object
+        dtype: object
         """
         return column_op(lambda c: F.lower(c))(self._data).alias(self._data.name)
 
@@ -130,14 +129,14 @@ class StringMethods(object):
         1              CAPITALS
         2    this is a sentence
         3              SwApCaSe
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.upper()
         0                 LOWER
         1              CAPITALS
         2    THIS IS A SENTENCE
         3              SWAPCASE
-        Name: 0, dtype: object
+        dtype: object
         """
         return column_op(lambda c: F.upper(c))(self._data).alias(self._data.name)
 
@@ -153,20 +152,20 @@ class StringMethods(object):
         1              CAPITALS
         2    this is a sentence
         3              SwApCaSe
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.swapcase()
         0                 LOWER
         1              capitals
         2    THIS IS A SENTENCE
         3              sWaPcAsE
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_swapcase(s) -> "ks.Series[str]":
             return s.str.swapcase()
 
-        return self._data.transform_batch(pandas_swapcase)
+        return self._data.koalas.transform_batch(pandas_swapcase)
 
     def startswith(self, pattern, na=None) -> "ks.Series":
         """
@@ -195,14 +194,14 @@ class StringMethods(object):
         1    Bear
         2     cat
         3    None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.startswith('b')
         0     True
         1    False
         2    False
         3     None
-        Name: 0, dtype: object
+        dtype: object
 
         Specifying na to be False instead of None.
 
@@ -211,13 +210,13 @@ class StringMethods(object):
         1    False
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_startswith(s) -> "ks.Series[bool]":
             return s.str.startswith(pattern, na)
 
-        return self._data.transform_batch(pandas_startswith)
+        return self._data.koalas.transform_batch(pandas_startswith)
 
     def endswith(self, pattern, na=None) -> "ks.Series":
         """
@@ -246,14 +245,14 @@ class StringMethods(object):
         1    Bear
         2     cat
         3    None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.endswith('t')
         0     True
         1    False
         2     True
         3     None
-        Name: 0, dtype: object
+        dtype: object
 
         Specifying na to be False instead of None.
 
@@ -262,13 +261,13 @@ class StringMethods(object):
         1    False
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_endswith(s) -> "ks.Series[bool]":
             return s.str.endswith(pattern, na)
 
-        return self._data.transform_batch(pandas_endswith)
+        return self._data.koalas.transform_batch(pandas_endswith)
 
     def strip(self, to_strip=None) -> "ks.Series":
         """
@@ -296,31 +295,31 @@ class StringMethods(object):
         0      1. Ant.
         1    2. Bee!\\t
         2         None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.strip()
         0    1. Ant.
         1    2. Bee!
         2       None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.strip('12.')
         0        Ant
         1     Bee!\\t
         2       None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.strip('.!\\t')
         0    1. Ant
         1    2. Bee
         2      None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_strip(s) -> "ks.Series[str]":
             return s.str.strip(to_strip)
 
-        return self._data.transform_batch(pandas_strip)
+        return self._data.koalas.transform_batch(pandas_strip)
 
     def lstrip(self, to_strip=None) -> "ks.Series":
         """
@@ -348,19 +347,19 @@ class StringMethods(object):
         0      1. Ant.
         1    2. Bee!\\t
         2         None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.lstrip('12.')
         0       Ant.
         1     Bee!\\t
         2       None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_lstrip(s) -> "ks.Series[str]":
             return s.str.lstrip(to_strip)
 
-        return self._data.transform_batch(pandas_lstrip)
+        return self._data.koalas.transform_batch(pandas_lstrip)
 
     def rstrip(self, to_strip=None) -> "ks.Series":
         """
@@ -388,19 +387,19 @@ class StringMethods(object):
         0      1. Ant.
         1    2. Bee!\\t
         2         None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.rstrip('.!\\t')
         0    1. Ant
         1    2. Bee
         2      None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_rstrip(s) -> "ks.Series[str]":
             return s.str.rstrip(to_strip)
 
-        return self._data.transform_batch(pandas_rstrip)
+        return self._data.koalas.transform_batch(pandas_rstrip)
 
     def get(self, i) -> "ks.Series":
         """
@@ -422,39 +421,39 @@ class StringMethods(object):
         >>> s1
         0    String
         1       123
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s1.str.get(1)
         0    t
         1    2
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s1.str.get(-1)
         0    g
         1    3
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s2 = ks.Series([["a", "b", "c"], ["x", "y"]])
         >>> s2
         0    [a, b, c]
         1       [x, y]
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s2.str.get(0)
         0    a
         1    x
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s2.str.get(2)
         0       c
         1    None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_get(s) -> "ks.Series[str]":
             return s.str.get(i)
 
-        return self._data.transform_batch(pandas_get)
+        return self._data.koalas.transform_batch(pandas_get)
 
     def isalnum(self) -> "ks.Series":
         """
@@ -473,7 +472,7 @@ class StringMethods(object):
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         Note that checks against characters mixed with any additional
         punctuation or whitespace will evaluate to false for an alphanumeric
@@ -484,13 +483,13 @@ class StringMethods(object):
         0    False
         1    False
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isalnum(s) -> "ks.Series[bool]":
             return s.str.isalnum()
 
-        return self._data.transform_batch(pandas_isalnum)
+        return self._data.koalas.transform_batch(pandas_isalnum)
 
     def isalpha(self) -> "ks.Series":
         """
@@ -509,13 +508,13 @@ class StringMethods(object):
         1    False
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isalpha(s) -> "ks.Series[bool]":
             return s.str.isalpha()
 
-        return self._data.transform_batch(pandas_isalpha)
+        return self._data.koalas.transform_batch(pandas_isalpha)
 
     def isdigit(self) -> "ks.Series":
         """
@@ -537,7 +536,7 @@ class StringMethods(object):
         1    False
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         The s.str.isdigit method is the same as s.str.isdecimal but also
         includes special digits, like superscripted and subscripted digits in
@@ -548,7 +547,7 @@ class StringMethods(object):
         1     True
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         The s.str.isnumeric method is the same as s.str.isdigit but also
         includes other characters that can represent quantities such as unicode
@@ -559,13 +558,13 @@ class StringMethods(object):
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isdigit(s) -> "ks.Series[bool]":
             return s.str.isdigit()
 
-        return self._data.transform_batch(pandas_isdigit)
+        return self._data.koalas.transform_batch(pandas_isdigit)
 
     def isspace(self) -> "ks.Series":
         """
@@ -582,13 +581,13 @@ class StringMethods(object):
         0     True
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isspace(s) -> "ks.Series[bool]":
             return s.str.isspace()
 
-        return self._data.transform_batch(pandas_isspace)
+        return self._data.koalas.transform_batch(pandas_isspace)
 
     def islower(self) -> "ks.Series":
         """
@@ -606,13 +605,13 @@ class StringMethods(object):
         1    False
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isspace(s) -> "ks.Series[bool]":
             return s.str.islower()
 
-        return self._data.transform_batch(pandas_isspace)
+        return self._data.koalas.transform_batch(pandas_isspace)
 
     def isupper(self) -> "ks.Series":
         """
@@ -630,13 +629,13 @@ class StringMethods(object):
         1    False
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isspace(s) -> "ks.Series[bool]":
             return s.str.isupper()
 
-        return self._data.transform_batch(pandas_isspace)
+        return self._data.koalas.transform_batch(pandas_isspace)
 
     def istitle(self) -> "ks.Series":
         """
@@ -660,13 +659,13 @@ class StringMethods(object):
         1     True
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_istitle(s) -> "ks.Series[bool]":
             return s.str.istitle()
 
-        return self._data.transform_batch(pandas_istitle)
+        return self._data.koalas.transform_batch(pandas_istitle)
 
     def isnumeric(self) -> "ks.Series":
         """
@@ -684,7 +683,7 @@ class StringMethods(object):
         1    False
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> s2 = ks.Series(['23', '³', '⅕', ''])
 
@@ -696,7 +695,7 @@ class StringMethods(object):
         1    False
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         The s2.str.isdigit method is the same as s2.str.isdecimal but also
         includes special digits, like superscripted and subscripted digits in
@@ -707,7 +706,7 @@ class StringMethods(object):
         1     True
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         The s2.str.isnumeric method is the same as s2.str.isdigit but also
         includes other characters that can represent quantities such as unicode
@@ -718,13 +717,13 @@ class StringMethods(object):
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isnumeric(s) -> "ks.Series[bool]":
             return s.str.isnumeric()
 
-        return self._data.transform_batch(pandas_isnumeric)
+        return self._data.koalas.transform_batch(pandas_isnumeric)
 
     def isdecimal(self) -> "ks.Series":
         """
@@ -746,7 +745,7 @@ class StringMethods(object):
         1    False
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         The s.str.isdigit method is the same as s.str.isdecimal but also
         includes special digits, like superscripted and subscripted digits in
@@ -757,7 +756,7 @@ class StringMethods(object):
         1     True
         2    False
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         The s.str.isnumeric method is the same as s.str.isdigit but also
         includes other characters that can represent quantities such as unicode
@@ -768,13 +767,13 @@ class StringMethods(object):
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_isdecimal(s) -> "ks.Series[bool]":
             return s.str.isdecimal()
 
-        return self._data.transform_batch(pandas_isdecimal)
+        return self._data.koalas.transform_batch(pandas_isdecimal)
 
     def cat(self, others=None, sep=None, na_rep=None, join=None) -> "ks.Series":
         """
@@ -805,18 +804,18 @@ class StringMethods(object):
         >>> s
         0    caribou
         1      tiger
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.center(width=10, fillchar='-')
         0    -caribou--
         1    --tiger---
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_center(s) -> "ks.Series[str]":
             return s.str.center(width, fillchar)
 
-        return self._data.transform_batch(pandas_center)
+        return self._data.koalas.transform_batch(pandas_center)
 
     def contains(self, pat, case=True, flags=0, na=None, regex=True) -> "ks.Series":
         """
@@ -860,7 +859,7 @@ class StringMethods(object):
         2    False
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         Specifying case sensitivity using case.
 
@@ -870,7 +869,7 @@ class StringMethods(object):
         2    False
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         Specifying na to be False instead of NaN replaces NaN values with
         False. If Series does not contain NaN values the resultant dtype will
@@ -882,7 +881,7 @@ class StringMethods(object):
         2    False
         3    False
         4    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         Returning ‘house’ or ‘dog’ when either expression occurs in a string.
 
@@ -892,7 +891,7 @@ class StringMethods(object):
         2     True
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         Ignoring case sensitivity using flags with regex.
 
@@ -903,7 +902,7 @@ class StringMethods(object):
         2     True
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         Returning any digit using regular expression.
 
@@ -913,7 +912,7 @@ class StringMethods(object):
         2    False
         3     True
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         Ensure pat is a not a literal pattern when regex is set to True.
         Note in the following example one might expect only s2[1] and s2[3]
@@ -927,13 +926,13 @@ class StringMethods(object):
         2    False
         3     True
         4    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
 
         def pandas_contains(s) -> "ks.Series[bool]":
             return s.str.contains(pat, case, flags, na, regex)
 
-        return self._data.transform_batch(pandas_contains)
+        return self._data.koalas.transform_batch(pandas_contains)
 
     def count(self, pat, flags=0) -> "ks.Series":
         """
@@ -965,7 +964,7 @@ class StringMethods(object):
         4    NaN
         5    0.0
         6    1.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         Escape '$' to find the literal dollar sign.
 
@@ -977,13 +976,13 @@ class StringMethods(object):
         3    2
         4    2
         5    0
-        Name: 0, dtype: int32
+        dtype: int32
         """
 
         def pandas_count(s) -> "ks.Series[int]":
             return s.str.count(pat, flags)
 
-        return self._data.transform_batch(pandas_count)
+        return self._data.koalas.transform_batch(pandas_count)
 
     def decode(self, encoding, errors="strict") -> "ks.Series":
         """
@@ -1038,31 +1037,31 @@ class StringMethods(object):
         0    0
         1    2
         2    1
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> s.str.find('a', start=2)
         0   -1
         1    2
         2    3
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> s.str.find('a', end=1)
         0    0
         1   -1
         2   -1
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> s.str.find('a', start=2, end=2)
         0   -1
         1   -1
         2   -1
-        Name: 0, dtype: int32
+        dtype: int32
         """
 
         def pandas_find(s) -> "ks.Series[int]":
             return s.str.find(sub, start, end)
 
-        return self._data.transform_batch(pandas_find)
+        return self._data.koalas.transform_batch(pandas_find)
 
     def findall(self, pat, flags=0) -> "ks.Series":
         """
@@ -1094,7 +1093,7 @@ class StringMethods(object):
         0          []
         1    [Monkey]
         2          []
-        Name: 0, dtype: object
+        dtype: object
 
         On the other hand, the search for the pattern ‘MONKEY’ doesn’t return
         any match:
@@ -1103,7 +1102,7 @@ class StringMethods(object):
         0    []
         1    []
         2    []
-        Name: 0, dtype: object
+        dtype: object
 
         Flags can be added to the pattern or regular expression. For instance,
         to find the pattern ‘MONKEY’ ignoring the case:
@@ -1113,7 +1112,7 @@ class StringMethods(object):
         0          []
         1    [Monkey]
         2          []
-        Name: 0, dtype: object
+        dtype: object
 
         When the pattern matches more than one string in the Series, all
         matches are returned:
@@ -1122,7 +1121,7 @@ class StringMethods(object):
         0    [on]
         1    [on]
         2      []
-        Name: 0, dtype: object
+        dtype: object
 
         Regular expressions are supported too. For instance, the search for all
         the strings ending with the word ‘on’ is shown next:
@@ -1131,7 +1130,7 @@ class StringMethods(object):
         0    [on]
         1      []
         2      []
-        Name: 0, dtype: object
+        dtype: object
 
         If the pattern is found more than once in the same string, then a list
         of multiple strings is returned:
@@ -1140,7 +1139,7 @@ class StringMethods(object):
         0        []
         1        []
         2    [b, b]
-        Name: 0, dtype: object
+        dtype: object
         """
         # type hint does not support to specify array type yet.
         pudf = pandas_udf(
@@ -1148,7 +1147,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        return self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+        return self._data._with_new_scol(scol=pudf(self._data.spark.column))
 
     def index(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1181,7 +1180,7 @@ class StringMethods(object):
         0    0
         1    2
         2    1
-        Name: 0, dtype: int64
+        dtype: int64
 
         The following expression throws an exception:
 
@@ -1191,7 +1190,7 @@ class StringMethods(object):
         def pandas_index(s) -> "ks.Series[np.int64]":
             return s.str.index(sub, start, end)
 
-        return self._data.transform_batch(pandas_index)
+        return self._data.koalas.transform_batch(pandas_index)
 
     def join(self, sep) -> "ks.Series":
         """
@@ -1227,20 +1226,20 @@ class StringMethods(object):
         >>> s
         0    [lion, elephant, zebra]
         1           [cat, None, dog]
-        Name: 0, dtype: object
+        dtype: object
 
         Join all lists using a ‘-‘. The list containing None will produce None.
 
         >>> s.str.join('-')
         0    lion-elephant-zebra
         1                   None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_join(s) -> "ks.Series[str]":
             return s.str.join(sep)
 
-        return self._data.transform_batch(pandas_join)
+        return self._data.koalas.transform_batch(pandas_join)
 
     def len(self) -> "ks.Series":
         """
@@ -1263,13 +1262,13 @@ class StringMethods(object):
         >>> s1.str.len()
         0    3
         1    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s2 = ks.Series([["a", "b", "c"], []])
         >>> s2.str.len()
         0    3
         1    0
-        Name: 0, dtype: int64
+        dtype: int64
         """
         if isinstance(self._data.spark.data_type, (ArrayType, MapType)):
             return column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
@@ -1303,18 +1302,18 @@ class StringMethods(object):
         >>> s
         0    caribou
         1      tiger
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.ljust(width=10, fillchar='-')
         0    caribou---
         1    tiger-----
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_ljust(s) -> "ks.Series[str]":
             return s.str.ljust(width, fillchar)
 
-        return self._data.transform_batch(pandas_ljust)
+        return self._data.koalas.transform_batch(pandas_ljust)
 
     def match(self, pat, case=True, flags=0, na=np.NaN) -> "ks.Series":
         """
@@ -1349,7 +1348,7 @@ class StringMethods(object):
         2    False
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.match('mouse|dog', case=False)
         0     True
@@ -1357,7 +1356,7 @@ class StringMethods(object):
         2    False
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.match('.+and.+', na=True)
         0    False
@@ -1365,7 +1364,7 @@ class StringMethods(object):
         2     True
         3    False
         4     True
-        Name: 0, dtype: bool
+        dtype: bool
 
         >>> import re
         >>> s.str.match('MOUSE', flags=re.IGNORECASE)
@@ -1374,13 +1373,13 @@ class StringMethods(object):
         2    False
         3    False
         4     None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_match(s) -> "ks.Series[bool]":
             return s.str.match(pat, case, flags, na)
 
-        return self._data.transform_batch(pandas_match)
+        return self._data.koalas.transform_batch(pandas_match)
 
     def normalize(self, form) -> "ks.Series":
         """
@@ -1403,7 +1402,7 @@ class StringMethods(object):
         def pandas_normalize(s) -> "ks.Series[str]":
             return s.str.normalize(form)
 
-        return self._data.transform_batch(pandas_normalize)
+        return self._data.koalas.transform_batch(pandas_normalize)
 
     def pad(self, width, side="left", fillchar=" ") -> "ks.Series":
         """
@@ -1430,28 +1429,28 @@ class StringMethods(object):
         >>> s
         0    caribou
         1      tiger
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.pad(width=10)
         0       caribou
         1         tiger
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.pad(width=10, side='right', fillchar='-')
         0    caribou---
         1    tiger-----
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.pad(width=10, side='both', fillchar='-')
         0    -caribou--
         1    --tiger---
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_pad(s) -> "ks.Series[str]":
             return s.str.pad(width, side, fillchar)
 
-        return self._data.transform_batch(pandas_pad)
+        return self._data.koalas.transform_batch(pandas_pad)
 
     def partition(self, sep=" ", expand=True) -> "ks.Series":
         """
@@ -1482,7 +1481,7 @@ class StringMethods(object):
         0    a
         1    b
         2    c
-        Name: 0, dtype: object
+        dtype: object
 
         Single int repeats string in Series
 
@@ -1490,7 +1489,7 @@ class StringMethods(object):
         0    aa
         1    bb
         2    cc
-        Name: 0, dtype: object
+        dtype: object
         """
         if not isinstance(repeats, int):
             raise ValueError("repeats expects an int parameter")
@@ -1498,7 +1497,7 @@ class StringMethods(object):
         def pandas_repeat(s) -> "ks.Series[str]":
             return s.str.repeat(repeats=repeats)
 
-        return self._data.transform_batch(pandas_repeat)
+        return self._data.koalas.transform_batch(pandas_repeat)
 
     def replace(self, pat, repl, n=-1, case=None, flags=0, regex=True) -> "ks.Series":
         """
@@ -1545,7 +1544,7 @@ class StringMethods(object):
         0     bao
         1     baz
         2    None
-        Name: 0, dtype: object
+        dtype: object
 
         When pat is a string and regex is False, every pat is replaced with
         repl as with :func:`str.replace`:
@@ -1554,7 +1553,7 @@ class StringMethods(object):
         0     bao
         1     fuz
         2    None
-        Name: 0, dtype: object
+        dtype: object
 
         When repl is a callable, it is called on every pat using
         :func:`re.sub`. The callable should expect one positional argument (a
@@ -1567,7 +1566,7 @@ class StringMethods(object):
         0    oof 123
         1    rab zab
         2       None
-        Name: 0, dtype: object
+        dtype: object
 
         Using regex groups (extract second group and swap case):
 
@@ -1576,7 +1575,7 @@ class StringMethods(object):
         >>> ks.Series(['One Two Three', 'Foo Bar Baz']).str.replace(pat, repl)
         0    tWO
         1    bAR
-        Name: 0, dtype: object
+        dtype: object
 
         Using a compiled regex with flags:
 
@@ -1586,13 +1585,13 @@ class StringMethods(object):
         0     foo
         1     bar
         2    None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_replace(s) -> "ks.Series[str]":
             return s.str.replace(pat, repl, n=n, case=case, flags=flags, regex=regex)
 
-        return self._data.transform_batch(pandas_replace)
+        return self._data.koalas.transform_batch(pandas_replace)
 
     def rfind(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1623,31 +1622,31 @@ class StringMethods(object):
         0    0
         1    2
         2    5
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> s.str.rfind('a', start=2)
         0   -1
         1    2
         2    5
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> s.str.rfind('a', end=1)
         0    0
         1   -1
         2   -1
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> s.str.rfind('a', start=2, end=2)
         0   -1
         1   -1
         2   -1
-        Name: 0, dtype: int32
+        dtype: int32
         """
 
         def pandas_rfind(s) -> "ks.Series[int]":
             return s.str.rfind(sub, start, end)
 
-        return self._data.transform_batch(pandas_rfind)
+        return self._data.koalas.transform_batch(pandas_rfind)
 
     def rindex(self, sub, start=0, end=None) -> "ks.Series":
         """
@@ -1680,7 +1679,7 @@ class StringMethods(object):
         0    0
         1    2
         2    5
-        Name: 0, dtype: int64
+        dtype: int64
 
         The following expression throws an exception:
 
@@ -1690,7 +1689,7 @@ class StringMethods(object):
         def pandas_rindex(s) -> "ks.Series[np.int64]":
             return s.str.rindex(sub, start, end)
 
-        return self._data.transform_batch(pandas_rindex)
+        return self._data.koalas.transform_batch(pandas_rindex)
 
     def rjust(self, width, fillchar=" ") -> "ks.Series":
         """
@@ -1715,23 +1714,23 @@ class StringMethods(object):
         >>> s
         0    caribou
         1      tiger
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.rjust(width=10)
         0       caribou
         1         tiger
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.rjust(width=10, fillchar='-')
         0    ---caribou
         1    -----tiger
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_rjust(s) -> "ks.Series[str]":
             return s.str.rjust(width, fillchar)
 
-        return self._data.transform_batch(pandas_rjust)
+        return self._data.koalas.transform_batch(pandas_rjust)
 
     def rpartition(self, sep=" ", expand=True) -> "ks.Series":
         """
@@ -1764,37 +1763,37 @@ class StringMethods(object):
         0        koala
         1          fox
         2    chameleon
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.slice(start=1)
         0        oala
         1          ox
         2    hameleon
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.slice(stop=2)
         0    ko
         1    fo
         2    ch
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.slice(step=2)
         0      kaa
         1       fx
         2    caeen
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.slice(start=0, stop=5, step=3)
         0    kl
         1     f
         2    cm
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_slice(s) -> "ks.Series[str]":
             return s.str.slice(start, stop, step)
 
-        return self._data.transform_batch(pandas_slice)
+        return self._data.koalas.transform_batch(pandas_slice)
 
     def slice_replace(self, start=None, stop=None, repl=None) -> "ks.Series":
         """
@@ -1828,7 +1827,7 @@ class StringMethods(object):
         2      abc
         3     abdc
         4    abcde
-        Name: 0, dtype: object
+        dtype: object
 
         Specify just start, meaning replace start until the end of the string
         with repl.
@@ -1839,7 +1838,7 @@ class StringMethods(object):
         2    aX
         3    aX
         4    aX
-        Name: 0, dtype: object
+        dtype: object
 
         Specify just stop, meaning the start of the string to stop is replaced
         with repl, and the rest of the string is included.
@@ -1850,7 +1849,7 @@ class StringMethods(object):
         2      Xc
         3     Xdc
         4    Xcde
-        Name: 0, dtype: object
+        dtype: object
 
         Specify start and stop, meaning the slice from start to stop is
         replaced with repl. Everything before or after start and stop is
@@ -1862,13 +1861,13 @@ class StringMethods(object):
         2      aX
         3     aXc
         4    aXde
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_slice_replace(s) -> "ks.Series[str]":
             return s.str.slice_replace(start, stop, repl)
 
-        return self._data.transform_batch(pandas_slice_replace)
+        return self._data.koalas.transform_batch(pandas_slice_replace)
 
     def split(self, pat=None, n=-1, expand=False) -> Union["ks.Series", "ks.DataFrame"]:
         """
@@ -1930,7 +1929,7 @@ class StringMethods(object):
         0                   [this, is, a, regular, sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         Without the n parameter, the outputs of rsplit and split are identical.
 
@@ -1938,7 +1937,7 @@ class StringMethods(object):
         0                   [this, is, a, regular, sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         The n parameter can be used to limit the number of splits on the
         delimiter. The outputs of split and rsplit are different.
@@ -1947,13 +1946,13 @@ class StringMethods(object):
         0                     [this, is, a regular sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.rsplit(n=2)
         0                     [this is a, regular, sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         The pat parameter can be used to split by other characters.
 
@@ -1961,7 +1960,7 @@ class StringMethods(object):
         0                         [this is a regular sentence]
         1    [https:, , docs.python.org, 3, tutorial, index...
         2                                                 None
-        Name: 0, dtype: object
+        dtype: object
 
         When using ``expand=True``, the split elements will expand out into
         separate columns. If NaN is present, it is propagated throughout
@@ -2001,7 +2000,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column))
 
         if expand:
             kdf = kser.to_frame()
@@ -2072,7 +2071,7 @@ class StringMethods(object):
         0                   [this, is, a, regular, sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         Without the n parameter, the outputs of rsplit and split are identical.
 
@@ -2080,7 +2079,7 @@ class StringMethods(object):
         0                   [this, is, a, regular, sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         The n parameter can be used to limit the number of splits on the
         delimiter. The outputs of split and rsplit are different.
@@ -2089,13 +2088,13 @@ class StringMethods(object):
         0                     [this, is, a regular sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.str.rsplit(n=2)
         0                     [this is a, regular, sentence]
         1    [https://docs.python.org/3/tutorial/index.html]
         2                                               None
-        Name: 0, dtype: object
+        dtype: object
 
         When using ``expand=True``, the split elements will expand out into
         separate columns. If NaN is present, it is propagated throughout
@@ -2135,7 +2134,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column)).rename(self.name)
+        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column))
 
         if expand:
             kdf = kser.to_frame()
@@ -2173,13 +2172,13 @@ class StringMethods(object):
         0      dg
         1     cXt
         2    bYrd
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_translate(s) -> "ks.Series[str]":
             return s.str.translate(table)
 
-        return self._data.transform_batch(pandas_translate)
+        return self._data.koalas.transform_batch(pandas_translate)
 
     def wrap(self, width, **kwargs) -> "ks.Series":
         """
@@ -2224,13 +2223,13 @@ class StringMethods(object):
         >>> s.str.wrap(12)
         0             line to be\\nwrapped
         1    another line\\nto be\\nwrapped
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_wrap(s) -> "ks.Series[str]":
             return s.str.wrap(width, **kwargs)
 
-        return self._data.transform_batch(pandas_wrap)
+        return self._data.koalas.transform_batch(pandas_wrap)
 
     def zfill(self, width) -> "ks.Series":
         """
@@ -2262,7 +2261,7 @@ class StringMethods(object):
         1       1
         2    1000
         3    None
-        Name: 0, dtype: object
+        dtype: object
 
         Note that NaN is not a string, therefore it is converted to NaN. The
         minus sign in '-1' is treated as a regular character and the zero is
@@ -2274,13 +2273,13 @@ class StringMethods(object):
         1     001
         2    1000
         3    None
-        Name: 0, dtype: object
+        dtype: object
         """
 
         def pandas_zfill(s) -> "ks.Series[str]":
             return s.str.zfill(width)
 
-        return self._data.transform_batch(pandas_zfill)
+        return self._data.koalas.transform_batch(pandas_zfill)
 
     def get_dummies(self, sep="|"):
         """
