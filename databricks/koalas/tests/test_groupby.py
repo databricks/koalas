@@ -1133,6 +1133,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
         self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cumsum())
+        kdf = ks.DataFrame([[1, "a"], [2, "b"], [3, "c"]], columns=["A", "B"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"])["B"].cumsum())
 
     def test_cumprod(self):
         pdf = pd.DataFrame(
