@@ -73,7 +73,6 @@ from databricks.koalas.utils import (
     validate_axis,
     validate_bool_kwarg,
     verify_temp_column_name,
-    default_session,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
@@ -341,13 +340,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
         if isinstance(data, DataFrame):
-            assert index is not None
             assert dtype is None
             assert name is None
             assert not copy
             assert not fastpath
-            anchor = data
-            column_label = index
+
+            super(Series, self).__init__(data)
+            self._column_label = index
         else:
             if isinstance(data, pd.Series):
                 assert index is None
@@ -360,12 +359,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 s = pd.Series(
                     data=data, index=index, dtype=dtype, name=name, copy=copy, fastpath=fastpath
                 )
-            anchor = DataFrame(s)
-            column_label = anchor._internal.column_labels[0]
-            anchor._kseries = {column_label: self}
+            internal = InternalFrame.from_pandas(pd.DataFrame(s))
+            if s.name is None:
+                internal = internal.copy(column_labels=[None])
+            anchor = DataFrame(internal)
 
-        super(Series, self).__init__(anchor)
-        self._column_label = column_label
+            super(Series, self).__init__(anchor)
+            self._column_label = anchor._internal.column_labels[0]
+            anchor._kseries = {self._column_label: self}
 
     @property
     def _internal(self) -> InternalFrame:
@@ -843,7 +844,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     True
         3    False
         4    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         With `inclusive` set to ``False`` boundary values are excluded:
 
@@ -853,7 +854,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    False
         3    False
         4    False
-        Name: 0, dtype: bool
+        dtype: bool
 
         `left` and `right` can be any scalar value:
 
@@ -863,7 +864,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1     True
         2     True
         3    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
         if inclusive:
             lmask = self >= left
@@ -919,7 +920,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1       dog
         2      None
         3    rabbit
-        Name: 0, dtype: object
+        dtype: object
 
         ``map`` accepts a ``dict``. Values that are not found
         in the ``dict`` are converted to ``None``, unless the dict has a default
@@ -930,7 +931,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1     puppy
         2      None
         3      None
-        Name: 0, dtype: object
+        dtype: object
 
         It also accepts a function:
 
@@ -942,7 +943,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1       I am a dog
         2      I am a None
         3    I am a rabbit
-        Name: 0, dtype: object
+        dtype: object
         """
         if isinstance(arg, dict):
             is_start = True
@@ -990,12 +991,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> ser
         0    1
         1    2
-        Name: 0, dtype: int32
+        dtype: int32
 
         >>> ser.astype('int64')
         0    1
         1    2
-        Name: 0, dtype: int64
+        dtype: int64
         """
         from databricks.koalas.typedef import as_spark_type
 
@@ -1069,7 +1070,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    1
         1    2
         2    3
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.rename("my_name")  # scalar, changes Series.name
         0    1
@@ -1078,7 +1079,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: my_name, dtype: int64
         """
         if index is None:
-            index = self._column_label
+            pass
         elif not isinstance(index, tuple):
             index = (index,)
         scol = self.spark.column.alias(name_like_string(index))
@@ -1164,17 +1165,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> s = ks.Series([1, 2, 3, 4], name='foo',
-        ...               index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+        >>> s = pd.Series([1, 2, 3, 4], index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
 
         Generate a DataFrame with default index.
 
         >>> s.reset_index()
-          idx  foo
-        0   a    1
-        1   b    2
-        2   c    3
-        3   d    4
+          idx  0
+        0   a  1
+        1   b  2
+        2   c  3
+        3   d  4
 
         To specify the name of the new column use `name`.
 
@@ -1192,7 +1192,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1    2
         2    3
         3    4
-        Name: foo, dtype: int64
+        dtype: int64
 
         To update the Series in place, without generating a new one
         set `inplace` to True. Note that it also requires ``drop=True``.
@@ -1203,16 +1203,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1    2
         2    3
         3    4
-        Name: foo, dtype: int64
+        dtype: int64
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
         if inplace and not drop:
             raise TypeError("Cannot reset_index inplace on a Series to create a DataFrame")
 
-        if name is not None:
-            kdf = self.rename(name).to_frame()
+        if drop:
+            kdf = self._kdf[[self.name]]
         else:
-            kdf = self.to_frame()
+            kser = self
+            if name is not None:
+                kser = kser.rename(name)
+            kdf = kser.to_frame()
         kdf = kdf.reset_index(level=level, drop=drop)
         if drop:
             if inplace:
@@ -1437,7 +1440,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return first_series(self._internal.to_pandas_frame.copy())
 
     # Alias to maintain backward compatibility with Spark
-    toPandas = to_pandas
+    def toPandas(self):
+        warnings.warn(
+            "Series.toPandas is deprecated as of Series.to_pandas. Please use the API instead.",
+            FutureWarning,
+        )
+        return self.to_pandas()
+
+    toPandas.__doc__ = to_pandas.__doc__
 
     def to_list(self):
         """
@@ -1522,7 +1532,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: animal, dtype: object
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kdf = self.to_frame().drop_duplicates(keep=keep)
+        kdf = self._kdf[[self.name]].drop_duplicates(keep=keep)
 
         if inplace:
             self._update_anchor(kdf)
@@ -1695,14 +1705,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    1.0
         1    2.0
         2    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         Drop NA values from a Series.
 
         >>> ser.dropna()
         0    1.0
         1    2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         Keep the Series with valid entries in the same variable.
 
@@ -1710,11 +1720,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> ser
         0    1.0
         1    2.0
-        Name: 0, dtype: float64
+        dtype: float64
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
         # TODO: last two examples from pandas produce different results.
-        kdf = self.to_frame().dropna(axis=axis, inplace=False)
+        kdf = self._kdf[[self.name]].dropna(axis=axis, inplace=False)
         if inplace:
             self._update_anchor(kdf)
         else:
@@ -1744,7 +1754,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    1
         1    2
         2    3
-        Name: 0, dtype: int64
+        dtype: int64
 
         Notes
         -----
@@ -1808,31 +1818,31 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         A    0
         B    1
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         Drop single label A
 
         >>> s.drop('A')
         B    1
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         Drop labels B and C
 
         >>> s.drop(labels=['B', 'C'])
         A    0
-        Name: 0, dtype: int64
+        dtype: int64
 
         With 'index' rather than 'labels' returns exactly same result.
 
         >>> s.drop(index='A')
         B    1
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.drop(index=['B', 'C'])
         A    0
-        Name: 0, dtype: int64
+        dtype: int64
 
         Also support for MultiIndex
 
@@ -1852,7 +1862,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.drop(labels='weight', level=1)
         lama    speed      45.0
@@ -1861,7 +1871,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 length      1.5
         falcon  speed     320.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.drop(('lama', 'weight'))
         lama    speed      45.0
@@ -1872,7 +1882,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.drop([('lama', 'speed'), ('falcon', 'weight')])
         lama    weight    200.0
@@ -1882,7 +1892,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 length      1.5
         falcon  speed     320.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
         """
         return first_series(self._drop(labels=labels, index=index, level=level))
 
@@ -1944,7 +1954,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                             )
                         )
                     else:
-                        return self.to_frame()
+                        return self._kdf[[self.name]]
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
             cond = ~reduce(lambda x, y: x | y, drop_index_scols)
@@ -1976,7 +1986,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1     bee
         Name: animal, dtype: object
         """
-        return first_series(self.to_dataframe().head(n))
+        return first_series(self.to_frame().head(n)).rename(self.name)
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.
@@ -2011,7 +2021,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         >>> ks.Series([pd.Timestamp('2016-01-01') for _ in range(3)]).unique()
         0   2016-01-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> kser.name = ('x', 'a')
         >>> kser.unique().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
@@ -2063,7 +2073,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     3.0
         3    10.0
         4     5.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         Sort values ascending order (default behaviour)
 
@@ -2073,7 +2083,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4     5.0
         3    10.0
         0     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         Sort values descending order
 
@@ -2083,7 +2093,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     3.0
         1     1.0
         0     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         Sort values inplace
 
@@ -2094,7 +2104,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     3.0
         1     1.0
         0     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         Sort values putting NAs first
 
@@ -2104,7 +2114,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     3.0
         4     5.0
         3    10.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         Sort a series of strings
 
@@ -2115,7 +2125,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    d
         3    a
         4    c
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s.sort_values()
         3    a
@@ -2123,11 +2133,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4    c
         2    d
         0    z
-        Name: 0, dtype: object
+        dtype: object
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kdf = self.to_frame().sort_values(
-            by=self.name, ascending=ascending, na_position=na_position
+        kdf = self._kdf[[self.name]]._sort(
+            by=[self.spark.column], ascending=ascending, inplace=False, na_position=na_position
         )
 
         if inplace:
@@ -2175,26 +2185,26 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         a      1.0
         b      2.0
         NaN    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.sort_index(ascending=False)
         b      2.0
         a      1.0
         NaN    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.sort_index(na_position='first')
         NaN    NaN
         a      1.0
         b      2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df.sort_index(inplace=True)
         >>> df
         a      1.0
         b      2.0
         NaN    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> df = ks.Series(range(4), index=[['b', 'b', 'a', 'a'], [1, 0, 1, 0]], name='0')
 
@@ -2220,7 +2230,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: 0, dtype: int64
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        kdf = self.to_frame().sort_index(
+        kdf = self._kdf[[self.name]].sort_index(
             axis=axis, level=level, ascending=ascending, kind=kind, na_position=na_position
         )
 
@@ -2261,17 +2271,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1    2
         2    3
         3    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.add_prefix('item_')
         item_0    1
         item_1    2
         item_2    3
         item_3    4
-        Name: 0, dtype: int64
+        dtype: int64
         """
         assert isinstance(prefix, str)
-        internal = self.to_frame()._internal
+        internal = self._internal
         sdf = internal.spark_frame.select(
             [
                 F.concat(F.lit(prefix), index_spark_column).alias(index_spark_column_name)
@@ -2314,17 +2324,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1    2
         2    3
         3    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.add_suffix('_item')
         0_item    1
         1_item    2
         2_item    3
         3_item    4
-        Name: 0, dtype: int64
+        dtype: int64
         """
         assert isinstance(suffix, str)
-        internal = self.to_frame()._internal
+        internal = self._internal
         sdf = internal.spark_frame.select(
             [
                 F.concat(index_spark_column, F.lit(suffix)).alias(index_spark_column_name)
@@ -2421,7 +2431,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         5    6.0
         6    7.0
         7    8.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         The `n` largest elements where ``n=5`` by default.
 
@@ -2431,15 +2441,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    3.0
         3    4.0
         5    6.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.nsmallest(3)
         0    1.0
         1    2.0
         2    3.0
-        Name: 0, dtype: float64
+        dtype: float64
         """
-        return first_series(self.to_frame().nsmallest(n=n, columns=self.name))
+        return self.sort_values(ascending=True).head(n)  # type: ignore
 
     def nlargest(self, n: int = 5) -> "Series":
         """
@@ -2481,7 +2491,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         5    6.0
         6    7.0
         7    8.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         The `n` largest elements where ``n=5`` by default.
 
@@ -2491,17 +2501,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         5    6.0
         3    4.0
         2    3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.nlargest(n=3)
         7    8.0
         6    7.0
         5    6.0
-        Name: 0, dtype: float64
+        dtype: float64
 
 
         """
-        return first_series(self.to_frame().nlargest(n=n, columns=self.name))
+        return self.sort_values(ascending=False).head(n)  # type: ignore
 
     def count(self):
         """
@@ -2560,7 +2570,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    4
         1    5
         2    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s1.append(s3)
         0    1
@@ -2569,7 +2579,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3    4
         4    5
         5    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         With ignore_index set to True:
 
@@ -2580,11 +2590,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3    4
         4    5
         5    6
-        Name: 0, dtype: int64
+        dtype: int64
         """
         return first_series(
-            self.to_dataframe().append(to_append.to_dataframe(), ignore_index, verify_integrity)
-        )
+            self.to_frame().append(to_append.to_frame(), ignore_index, verify_integrity)
+        ).rename(self.name)
 
     def sample(
         self,
@@ -2594,8 +2604,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         random_state: Optional[int] = None,
     ) -> "Series":
         return first_series(
-            self.to_dataframe().sample(n=n, frac=frac, replace=replace, random_state=random_state)
-        )
+            self.to_frame().sample(n=n, frac=frac, replace=replace, random_state=random_state)
+        ).rename(self.name)
 
     sample.__doc__ = DataFrame.sample.__doc__
 
@@ -2650,7 +2660,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         London      20
         New York    21
         Helsinki    12
-        Name: 0, dtype: int64
+        dtype: int64
 
 
         Square the values by defining a function and passing it as an
@@ -2662,7 +2672,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         London      400
         New York    441
         Helsinki    144
-        Name: 0, dtype: int64
+        dtype: int64
 
 
         Define a custom function that needs additional positional
@@ -2676,7 +2686,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         London      15
         New York    16
         Helsinki     7
-        Name: 0, dtype: int64
+        dtype: int64
 
 
         Define a custom function that takes keyword arguments
@@ -2691,7 +2701,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         London      95
         New York    96
         Helsinki    87
-        Name: 0, dtype: int64
+        dtype: int64
 
 
         Use a function from the Numpy library
@@ -2702,7 +2712,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         London      2.995732
         New York    3.044522
         Helsinki    2.484907
-        Name: 0, dtype: float64
+        dtype: float64
 
 
         You can omit the type hint and let Koalas infer its type.
@@ -2711,7 +2721,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         London      2.995732
         New York    3.044522
         Helsinki    2.484907
-        Name: 0, dtype: float64
+        dtype: float64
 
         """
         assert callable(func), "the first argument should be a callable function."
@@ -2781,10 +2791,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.agg(['min', 'max'])
         max    4
         min    1
-        Name: 0, dtype: int64
+        dtype: int64
         """
         if isinstance(func, list):
-            return self.to_frame().agg(func)[self.name]
+            return first_series(self.to_frame().agg(func)).rename(self.name)
         elif isinstance(func, str):
             return getattr(self, func)()
         else:
@@ -2806,13 +2816,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    1
         1    2
         2    3
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.transpose()
         0    1
         1    2
         2    3
-        Name: 0, dtype: int64
+        dtype: int64
         """
         return self.copy()
 
@@ -2863,7 +2873,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    0
         1    1
         2    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> def sqrt(x) -> float:
         ...     return np.sqrt(x)
@@ -2871,7 +2881,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    0.000000
         1    1.000000
         2    1.414214
-        Name: 0, dtype: float32
+        dtype: float32
 
         Even though the resulting instance must have the same length as the
         input, it is possible to provide several input functions:
@@ -2992,13 +3002,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0.25    2
         0.5     3
         0.75    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> (s + 1).quantile([.25, .5, .75])
         0.25    3
         0.5     4
         0.75    5
-        Name: 0, dtype: int64
+        dtype: int64
         """
         if not isinstance(accuracy, int):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
@@ -3200,12 +3210,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         axis = validate_axis(axis)
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
-        return first_series(self.to_frame().filter(items=items, like=like, regex=regex, axis=axis))
+        return first_series(
+            self.to_frame().filter(items=items, like=like, regex=regex, axis=axis)
+        ).rename(self.name)
 
     filter.__doc__ = DataFrame.filter.__doc__
 
     def describe(self, percentiles: Optional[List[float]] = None) -> "Series":
-        return first_series(self.to_dataframe().describe(percentiles))
+        return first_series(self.to_frame().describe(percentiles)).rename(self.name)
 
     describe.__doc__ = DataFrame.describe.__doc__
 
@@ -3326,7 +3338,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         C    4.0
         D    3.0
         E    5.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.idxmax()
         'E'
@@ -3348,7 +3360,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                d         NaN
         b      e         4.0
                f         5.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.idxmax()
         ('b', 'f')
@@ -3364,7 +3376,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     100
         1       1
         8     100
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.idxmax()
         3
@@ -3434,7 +3446,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         B    NaN
         C    4.0
         D    0.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.idxmin()
         'D'
@@ -3456,7 +3468,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                d         NaN
         b      e         4.0
                f         0.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.idxmin()
         ('b', 'f')
@@ -3472,7 +3484,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     100
         1       1
         8     100
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.idxmin()
         10
@@ -3519,7 +3531,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         A    0
         B    1
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.pop('A')
         0
@@ -3527,23 +3539,23 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s
         B    1
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s = ks.Series(data=np.arange(3), index=['A', 'A', 'C'])
         >>> s
         A    0
         A    1
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.pop('A')
         A    0
         A    1
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s
         C    2
-        Name: 0, dtype: int64
+        dtype: int64
 
         Also support for MultiIndex
 
@@ -3563,13 +3575,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.pop('lama')
         speed      45.0
         weight    200.0
         length      1.2
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s
         cow     speed      30.0
@@ -3578,7 +3590,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         Also support for MultiIndex with several indexs.
 
@@ -3601,13 +3613,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         b  falcon  speed     320.0
                    speed       1.0
                    length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.pop(('a', 'lama'))
         speed      45.0
         weight    200.0
         length      1.2
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s
         a  cow     speed      30.0
@@ -3616,12 +3628,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         b  falcon  speed     320.0
                    speed       1.0
                    length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.pop(('b', 'falcon', 'speed'))
         (b, falcon, speed)    320.0
         (b, falcon, speed)      1.0
-        Name: 0, dtype: float64
+        dtype: float64
         """
         if not isinstance(item, (str, tuple)):
             raise ValueError("'key' should be string or tuple that contains strings")
@@ -3652,12 +3664,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
             if length == 1:
-                return pdf[self.name].iloc[0]
+                return pdf[self._internal.data_spark_column_names[0]].iloc[0]
 
             item_string = name_like_string(item)
             sdf = sdf.withColumn(SPARK_DEFAULT_INDEX_NAME, F.lit(str(item_string)))
             internal = InternalFrame(
-                spark_frame=sdf, index_map=OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
+                spark_frame=sdf,
+                index_map=OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}),
+                column_labels=[self._column_label],
             )
             return first_series(DataFrame(internal))
         else:
@@ -3687,12 +3701,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s
         a    1
         b    2
-        Name: 0, dtype: int64
+        dtype: int64
         >>> s_copy = s.copy()
         >>> s_copy
         a    1
         b    2
-        Name: 0, dtype: int64
+        dtype: int64
         """
         return first_series(DataFrame(self._internal))
 
@@ -3724,11 +3738,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         5    NaN
         6    NaN
         7    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.mode()
         0    1.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         If there are several same modes, all items are shown
 
@@ -3749,14 +3763,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         11    NaN
         12    NaN
         13    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.mode().sort_values()  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
         <BLANKLINE>
         ...  1.0
         ...  2.0
         ...  3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         With 'dropna' set to 'False', we can also see NaN in the result
 
@@ -3766,7 +3780,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         ...  2.0
         ...  3.0
         ...  NaN
-        Name: 0, dtype: float64
+        dtype: float64
         """
         ser_count = self.value_counts(dropna=dropna, sort=False)
         sdf_count = ser_count._internal.spark_frame
@@ -3775,9 +3789,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf_most_value.select(
             F.col(SPARK_DEFAULT_INDEX_NAME).alias(SPARK_DEFAULT_SERIES_NAME)
         )
-        internal = InternalFrame(spark_frame=sdf, index_map=None)
+        internal = InternalFrame(
+            spark_frame=sdf, index_map=None, column_labels=[self._column_label]
+        )
 
-        return first_series(DataFrame(internal)).rename(self.name)
+        return first_series(DataFrame(internal))
 
     def keys(self):
         """
@@ -3869,7 +3885,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    2
         3    3
         4    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.replace(0, 5)
         0    5
@@ -3877,7 +3893,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    2
         3    3
         4    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         List-like `to_replace`
 
@@ -3887,7 +3903,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2       2
         3       3
         4    5000
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.replace([1, 2, 3], [10, 20, 30])
         0     0
@@ -3895,7 +3911,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    20
         3    30
         4     4
-        Name: 0, dtype: int64
+        dtype: int64
 
         Dict-like `to_replace`
 
@@ -3905,7 +3921,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    2000
         3    3000
         4    4000
-        Name: 0, dtype: int64
+        dtype: int64
 
         Also support for MultiIndex
 
@@ -3925,7 +3941,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.replace(45, 450)
         lama    speed     450.0
@@ -3937,7 +3953,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.replace([45, 30, 320], 500)
         lama    speed     500.0
@@ -3949,7 +3965,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     500.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.replace({45: 450, 30: 300})
         lama    speed     450.0
@@ -3961,7 +3977,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
         """
         if to_replace is None:
             return self
@@ -4012,7 +4028,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    4
         1    5
         2    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s = ks.Series(['a', 'b', 'c'])
         >>> s.update(ks.Series(['d', 'e'], index=[0, 2]))
@@ -4020,7 +4036,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    d
         1    b
         2    e
-        Name: 0, dtype: object
+        dtype: object
 
         >>> s = ks.Series([1, 2, 3])
         >>> s.update(ks.Series([4, 5, 6, 7, 8]))
@@ -4028,28 +4044,28 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    4
         1    5
         2    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s = ks.Series([1, 2, 3], index=[10, 11, 12])
         >>> s
         10    1
         11    2
         12    3
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.update(ks.Series([4, 5, 6]))
         >>> s.sort_index()
         10    1
         11    2
         12    3
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.update(ks.Series([4, 5, 6], index=[11, 12, 13]))
         >>> s.sort_index()
         10    1
         11    4
         12    5
-        Name: 0, dtype: int64
+        dtype: int64
 
         If ``other`` contains NaNs the corresponding values are not updated
         in the original Series.
@@ -4060,14 +4076,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    4.0
         1    2.0
         2    6.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
         if not isinstance(other, Series):
             raise ValueError("'other' must be a Series")
 
-        combined = combine_frames(self._kdf, other.to_frame(), how="leftouter")
+        combined = combine_frames(self._kdf, other._kdf, how="leftouter")
 
         this_scol = combined["this"]._internal.spark_column_for(self._column_label)
         that_scol = combined["that"]._internal.spark_column_for(other._column_label)
@@ -4111,7 +4127,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    2.0
         3    3.0
         4    4.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s1.where(s1 > 1, 10).sort_index()
         0    10
@@ -4119,7 +4135,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2     2
         3     3
         4     4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s1.where(s1 > 1, s1 + 100).sort_index()
         0    100
@@ -4127,7 +4143,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2      2
         3      3
         4      4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s1.where(s1 > 1, s2).sort_index()
         0    100
@@ -4135,7 +4151,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2      2
         3      3
         4      4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
@@ -4166,9 +4182,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # |                4|  4|            true|              500|
             # +-----------------+---+----------------+-----------------+
             condition = (
-                F.when(kdf[tmp_cond_col].spark.column, kdf[self._column_label].spark.column)
+                F.when(
+                    kdf[tmp_cond_col].spark.column,
+                    kdf._kser_for(kdf._internal.column_labels[0]).spark.column,
+                )
                 .otherwise(kdf[tmp_other_col].spark.column)
-                .alias(self._internal.data_spark_column_names[0])
+                .alias(kdf._internal.data_spark_column_names[0])
             )
 
             internal = kdf._internal.with_new_columns(
@@ -4214,7 +4233,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    NaN
         3    NaN
         4    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s1.mask(s1 > 1, 10).sort_index()
         0     0
@@ -4222,7 +4241,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    10
         3    10
         4    10
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s1.mask(s1 > 1, s1 + 100).sort_index()
         0      0
@@ -4230,7 +4249,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    102
         3    103
         4    104
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s1.mask(s1 > 1, s2).sort_index()
         0      0
@@ -4238,7 +4257,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    300
         3    400
         4    500
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
@@ -4285,7 +4304,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         c  falcon  speed     320.0
                    weight      1.0
                    length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         Get values at specified index
 
@@ -4293,7 +4312,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         lama  speed      45.0
               weight    200.0
               length      1.2
-        Name: 0, dtype: float64
+        dtype: float64
 
         Get values at several indexes
 
@@ -4301,7 +4320,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         speed      45.0
         weight    200.0
         length      1.2
-        Name: 0, dtype: float64
+        dtype: float64
 
         Get values at specified index and level
 
@@ -4309,7 +4328,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         a  speed      45.0
            weight    200.0
            length      1.2
-        Name: 0, dtype: float64
+        dtype: float64
         """
         if not isinstance(key, tuple):
             key = (key,)
@@ -4330,7 +4349,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
             if length == 1:
-                return pdf[self.name].iloc[0]
+                return pdf[self._internal.data_spark_column_names[0]].iloc[0]
 
         index_map = list(internal.index_map.items())
         index_map = index_map[:level] + index_map[level + len(key) :]
@@ -4368,25 +4387,25 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    90
         4    91
         1    85
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> kser.pct_change()
         2         NaN
         4    0.011111
         1   -0.065934
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> kser.sort_index().pct_change()
         1         NaN
         2    0.058824
         4    0.011111
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> kser.pct_change(periods=2)
         2         NaN
         4         NaN
         1   -0.055556
-        Name: 0, dtype: float64
+        dtype: float64
         """
         scol = self.spark.column
 
@@ -4425,7 +4444,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s1.combine_first(s2)
         0    1.0
         1    4.0
-        Name: 0, dtype: float64
+        dtype: float64
         """
         if not isinstance(other, ks.Series):
             raise ValueError("`combine_first` only allows `Series` for parameter `other`")
@@ -4435,7 +4454,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             combined = self._kdf
         else:
             with option_context("compute.ops_on_diff_frames", True):
-                combined = combine_frames(self.to_frame(), other)
+                combined = combine_frames(self._kdf, other._kdf)
             this = combined["this"]._internal.spark_column_for(self._column_label)
             that = combined["that"]._internal.spark_column_for(other._column_label)
         # If `self` has missing value, use value of `other`
@@ -4558,7 +4577,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    a
         1    b
         2    c
-        Name: 0, dtype: object
+        dtype: object
         >>> s.repeat(2)
         0    a
         1    b
@@ -4566,9 +4585,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    a
         1    b
         2    c
-        Name: 0, dtype: object
+        dtype: object
         >>> ks.Series([1, 2, 3]).repeat(0)
-        Series([], Name: 0, dtype: int64)
+        Series([], dtype: int64)
         """
         if not isinstance(repeats, (int, Series)):
             raise ValueError(
@@ -4586,7 +4605,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 kdf = self.to_frame()
                 temp_repeats = verify_temp_column_name(kdf, "__temp_repeats__")
                 kdf[temp_repeats] = repeats
-                return kdf[self.name].repeat(kdf[temp_repeats])
+                return (
+                    kdf._kser_for(kdf._internal.column_labels[0])
+                    .repeat(kdf[temp_repeats])
+                    .rename(self.name)
+                )
             else:
                 scol = F.explode(
                     SF.array_repeat(self.spark.column, repeats.astype(int).spark.column)
@@ -4601,7 +4624,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             if repeats < 0:
                 raise ValueError("negative dimensions are not allowed")
 
-            kdf = self.to_frame()
+            kdf = self._kdf[[self.name]]
             if repeats == 0:
                 return first_series(DataFrame(kdf._internal.with_filter(F.lit(False))))
             else:
@@ -4646,7 +4669,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         20    2.0
         30    NaN
         40    4.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         A scalar `where`.
 
@@ -4660,7 +4683,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.asof([5, 20]).sort_index()
         5     NaN
         20    2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         Missing values are not considered. The following is ``2.0``, not
         NaN, even though NaN is at the index location for ``30``.
@@ -4705,7 +4728,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         1    2
         2    3
         3    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.mad()
         1.0
@@ -4749,7 +4772,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
              b    2
         two  a    3
              b    4
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.unstack(level=-1).sort_index()
              a  b
@@ -4894,7 +4917,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         x        a          1
                  b          2
         y        c          3
-        Name: 0, dtype: int64
+        dtype: int64
 
         Removing specific index level by level
 
@@ -4903,7 +4926,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         a    1
         b    2
         c    3
-        Name: 0, dtype: int64
+        dtype: int64
 
         Removing specific index level by name
 
@@ -4912,9 +4935,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         x    1
         x    2
         y    3
-        Name: 0, dtype: int64
+        dtype: int64
         """
-        return first_series(self.to_frame().droplevel(level=level, axis=0))
+        return first_series(self.to_frame().droplevel(level=level, axis=0)).rename(self.name)
 
     def tail(self, n=5):
         """
@@ -4950,15 +4973,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    3
         3    4
         4    5
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> kser.tail(3)  # doctest: +SKIP
         2    3
         3    4
         4    5
-        Name: 0, dtype: int64
+        dtype: int64
         """
-        return first_series(self.to_frame().tail(n=n))
+        return first_series(self.to_frame().tail(n=n)).rename(self.name)
 
     def product(self, min_count=0):
         """

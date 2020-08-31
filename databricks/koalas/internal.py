@@ -34,9 +34,10 @@ from pyspark.sql.types import BooleanType, DataType, StructField, StructType, Lo
 try:
     from pyspark.sql.types import to_arrow_type
 except ImportError:
-    from pyspark.sql.pandas.types import to_arrow_type
+    from pyspark.sql.pandas.types import to_arrow_type  # noqa: F401
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+# For running doctests and reference resolution in PyCharm.
+from databricks import koalas as ks  # noqa: F401
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.

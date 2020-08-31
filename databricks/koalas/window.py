@@ -17,8 +17,6 @@ from collections import OrderedDict
 from functools import partial
 from typing import Any
 
-from databricks.koalas.internal import SPARK_INDEX_NAME_FORMAT
-from databricks.koalas.utils import name_like_string
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 from databricks.koalas.missing.window import (
@@ -28,8 +26,10 @@ from databricks.koalas.missing.window import (
     MissingPandasLikeExpandingGroupby,
 )
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME
+# For running doctests and reference resolution in PyCharm.
+from databricks import koalas as ks  # noqa: F401
+
+from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import scol_for
 
 
@@ -177,14 +177,14 @@ class Rolling(RollingAndExpanding):
         1    1.0
         2    0.0
         3    1.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.rolling(3).count()
         0    1.0
         1    2.0
         2    2.0
         3    2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.to_frame().rolling(1).count()
              0
@@ -233,7 +233,7 @@ class Rolling(RollingAndExpanding):
         2    5
         3    2
         4    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.rolling(2).sum()
         0    NaN
@@ -241,7 +241,7 @@ class Rolling(RollingAndExpanding):
         2    8.0
         3    7.0
         4    8.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.rolling(3).sum()
         0     NaN
@@ -249,7 +249,7 @@ class Rolling(RollingAndExpanding):
         2    12.0
         3    10.0
         4    13.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling summation is computed column-wise.
 
@@ -311,7 +311,7 @@ class Rolling(RollingAndExpanding):
         2    5
         3    2
         4    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.rolling(2).min()
         0    NaN
@@ -319,7 +319,7 @@ class Rolling(RollingAndExpanding):
         2    3.0
         3    2.0
         4    2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.rolling(3).min()
         0    NaN
@@ -327,7 +327,7 @@ class Rolling(RollingAndExpanding):
         2    3.0
         3    2.0
         4    2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling minimum is computed column-wise.
 
@@ -388,7 +388,7 @@ class Rolling(RollingAndExpanding):
         2    5
         3    2
         4    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.rolling(2).max()
         0    NaN
@@ -396,7 +396,7 @@ class Rolling(RollingAndExpanding):
         2    5.0
         3    5.0
         4    6.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.rolling(3).max()
         0    NaN
@@ -404,7 +404,7 @@ class Rolling(RollingAndExpanding):
         2    5.0
         3    5.0
         4    6.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling maximum is computed column-wise.
 
@@ -466,7 +466,7 @@ class Rolling(RollingAndExpanding):
         2    5
         3    2
         4    6
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.rolling(2).mean()
         0    NaN
@@ -474,7 +474,7 @@ class Rolling(RollingAndExpanding):
         2    4.0
         3    3.5
         4    4.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.rolling(3).mean()
         0         NaN
@@ -482,7 +482,7 @@ class Rolling(RollingAndExpanding):
         2    4.000000
         3    3.333333
         4    4.333333
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling mean is computed column-wise.
 
@@ -546,7 +546,7 @@ class Rolling(RollingAndExpanding):
         4    1.000000
         5    1.154701
         6    0.000000
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling standard deviation is computed column-wise.
 
@@ -596,7 +596,7 @@ class Rolling(RollingAndExpanding):
         4    1.000000
         5    1.333333
         6    0.000000
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each unbiased rolling variance is computed column-wise.
 
@@ -732,8 +732,7 @@ class RollingGroupby(Rolling):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).rolling(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).rolling(3).count().sort_index()
         2  0     1.0
            1     2.0
         3  2     1.0
@@ -745,7 +744,7 @@ class RollingGroupby(Rolling):
            8     3.0
         5  9     1.0
            10    2.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling count is computed column-wise.
 
@@ -787,8 +786,7 @@ class RollingGroupby(Rolling):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).rolling(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).rolling(3).sum().sort_index()
         2  0      NaN
            1      NaN
         3  2      NaN
@@ -800,7 +798,7 @@ class RollingGroupby(Rolling):
            8     12.0
         5  9      NaN
            10     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling summation is computed column-wise.
 
@@ -842,8 +840,7 @@ class RollingGroupby(Rolling):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).rolling(3).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).rolling(3).min().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -855,7 +852,7 @@ class RollingGroupby(Rolling):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling minimum is computed column-wise.
 
@@ -897,8 +894,7 @@ class RollingGroupby(Rolling):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).rolling(3).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).rolling(3).max().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -910,7 +906,7 @@ class RollingGroupby(Rolling):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling maximum is computed column-wise.
 
@@ -952,8 +948,7 @@ class RollingGroupby(Rolling):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).rolling(3).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).rolling(3).mean().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -965,7 +960,7 @@ class RollingGroupby(Rolling):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each rolling mean is computed column-wise.
 
@@ -1089,7 +1084,7 @@ class Expanding(RollingAndExpanding):
         1    2.0
         2    2.0
         3    3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.to_frame().expanding().count()
              0
@@ -1138,7 +1133,7 @@ class Expanding(RollingAndExpanding):
         2    3
         3    4
         4    5
-        Name: 0, dtype: int64
+        dtype: int64
 
         >>> s.expanding(3).sum()
         0     NaN
@@ -1146,7 +1141,7 @@ class Expanding(RollingAndExpanding):
         2     6.0
         3    10.0
         4    15.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding summation is computed column-wise.
 
@@ -1202,7 +1197,7 @@ class Expanding(RollingAndExpanding):
         2    3.0
         3    2.0
         4    2.0
-        Name: 0, dtype: float64
+        dtype: float64
         """
         return super(Expanding, self).min()
 
@@ -1238,7 +1233,7 @@ class Expanding(RollingAndExpanding):
         2    5.0
         3    5.0
         4    6.0
-        Name: 0, dtype: float64
+        dtype: float64
         """
         return super(Expanding, self).max()
 
@@ -1275,14 +1270,14 @@ class Expanding(RollingAndExpanding):
         1    1.5
         2    2.0
         3    2.5
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.expanding(3).mean()
         0    NaN
         1    NaN
         2    2.0
         3    2.5
-        Name: 0, dtype: float64
+        dtype: float64
         """
         return super(Expanding, self).mean()
 
@@ -1319,7 +1314,7 @@ class Expanding(RollingAndExpanding):
         4    0.894427
         5    0.836660
         6    0.786796
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding standard deviation variance is computed column-wise.
 
@@ -1369,7 +1364,7 @@ class Expanding(RollingAndExpanding):
         4    0.800000
         5    0.700000
         6    0.619048
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each unbiased expanding variance is computed column-wise.
 
@@ -1441,8 +1436,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).count().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).expanding(3).count().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -1454,7 +1448,7 @@ class ExpandingGroupby(Expanding):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding count is computed column-wise.
 
@@ -1496,8 +1490,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).expanding(3).sum().sort_index()
         2  0      NaN
            1      NaN
         3  2      NaN
@@ -1509,7 +1502,7 @@ class ExpandingGroupby(Expanding):
            8     16.0
         5  9      NaN
            10     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding summation is computed column-wise.
 
@@ -1551,8 +1544,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).min().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).expanding(3).min().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -1564,7 +1556,7 @@ class ExpandingGroupby(Expanding):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding minimum is computed column-wise.
 
@@ -1605,8 +1597,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).max().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).expanding(3).max().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -1618,7 +1609,7 @@ class ExpandingGroupby(Expanding):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding maximum is computed column-wise.
 
@@ -1660,8 +1651,7 @@ class ExpandingGroupby(Expanding):
         Examples
         --------
         >>> s = ks.Series([2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5])
-        >>> s.groupby(s).expanding(3).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
-        0
+        >>> s.groupby(s).expanding(3).mean().sort_index()
         2  0     NaN
            1     NaN
         3  2     NaN
@@ -1673,7 +1663,7 @@ class ExpandingGroupby(Expanding):
            8     4.0
         5  9     NaN
            10    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         For DataFrame, each expanding mean is computed column-wise.
 

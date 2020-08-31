@@ -58,7 +58,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                 if LooseVersion("0.21.1") <= LooseVersion(pd.__version__):
                     expected = pd.read_parquet(tmp, columns=columns)
                 actual = ks.read_parquet(tmp, columns=columns)
-                self.assertPandasEqual(expected, actual.toPandas())
+                self.assertPandasEqual(expected, actual.to_pandas())
 
             check(None, data)
             check(["i32", "i64"], data[["i32", "i64"]])
@@ -80,7 +80,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             else:
                 expected = data
             actual = ks.read_parquet(tmp)
-            self.assertPandasEqual(expected, actual.toPandas())
+            self.assertPandasEqual(expected, actual.to_pandas())
 
             # When index columns are known
             pdf = self.test_pdf

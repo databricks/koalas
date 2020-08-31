@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.testing.utils import ComparisonTestBase, ReusedSQLTestCase, compare_both
 
 
@@ -106,10 +106,10 @@ class BasicIndexingTest(ComparisonTestBase):
         pdf = self.pdf
 
         df1 = ks.from_pandas(pdf.set_index("month"))
-        self.assertPandasEqual(df1.toPandas(), pdf.set_index("month"))
+        self.assertPandasEqual(df1.to_pandas(), pdf.set_index("month"))
 
         df2 = ks.from_pandas(pdf.set_index(["year", "month"]))
-        self.assertPandasEqual(df2.toPandas(), pdf.set_index(["year", "month"]))
+        self.assertPandasEqual(df2.to_pandas(), pdf.set_index(["year", "month"]))
 
     def test_limitations(self):
         df = self.kdf.set_index("month")
@@ -489,7 +489,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[:, "a":"a"], pdf.loc[:, "a":"a"])
         self.assert_eq(kdf.loc[:, "a":"c"], pdf.loc[:, "a":"c"])
-        self.assert_eq(kdf.loc[:, "b":"c"], pdf.loc[:, "b":"c"], almost=True)
+        self.assert_eq(kdf.loc[:, "b":"c"], pdf.loc[:, "b":"c"])
 
     def test_loc2d(self):
         kdf = self.kdf
@@ -524,7 +524,7 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assert_eq(kdf.loc[:, "a":"a"], pdf.loc[:, "a":"a"])
         self.assert_eq(kdf.loc[:, "a":"d"], pdf.loc[:, "a":"d"])
-        self.assert_eq(kdf.loc[:, "c":"d"], pdf.loc[:, "c":"d"], almost=True)
+        self.assert_eq(kdf.loc[:, "c":"d"], pdf.loc[:, "c":"d"])
 
     def test_loc2d_multiindex_columns(self):
         arrays = [np.array(["bar", "bar", "baz", "baz"]), np.array(["one", "two", "one", "two"])]

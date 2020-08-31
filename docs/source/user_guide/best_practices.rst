@@ -272,4 +272,4 @@ The example above can be also changed to directly using Koalas APIs as below:
    London      400.0
    New York    441.0
    Helsinki    144.0
-   Name: 0, dtype: float64
+   dtype: float64

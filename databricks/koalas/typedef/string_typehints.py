@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import numpy as np
-import pandas
-import pandas as pd
-from numpy import *
-from pandas import *
-from inspect import getfullargspec
+import numpy as np  # noqa: F401
+import pandas  # noqa: F401
+import pandas as pd  # noqa: F401
+from numpy import *  # noqa: F401
+from pandas import *  # noqa: F401
+from inspect import getfullargspec  # noqa: F401
 
 
 def resolve_string_type_hint(tpe):

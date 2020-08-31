@@ -53,7 +53,6 @@ class _MissingPandasLikeDataFrame(object):
     interpolate = _unsupported_function("interpolate")
     itertuples = _unsupported_function("itertuples")
     last = _unsupported_function("last")
-    last_valid_index = _unsupported_function("last_valid_index")
     lookup = _unsupported_function("lookup")
     mode = _unsupported_function("mode")
     prod = _unsupported_function("prod")
