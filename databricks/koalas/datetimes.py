@@ -20,7 +20,7 @@ Date/Time related functions on Koalas Series
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
+import pandas as pd  # noqa: F401
 import pyspark.sql.functions as F
 from pyspark.sql.types import DateType, TimestampType, LongType
 

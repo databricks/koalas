@@ -73,7 +73,6 @@ from databricks.koalas.utils import (
     validate_axis,
     validate_bool_kwarg,
     verify_temp_column_name,
-    default_session,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF

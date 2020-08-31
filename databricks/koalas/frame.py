@@ -9925,7 +9925,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3     NaN
         dtype: float64
         """
-        from databricks.koalas.series import Series, first_series
+        from databricks.koalas.series import first_series
 
         axis = validate_axis(axis)
 

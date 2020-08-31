@@ -25,7 +25,7 @@ from functools import reduce
 from typing import Optional, Union, List
 import warnings
 
-import numpy as np
+import numpy as np  # noqa: F401
 import pandas as pd
 
 from pyspark import sql as spark
