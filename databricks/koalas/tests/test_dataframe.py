@@ -2409,6 +2409,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
         )
 
+        index2 = ["A", "C", "D", "E", "0"]
+        pdf2 = pd.DataFrame({"a": [1.0, 2.0, 3.0, 4.0, 5.0]}, index=index2)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex(index=pdf2.index, fill_value=0.0).sort_index(),
+            kdf.reindex(index=kdf2.index, fill_value=0.0).sort_index(),
+        )
+
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["numbers", "2", "3"], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["numbers", "2", "3"], axis=2))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=["A", "B", "C"], axis=1))

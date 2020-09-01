@@ -7836,8 +7836,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         index_column = self._internal.index_spark_column_names[0]
 
-        kser = ks.Series(list(index))
-        labels = kser._internal.spark_frame.select(kser.spark.column.alias(index_column))
+        if isinstance(index, ks.Index):
+            obj = index
+        else:
+            obj = ks.Series(list(index))
+        labels = obj._internal.spark_frame.select(obj.spark.column.alias(index_column))
         frame = self._internal.resolved_copy.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
 
         if fill_value is not None:
