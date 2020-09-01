@@ -303,6 +303,36 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.dropna(), pidx.dropna())
         self.assert_eq((kidx + 1).dropna(), (pidx + 1).dropna())
 
+    def test_putmask(self):
+        pidx = pd.Index(["a", "b", "c", "d", "e"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(
+            kidx.putmask(kidx < "c", "k").sort_values(), pidx.putmask(pidx < "c", "k").sort_values()
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < "c", ["g", "h", "i", "j", "k"]).sort_values(),
+            pidx.putmask(pidx < "c", ["g", "h", "i", "j", "k"]).sort_values(),
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < "c", ("g", "h", "i", "j", "k")).sort_values(),
+            pidx.putmask(pidx < "c", ("g", "h", "i", "j", "k")).sort_values(),
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < "c", ks.Index(["g", "h", "i", "j", "k"])).sort_values(),
+            pidx.putmask(pidx < "c", pd.Index(["g", "h", "i", "j", "k"])).sort_values(),
+        )
+        self.assert_eq(
+            kidx.putmask(kidx < "c", ks.Series(["g", "h", "i", "j", "k"])).sort_values(),
+            pidx.putmask(pidx < "c", pd.Series(["g", "h", "i", "j", "k"])).sort_values(),
+        )
+
+        with self.assertRaisesRegexp(ValueError, "value and data must be the same size"):
+            kidx.putmask(kidx < "c", ks.Series(["g", "h"]))
+
+        with self.assertRaisesRegexp(ValueError, "mask and data must be the same size"):
+            kidx.putmask([True, False], ks.Series(["g", "h", "i", "j", "k"]))
+
     def test_index_symmetric_difference(self):
         pidx1 = pd.Index([1, 2, 3, 4])
         pidx2 = pd.Index([2, 3, 4, 5])

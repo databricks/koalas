@@ -37,11 +37,18 @@ from pandas.api.types import (
 )
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_hashable
+from pyspark.sql.functions import pandas_udf
 
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
+from pyspark.sql.types import (
+    BooleanType,
+    NumericType,
+    StringType,
+    TimestampType,
+    IntegralType,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -50,6 +57,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.typedef import infer_pd_series_spark_type
 from databricks.koalas.utils import (
     compare_allow_null,
     compare_disallow_null,
@@ -1577,6 +1585,97 @@ class Index(IndexOpsMixin):
             .select(sequence_col)
             .first()[0]
         )
+
+    def putmask(self, mask, value):
+        """
+        Return a new Index of the values set with the mask.
+
+        .. note:: this API can be pretty expensive since it is based on
+             a global sequence internally.
+
+        Returns
+        -------
+        Index
+
+        Example
+        -------
+        >>> kidx = ks.Index([1, 2, 3, 4, 5])
+        >>> kidx
+        Int64Index([1, 2, 3, 4, 5], dtype='int64')
+
+        >>> kidx.putmask(kidx > 3, 100).sort_values()
+        Int64Index([1, 2, 3, 100, 100], dtype='int64')
+
+        >>> kidx.putmask(kidx > 3, ks.Index([100, 200, 300, 400, 500])).sort_values()
+        Int64Index([1, 2, 3, 400, 500], dtype='int64')
+        """
+        scol_name = self._internal.index_spark_column_names[0]
+        sdf = self._internal.spark_frame.select(self.spark.column)
+
+        dist_sequence_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf, column_name=dist_sequence_col_name
+        )
+
+        replace_col = verify_temp_column_name(sdf, "__replace_column__")
+        masking_col = verify_temp_column_name(sdf, "__masking_column__")
+
+        if isinstance(value, (list, tuple, Index, Series)):
+            if isinstance(value, (list, tuple)):
+                pandas_value = pd.Series(value)
+            elif isinstance(value, (Index, Series)):
+                pandas_value = value.to_pandas()
+
+            if self.size != pandas_value.size:
+                # TODO: We can't support different size of value for now.
+                raise ValueError("value and data must be the same size")
+
+            replace_return_type = infer_pd_series_spark_type(pandas_value)
+
+            @pandas_udf(returnType=replace_return_type if replace_return_type else StringType())
+            def replace_pandas_udf(sequence):
+                return pandas_value[sequence]
+
+            sdf = sdf.withColumn(replace_col, replace_pandas_udf(dist_sequence_col_name))
+        else:
+            sdf = sdf.withColumn(replace_col, F.lit(value))
+
+        if isinstance(mask, (list, tuple, Index, Series)):
+            if isinstance(mask, (list, tuple)):
+                pandas_mask = pd.Series(mask)
+            elif isinstance(mask, (Index, Series)):
+                pandas_mask = mask.to_pandas()
+
+            if self.size != pandas_mask.size:
+                raise ValueError("mask and data must be the same size")
+
+            @pandas_udf(returnType=BooleanType())
+            def masking_pandas_udf(sequence):
+                return pandas_mask[sequence]
+
+            sdf = sdf.withColumn(masking_col, masking_pandas_udf(dist_sequence_col_name))
+        elif not isinstance(mask, list) and not isinstance(mask, tuple):
+            raise TypeError("Mask data doesn't support type " "{0}".format(type(mask).__name__))
+
+        # spark_frame here looks like below
+        # +-------------------------------+-----------------+------------------+------------------+
+        # |__distributed_sequence_column__|__index_level_0__|__replace_column__|__masking_column__|
+        # +-------------------------------+-----------------+------------------+------------------+
+        # |                              0|                a|               100|              true|
+        # |                              3|                d|               400|             false|
+        # |                              1|                b|               200|              true|
+        # |                              2|                c|               300|             false|
+        # |                              4|                e|               500|             false|
+        # +-------------------------------+-----------------+------------------+------------------+
+
+        cond = F.when(scol_for(sdf, masking_col), scol_for(sdf, replace_col)).otherwise(
+            scol_for(sdf, scol_name)
+        )
+        sdf = sdf.select(cond.alias(scol_name))
+
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return ks.DataFrame(internal).index
 
     def set_names(self, names, level=None, inplace=False):
         """
