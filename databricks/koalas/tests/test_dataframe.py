@@ -3949,7 +3949,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # No numeric named columns
         pdf.columns.name = "Koalas"
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod())
+        self.assert_eq(pdf.prod(), kdf.prod(), almost=True)
 
         # No numeric MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
