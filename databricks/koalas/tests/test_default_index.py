@@ -33,7 +33,7 @@ class OneByOneDefaultIndexTest(ReusedSQLTestCase):
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
-        self.assert_eq(ks.DataFrame(sdf).sort_index(), pd.DataFrame({"id": list(range(1000))}))
+        self.assert_eq(ks.DataFrame(sdf), pd.DataFrame({"id": list(range(1000))}))
 
 
 class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase):
@@ -49,7 +49,7 @@ class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase):
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
-        self.assert_eq(ks.DataFrame(sdf).sort_index(), pd.DataFrame({"id": list(range(1000))}))
+        self.assert_eq(ks.DataFrame(sdf), pd.DataFrame({"id": list(range(1000))}))
 
 
 class DistributedDefaultIndexTest(ReusedSQLTestCase):

@@ -533,8 +533,12 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
         from databricks.koalas.series import Series, first_series
 
         if self._is_series:
-            if (isinstance(key, Series) and not same_anchor(key, self._kdf_or_kser)) or (
-                isinstance(value, Series) and not same_anchor(value, self._kdf_or_kser)
+            if (
+                isinstance(key, Series)
+                and (isinstance(self, iLocIndexer) or not same_anchor(key, self._kdf_or_kser))
+            ) or (
+                isinstance(value, Series)
+                and (isinstance(self, iLocIndexer) or not same_anchor(value, self._kdf_or_kser))
             ):
                 if self._kdf_or_kser.name is None:
                     kdf = self._kdf_or_kser.to_frame()
@@ -555,9 +559,13 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
                 kser = kdf._kser_for(column_label)
                 if isinstance(key, Series):
-                    key = kdf[temp_key_col]
+                    key = F.col(
+                        "`{}`".format(kdf[temp_key_col]._internal.data_spark_column_names[0])
+                    )
                 if isinstance(value, Series):
-                    value = kdf[temp_value_col]
+                    value = F.col(
+                        "`{}`".format(kdf[temp_value_col]._internal.data_spark_column_names[0])
+                    )
 
                 type(self)(kser)[key] = value
 
@@ -581,10 +589,11 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             if limit is not None:
                 cond = cond & (self._internal.spark_frame[self._sequence_col] < F.lit(limit))
 
-            if isinstance(value, Series):
+            if isinstance(value, (Series, spark.Column)):
                 if remaining_index is not None and remaining_index == 0:
                     raise ValueError("No axis named {} for object type {}".format(key, type(value)))
-                value = value.spark.column
+                if isinstance(value, Series):
+                    value = value.spark.column
             else:
                 value = F.lit(value)
             scol = (
@@ -612,8 +621,12 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 else:
                     raise ValueError("Only a dataframe with one column can be assigned")
 
-            if (isinstance(rows_sel, Series) and not same_anchor(rows_sel, self._kdf_or_kser)) or (
-                isinstance(value, Series) and not same_anchor(value, self._kdf_or_kser)
+            if (
+                isinstance(rows_sel, Series)
+                and (isinstance(self, iLocIndexer) or not same_anchor(rows_sel, self._kdf_or_kser))
+            ) or (
+                isinstance(value, Series)
+                and (isinstance(self, iLocIndexer) or not same_anchor(value, self._kdf_or_kser))
             ):
                 kdf = self._kdf_or_kser.copy()
                 temp_natural_order = verify_temp_column_name(kdf, "__temp_natural_order__")
@@ -625,12 +638,16 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                     kdf[temp_key_col] = rows_sel
                 if isinstance(value, Series):
                     kdf[temp_value_col] = value
-                kdf = kdf.sort_values(temp_natural_order)
+                kdf = kdf.sort_values(temp_natural_order).drop(temp_natural_order)
 
                 if isinstance(rows_sel, Series):
-                    rows_sel = kdf[temp_key_col]
+                    rows_sel = F.col(
+                        "`{}`".format(kdf[temp_key_col]._internal.data_spark_column_names[0])
+                    )
                 if isinstance(value, Series):
-                    value = kdf[temp_value_col]
+                    value = F.col(
+                        "`{}`".format(kdf[temp_value_col]._internal.data_spark_column_names[0])
+                    )
 
                 type(self)(kdf)[rows_sel, cols_sel] = value
 
@@ -649,12 +666,13 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             if limit is not None:
                 cond = cond & (self._internal.spark_frame[self._sequence_col] < F.lit(limit))
 
-            if isinstance(value, Series):
+            if isinstance(value, (Series, spark.Column)):
                 if remaining_index is not None and remaining_index == 0:
                     raise ValueError("Incompatible indexer with Series")
                 if len(data_spark_columns) > 1:
                     raise ValueError("shape mismatch")
-                value = value.spark.column
+                if isinstance(value, Series):
+                    value = value.spark.column
             else:
                 value = F.lit(value)
 
@@ -1356,7 +1374,7 @@ class iLocIndexer(LocIndexerLike):
         sdf = InternalFrame.attach_distributed_sequence_column(
             internal.spark_frame, column_name=self._sequence_col
         )
-        return internal.copy(spark_frame=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
+        return internal.with_new_sdf(spark_frame=sdf.orderBy(NATURAL_ORDER_COLUMN_NAME))
 
     @lazy_property
     def _sequence_col(self):

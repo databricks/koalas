@@ -822,7 +822,7 @@ class SparkFrameMethods(object):
         The case below ends up with using the default index, which should be avoided
         if possible.
 
-        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count().sort("a")).sort_index()
+        >>> kdf.spark.apply(lambda sdf: sdf.groupby("a").count().sort("a"))
            a  count
         0  1      1
         1  2      1

@@ -50,7 +50,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = lambda df: df.sort_values("a").reset_index(drop=True).sort_index()
+                sort = lambda df: df.sort_values("a").reset_index(drop=True)
             self.assert_eq(
                 sort(kdf.groupby("a", as_index=as_index).sum()),
                 sort(pdf.groupby("a", as_index=as_index).sum()),
@@ -158,13 +158,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(("x", "a"), as_index=False)
             .sum()
             .sort_values(("x", "a"))
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.groupby(("x", "a"), as_index=False)
             .sum()
             .sort_values(("x", "a"))
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
         )
         self.assert_eq(
             kdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
@@ -211,9 +209,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = (
-                    lambda df: df.sort_values(list(df.columns)).reset_index(drop=True).sort_index()
-                )
+                sort = lambda df: df.sort_values(list(df.columns)).reset_index(drop=True)
 
             for check_exact, almost, func in funcs:
                 for kkey, pkey in [("b", "b"), (kdf.b, pdf.b)]:
@@ -611,7 +607,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = lambda df: df.sort_values("A").reset_index(drop=True).sort_index()
+                sort = lambda df: df.sort_values("A").reset_index(drop=True)
             self.assert_eq(
                 sort(kdf.groupby("A", as_index=as_index).all()),
                 sort(pdf.groupby("A", as_index=as_index).all()),
@@ -646,7 +642,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             if as_index:
                 sort = lambda df: df.sort_index()
             else:
-                sort = lambda df: df.sort_values(("X", "A")).reset_index(drop=True).sort_index()
+                sort = lambda df: df.sort_values(("X", "A")).reset_index(drop=True)
             self.assert_eq(
                 sort(kdf.groupby(("X", "A"), as_index=as_index).all()),
                 sort(pdf.groupby(("X", "A"), as_index=as_index).all()),

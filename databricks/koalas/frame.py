@@ -6915,7 +6915,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original DataFrame’s index in the result unlike pandas.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
-        >>> join_kdf.index.sort_values()
+        >>> join_kdf.index
         Int64Index([0, 1, 2, 3], dtype='int64')
         """
         if isinstance(right, ks.Series):
@@ -6978,7 +6978,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  2
         1  3  4
 
-        >>> df.append(df, ignore_index=True).sort_index()
+        >>> df.append(df, ignore_index=True)
            A  B
         0  1  2
         1  3  4
@@ -7921,7 +7921,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  b  3  4
         2  c  5  6
 
-        >>> ks.melt(df).sort_index()
+        >>> ks.melt(df)
           variable value
         0        A     a
         1        B     1
@@ -7933,7 +7933,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         7        B     5
         8        C     6
 
-        >>> df.melt(id_vars='A').sort_index()
+        >>> df.melt(id_vars='A')
            A variable  value
         0  a        B      1
         1  a        C      2
@@ -7942,19 +7942,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  c        B      5
         5  c        C      6
 
-        >>> df.melt(value_vars='A').sort_index()
+        >>> df.melt(value_vars='A')
           variable value
         0        A     a
         1        A     b
         2        A     c
 
-        >>> ks.melt(df, id_vars=['A', 'B']).sort_index()
+        >>> ks.melt(df, id_vars=['A', 'B'])
            A  B variable  value
         0  a  1        C      2
         1  b  3        C      4
         2  c  5        C      6
 
-        >>> df.melt(id_vars=['A'], value_vars=['C']).sort_index()
+        >>> df.melt(id_vars=['A'], value_vars=['C'])
            A variable  value
         0  a        C      2
         1  b        C      4
@@ -7963,7 +7963,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         The names of 'variable' and 'value' columns can be customized:
 
         >>> ks.melt(df, id_vars=['A'], value_vars=['B'],
-        ...         var_name='myVarname', value_name='myValname').sort_index()
+        ...         var_name='myVarname', value_name='myValname')
            A myVarname  myValname
         0  a         B          1
         1  b         B          3
