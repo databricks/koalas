@@ -10067,6 +10067,85 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
 
+    def product(self):
+        """
+        Return the product of the values as Series.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Examples
+        --------
+
+        Non-numeric type column is not included to the result.
+
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4, 5],
+        ...                     'B': [10, 20, 30, 40, 50],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A   B  C
+        0  1  10  a
+        1  2  20  b
+        2  3  30  c
+        3  4  40  d
+        4  5  50  e
+
+        >>> kdf.prod()
+        A         120
+        B    12000000
+        dtype: int64
+
+        If there is no numeric type columns, returns empty Series.
+
+        >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
+        Series([], dtype: float64)
+        """
+        has_multi_idx_col = self.columns.nlevels > 1
+        has_float_col = False
+        column_label_name_pair = {}
+        # Filtering out only column names of numeric type column.
+        for i, column_label in enumerate(self._internal.column_labels):
+            dtype = self._kser_for(column_label).spark.data_type
+            if isinstance(dtype, NumericType):
+                if has_multi_idx_col:
+                    column_label_name_pair[column_label] = self.columns.names[i]
+                else:
+                    column_label_name_pair[column_label] = None
+                if isinstance(dtype, DoubleType):
+                    has_float_col = True
+
+        # Getting spark columns from column names.
+        spark_columns = [
+            self._internal.spark_column_for(column_label) for column_label in column_label_name_pair
+        ]
+        if not spark_columns:
+            # If DataFrame has no numeric type columns, return empty Series.
+            return ks.Series([])
+
+        spark_frame = self._internal.spark_frame
+        conds = []
+        for spark_column in spark_columns:
+            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
+            conds.append(F.exp(F.sum(F.log(cond))))
+        spark_frame = spark_frame.select(conds)
+        prod_values = [prod_value for prod_value in spark_frame.head(1)[0]]
+        if not has_float_col:
+            prod_values = [int(round(prod_value)) for prod_value in prod_values]
+
+        data = prod_values
+        if has_multi_idx_col:
+            index = pd.MultiIndex.from_tuples(
+                column_label_name_pair.keys(), names=column_label_name_pair.values()
+            )
+        else:
+            index = pd.Index(
+                [column_label[0] for column_label in column_label_name_pair.keys()],
+                name=self.columns.name,
+            )
+        return ks.Series(data=data, index=index)
+
+    prod = product
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
