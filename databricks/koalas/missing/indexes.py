@@ -148,7 +148,6 @@ class MissingPandasLikeMultiIndex(object):
     # Deprecated functions
     get_duplicates = _unsupported_function("get_duplicates", deprecated=True)
     get_values = _unsupported_function("get_values", deprecated=True)
-    item = _unsupported_function("item", deprecated=True)
     set_value = _unsupported_function("set_value", deprecated=True)
 
     # Functions we won't support.
