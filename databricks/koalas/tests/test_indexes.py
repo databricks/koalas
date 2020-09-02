@@ -15,7 +15,6 @@
 #
 
 from distutils.version import LooseVersion
-from datetime import datetime
 import inspect
 
 import numpy as np
