@@ -10090,7 +10090,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  4  40  d
         4  5  50  e
 
-        >>> kdf.prod()
+        >>> kdf.prod().sort_index()
         A         120
         B    12000000
         dtype: int64
