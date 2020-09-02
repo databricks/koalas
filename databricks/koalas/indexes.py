@@ -1988,7 +1988,6 @@ class Index(IndexOpsMixin):
         return lib.infer_dtype([self.to_series().head(1).item()])
 
     def __getattr__(self, item: str) -> Any:
-        print(f"item: {item}")
         if hasattr(MissingPandasLikeIndex, item):
             property_or_func = getattr(MissingPandasLikeIndex, item)
             if isinstance(property_or_func, property):
