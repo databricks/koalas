@@ -3954,12 +3954,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # No numeric MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod())
+        self.assert_eq(pdf.prod(), kdf.prod(), almost=True)
 
-        # No numeric names MultiIndex columns
+        # No numeric named MultiIndex columns
         pdf.columns.names = ["Hello", "Koalas"]
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod())
+        self.assert_eq(pdf.prod(), kdf.prod(), almost=True)
 
         # All NaN columns
         pdf = pd.DataFrame(
