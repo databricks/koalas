@@ -37,6 +37,7 @@ from pandas.api.types import (
 )
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_hashable
+from pandas._libs import lib
 
 import pyspark
 from pyspark import sql as spark
@@ -1961,7 +1962,33 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
+    @property
+    def inferred_type(self):
+        """
+        Return a string of the type inferred from the values.
+
+        .. note:: Unlike pandas, inferred_type for Koalas never return "mixed" type
+                  since Spark can have only single type of columns internally
+
+        Examples
+        --------
+        >>> from datetime import datetime
+        >>> ks.Index([1, 2, 3]).inferred_type
+        'integer'
+
+        >>> ks.Index([1.0, 2.0, 3.0]).inferred_type
+        'floating'
+
+        >>> ks.Index(['a', 'b', 'c']).inferred_type
+        'string'
+
+        >>> ks.Index([True, False, True, False]).inferred_type
+        'boolean'
+        """
+        return lib.infer_dtype([self.to_series().head(1).item()])
+
     def __getattr__(self, item: str) -> Any:
+        print(f"item: {item}")
         if hasattr(MissingPandasLikeIndex, item):
             property_or_func = getattr(MissingPandasLikeIndex, item)
             if isinstance(property_or_func, property):
@@ -2759,6 +2786,14 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
+
+    @property
+    def inferred_type(self):
+        """
+        Return a string of the type inferred from the values.
+        """
+        # It's always 'mixed' for MultiIndex
+        return "mixed"
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)
