@@ -1961,6 +1961,36 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
+    def item(self):
+        """
+        Return the first element of the underlying data as a python scalar.
+
+        Returns
+        -------
+        scalar
+            The first element of Index.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10])
+        >>> kidx.item()
+        10
+
+        Support MultiIndex
+
+        >>> kmidx = ks.MultiIndex.from_tuples([('a', 'x')])
+        >>> kmidx.item()
+        ('a', 'x')
+        """
+        if len(self._kdf.head(2)) == 1:
+            return self.to_pandas().item()
+        raise ValueError("can only convert an array of size 1 to a Python scalar")
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeIndex, item):
             property_or_func = getattr(MissingPandasLikeIndex, item)

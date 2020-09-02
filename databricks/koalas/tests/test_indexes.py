@@ -1391,3 +1391,21 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
+
+    def test_item(self):
+        pidx = pd.Index([10])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.item(), kmidx.item())
+
+        err_msg = "can only convert an array of size 1 to a Python scalar"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            ks.Index([10, 20]).item()
+        with self.assertRaisesRegex(ValueError, err_msg):
+            ks.MultiIndex.from_tuples([("a", "x"), ("b", "y")]).item()
