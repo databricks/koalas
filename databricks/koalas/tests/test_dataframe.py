@@ -3881,13 +3881,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
-            # Empty Series
-            pdf = pd.Series([], name=0).to_frame()
+            # Empty DataFrame
+            pdf = pd.Series([]).to_frame()
             kdf = ks.Series([]).to_frame()
             self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
     def test_first_valid_index(self):
         # Empty DataFrame
-        pdf = pd.Series([], name=0).to_frame()
+        pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
