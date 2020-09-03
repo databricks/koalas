@@ -1980,15 +1980,10 @@ class Index(IndexOpsMixin):
         >>> kidx = ks.Index([10])
         >>> kidx.item()
         10
-
-        Support MultiIndex
-
-        >>> kmidx = ks.MultiIndex.from_tuples([('a', 'x')])
-        >>> kmidx.item()
-        ('a', 'x')
         """
-        if len(self._kdf.head(2)) == 1:
-            return self.to_pandas().item()
+        result = self._internal.spark_frame.head(2)
+        if len(result) == 1:
+            return result[0][0]
         raise ValueError("can only convert an array of size 1 to a Python scalar")
 
     def __getattr__(self, item: str) -> Any:
@@ -2789,6 +2784,31 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
+
+    def item(self):
+        """
+        Return the first element of the underlying data as a python tuple.
+
+        Returns
+        -------
+        tuple
+            The first element of MultiIndex.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kmidx = ks.MultiIndex.from_tuples([('a', 'x')])
+        >>> kmidx.item()
+        ('a', 'x')
+        """
+        result = self._internal.spark_frame.head(2)
+        if len(result) == 1:
+            return tuple(result[0][nlevel] for nlevel in range(self.nlevels))
+        raise ValueError("can only convert an array of size 1 to a Python scalar")
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)
