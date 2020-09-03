@@ -3491,7 +3491,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
-        Dataframe.notnull
+        DataFrame.notnull
 
         Examples
         --------
@@ -3523,7 +3523,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
-        Dataframe.isnull
+        DataFrame.isnull
 
         Examples
         --------
