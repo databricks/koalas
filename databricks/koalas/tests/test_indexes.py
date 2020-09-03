@@ -1399,49 +1399,55 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # other = Index
         pidx_other = pd.Index([3, 4, 5, 6])
         kidx_other = ks.from_pandas(pidx_other)
-        self.assert_eq(pidx.intersection(pidx_other), kidx.intersection(kidx_other))
+        self.assert_eq(pidx.intersection(pidx_other), kidx.intersection(kidx_other).sort_values())
 
         # other = MultiIndex
         pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kmidx = ks.from_pandas(pmidx)
-        self.assert_eq(pidx.intersection(pmidx), kidx.intersection(kmidx), almost=True)
+        self.assert_eq(
+            pidx.intersection(pmidx), kidx.intersection(kmidx).sort_values(), almost=True
+        )
 
         # other = Series
         pser = pd.Series([3, 4, 5, 6])
         kser = ks.from_pandas(pser)
-        self.assert_eq(pidx.intersection(pser), kidx.intersection(kser))
+        self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
 
         # other = list
         other = [3, 4, 5, 6]
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other))
+        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
 
         # other = tuple
         other = (3, 4, 5, 6)
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other))
+        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
 
         # other = dict
         other = {3: None, 4: None, 5: None, 6: None}
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other))
+        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
 
         # MultiIndex / other = Index
-        self.assert_eq(pmidx.intersection(pidx), kmidx.intersection(kidx), almost=True)
+        self.assert_eq(
+            pmidx.intersection(pidx), kmidx.intersection(kidx).sort_values(), almost=True
+        )
 
         # MultiIndex / other = MultiIndex
         pmidx_other = pd.MultiIndex.from_tuples([("c", "z"), ("d", "w")])
         kmidx_other = ks.from_pandas(pmidx_other)
-        self.assert_eq(pmidx.intersection(pmidx_other), kmidx.intersection(kmidx_other))
+        self.assert_eq(
+            pmidx.intersection(pmidx_other), kmidx.intersection(kmidx_other).sort_values()
+        )
 
         # MultiIndex / other = list
         other = [("c", "z"), ("d", "w")]
-        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other))
+        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other).sort_values())
 
         # MultiIndex / other = tuple
         other = (("c", "z"), ("d", "w"))
-        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other))
+        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other).sort_values())
 
         # MultiIndex / other = dict
         other = {("c", "z"): None, ("d", "w"): None}
-        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other))
+        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other).sort_values())
 
         with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
             kidx.intersection(4)

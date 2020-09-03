@@ -1980,7 +1980,7 @@ class Index(IndexOpsMixin):
         --------
         >>> idx1 = ks.Index([1, 2, 3, 4])
         >>> idx2 = ks.Index([3, 4, 5, 6])
-        >>> idx1.intersection(idx2)
+        >>> idx1.intersection(idx2).sort_values()
         Int64Index([3, 4], dtype='int64')
         """
         if isinstance(other, Index):
