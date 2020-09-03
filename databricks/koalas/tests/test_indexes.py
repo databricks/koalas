@@ -1391,3 +1391,59 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
+
+    def test_intersection(self):
+        pidx = pd.Index([1, 2, 3, 4])
+        kidx = ks.from_pandas(pidx)
+
+        # other = Index
+        pidx_other = pd.Index([3, 4, 5, 6])
+        kidx_other = ks.from_pandas(pidx_other)
+        self.assert_eq(pidx.intersection(pidx_other), kidx.intersection(kidx_other))
+
+        # other = MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pidx.intersection(pmidx), kidx.intersection(kmidx), almost=True)
+
+        # other = Series
+        pser = pd.Series([3, 4, 5, 6])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pidx.intersection(pser), kidx.intersection(kser))
+
+        # other = list
+        other = [3, 4, 5, 6]
+        self.assert_eq(pidx.intersection(other), kidx.intersection(other))
+
+        # other = tuple
+        other = (3, 4, 5, 6)
+        self.assert_eq(pidx.intersection(other), kidx.intersection(other))
+
+        # other = dict
+        other = {3: None, 4: None, 5: None, 6: None}
+        self.assert_eq(pidx.intersection(other), kidx.intersection(other))
+
+        # MultiIndex / other = Index
+        self.assert_eq(pmidx.intersection(pidx), kmidx.intersection(kidx), almost=True)
+
+        # MultiIndex / other = MultiIndex
+        pmidx_other = pd.MultiIndex.from_tuples([("c", "z"), ("d", "w")])
+        kmidx_other = ks.from_pandas(pmidx_other)
+        self.assert_eq(pmidx.intersection(pmidx_other), kmidx.intersection(kmidx_other))
+
+        # MultiIndex / other = list
+        other = [("c", "z"), ("d", "w")]
+        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other))
+
+        # MultiIndex / other = tuple
+        other = (("c", "z"), ("d", "w"))
+        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other))
+
+        # MultiIndex / other = dict
+        other = {("c", "z"): None, ("d", "w"): None}
+        self.assert_eq(pmidx.intersection(other), kmidx.intersection(other))
+
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kidx.intersection(4)
+        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+            kmidx.intersection(4)

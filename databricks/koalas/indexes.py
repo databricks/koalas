@@ -1961,6 +1961,56 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
+    def intersection(self, other):
+        """
+        Form the intersection of two Index objects.
+
+        This returns a new Index with elements common to the index and `other`.
+
+        Parameters
+        ----------
+        other : Index or array-like
+
+        Returns
+        -------
+        intersection : Index
+
+        Examples
+        --------
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.intersection(idx2)
+        Int64Index([3, 4], dtype='int64')
+        """
+        if isinstance(other, Index):
+            if type(self) != type(other):
+                # If self Index and MultiIndex coexist on both sides,
+                # it always returns an empty MultiIndex.
+                return MultiIndex.from_tuples([(0, 0)]).take([])
+            spark_frame_other = other._internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
+        elif isinstance(other, Series):
+            spark_frame_other = other._kdf.to_spark()
+        elif isinstance(other, DataFrame):
+            return Series([])
+        elif is_list_like(other):
+            if isinstance(self, MultiIndex):
+                other = list(other)
+                spark_frame_other = MultiIndex.from_tuples(other)._internal.spark_frame.drop(
+                    NATURAL_ORDER_COLUMN_NAME
+                )
+            else:
+                spark_frame_other = Index(other)._internal.spark_frame.drop(
+                    NATURAL_ORDER_COLUMN_NAME
+                )
+        else:
+            raise TypeError("Input must be Index or array-like")
+        spark_frame_self = self._internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
+        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
+        internal = InternalFrame(
+            spark_frame=spark_frame_intersected, index_map=self._internal.index_map
+        )
+        return DataFrame(internal).index
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeIndex, item):
             property_or_func = getattr(MissingPandasLikeIndex, item)
