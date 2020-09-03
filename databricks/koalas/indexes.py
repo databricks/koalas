@@ -1967,9 +1967,6 @@ class Index(IndexOpsMixin):
         """
         Return a string of the type inferred from the values.
 
-        .. note:: Unlike pandas, inferred_type for Koalas never return "mixed" type
-                  since Spark can have only single type of columns internally
-
         Examples
         --------
         >>> from datetime import datetime
