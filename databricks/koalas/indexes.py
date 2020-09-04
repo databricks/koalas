@@ -1981,10 +1981,7 @@ class Index(IndexOpsMixin):
         >>> kidx.item()
         10
         """
-        result = self._internal.spark_frame.head(2)
-        if len(result) == 1:
-            return result[0][0]
-        raise ValueError("can only convert an array of size 1 to a Python scalar")
+        return self.to_series().item()
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeIndex, item):
