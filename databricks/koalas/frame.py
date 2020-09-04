@@ -10142,7 +10142,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             result = first_series(DataFrame(internal).T)
             if not has_float_col:
                 # Since the rows of the `result` is the same as the number of columns,
-                # it's assumed that it's small enough to use apply.
+                # it's assumed that it's small enough to use transform.
                 return result.spark.transform(lambda col: F.round(col).cast(LongType()))
             else:
                 return result
