@@ -849,18 +849,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(["cat", "dog", None, "rabbit"])
         kser = ks.from_pandas(pser)
         # Currently Koalas doesn't return NaN as pandas does.
-        self.assertEqual(repr(kser.map({})), repr(pser.map({}).replace({pd.np.nan: None})))
+        self.assert_eq(kser.map({}), pser.map({}).replace({pd.np.nan: None}))
 
         d = defaultdict(lambda: "abc")
         self.assertTrue("abc" in repr(kser.map(d)))
-        self.assertEqual(repr(kser.map(d)), repr(pser.map(d)))
+        self.assert_eq(kser.map(d), pser.map(d))
 
         def tomorrow(date) -> datetime:
             return date + timedelta(days=1)
 
         pser = pd.Series([datetime(2019, 10, 24)])
         kser = ks.from_pandas(pser)
-        self.assertEqual(repr(kser.map(tomorrow)), repr(pser.map(tomorrow)))
+        self.assert_eq(kser.map(tomorrow), pser.map(tomorrow))
 
     def test_add_prefix(self):
         pser = pd.Series([1, 2, 3, 4], name="0")
@@ -963,7 +963,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
 
         with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
-            repr(ks.Series([0, 1]).cumprod())
+            ks.Series([0, 1]).cumprod().to_pandas()
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
@@ -972,19 +972,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_rank(self):
         pser = pd.Series([1, 2, 3, 1], name="x")
         kser = ks.from_pandas(pser)
-        self.assertEqual(repr(pser.rank()), repr(kser.rank().sort_index()))
-        self.assertEqual(repr(pser.rank()), repr(kser.rank().sort_index()))
-        self.assertEqual(
-            repr(pser.rank(ascending=False)), repr(kser.rank(ascending=False).sort_index())
-        )
-        self.assertEqual(repr(pser.rank(method="min")), repr(kser.rank(method="min").sort_index()))
-        self.assertEqual(repr(pser.rank(method="max")), repr(kser.rank(method="max").sort_index()))
-        self.assertEqual(
-            repr(pser.rank(method="first")), repr(kser.rank(method="first").sort_index())
-        )
-        self.assertEqual(
-            repr(pser.rank(method="dense")), repr(kser.rank(method="dense").sort_index())
-        )
+        self.assert_eq(pser.rank(), kser.rank().sort_index())
+        self.assert_eq(pser.rank(ascending=False), kser.rank(ascending=False).sort_index())
+        self.assert_eq(pser.rank(method="min"), kser.rank(method="min").sort_index())
+        self.assert_eq(pser.rank(method="max"), kser.rank(method="max").sort_index())
+        self.assert_eq(pser.rank(method="first"), kser.rank(method="first").sort_index())
+        self.assert_eq(pser.rank(method="dense"), kser.rank(method="dense").sort_index())
 
         msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
         with self.assertRaisesRegex(ValueError, msg):
@@ -993,7 +986,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_round(self):
         pser = pd.Series([0.028208, 0.038683, 0.877076], name="x")
         kser = ks.from_pandas(pser)
-        self.assertEqual(repr(pser.round(2)), repr(kser.round(2)))
+        self.assert_eq(pser.round(2), kser.round(2))
         msg = "decimals must be an integer"
         with self.assertRaisesRegex(ValueError, msg):
             kser.round(1.5)
@@ -1062,11 +1055,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
         if LooseVersion(pd.__version__) < LooseVersion("0.24.2"):
-            self.assertEqual(repr(kser.shift(periods=2)), repr(pser.shift(periods=2)))
+            self.assert_eq(kser.shift(periods=2), pser.shift(periods=2))
         else:
-            self.assertEqual(
-                repr(kser.shift(periods=2, fill_value=0)), repr(pser.shift(periods=2, fill_value=0))
-            )
+            self.assert_eq(kser.shift(periods=2, fill_value=0), pser.shift(periods=2, fill_value=0))
         with self.assertRaisesRegex(ValueError, "periods should be an int; however"):
             kser.shift(periods=1.5)
 
@@ -1467,63 +1458,84 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-            self.assert_eq(repr(kser.divmod(-100)), repr(pser.divmod(-100)))
-            self.assert_eq(repr(kser.divmod(100)), repr(pser.divmod(100)))
+            kdiv, kmod = kser.divmod(-100)
+            pdiv, pmod = pser.divmod(-100)
+            self.assert_eq(kdiv, pdiv)
+            self.assert_eq(kmod, pmod)
+
+            kdiv, kmod = kser.divmod(100)
+            pdiv, pmod = pser.divmod(100)
+            self.assert_eq(kdiv, pdiv)
+            self.assert_eq(kmod, pmod)
         elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
-            expected_result = repr((pser.floordiv(-100), pser.mod(-100)))
-            self.assert_eq(repr(kser.divmod(-100)), expected_result)
-            expected_result = repr((pser.floordiv(100), pser.mod(100)))
-            self.assert_eq(repr(kser.divmod(100)), expected_result)
+            kdiv, kmod = kser.divmod(-100)
+            pdiv, pmod = pser.floordiv(-100), pser.mod(-100)
+            self.assert_eq(kdiv, pdiv)
+            self.assert_eq(kmod, pmod)
+
+            kdiv, kmod = kser.divmod(100)
+            pdiv, pmod = pser.floordiv(100), pser.mod(100)
+            self.assert_eq(kdiv, pdiv)
+            self.assert_eq(kmod, pmod)
 
     def test_rdivmod(self):
         pser = pd.Series([100, None, 300, None, 500], name="Koalas")
         kser = ks.from_pandas(pser)
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-            self.assert_eq(repr(kser.rdivmod(-100)), repr(pser.rdivmod(-100)))
-            self.assert_eq(repr(kser.rdivmod(100)), repr(pser.rdivmod(100)))
+            krdiv, krmod = kser.rdivmod(-100)
+            prdiv, prmod = pser.rdivmod(-100)
+            self.assert_eq(krdiv, prdiv)
+            self.assert_eq(krmod, prmod)
+
+            krdiv, krmod = kser.rdivmod(100)
+            prdiv, prmod = pser.rdivmod(100)
+            self.assert_eq(krdiv, prdiv)
+            self.assert_eq(krmod, prmod)
         elif LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
-            expected_result = repr((pser.rfloordiv(-100), pser.rmod(-100)))
-            self.assert_eq(repr(kser.rdivmod(-100)), expected_result)
-            expected_result = repr((pser.rfloordiv(100), pser.rmod(100)))
-            self.assert_eq(repr(kser.rdivmod(100)), expected_result)
+            krdiv, krmod = kser.rdivmod(-100)
+            prdiv, prmod = pser.rfloordiv(-100), pser.rmod(-100)
+            self.assert_eq(krdiv, prdiv)
+            self.assert_eq(krmod, prmod)
+
+            krdiv, krmod = kser.rdivmod(100)
+            prdiv, prmod = pser.rfloordiv(100), pser.rmod(100)
+            self.assert_eq(krdiv, prdiv)
+            self.assert_eq(krmod, prmod)
 
     def test_mod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
         kser = ks.from_pandas(pser)
 
-        self.assert_eq(repr(kser.mod(-150)), repr(pser.mod(-150)))
-        self.assert_eq(repr(kser.mod(0)), repr(pser.mod(0)))
-        self.assert_eq(repr(kser.mod(150)), repr(pser.mod(150)))
+        self.assert_eq(kser.mod(-150), pser.mod(-150))
+        self.assert_eq(kser.mod(0), pser.mod(0))
+        self.assert_eq(kser.mod(150), pser.mod(150))
 
         pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(repr(kdf.a.mod(kdf.b)), repr(pdf.a.mod(pdf.b).rename("a")))
+        self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b).rename("a"))
 
     def test_rmod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
         kser = ks.from_pandas(pser)
 
-        self.assert_eq(repr(kser.rmod(-150)), repr(pser.rmod(-150)))
-        self.assert_eq(repr(kser.rmod(0)), repr(pser.rmod(0)))
-        self.assert_eq(repr(kser.rmod(150)), repr(pser.rmod(150)))
+        self.assert_eq(kser.rmod(-150), pser.rmod(-150))
+        self.assert_eq(kser.rmod(0), pser.rmod(0))
+        self.assert_eq(kser.rmod(150), pser.rmod(150))
 
         pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(repr(kdf.a.rmod(kdf.b)), repr(pdf.a.rmod(pdf.b).rename("a")))
+        self.assert_eq(kdf.a.rmod(kdf.b), pdf.a.rmod(pdf.b).rename("a"))
 
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
         kser = ks.from_pandas(pser)
 
-        self.assert_eq(repr(kser.asof(20)), repr(pser.asof(20)))
-        self.assert_eq(repr(kser.asof([5, 20]).sort_index()), repr(pser.asof([5, 20]).sort_index()))
-        self.assert_eq(repr(kser.asof(100)), repr(pser.asof(100)))
+        self.assert_eq(kser.asof(20), pser.asof(20))
+        self.assert_eq(kser.asof([5, 20]).sort_index(), pser.asof([5, 20]).sort_index())
+        self.assert_eq(kser.asof(100), pser.asof(100))
         self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
-        self.assert_eq(repr(kser.asof(-100)), repr(pser.asof(-100)))
-        self.assert_eq(
-            repr(kser.asof([-100, 100]).sort_index()), repr(pser.asof([-100, 100]).sort_index())
-        )
+        self.assert_eq(kser.asof([-100, 100]).sort_index(), pser.asof([-100, 100]).sort_index())
 
         # where cannot be an Index, Series or a DataFrame
         self.assertRaises(ValueError, lambda: kser.asof(ks.Index([-100, 100])))
@@ -1566,24 +1578,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
         kser = ks.from_pandas(pser)
 
-        self.assert_eq(repr(pser.div(0)), repr(kser.div(0)))
-        self.assert_eq(repr(pser.truediv(0)), repr(kser.truediv(0)))
-        self.assert_eq(repr(pser / 0), repr(kser / 0))
-        self.assert_eq(repr(pser.div(np.nan)), repr(kser.div(np.nan)))
-        self.assert_eq(repr(pser.truediv(np.nan)), repr(kser.truediv(np.nan)))
-        self.assert_eq(repr(pser / np.nan), repr(kser / np.nan))
+        self.assert_eq(pser.div(0), kser.div(0))
+        self.assert_eq(pser.truediv(0), kser.truediv(0))
+        self.assert_eq(pser / 0, kser / 0)
+        self.assert_eq(pser.div(np.nan), kser.div(np.nan))
+        self.assert_eq(pser.truediv(np.nan), kser.truediv(np.nan))
+        self.assert_eq(pser / np.nan, kser / np.nan)
 
         # floordiv has different behavior in pandas > 1.0.0 when divide by 0
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-            self.assert_eq(repr(pser.floordiv(0)), repr(kser.floordiv(0)))
-            self.assert_eq(repr(pser // 0), repr(kser // 0))
+            self.assert_eq(pser.floordiv(0), kser.floordiv(0))
+            self.assert_eq(pser // 0, kser // 0)
         else:
             result = pd.Series(
                 [np.inf, np.nan, -np.inf, np.nan, np.inf, -np.inf, np.inf, -np.inf], name="Koalas"
             )
-            self.assert_eq(repr(kser.floordiv(0)), repr(result))
-            self.assert_eq(repr(kser // 0), repr(result))
-        self.assert_eq(repr(pser.floordiv(np.nan)), repr(kser.floordiv(np.nan)))
+            self.assert_eq(kser.floordiv(0), result)
+            self.assert_eq(kser // 0, result)
+        self.assert_eq(pser.floordiv(np.nan), kser.floordiv(np.nan))
 
     def test_mad(self):
         pser = pd.Series([1, 2, 3, 4], name="Koalas")
@@ -1763,8 +1775,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series(["A", "B", "C"])
         kser = ks.from_pandas(pser)
 
-        for p_items, k_items in zip(pser.iteritems(), kser.iteritems()):
-            self.assert_eq(repr(p_items), repr(k_items))
+        for (p_name, p_items), (k_name, k_items) in zip(pser.iteritems(), kser.iteritems()):
+            self.assert_eq(p_name, k_name)
+            self.assert_eq(p_items, k_items)
 
     def test_droplevel(self):
         # droplevel is new in pandas 0.24.0

@@ -2162,16 +2162,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assertEqual(repr(pdf1.transpose().sort_index()), repr(kdf1.transpose().sort_index()))
-
-        self.assert_eq(repr(pdf2.transpose().sort_index()), repr(kdf2.transpose().sort_index()))
+        self.assert_eq(
+            pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
+        )
+        self.assert_eq(
+            pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
+        )
 
         with option_context("compute.max_rows", None):
-            self.assertEqual(
-                repr(pdf1.transpose().sort_index()), repr(kdf1.transpose().sort_index())
+            self.assert_eq(
+                pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
             )
 
-            self.assert_eq(repr(pdf2.transpose().sort_index()), repr(kdf2.transpose().sort_index()))
+            self.assert_eq(
+                pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
+            )
 
         pdf3 = pd.DataFrame(
             {
@@ -2184,12 +2189,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf3 = ks.from_pandas(pdf3)
 
-        self.assertEqual(repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index()))
+        self.assert_eq(pdf3.transpose().sort_index(), kdf3.transpose().sort_index())
 
         with option_context("compute.max_rows", None):
-            self.assertEqual(
-                repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index())
-            )
+            self.assert_eq(pdf3.transpose().sort_index(), kdf3.transpose().sort_index())
 
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
@@ -3274,7 +3277,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kdf.pct_change(2)), repr(pdf.pct_change(2)))
+        self.assert_eq(kdf.pct_change(2), pdf.pct_change(2), check_exact=False)
 
     def test_where(self):
         kdf = ks.from_pandas(self.pdf)
@@ -3849,8 +3852,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        for p_items, k_items in zip(pdf.iteritems(), kdf.iteritems()):
-            self.assert_eq(repr(p_items), repr(k_items))
+        for (p_name, p_items), (k_name, k_items) in zip(pdf.iteritems(), kdf.iteritems()):
+            self.assert_eq(p_name, k_name)
+            self.assert_eq(p_items, k_items)
 
     def test_tail(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
@@ -3881,13 +3885,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
-            # Empty Series
-            pdf = pd.Series([], name=0).to_frame()
+            # Empty DataFrame
+            pdf = pd.Series([]).to_frame()
             kdf = ks.Series([]).to_frame()
             self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
     def test_first_valid_index(self):
         # Empty DataFrame
-        pdf = pd.Series([], name=0).to_frame()
+        pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())

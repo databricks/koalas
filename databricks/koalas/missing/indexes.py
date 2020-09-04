@@ -53,7 +53,6 @@ class MissingPandasLikeIndex(object):
     intersection = _unsupported_function("intersection")
     is_ = _unsupported_function("is_")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
-    is_mixed = _unsupported_function("is_mixed")
     is_type_compatible = _unsupported_function("is_type_compatible")
     join = _unsupported_function("join")
     map = _unsupported_function("map")
@@ -70,6 +69,7 @@ class MissingPandasLikeIndex(object):
     where = _unsupported_function("where")
 
     # Deprecated functions
+    is_mixed = _unsupported_function("is_mixed")
     get_values = _unsupported_function("get_values", deprecated=True)
     set_value = _unsupported_function("set_value")
 
@@ -124,7 +124,6 @@ class MissingPandasLikeMultiIndex(object):
     is_ = _unsupported_function("is_")
     is_lexsorted = _unsupported_function("is_lexsorted")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
-    is_mixed = _unsupported_function("is_mixed")
     is_type_compatible = _unsupported_function("is_type_compatible")
     join = _unsupported_function("join")
     map = _unsupported_function("map")
@@ -146,6 +145,7 @@ class MissingPandasLikeMultiIndex(object):
     where = _unsupported_function("where")
 
     # Deprecated functions
+    is_mixed = _unsupported_function("is_mixed")
     get_duplicates = _unsupported_function("get_duplicates", deprecated=True)
     get_values = _unsupported_function("get_values", deprecated=True)
     set_value = _unsupported_function("set_value", deprecated=True)

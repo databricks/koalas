@@ -24,6 +24,7 @@ Properties
    Index.has_duplicates
    Index.hasnans
    Index.dtype
+   Index.inferred_type
    Index.is_all_dates
    Index.shape
    Index.name
@@ -172,6 +173,7 @@ MultiIndex Properties
 
    MultiIndex.has_duplicates
    MultiIndex.hasnans
+   MultiIndex.inferred_type
    MultiIndex.is_all_dates
    MultiIndex.shape
    MultiIndex.names

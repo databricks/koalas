@@ -37,6 +37,7 @@ from pandas.api.types import (
 )
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_hashable
+from pandas._libs import lib
 
 import pyspark
 from pyspark import sql as spark
@@ -1983,6 +1984,28 @@ class Index(IndexOpsMixin):
         """
         return self.to_series().item()
 
+    @property
+    def inferred_type(self):
+        """
+        Return a string of the type inferred from the values.
+
+        Examples
+        --------
+        >>> from datetime import datetime
+        >>> ks.Index([1, 2, 3]).inferred_type
+        'integer'
+
+        >>> ks.Index([1.0, 2.0, 3.0]).inferred_type
+        'floating'
+
+        >>> ks.Index(['a', 'b', 'c']).inferred_type
+        'string'
+
+        >>> ks.Index([True, False, True, False]).inferred_type
+        'boolean'
+        """
+        return lib.infer_dtype([self.to_series().head(1).item()])
+
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeIndex, item):
             property_or_func = getattr(MissingPandasLikeIndex, item)
@@ -2806,6 +2829,14 @@ class MultiIndex(Index):
         if len(result) == 1:
             return tuple(result[0][nlevel] for nlevel in range(self.nlevels))
         raise ValueError("can only convert an array of size 1 to a Python scalar")
+
+    @property
+    def inferred_type(self):
+        """
+        Return a string of the type inferred from the values.
+        """
+        # It's always 'mixed' for MultiIndex
+        return "mixed"
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)
