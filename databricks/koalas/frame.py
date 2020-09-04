@@ -53,6 +53,7 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     ArrayType,
+    IntegerType,
 )
 from pyspark.sql.window import Window
 
