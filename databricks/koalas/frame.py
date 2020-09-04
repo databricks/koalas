@@ -10109,7 +10109,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             dtype = self._kser_for(column_label).spark.data_type
             if isinstance(dtype, NumericType):
                 column_labels.append(column_label)
-                if isinstance(dtype, DoubleType):
+                if isinstance(dtype, (DoubleType, FloatType)):
                     has_float_col = True
 
         # Getting spark columns from column names.
@@ -10142,7 +10142,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if not has_float_col:
                 # Since the rows of the `result` is the same as the number of columns,
                 # it's assumed that it's small enough to use apply.
-                return result.apply(lambda row: int(round(row)))
+                return spark.apply(lambda col: F.round(col).cast(IntegerType()))
             else:
                 return result
 
