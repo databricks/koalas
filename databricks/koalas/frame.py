@@ -9940,18 +9940,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                 return scol
 
+            new_column_labels = []
+            for label in self._internal.column_labels:
+                # Filtering out only columns of numeric and boolean type column.
+                dtype = self._kser_for(label).spark.data_type
+                if isinstance(dtype, (NumericType, BooleanType)):
+                    new_column_labels.append(label)
+
             new_columns = [
                 F.avg(get_spark_column(self, label)).alias(name_like_string(label))
-                for label in self._internal.column_labels
+                for label in new_column_labels
             ]
+
             mean_data = self._internal.spark_frame.select(new_columns).first()
 
             new_columns = [
                 F.avg(
                     F.abs(get_spark_column(self, label) - mean_data[name_like_string(label)])
                 ).alias(name_like_string(label))
-                for label in self._internal.column_labels
+                for label in new_column_labels
             ]
+
             sdf = self._internal.spark_frame.select(
                 [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + new_columns
             )
@@ -9960,7 +9969,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 internal = InternalFrame(
                     spark_frame=sdf,
                     index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
-                    column_labels=self._internal.column_labels,
+                    column_labels=new_column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
 
