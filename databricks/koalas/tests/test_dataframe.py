@@ -201,8 +201,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=np.random.rand(3))
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index())
-        self.assert_eq(kdf.reset_index(drop=True).sort_index(), pdf.reset_index(drop=True))
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
 
         pdf.index.name = "a"
         kdf.index.name = "a"
@@ -210,14 +210,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "cannot insert a, already exists"):
             kdf.reset_index()
 
-        self.assert_eq(kdf.reset_index(drop=True).sort_index(), pdf.reset_index(drop=True))
+        self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
 
         # inplace
         pser = pdf.a
         kser = kdf.a
         pdf.reset_index(drop=True, inplace=True)
         kdf.reset_index(drop=True, inplace=True)
-        self.assert_eq(kdf.sort_index(), pdf)
+        self.assert_eq(kdf, pdf)
         self.assert_eq(kser, pser)
 
     def test_reset_index_with_default_index_types(self):
@@ -228,8 +228,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.reset_index(), pdf.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed-sequence"):
-            # the order might be changed.
-            self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index())
+            self.assert_eq(kdf.reset_index(), pdf.reset_index())
 
         with ks.option_context("compute.default_index_type", "distributed"):
             # the index is different.
@@ -249,7 +248,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf, pdf)
-        self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
         self.assert_eq(kdf.reset_index(level="class"), pdf.reset_index(level="class"))
         self.assert_eq(
             kdf.reset_index(level="class", col_level=1), pdf.reset_index(level="class", col_level=1)
@@ -269,7 +268,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.index.names = [("x", "class"), ("y", "name")]
         kdf.index.names = [("x", "class"), ("y", "name")]
 
-        self.assert_eq(kdf.reset_index().sort_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index(), pdf.reset_index())
 
         with self.assertRaisesRegex(ValueError, "Item must have length equal to number of levels."):
             kdf.reset_index(col_level=1)
@@ -1318,28 +1317,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True)
         pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True)
         self.assert_eq(
-            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True).sort_index(),
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
             pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True),
         )
 
         kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True, how="left")
         pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True, how="left")
         self.assert_eq(
-            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True).sort_index(),
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
             pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True),
         )
 
         kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True, how="right")
         pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True, how="right")
         self.assert_eq(
-            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True).sort_index(),
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
             pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True),
         )
 
         kdf = left_kdf.merge(right_kdf, left_index=True, right_index=True, how="outer")
         pdf = left_pdf.merge(right_pdf, left_index=True, right_index=True, how="outer")
         self.assert_eq(
-            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True).sort_index(),
+            kdf.sort_values(by=list(kdf.columns)).reset_index(drop=True),
             pdf.sort_values(by=list(pdf.columns)).reset_index(drop=True),
         )
 
@@ -1396,9 +1395,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         other_kdf = ks.from_pandas(other_pdf)
 
         self.assert_eq(kdf.append(kdf), pdf.append(pdf))
-        self.assert_eq(
-            kdf.append(kdf, ignore_index=True).sort_index(), pdf.append(pdf, ignore_index=True),
-        )
+        self.assert_eq(kdf.append(kdf, ignore_index=True), pdf.append(pdf, ignore_index=True))
 
         # Assert DataFrames with non-matching columns
         self.assert_eq(kdf.append(other_kdf), pdf.append(other_pdf))
@@ -1424,7 +1421,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Skip integrity verification when ignore_index=True
         self.assert_eq(
-            kdf.append(kdf, ignore_index=True, verify_integrity=True).sort_index(),
+            kdf.append(kdf, ignore_index=True, verify_integrity=True),
             pdf.append(pdf, ignore_index=True, verify_integrity=True),
         )
 
@@ -1456,9 +1453,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Skip integrity verification when ignore_index=True
         self.assert_eq(
-            multi_index_kdf.append(
-                multi_index_kdf, ignore_index=True, verify_integrity=True
-            ).sort_index(),
+            multi_index_kdf.append(multi_index_kdf, ignore_index=True, verify_integrity=True),
             multi_index_pdf.append(multi_index_pdf, ignore_index=True, verify_integrity=True),
         )
 
@@ -1469,7 +1464,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Skip index level check when ignore_index=True
         self.assert_eq(
-            kdf.append(multi_index_kdf, ignore_index=True).sort_index(),
+            kdf.append(multi_index_kdf, ignore_index=True),
             pdf.append(multi_index_pdf, ignore_index=True),
         )
 
@@ -1602,9 +1597,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         join_kdf = kdf1.join(kdf2.set_index("key"), on="key", lsuffix="_left", rsuffix="_right")
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
-        self.assert_eq(
-            join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True).sort_index(),
-        )
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
         # multi-index columns
         columns1 = pd.MultiIndex.from_tuples([("x", "key"), ("Y", "A")])
@@ -1633,9 +1626,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
 
-        self.assert_eq(
-            join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True).sort_index(),
-        )
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
     def test_replace(self):
         pdf = pd.DataFrame(
@@ -2171,16 +2162,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assertEqual(repr(pdf1.transpose().sort_index()), repr(kdf1.transpose().sort_index()))
-
-        self.assert_eq(repr(pdf2.transpose().sort_index()), repr(kdf2.transpose().sort_index()))
+        self.assert_eq(
+            pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
+        )
+        self.assert_eq(
+            pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
+        )
 
         with option_context("compute.max_rows", None):
-            self.assertEqual(
-                repr(pdf1.transpose().sort_index()), repr(kdf1.transpose().sort_index())
+            self.assert_eq(
+                pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
             )
 
-            self.assert_eq(repr(pdf2.transpose().sort_index()), repr(kdf2.transpose().sort_index()))
+            self.assert_eq(
+                pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
+            )
 
         pdf3 = pd.DataFrame(
             {
@@ -2193,12 +2189,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf3 = ks.from_pandas(pdf3)
 
-        self.assertEqual(repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index()))
+        self.assert_eq(pdf3.transpose().sort_index(), kdf3.transpose().sort_index())
 
         with option_context("compute.max_rows", None):
-            self.assertEqual(
-                repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index())
-            )
+            self.assert_eq(pdf3.transpose().sort_index(), kdf3.transpose().sort_index())
 
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
@@ -2439,42 +2433,31 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            kdf.melt().sort_values(["variable", "value"]).reset_index(drop=True).sort_index(),
+            kdf.melt().sort_values(["variable", "value"]).reset_index(drop=True),
             pdf.melt().sort_values(["variable", "value"]),
         )
         self.assert_eq(
-            kdf.melt(id_vars="A")
-            .sort_values(["variable", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            kdf.melt(id_vars="A").sort_values(["variable", "value"]).reset_index(drop=True),
             pdf.melt(id_vars="A").sort_values(["variable", "value"]),
         )
         self.assert_eq(
-            kdf.melt(id_vars=["A", "B"])
-            .sort_values(["variable", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            kdf.melt(id_vars=["A", "B"]).sort_values(["variable", "value"]).reset_index(drop=True),
             pdf.melt(id_vars=["A", "B"]).sort_values(["variable", "value"]),
         )
         self.assert_eq(
-            kdf.melt(id_vars=("A", "B"))
-            .sort_values(["variable", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            kdf.melt(id_vars=("A", "B")).sort_values(["variable", "value"]).reset_index(drop=True),
             pdf.melt(id_vars=("A", "B")).sort_values(["variable", "value"]),
         )
         self.assert_eq(
             kdf.melt(id_vars=["A"], value_vars=["C"])
             .sort_values(["variable", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.melt(id_vars=["A"], value_vars=["C"]).sort_values(["variable", "value"]),
         )
         self.assert_eq(
             kdf.melt(id_vars=["A"], value_vars=["B"], var_name="myVarname", value_name="myValname")
             .sort_values(["myVarname", "myValname"])
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.melt(
                 id_vars=["A"], value_vars=["B"], var_name="myVarname", value_name="myValname"
             ).sort_values(["myVarname", "myValname"]),
@@ -2482,8 +2465,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.melt(value_vars=("A", "B"))
             .sort_values(["variable", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.melt(value_vars=("A", "B")).sort_values(["variable", "value"]),
         )
 
@@ -2496,25 +2478,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
 
         self.assert_eq(
-            kdf.melt()
-            .sort_values(["variable_0", "variable_1", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            kdf.melt().sort_values(["variable_0", "variable_1", "value"]).reset_index(drop=True),
             pdf.melt().sort_values(["variable_0", "variable_1", "value"]),
         )
         self.assert_eq(
             kdf.melt(id_vars=[("X", "A")])
             .sort_values(["variable_0", "variable_1", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.melt(id_vars=[("X", "A")]).sort_values(["variable_0", "variable_1", "value"]),
             almost=True,
         )
         self.assert_eq(
             kdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")])
             .sort_values(["variable_0", "variable_1", "value"])
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")]).sort_values(
                 ["variable_0", "variable_1", "value"]
             ),
@@ -2528,8 +2505,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 value_name="myValname",
             )
             .sort_values(["myV1", "myV2", "myValname"])
-            .reset_index(drop=True)
-            .sort_index(),
+            .reset_index(drop=True),
             pdf.melt(
                 id_vars=[("X", "A")],
                 value_vars=[("X", "B")],
@@ -2544,7 +2520,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.columns = columns
 
         self.assert_eq(
-            kdf.melt().sort_values(["v0", "v1", "value"]).reset_index(drop=True).sort_index(),
+            kdf.melt().sort_values(["v0", "v1", "value"]).reset_index(drop=True),
             pdf.melt().sort_values(["v0", "v1", "value"]),
         )
 
@@ -3213,20 +3189,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             )
 
     def test_transform_batch_same_anchor(self):
-        kdf = ks.range(10).sort_index()
+        kdf = ks.range(10)
         kdf["d"] = kdf.koalas.transform_batch(lambda pdf: pdf.id + 1)
         self.assert_eq(
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
         )
 
-        kdf = ks.range(10).sort_index()
+        kdf = ks.range(10)
         # One to test alias.
         kdf["d"] = kdf.id.transform_batch(lambda ser: ser + 1)
         self.assert_eq(
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
         )
 
-        kdf = ks.range(10).sort_index()
+        kdf = ks.range(10)
 
         def plus_one(pdf) -> ks.Series[np.int64]:
             return pdf.id + 1
@@ -3236,7 +3212,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf, pd.DataFrame({"id": list(range(10)), "d": list(range(1, 11))}, columns=["id", "d"])
         )
 
-        kdf = ks.range(10).sort_index()
+        kdf = ks.range(10)
 
         def plus_one(ser) -> ks.Series[np.int64]:
             return ser + 1
@@ -3301,7 +3277,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kdf.pct_change(2)), repr(pdf.pct_change(2)))
+        self.assert_eq(kdf.pct_change(2), pdf.pct_change(2), check_exact=False)
 
     def test_where(self):
         kdf = ks.from_pandas(self.pdf)
@@ -3876,8 +3852,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        for p_items, k_items in zip(pdf.iteritems(), kdf.iteritems()):
-            self.assert_eq(repr(p_items), repr(k_items))
+        for (p_name, p_items), (k_name, k_items) in zip(pdf.iteritems(), kdf.iteritems()):
+            self.assert_eq(p_name, k_name)
+            self.assert_eq(p_items, k_items)
 
     def test_tail(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
@@ -3908,14 +3885,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
-            # Empty Series
-            pdf = pd.Series([], name=0).to_frame()
+            # Empty DataFrame
+            pdf = pd.Series([]).to_frame()
             kdf = ks.Series([]).to_frame()
             self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
     def test_first_valid_index(self):
         # Empty DataFrame
-        pdf = pd.Series([], name=0).to_frame()
+        pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
 
