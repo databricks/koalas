@@ -53,7 +53,7 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     ArrayType,
-    IntegerType,
+    LongType,
 )
 from pyspark.sql.window import Window
 
@@ -10139,11 +10139,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
         with ks.option_context("compute.max_rows", None):
-            result = first_series(DataFrame(internal).transpose())
+            result = first_series(DataFrame(internal).T)
             if not has_float_col:
                 # Since the rows of the `result` is the same as the number of columns,
                 # it's assumed that it's small enough to use apply.
-                return spark.apply(lambda col: F.round(col).cast(IntegerType()))
+                return result.spark.transform(lambda col: F.round(col).cast(LongType()))
             else:
                 return result
 
