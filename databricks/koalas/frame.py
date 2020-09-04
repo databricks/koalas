@@ -10100,23 +10100,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
         Series([], dtype: float64)
         """
-        has_multi_idx_col = self.columns.nlevels > 1
+        from databricks.koalas.series import first_series
+
         has_float_col = False
-        column_label_name_pair = {}
+        column_labels = []
         # Filtering out only column names of numeric type column.
-        for i, column_label in enumerate(self._internal.column_labels):
+        for column_label in self._internal.column_labels:
             dtype = self._kser_for(column_label).spark.data_type
             if isinstance(dtype, NumericType):
-                if has_multi_idx_col:
-                    column_label_name_pair[column_label] = self.columns.names[i]
-                else:
-                    column_label_name_pair[column_label] = None
+                column_labels.append(column_label)
                 if isinstance(dtype, DoubleType):
                     has_float_col = True
 
         # Getting spark columns from column names.
         spark_columns = [
-            self._internal.spark_column_for(column_label) for column_label in column_label_name_pair
+            self._internal.spark_column_for(column_label) for column_label in column_labels
         ]
         if not spark_columns:
             # If DataFrame has no numeric type columns, return empty Series.
@@ -10124,25 +10122,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         spark_frame = self._internal.spark_frame
         conds = []
-        for spark_column in spark_columns:
+        for spark_column, column_label in zip(spark_columns, column_labels):
             cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
-            conds.append(F.exp(F.sum(F.log(cond))))
-        spark_frame = spark_frame.select(conds)
-        prod_values = [prod_value for prod_value in spark_frame.head(1)[0]]
-        if not has_float_col:
-            prod_values = [int(round(prod_value)) for prod_value in prod_values]
+            conds.append(F.exp(F.sum(F.log(cond))).alias(name_like_string(column_label)))
 
-        data = prod_values
-        if has_multi_idx_col:
-            index = pd.MultiIndex.from_tuples(
-                column_label_name_pair.keys(), names=column_label_name_pair.values()
-            )
-        else:
-            index = pd.Index(
-                [column_label[0] for column_label in column_label_name_pair.keys()],
-                name=self.columns.name,
-            )
-        return ks.Series(data=data, index=index)
+        spark_frame = spark_frame.select(
+            [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + conds
+        )
+
+        internal = InternalFrame(
+            spark_frame=spark_frame,
+            index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
+            column_labels=column_labels,
+            column_label_names=self._internal.column_label_names,
+        )
+
+        with ks.option_context("compute.max_rows", None):
+            result = first_series(DataFrame(internal).transpose())
+            if not has_float_col:
+                # Since the rows of the `result` is the same as the number of columns,
+                # it's assumed that it's small enough to use apply.
+                return result.apply(lambda row: int(round(row)))
+            else:
+                return result
 
     prod = product
 
