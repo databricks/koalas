@@ -3949,17 +3949,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # No numeric named columns
         pdf.columns.name = "Koalas"
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
 
         # No numeric MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
 
         # No numeric named MultiIndex columns
         pdf.columns.names = ["Hello", "Koalas"]
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
 
         # All NaN columns
         pdf = pd.DataFrame(
