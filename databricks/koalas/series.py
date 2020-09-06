@@ -5128,8 +5128,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def _cumprod(self, skipna, part_cols=()):
         from pyspark.sql.functions import pandas_udf
 
+        data_type = self.spark.data_type
+
         def cumprod(scol):
-            @pandas_udf(returnType=self.spark.data_type)
+            @pandas_udf(returnType=data_type)
             def negative_check(s):
                 assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
                     "values should be bigger than 0: %s" % s
@@ -5139,7 +5141,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return F.sum(F.log(negative_check(scol)))
 
         kser = self._cum(cumprod, skipna, part_cols)
-        return kser._with_new_scol(F.exp(kser.spark.column))
+        result = kser._with_new_scol(F.exp(kser.spark.column))
+        if isinstance(data_type, LongType):
+            result = result.spark.transform(lambda col: F.round(col).cast(LongType()))
+        return result
 
     # ----------------------------------------------------------------------
     # Accessor Methods

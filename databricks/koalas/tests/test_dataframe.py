@@ -2264,8 +2264,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_cumprod(self):
         pdf = pd.DataFrame(
-            [[2.0, 1.0], [5, None], [1.0, 1.0], [2.0, 4.0], [4.0, 9.0]],
-            columns=list("AB"),
+            [[2.0, 1.0, 1], [5, None, 2], [1.0, 1.0, 3], [2.0, 4.0, 4], [4.0, 9.0, 5]],
+            columns=list("ABC"),
             index=np.random.rand(5),
         )
         kdf = ks.from_pandas(pdf)
