@@ -2370,7 +2370,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.sort_index(), pser.sort_index())
 
     def test_reindex(self):
-        index = ["A", "B", "C", "D", "E"]
+        index = pd.Index(["A", "B", "C", "D", "E"])
+        pdf = pd.DataFrame(index=index)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pdf.reindex(["A", "B", "C"], columns=["numbers", "2", "3"]).sort_index(),
+            kdf.reindex(["A", "B", "C"], columns=["numbers", "2", "3"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.reindex(
+                ["A", "B", "C"], columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")]
+            ).sort_index(),
+            kdf.reindex(
+                ["A", "B", "C"], columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")]
+            ).sort_index(),
+        )
+
         pdf = pd.DataFrame({"numbers": [1.0, 2.0, 3.0, 4.0, None]}, index=index)
         kdf = ks.from_pandas(pdf)
 
@@ -2409,13 +2426,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
         )
 
-        index2 = ["A", "C", "D", "E", "0"]
-        pdf2 = pd.DataFrame({"a": [1.0, 2.0, 3.0, 4.0, 5.0]}, index=index2)
-        kdf2 = ks.from_pandas(pdf2)
+        pindex2 = pd.Index(["A", "C", "D", "E", "0"], name="index2")
+        kindex2 = ks.from_pandas(pindex2)
 
         self.assert_eq(
-            pdf.reindex(index=pdf2.index, fill_value=0.0).sort_index(),
-            kdf.reindex(index=kdf2.index, fill_value=0.0).sort_index(),
+            pdf.reindex(index=pindex2, fill_value=0.0).sort_index(),
+            kdf.reindex(index=kindex2, fill_value=0.0).sort_index(),
+        )
+
+        pindex2 = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D",), ("F", "G")], names=["name1", "name2"]
+        )
+        kindex2 = ks.from_pandas(pindex2)
+
+        self.assert_eq(
+            pdf.reindex(index=pindex2, fill_value=0.0).sort_index(),
+            kdf.reindex(index=kindex2, fill_value=0.0).sort_index(),
         )
 
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["numbers", "2", "3"], axis=1))

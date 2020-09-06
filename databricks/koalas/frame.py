@@ -7834,12 +7834,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             len(self._internal.index_spark_column_names) <= 1
         ), "Index should be single column or not set."
 
-        index_column = self._internal.index_spark_column_names[0]
-
-        if isinstance(index, ks.Index):
+        if isinstance(index, ks.MultiIndex):
+            # Currently only reindexing single index is supported,
+            # so create filled DataFrame with new index and current columns
+            return DataFrame(index._internal)._reindex_columns(
+                self._internal.data_spark_column_names, fill_value=fill_value
+            )
+        elif isinstance(index, ks.Index):
             obj = index
+            index_map = OrderedDict(
+                [(SPARK_INDEX_NAME_FORMAT(i), (name,)) for i, name in enumerate(index.names)]
+            )
         else:
             obj = ks.Series(list(index))
+            index_map = self._internal._index_map
+
+        index_column = self._internal.index_spark_column_names[0]
         labels = obj._internal.spark_frame.select(obj.spark.column.alias(index_column))
         frame = self._internal.resolved_copy.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
 
@@ -7869,7 +7879,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             joined_df = frame.join(labels, on=index_column, how="right")
 
-        internal = self._internal.with_new_sdf(joined_df)
+        internal = InternalFrame(joined_df, index_map=index_map)
         return DataFrame(internal)
 
     def _reindex_columns(self, columns, fill_value):
@@ -7881,11 +7891,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     raise TypeError("Expected tuple, got {}".format(type(col)))
         else:
             label_columns = [(col,) for col in columns]
-        for col in label_columns:
-            if len(col) != level:
-                raise ValueError(
-                    "shape (1,{}) doesn't match the shape (1,{})".format(len(col), level)
-                )
+        if level != 0:
+            for col in label_columns:
+                if len(col) != level:
+                    raise ValueError(
+                        "shape (1,{}) doesn't match the shape (1,{})".format(len(col), level)
+                    )
         fill_value = np.nan if fill_value is None else fill_value
         scols, labels = [], []
         for label in label_columns:
