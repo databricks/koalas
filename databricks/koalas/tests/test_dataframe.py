@@ -3926,7 +3926,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # No numeric named columns
         pdf.columns.name = "Koalas"
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
 
         # No numeric MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
@@ -3947,19 +3947,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             }
         )
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
 
         # All NaN named columns
         pdf.columns.name = "Koalas"
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
 
         # All NaN MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
 
         # All NaN named MultiIndex columns
         pdf.columns.names = ["Hello", "Koalas"]
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)

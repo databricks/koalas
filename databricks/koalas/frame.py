@@ -54,6 +54,7 @@ from pyspark.sql.types import (
     StructField,
     ArrayType,
     LongType,
+    FractionalType,
 )
 from pyspark.sql.window import Window
 
@@ -10110,7 +10111,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             dtype = self._kser_for(column_label).spark.data_type
             if isinstance(dtype, NumericType):
                 column_labels.append(column_label)
-                if isinstance(dtype, (DoubleType, FloatType)):
+                if isinstance(dtype, FractionalType):
                     has_float_col = True
 
         # Getting spark columns from column names.
@@ -10141,8 +10142,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         with ks.option_context("compute.max_rows", None):
             result = first_series(DataFrame(internal).T)
             if not has_float_col:
-                # Since the rows of the `result` is the same as the number of columns,
-                # it's assumed that it's small enough to use transform.
                 return result.spark.transform(lambda col: F.round(col).cast(LongType()))
             else:
                 return result
