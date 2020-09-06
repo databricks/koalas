@@ -2825,9 +2825,8 @@ class MultiIndex(Index):
         >>> kmidx.item()
         ('a', 'x')
         """
-        result = self._internal.spark_frame.head(2)
-        if len(result) == 1:
-            return tuple(result[0][nlevel] for nlevel in range(self.nlevels))
+        if len(self._kdf.head(2)) == 1:
+            return self.to_pandas().item()
         raise ValueError("can only convert an array of size 1 to a Python scalar")
 
     @property
