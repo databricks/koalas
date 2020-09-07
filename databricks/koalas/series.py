@@ -1539,6 +1539,109 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return first_series(kdf)
 
+    def reindex(self, index: Optional[Any] = None, fill_value: Optional[Any] = None,) -> "Series":
+        """
+        Conform Series to new index with optional filling logic, placing
+        NA/NaN in locations having no value in the previous index. A new object
+        is produced.
+
+        Parameters
+        ----------
+        index: array-like, optional
+            New labels / index to conform to, should be specified using keywords.
+            Preferably an Index object to avoid duplicating data
+        fill_value : scalar, default np.NaN
+            Value to use for missing values. Defaults to NaN, but can be any
+            "compatible" value.
+
+        Returns
+        -------
+        Series with changed index.
+
+        See Also
+        --------
+        Series.reset_index : Remove row labels or move them to new columns.
+
+        Examples
+        --------
+
+        Create a series with some fictional data.
+
+        >>> index = ['Firefox', 'Chrome', 'Safari', 'IE10', 'Konqueror']
+        >>> ser = ks.Series([200, 200, 404, 404, 301],
+        ...                 index=index, name='http_status')
+        >>> ser
+        Firefox      200
+        Chrome       200
+        Safari       404
+        IE10         404
+        Konqueror    301
+        Name: http_status, dtype: int64
+
+        Create a new index and reindex the Series. By default
+        values in the new index that do not have corresponding
+        records in the Series are assigned ``NaN``.
+
+        >>> new_index= ['Safari', 'Iceweasel', 'Comodo Dragon', 'IE10',
+        ...             'Chrome']
+        >>> ser.reindex(new_index).sort_index()
+        Chrome           200.0
+        Comodo Dragon      NaN
+        IE10             404.0
+        Iceweasel          NaN
+        Safari           404.0
+        Name: http_status, dtype: float64
+
+        We can fill in the missing values by passing a value to
+        the keyword ``fill_value``.
+
+        >>> ser.reindex(new_index, fill_value=0).sort_index()
+        Chrome           200
+        Comodo Dragon      0
+        IE10             404
+        Iceweasel          0
+        Safari           404
+        Name: http_status, dtype: int64
+
+        To further illustrate the filling functionality in
+        ``reindex``, we will create a Series with a
+        monotonically increasing index (for example, a sequence
+        of dates).
+
+        >>> date_index = pd.date_range('1/1/2010', periods=6, freq='D')
+        >>> ser2 = ks.Series([100, 101, np.nan, 100, 89, 88],
+        ...                  name='prices', index=date_index)
+        >>> ser2.sort_index()
+        2010-01-01    100.0
+        2010-01-02    101.0
+        2010-01-03      NaN
+        2010-01-04    100.0
+        2010-01-05     89.0
+        2010-01-06     88.0
+        Name: prices, dtype: float64
+
+        Suppose we decide to expand the series to cover a wider
+        date range.
+
+        >>> date_index2 = pd.date_range('12/29/2009', periods=10, freq='D')
+        >>> ser2.reindex(date_index2).sort_index()
+        2009-12-29      NaN
+        2009-12-30      NaN
+        2009-12-31      NaN
+        2010-01-01    100.0
+        2010-01-02    101.0
+        2010-01-03      NaN
+        2010-01-04    100.0
+        2010-01-05     89.0
+        2010-01-06     88.0
+        2010-01-07      NaN
+        Name: prices, dtype: float64
+        """
+
+        return first_series(self.to_frame().reindex(index=index, fill_value=fill_value)).rename(
+            self.name
+        )
+
     def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
         """Fill NA/NaN values.
 
