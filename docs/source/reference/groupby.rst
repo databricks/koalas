@@ -33,10 +33,12 @@ Computations / Descriptive Stats
    GroupBy.all
    GroupBy.any
    GroupBy.count
+   GroupBy.cumcount
    GroupBy.cummax
    GroupBy.cummin
    GroupBy.cumprod
    GroupBy.cumsum
+   GroupBy.filter
    GroupBy.first
    GroupBy.last
    GroupBy.max
@@ -54,6 +56,7 @@ Computations / Descriptive Stats
    GroupBy.fillna
    GroupBy.bfill
    GroupBy.ffill
+   GroupBy.head
    GroupBy.backfill
    GroupBy.shift
 
@@ -65,10 +68,4 @@ The following methods are available only for `SeriesGroupBy` objects.
    SeriesGroupBy.nsmallest
    SeriesGroupBy.nlargest
    SeriesGroupBy.value_counts
-
-The following methods are available only for `DataFrameGroupBy` objects.
-
-.. autosummary::
-   :toctree: api/
-
-   DataFrameGroupBy.filter
+   SeriesGroupBy.unique

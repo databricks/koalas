@@ -19,14 +19,12 @@ Date/Time related functions on Koalas Series
 """
 from typing import TYPE_CHECKING
 
-import pandas as pd
+import numpy as np
+import pandas as pd  # noqa: F401
 import pyspark.sql.functions as F
-from pyspark.sql.types import (
-    DateType, TimestampType, LongType, StringType, BooleanType
-)
+from pyspark.sql.types import DateType, TimestampType, LongType
 
-
-from databricks.koalas.base import _wrap_accessor_pandas, _wrap_accessor_spark
+from databricks.koalas.base import column_op
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -34,104 +32,109 @@ if TYPE_CHECKING:
 
 class DatetimeMethods(object):
     """Date/Time methods for Koalas Series"""
-    def __init__(self, series: 'ks.Series'):
-        if not isinstance(series.spark_type, (DateType, TimestampType)):
+
+    def __init__(self, series: "ks.Series"):
+        if not isinstance(series.spark.data_type, (DateType, TimestampType)):
             raise ValueError(
-                "Cannot call DatetimeMethods on type {}"
-                .format(series.spark_type))
+                "Cannot call DatetimeMethods on type {}".format(series.spark.data_type)
+            )
         self._data = series
-        self.name = self._data.name
 
     # Properties
     @property
-    def date(self) -> 'ks.Series':
+    def date(self) -> "ks.Series":
         """
         Returns a Series of python datetime.date objects (namely, the date
         part of Timestamps without timezone information).
         """
         # TODO: Hit a weird exception
         # syntax error in attribute name: `to_date(`start_date`)` with alias
-        return _wrap_accessor_spark(
-            self, lambda col: F.to_date(col)).alias(self.name)
+        return column_op(F.to_date)(self._data).alias(self._data.name)
 
     @property
-    def time(self) -> 'ks.Series':
+    def time(self) -> "ks.Series":
         raise NotImplementedError()
 
     @property
-    def timetz(self) -> 'ks.Series':
+    def timetz(self) -> "ks.Series":
         raise NotImplementedError()
 
     @property
-    def year(self) -> 'ks.Series':
+    def year(self) -> "ks.Series":
         """
         The year of the datetime.
         """
-        return _wrap_accessor_spark(self, F.year, LongType()).alias(self.name)
+        return column_op(lambda c: F.year(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
-    def month(self) -> 'ks.Series':
+    def month(self) -> "ks.Series":
         """
         The month of the timestamp as January = 1 December = 12.
         """
-        return _wrap_accessor_spark(self, F.month, LongType()).alias(self.name)
+        return column_op(lambda c: F.month(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
-    def day(self) -> 'ks.Series':
+    def day(self) -> "ks.Series":
         """
         The days of the datetime.
         """
-        return _wrap_accessor_spark(
-            self, F.dayofmonth, LongType()).alias(self.name)
+        return column_op(lambda c: F.dayofmonth(c).cast(LongType()))(self._data).alias(
+            self._data.name
+        )
 
     @property
-    def hour(self) -> 'ks.Series':
+    def hour(self) -> "ks.Series":
         """
         The hours of the datetime.
         """
-        return _wrap_accessor_spark(self, F.hour, LongType()).alias(self.name)
+        return column_op(lambda c: F.hour(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
-    def minute(self) -> 'ks.Series':
+    def minute(self) -> "ks.Series":
         """
         The minutes of the datetime.
         """
-        return _wrap_accessor_spark(self, F.minute, LongType()).alias(self.name)
+        return column_op(lambda c: F.minute(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
-    def second(self) -> 'ks.Series':
+    def second(self) -> "ks.Series":
         """
         The seconds of the datetime.
         """
-        return _wrap_accessor_spark(self, F.second, LongType()).alias(self.name)
+        return column_op(lambda c: F.second(c).cast(LongType()))(self._data).alias(self._data.name)
 
     @property
-    def microsecond(self) -> 'ks.Series':
+    def microsecond(self) -> "ks.Series":
         """
         The microseconds of the datetime.
         """
-        return _wrap_accessor_pandas(
-            self, lambda x: x.dt.microsecond, LongType()).alias(self.name)
+
+        def pandas_microsecond(s) -> "ks.Series[np.int64]":
+            return s.dt.microsecond
+
+        return self._data.koalas.transform_batch(pandas_microsecond)
 
     @property
-    def nanosecond(self) -> 'ks.Series':
+    def nanosecond(self) -> "ks.Series":
         raise NotImplementedError()
 
     @property
-    def week(self) -> 'ks.Series':
+    def week(self) -> "ks.Series":
         """
         The week ordinal of the year.
         """
-        return _wrap_accessor_spark(self, F.weekofyear, LongType()).alias(self.name)
+        return column_op(lambda c: F.weekofyear(c).cast(LongType()))(self._data).alias(
+            self._data.name
+        )
 
     @property
-    def weekofyear(self) -> 'ks.Series':
+    def weekofyear(self) -> "ks.Series":
         return self.week
 
     weekofyear.__doc__ = week.__doc__
 
     @property
-    def dayofweek(self) -> 'ks.Series':
+    def dayofweek(self) -> "ks.Series":
         """
         The day of the week with Monday=0, Sunday=6.
 
@@ -164,35 +167,44 @@ class DatetimeMethods(object):
         2017-01-06    4
         2017-01-07    5
         2017-01-08    6
-        Name: 0, dtype: int64
+        dtype: int64
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.dayofweek, LongType()).alias(self._data.name)
+
+        def pandas_dayofweek(s) -> "ks.Series[np.int64]":
+            return s.dt.dayofweek
+
+        return self._data.koalas.transform_batch(pandas_dayofweek)
 
     @property
-    def weekday(self) -> 'ks.Series':
+    def weekday(self) -> "ks.Series":
         return self.dayofweek
 
     weekday.__doc__ = dayofweek.__doc__
 
     @property
-    def dayofyear(self) -> 'ks.Series':
+    def dayofyear(self) -> "ks.Series":
         """
         The ordinal day of the year.
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.dayofyear, LongType()).alias(self._data.name)
+
+        def pandas_dayofyear(s) -> "ks.Series[np.int64]":
+            return s.dt.dayofyear
+
+        return self._data.koalas.transform_batch(pandas_dayofyear)
 
     @property
-    def quarter(self) -> 'ks.Series':
+    def quarter(self) -> "ks.Series":
         """
         The quarter of the date.
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.quarter, LongType()).alias(self._data.name)
+
+        def pandas_quarter(s) -> "ks.Series[np.int64]":
+            return s.dt.quarter
+
+        return self._data.koalas.transform_batch(pandas_quarter)
 
     @property
-    def is_month_start(self) -> 'ks.Series':
+    def is_month_start(self) -> "ks.Series":
         """
         Indicates whether the date is the first day of the month.
 
@@ -216,19 +228,22 @@ class DatetimeMethods(object):
         0   2018-02-27
         1   2018-02-28
         2   2018-03-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> s.dt.is_month_start
         0    False
         1    False
         2     True
-        Name: 0, dtype: bool
+        dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_month_start, BooleanType()).alias(self._data.name)
+
+        def pandas_is_month_start(s) -> "ks.Series[bool]":
+            return s.dt.is_month_start
+
+        return self._data.koalas.transform_batch(pandas_is_month_start)
 
     @property
-    def is_month_end(self) -> 'ks.Series':
+    def is_month_end(self) -> "ks.Series":
         """
         Indicates whether the date is the last day of the month.
 
@@ -252,19 +267,22 @@ class DatetimeMethods(object):
         0   2018-02-27
         1   2018-02-28
         2   2018-03-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> s.dt.is_month_end
         0    False
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_month_end, BooleanType()).alias(self._data.name)
+
+        def pandas_is_month_end(s) -> "ks.Series[bool]":
+            return s.dt.is_month_end
+
+        return self._data.koalas.transform_batch(pandas_is_month_end)
 
     @property
-    def is_quarter_start(self) -> 'ks.Series':
+    def is_quarter_start(self) -> "ks.Series":
         """
         Indicator for whether the date is the first day of a quarter.
 
@@ -307,11 +325,14 @@ class DatetimeMethods(object):
         3    False
         Name: dates, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_quarter_start, BooleanType()).alias(self._data.name)
+
+        def pandas_is_quarter_start(s) -> "ks.Series[bool]":
+            return s.dt.is_quarter_start
+
+        return self._data.koalas.transform_batch(pandas_is_quarter_start)
 
     @property
-    def is_quarter_end(self) -> 'ks.Series':
+    def is_quarter_end(self) -> "ks.Series":
         """
         Indicator for whether the date is the last day of a quarter.
 
@@ -354,11 +375,14 @@ class DatetimeMethods(object):
         3    False
         Name: dates, dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_quarter_end, BooleanType()).alias(self._data.name)
+
+        def pandas_is_quarter_end(s) -> "ks.Series[bool]":
+            return s.dt.is_quarter_end
+
+        return self._data.koalas.transform_batch(pandas_is_quarter_end)
 
     @property
-    def is_year_start(self) -> 'ks.Series':
+    def is_year_start(self) -> "ks.Series":
         """
         Indicate whether the date is the first day of a year.
 
@@ -382,19 +406,22 @@ class DatetimeMethods(object):
         0   2017-12-30
         1   2017-12-31
         2   2018-01-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> dates.dt.is_year_start
         0    False
         1    False
         2     True
-        Name: 0, dtype: bool
+        dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_year_start, BooleanType()).alias(self._data.name)
+
+        def pandas_is_year_start(s) -> "ks.Series[bool]":
+            return s.dt.is_year_start
+
+        return self._data.koalas.transform_batch(pandas_is_year_start)
 
     @property
-    def is_year_end(self) -> 'ks.Series':
+    def is_year_end(self) -> "ks.Series":
         """
         Indicate whether the date is the last day of the year.
 
@@ -418,19 +445,22 @@ class DatetimeMethods(object):
         0   2017-12-30
         1   2017-12-31
         2   2018-01-01
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> dates.dt.is_year_end
         0    False
         1     True
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_year_end, BooleanType()).alias(self._data.name)
+
+        def pandas_is_year_end(s) -> "ks.Series[bool]":
+            return s.dt.is_year_end
+
+        return self._data.koalas.transform_batch(pandas_is_year_end)
 
     @property
-    def is_leap_year(self) -> 'ks.Series':
+    def is_leap_year(self) -> "ks.Series":
         """
         Boolean indicator if the date belongs to a leap year.
 
@@ -454,49 +484,54 @@ class DatetimeMethods(object):
         0   2012-12-31
         1   2013-12-31
         2   2014-12-31
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> dates_series.dt.is_leap_year
         0     True
         1    False
         2    False
-        Name: 0, dtype: bool
+        dtype: bool
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.is_leap_year, BooleanType()
-        ).alias(self._data.name)
+
+        def pandas_is_leap_year(s) -> "ks.Series[bool]":
+            return s.dt.is_leap_year
+
+        return self._data.koalas.transform_batch(pandas_is_leap_year)
 
     @property
-    def daysinmonth(self) -> 'ks.Series':
+    def daysinmonth(self) -> "ks.Series":
         """
         The number of days in the month.
         """
-        return _wrap_accessor_pandas(
-            self, lambda s: s.dt.daysinmonth, LongType()).alias(self._data.name)
+
+        def pandas_daysinmonth(s) -> "ks.Series[np.int64]":
+            return s.dt.daysinmonth
+
+        return self._data.koalas.transform_batch(pandas_daysinmonth)
 
     @property
-    def days_in_month(self) -> 'ks.Series':
+    def days_in_month(self) -> "ks.Series":
         return self.daysinmonth
 
     days_in_month.__doc__ = daysinmonth.__doc__
 
     # Methods
 
-    def tz_localize(self, tz) -> 'ks.Series':
+    def tz_localize(self, tz) -> "ks.Series":
         """
         Localize tz-naive Datetime column to tz-aware Datetime column.
         """
         # Neither tz-naive or tz-aware datetime exists in Spark
         raise NotImplementedError()
 
-    def tz_convert(self, tz) -> 'ks.Series':
+    def tz_convert(self, tz) -> "ks.Series":
         """
         Convert tz-aware Datetime column from one time zone to another.
         """
         # tz-aware datetime doesn't exist in Spark
         raise NotImplementedError()
 
-    def normalize(self) -> 'ks.Series':
+    def normalize(self) -> "ks.Series":
         """
         Convert times to midnight.
 
@@ -526,15 +561,15 @@ class DatetimeMethods(object):
         0   2012-01-31
         1   2012-02-29
         2   2012-03-31
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.normalize(),
-            TimestampType()
-        ).alias(self.name)
 
-    def strftime(self, date_format) -> 'ks.Series':
+        def pandas_normalize(s) -> "ks.Series[np.datetime64]":
+            return s.dt.normalize()
+
+        return self._data.koalas.transform_batch(pandas_normalize)
+
+    def strftime(self, date_format) -> "ks.Series":
         """
         Convert to a string Series using specified date_format.
 
@@ -568,21 +603,21 @@ class DatetimeMethods(object):
         0   2018-03-10 09:00:00
         1   2018-03-10 09:00:01
         2   2018-03-10 09:00:02
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.strftime('%B %d, %Y, %r')
         0    March 10, 2018, 09:00:00 AM
         1    March 10, 2018, 09:00:01 AM
         2    March 10, 2018, 09:00:02 AM
-        Name: 0, dtype: object
+        dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.strftime(date_format),
-            StringType()
-        ).alias(self.name)
 
-    def round(self, freq, *args, **kwargs) -> 'ks.Series':
+        def pandas_strftime(s) -> "ks.Series[str]":
+            return s.dt.strftime(date_format)
+
+        return self._data.koalas.transform_batch(pandas_strftime)
+
+    def round(self, freq, *args, **kwargs) -> "ks.Series":
         """
         Perform round operation on the data to the specified freq.
 
@@ -623,21 +658,21 @@ class DatetimeMethods(object):
         0   2018-01-01 11:59:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:01:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.round("H")
         0   2018-01-01 12:00:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:00:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.round(freq, *args, **kwargs),
-            TimestampType()
-        ).alias(self.name)
 
-    def floor(self, freq, *args, **kwargs) -> 'ks.Series':
+        def pandas_round(s) -> "ks.Series[np.datetime64]":
+            return s.dt.round(freq, *args, **kwargs)
+
+        return self._data.koalas.transform_batch(pandas_round)
+
+    def floor(self, freq, *args, **kwargs) -> "ks.Series":
         """
         Perform floor operation on the data to the specified freq.
 
@@ -678,21 +713,21 @@ class DatetimeMethods(object):
         0   2018-01-01 11:59:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:01:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.floor("H")
         0   2018-01-01 11:00:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:00:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.floor(freq),
-            TimestampType()
-        ).alias(self.name)
 
-    def ceil(self, freq, *args, **kwargs) -> 'ks.Series':
+        def pandas_floor(s) -> "ks.Series[np.datetime64]":
+            return s.dt.floor(freq, *args, **kwargs)
+
+        return self._data.koalas.transform_batch(pandas_floor)
+
+    def ceil(self, freq, *args, **kwargs) -> "ks.Series":
         """
         Perform ceil operation on the data to the specified freq.
 
@@ -733,21 +768,21 @@ class DatetimeMethods(object):
         0   2018-01-01 11:59:00
         1   2018-01-01 12:00:00
         2   2018-01-01 12:01:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.ceil("H")
         0   2018-01-01 12:00:00
         1   2018-01-01 12:00:00
         2   2018-01-01 13:00:00
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.ceil(freq),
-            TimestampType()
-        ).alias(self.name)
 
-    def month_name(self, locale=None) -> 'ks.Series':
+        def pandas_ceil(s) -> "ks.Series[np.datetime64]":
+            return s.dt.ceil(freq, *args, **kwargs)
+
+        return self._data.koalas.transform_batch(pandas_ceil)
+
+    def month_name(self, locale=None) -> "ks.Series":
         """
         Return the month names of the series with specified locale.
 
@@ -769,21 +804,21 @@ class DatetimeMethods(object):
         0   2018-01-31
         1   2018-02-28
         2   2018-03-31
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.month_name()
         0     January
         1    February
         2       March
-        Name: 0, dtype: object
+        dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.month_name(locale),
-            StringType()
-        ).alias(self.name)
 
-    def day_name(self, locale=None) -> 'ks.Series':
+        def pandas_month_name(s) -> "ks.Series[str]":
+            return s.dt.month_name(locale=locale)
+
+        return self._data.koalas.transform_batch(pandas_month_name)
+
+    def day_name(self, locale=None) -> "ks.Series":
         """
         Return the day names of the series with specified locale.
 
@@ -805,16 +840,16 @@ class DatetimeMethods(object):
         0   2018-01-01
         1   2018-01-02
         2   2018-01-03
-        Name: 0, dtype: datetime64[ns]
+        dtype: datetime64[ns]
 
         >>> series.dt.day_name()
         0       Monday
         1      Tuesday
         2    Wednesday
-        Name: 0, dtype: object
+        dtype: object
         """
-        return _wrap_accessor_pandas(
-            self,
-            lambda x: x.dt.day_name(locale),
-            StringType()
-        ).alias(self.name)
+
+        def pandas_day_name(s) -> "ks.Series[str]":
+            return s.dt.day_name(locale=locale)
+
+        return self._data.koalas.transform_batch(pandas_day_name)

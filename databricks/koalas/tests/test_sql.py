@@ -21,18 +21,17 @@ from pyspark.sql.utils import ParseException
 
 
 class SQLTest(ReusedSQLTestCase, SQLTestUtils):
-
     def test_error_variable_not_exist(self):
-        msg = 'The key variable_foo in the SQL statement was not found.*'
+        msg = "The key variable_foo in the SQL statement was not found.*"
         with self.assertRaisesRegex(ValueError, msg):
-            ks.sql('select * from {variable_foo}')
+            ks.sql("select * from {variable_foo}")
 
     def test_error_unsupported_type(self):
         msg = "Unsupported variable type <class 'dict'>: {'a': 1}"
         with self.assertRaisesRegex(ValueError, msg):
-            some_dict = {'a': 1}
-            ks.sql('select * from {some_dict}')
+            some_dict = {"a": 1}
+            ks.sql("select * from {some_dict}")
 
     def test_error_bad_sql(self):
         with self.assertRaises(ParseException):
-            ks.sql('this is not valid sql')
+            ks.sql("this is not valid sql")

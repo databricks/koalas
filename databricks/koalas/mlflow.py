@@ -24,7 +24,8 @@ import numpy as np
 from typing import Any
 
 from databricks.koalas.utils import lazy_property, default_session
-from databricks.koalas import Series, DataFrame
+from databricks.koalas.frame import DataFrame
+from databricks.koalas.series import first_series
 from databricks.koalas.typedef import as_spark_type
 
 __all__ = ["PythonModelWrapper", "load_model"]
@@ -37,6 +38,7 @@ class PythonModelWrapper(object):
     This wrapper acts as a predictor on koalas
 
     """
+
     def __init__(self, model_uri, return_type_hint):
         self._model_uri = model_uri  # type: str
         self._return_type_hint = return_type_hint
@@ -50,7 +52,7 @@ class PythonModelWrapper(object):
         # return an integer or a categorical)
         # We can do the same for pytorch/tensorflow/keras models by looking at the output types.
         # However, this is probably better done in mlflow than here.
-        if hint == 'infer' or not hint:
+        if hint == "infer" or not hint:
             hint = np.float64
         return as_spark_type(hint)
 
@@ -84,18 +86,21 @@ class PythonModelWrapper(object):
         if isinstance(data, pd.DataFrame):
             return self._model.predict(data)
         if isinstance(data, DataFrame):
-            return_col = self._model_udf(*data._internal.column_scols)
+            return_col = self._model_udf(*data._internal.data_spark_columns)
             # TODO: the columns should be named according to the mlflow spec
             # However, this is only possible with spark >= 3.0
             # s = F.struct(*data.columns)
             # return_col = self._model_udf(s)
-            column_index = [(col,) for col in data._sdf.select(return_col).columns]
-            return Series(data._internal.copy(scol=return_col,
-                                              column_index=column_index),
-                          anchor=data)
+            column_labels = [
+                (col,) for col in data._internal.spark_frame.select(return_col).columns
+            ]
+            internal = data._internal.copy(
+                column_labels=column_labels, data_spark_columns=[return_col]
+            )
+            return first_series(DataFrame(internal))
 
 
-def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
+def load_model(model_uri, predict_type="infer") -> PythonModelWrapper:
     """
     Loads an MLflow model into an wrapper that can be used both for pandas and Koalas DataFrame.
 
@@ -141,8 +146,8 @@ def load_model(model_uri, predict_type='infer') -> PythonModelWrapper:
     >>> with mlflow.start_run():
     ...     lr = LinearRegression()
     ...     lr.fit(train_x, train_y)
-    ...     mlflow.sklearn.log_model(lr, "model")  # doctest: +NORMALIZE_WHITESPACE
-    LinearRegression(copy_X=True, fit_intercept=True, n_jobs=None, normalize=False)
+    ...     mlflow.sklearn.log_model(lr, "model")
+    LinearRegression(...)
 
     Now that our model is logged using MLflow, we load it back and apply it on a Koalas dataframe:
 

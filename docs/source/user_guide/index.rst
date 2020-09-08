@@ -7,5 +7,7 @@ User Guide
 
     options
     pandas_pyspark
-    faq
+    transform_apply
+    typehints
     best_practices
+    faq

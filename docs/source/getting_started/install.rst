@@ -45,11 +45,11 @@ To put your self inside this environment run::
 The final step required is to install Koalas. This can be done with the
 following command::
 
-    conda install koalas
+    conda install -c conda-forge koalas
 
 To install a specific Koalas version::
 
-    conda install koalas=0.19.0
+    conda install -c conda-forge koalas=0.19.0
 
 
 Installing from PyPI
@@ -74,11 +74,11 @@ Installing with the official release channel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can install PySpark by downloading a release in `the official release channel <https://spark.apache.org/downloads.html>`__.
-Once you download the release, un-ter it first as below::
+Once you download the release, un-tar it first as below::
 
     tar xzvf spark-2.4.4-bin-hadoop2.7.tgz
 
-After that, make sure set ``SPARK_HOME`` enviornment variable to indicate the directory you untar-ed::
+After that, make sure set ``SPARK_HOME`` environment variable to indicate the directory you untar-ed::
 
     cd spark-2.4.4-bin-hadoop2.7
     export SPARK_HOME=`pwd`

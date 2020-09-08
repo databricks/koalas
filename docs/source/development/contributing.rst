@@ -33,7 +33,7 @@ Step-by-step Guide For Code Contributions
 
 4. Implement the functionality, with test cases providing close to 100% statement coverage. Document the functionality.
 
-5. Run existing and new test cases to make sure they still pass. Also run the linter `dev/lint-python`.
+5. Run existing and new test cases to make sure they still pass. Also run `dev/reformat` script to reformat Python files by using `Black <https://github.com/psf/black>`_, and run the linter `dev/lint-python`.
 
 6. Build the docs (`make html` in `docs` directory) and verify the docs related to your change look OK.
 
@@ -48,7 +48,7 @@ Environment Setup
 Conda
 -----
 
-We recommend setting up a Conda environment for development:
+If you are using Conda, the Koalas installation and developement enviornment are as follows.
 
 .. code-block:: bash
 
@@ -68,7 +68,7 @@ Once setup, make sure you switch to `koalas-dev-env` before development:
 pip
 ---
 
-You can use `pip` alternatively if your Python is 3.5+.
+With Python 3.6+, pip can be used as below to install and set up the development environment.
 
 .. code-block:: bash
 
@@ -139,10 +139,28 @@ and third block is for another argument. As a example, please refer `DataFrame.r
 
 These blocks should be consistently separated in Koalas, and more doctests should be added if the coverage of the doctests or the number of examples to show is not enough even though they are different from pandas'.
 
-Release Instructions
-====================
+Release Guide
+=============
 
-Only project maintainers can do the following.
+Release Cadence
+---------------
+
+In general, minor releases occur about every month. Therefore, Koalas 1.3.0 would generally be released about a month after 1.2.0.
+Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule
+The chart below is the expected release dates of minor releases.
+
++------------+---------+
+| Date       | Version |
++============+=========+
+| 10/9 2020  | 1.3.0   |
++------------+---------+
+| 11/20 2020 | 1.4.0   |
++------------+---------+
+
+Release Instructions
+--------------------
+
+Only project maintainers can do the following to publish a release.
 
 1. Make sure version is set correctly in `databricks/koalas/version.py`.
 

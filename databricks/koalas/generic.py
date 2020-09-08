@@ -17,34 +17,51 @@
 """
 A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
-import warnings
+from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
+from typing import Optional, Union, List
+import warnings
 
-import numpy as np
+import numpy as np  # noqa: F401
 import pandas as pd
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.readwriter import OptionUtils
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.indexing import AtIndexer, ILocIndexer, LocIndexer
-from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.utils import validate_arguments_and_invoke_function, scol_for
+from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
+from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.spark import functions as SF
+from databricks.koalas.utils import (
+    name_like_string,
+    scol_for,
+    validate_arguments_and_invoke_function,
+    validate_axis,
+)
 from databricks.koalas.window import Rolling, Expanding
 
 
-class _Frame(object):
+class Frame(object, metaclass=ABCMeta):
     """
     The base class for both DataFrame and Series.
     """
 
-    def __init__(self, internal: _InternalFrame):
-        self._internal = internal  # type: _InternalFrame
+    @property
+    @abstractmethod
+    def _internal(self) -> InternalFrame:
+        pass
+
+    @abstractmethod
+    def _apply_series_op(self, op, should_resolve: bool = False):
+        pass
+
+    @abstractmethod
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
+        pass
 
     # TODO: add 'axis' parameter
     def cummin(self, skipna: bool = True):
@@ -104,7 +121,9 @@ class _Frame(object):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._cum(F.min, skipna)  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cum(F.min, skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True):
@@ -165,7 +184,9 @@ class _Frame(object):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._cum(F.max, skipna)  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cum(F.max, skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True):
@@ -226,7 +247,9 @@ class _Frame(object):
         2    6.0
         Name: A, dtype: float64
         """
-        return self._cum(F.sum, skipna)  # type: ignore
+        return self._apply_series_op(
+            lambda kser: kser._cum(F.sum, skipna), should_resolve=True
+        )  # type: ignore
 
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
@@ -295,19 +318,13 @@ class _Frame(object):
         Name: A, dtype: float64
 
         """
-        from pyspark.sql.functions import pandas_udf
+        return self._apply_series_op(
+            lambda kser: kser._cumprod(skipna), should_resolve=True
+        )  # type: ignore
 
-        def cumprod(scol):
-            @pandas_udf(returnType=self._kdf._internal.spark_type_for(self.name))
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), \
-                    "values should be bigger than 0: %s" % s
-                return s
-
-            return F.sum(F.log(negative_check(scol)))
-
-        return self._cum(cumprod, skipna)  # type: ignore
-
+    # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
+    # since we're using this for `DataFrame.info` internally.
+    # We can drop it once our minimal pandas version becomes 1.0.0.
     def get_dtype_counts(self):
         """
         Return counts of unique dtypes in this object.
@@ -346,7 +363,8 @@ class _Frame(object):
             "`get_dtype_counts` has been deprecated and will be "
             "removed in a future version. For DataFrames use "
             "`.dtypes.value_counts()",
-            FutureWarning)
+            FutureWarning,
+        )
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
@@ -384,11 +402,11 @@ class _Frame(object):
         ...                    'col2': [4, 5, 6]},
         ...                   columns=['category', 'col1', 'col2'])
         >>> def keep_category_a(df):
-        ...    return df[df['category'] == 'A']
+        ...     return df[df['category'] == 'A']
         >>> def add_one(df, column):
-        ...    return df.assign(col3=df[column] + 1)
+        ...     return df.assign(col3=df[column] + 1)
         >>> def multiply(df, column1, column2):
-        ...    return df.assign(col4=df[column1] * df[column2])
+        ...     return df.assign(col4=df[column1] * df[column2])
 
 
         instead of writing
@@ -440,8 +458,7 @@ class _Frame(object):
         if isinstance(func, tuple):
             func, target = func
             if target in kwargs:
-                raise ValueError('%s is both the pipe target and a keyword '
-                                 'argument' % target)
+                raise ValueError("%s is both the pipe target and a keyword " "argument" % target)
             kwargs[target] = self
             return func(*args, **kwargs)
         else:
@@ -457,12 +474,112 @@ class _Frame(object):
         Returns
         -------
         numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.DataFrame({"A": [1, 2], "B": [3, 4]}).to_numpy()
+        array([[1, 3],
+               [2, 4]])
+
+        With heterogeneous data, the lowest common type will have to be used.
+
+        >>> ks.DataFrame({"A": [1, 2], "B": [3.0, 4.5]}).to_numpy()
+        array([[1. , 3. ],
+               [2. , 4.5]])
+
+        For a mix of numeric and non-numeric types, the output array will have object dtype.
+
+        >>> df = ks.DataFrame({"A": [1, 2], "B": [3.0, 4.5], "C": pd.date_range('2000', periods=2)})
+        >>> df.to_numpy()
+        array([[1, 3.0, Timestamp('2000-01-01 00:00:00')],
+               [2, 4.5, Timestamp('2000-01-02 00:00:00')]], dtype=object)
+
+        For Series,
+
+        >>> ks.Series(['a', 'b', 'a']).to_numpy()
+        array(['a', 'b', 'a'], dtype=object)
         """
         return self.to_pandas().values
 
-    def to_csv(self, path=None, sep=',', na_rep='', columns=None, header=True,
-               quotechar='"', date_format=None, escapechar=None, num_files=None,
-               **options):
+    @property
+    def values(self):
+        """
+        Return a Numpy representation of the DataFrame or the Series.
+
+        .. warning:: We recommend using `DataFrame.to_numpy()` or `Series.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        A DataFrame where all columns are the same type (e.g., int64) results in an array of
+        the same type.
+
+        >>> df = ks.DataFrame({'age':    [ 3,  29],
+        ...                    'height': [94, 170],
+        ...                    'weight': [31, 115]})
+        >>> df
+           age  height  weight
+        0    3      94      31
+        1   29     170     115
+        >>> df.dtypes
+        age       int64
+        height    int64
+        weight    int64
+        dtype: object
+        >>> df.values
+        array([[  3,  94,  31],
+               [ 29, 170, 115]])
+
+        A DataFrame with mixed type columns(e.g., str/object, int64, float32) results in an ndarray
+        of the broadest type that accommodates these mixed types (e.g., object).
+
+        >>> df2 = ks.DataFrame([('parrot',   24.0, 'second'),
+        ...                     ('lion',     80.5, 'first'),
+        ...                     ('monkey', np.nan, None)],
+        ...                   columns=('name', 'max_speed', 'rank'))
+        >>> df2.dtypes
+        name          object
+        max_speed    float64
+        rank          object
+        dtype: object
+        >>> df2.values
+        array([['parrot', 24.0, 'second'],
+               ['lion', 80.5, 'first'],
+               ['monkey', nan, None]], dtype=object)
+
+        For Series,
+
+        >>> ks.Series([1, 2, 3]).values
+        array([1, 2, 3])
+
+        >>> ks.Series(list('aabc')).values
+        array(['a', 'a', 'b', 'c'], dtype=object)
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        return self.to_numpy()
+
+    def to_csv(
+        self,
+        path=None,
+        sep=",",
+        na_rep="",
+        columns=None,
+        header=True,
+        quotechar='"',
+        date_format=None,
+        escapechar=None,
+        num_files=None,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
+    ):
         r"""
         Write object to a comma-separated values (csv) file.
 
@@ -496,6 +613,20 @@ class _Frame(object):
             when appropriate.
         num_files : the number of files to be written in `path` directory when
             this is a path.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options: keyword arguments for additional options specific to PySpark.
             This kwargs are specific to PySpark's CSV options to pass. Check
             the options in PySpark's API documentation for spark.write.csv(...).
@@ -528,14 +659,14 @@ class _Frame(object):
         2012-02-29 12:00:00,US,2
         2012-03-31 12:00:00,JP,3
 
-        >>> df.to_csv(path=r'%s/to_csv/foo.csv' % path, num_files=1)
+        >>> df.cummax().to_csv(path=r'%s/to_csv/foo.csv' % path, num_files=1)
         >>> ks.read_csv(
         ...    path=r'%s/to_csv/foo.csv' % path
         ... ).sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
                            date country  code
         ... 2012-01-31 12:00:00      KR     1
         ... 2012-02-29 12:00:00      US     2
-        ... 2012-03-31 12:00:00      JP     3
+        ... 2012-03-31 12:00:00      US     3
 
         In case of Series,
 
@@ -553,57 +684,127 @@ class _Frame(object):
         ... 2012-01-31 12:00:00
         ... 2012-02-29 12:00:00
         ... 2012-03-31 12:00:00
+
+        You can preserve the index in the roundtrip as below.
+
+        >>> df.set_index("country", append=True, inplace=True)
+        >>> df.date.to_csv(
+        ...     path=r'%s/to_csv/bar.csv' % path,
+        ...     num_files=1,
+        ...     index_col=["index1", "index2"])
+        >>> ks.read_csv(
+        ...     path=r'%s/to_csv/bar.csv' % path, index_col=["index1", "index2"]
+        ... ).sort_values(by="date")  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+                                     date
+        index1 index2
+        ...    ...    2012-01-31 12:00:00
+        ...    ...    2012-02-29 12:00:00
+        ...    ...    2012-03-31 12:00:00
         """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
         if path is None:
             # If path is none, just collect and use pandas's to_csv.
             kdf_or_ser = self
-            if (LooseVersion("0.24") > LooseVersion(pd.__version__)) and \
-                    isinstance(self, ks.Series):
+            if (LooseVersion("0.24") > LooseVersion(pd.__version__)) and isinstance(
+                self, ks.Series
+            ):
                 # 0.23 seems not having 'columns' parameter in Series' to_csv.
-                return kdf_or_ser.to_pandas().to_csv(
-                    None, sep=sep, na_rep=na_rep, header=header,
-                    date_format=date_format, index=False)
+                return kdf_or_ser.to_pandas().to_csv(  # type: ignore
+                    None,
+                    sep=sep,
+                    na_rep=na_rep,
+                    header=header,
+                    date_format=date_format,
+                    index=False,
+                )
             else:
-                return kdf_or_ser.to_pandas().to_csv(
-                    None, sep=sep, na_rep=na_rep, columns=columns,
-                    header=header, quotechar=quotechar,
-                    date_format=date_format, escapechar=escapechar, index=False)
+                return kdf_or_ser.to_pandas().to_csv(  # type: ignore
+                    None,
+                    sep=sep,
+                    na_rep=na_rep,
+                    columns=columns,
+                    header=header,
+                    quotechar=quotechar,
+                    date_format=date_format,
+                    escapechar=escapechar,
+                    index=False,
+                )
 
         kdf = self
         if isinstance(self, ks.Series):
             kdf = self.to_frame()
 
         if columns is None:
-            column_index = kdf._internal.column_index
+            column_labels = kdf._internal.column_labels
         elif isinstance(columns, str):
-            column_index = [(columns,)]
+            column_labels = [(columns,)]
         elif isinstance(columns, tuple):
-            column_index = [columns]
+            column_labels = [columns]
         else:
-            column_index = [idx if isinstance(idx, tuple) else (idx,) for idx in columns]
+            column_labels = [
+                lb if isinstance(lb, tuple) else (lb,) for lb in columns  # type: ignore
+            ]
 
-        if header is True and kdf._internal.column_index_level > 1:
-            raise ValueError('to_csv only support one-level index column now')
+        if isinstance(index_col, str):
+            index_cols = [index_col]
+        elif index_col is None:
+            index_cols = []
+        else:
+            index_cols = index_col
+
+        if header is True and kdf._internal.column_labels_level > 1:
+            raise ValueError("to_csv only support one-level index column now")
         elif isinstance(header, list):
-            sdf = kdf._sdf.select(
-                [self._internal.scol_for(idx).alias(new_name)
-                 for (idx, new_name) in zip(column_index, header)])
+            sdf = kdf.to_spark(index_col)  # type: ignore
+            sdf = sdf.select(
+                [scol_for(sdf, name_like_string(label)) for label in index_cols]
+                + [
+                    scol_for(sdf, str(i) if label is None else name_like_string(label)).alias(
+                        new_name
+                    )
+                    for i, (label, new_name) in enumerate(zip(column_labels, header))
+                ]
+            )
             header = True
         else:
-            sdf = kdf._sdf.select([kdf._internal.scol_for(idx) for idx in column_index])
+            sdf = kdf.to_spark(index_col)  # type: ignore
+            sdf = sdf.select(
+                [scol_for(sdf, name_like_string(label)) for label in index_cols]
+                + [
+                    scol_for(sdf, str(i) if label is None else name_like_string(label))
+                    for i, label in enumerate(column_labels)
+                ]
+            )
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)
 
-        builder = sdf.write.mode("overwrite")
-        OptionUtils._set_opts(
-            builder,
-            path=path, sep=sep, nullValue=na_rep, header=header,
-            quote=quotechar, dateFormat=date_format,
-            charToEscapeQuoteEscaping=escapechar)
+        builder = sdf.write.mode(mode)
+        if partition_cols is not None:
+            builder.partitionBy(partition_cols)
+        builder._set_opts(
+            path=path,
+            sep=sep,
+            nullValue=na_rep,
+            header=header,
+            quote=quotechar,
+            dateFormat=date_format,
+            charToEscapeQuoteEscaping=escapechar,
+        )
         builder.options(**options).format("csv").save(path)
 
-    def to_json(self, path=None, compression='uncompressed', num_files=None, **options):
+    def to_json(
+        self,
+        path=None,
+        compression="uncompressed",
+        num_files=None,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
+    ):
         """
         Convert the object to a JSON string.
 
@@ -632,6 +833,20 @@ class _Frame(object):
             compression is inferred from the filename.
         num_files : the number of files to be written in `path` directory when
             this is a path.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
         options: keyword arguments for additional options specific to PySpark.
             It is specific to PySpark's JSON options to pass. Check
             the options in PySpark's API documentation for `spark.write.json(...)`.
@@ -656,40 +871,61 @@ class _Frame(object):
         0     a     b
         1     c     d
 
-        >>> df['col 1'].to_json(path=r'%s/to_json/foo.json' % path, num_files=1)
+        >>> df['col 1'].to_json(path=r'%s/to_json/foo.json' % path, num_files=1, index_col="index")
         >>> ks.read_json(
-        ...     path=r'%s/to_json/foo.json' % path
-        ... ).sort_values(by="col 1")
-          col 1
-        0     a
-        1     c
+        ...     path=r'%s/to_json/foo.json' % path, index_col="index"
+        ... ).sort_values(by="col 1")  # doctest: +NORMALIZE_WHITESPACE
+              col 1
+        index
+        0         a
+        1         c
         """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
         if path is None:
             # If path is none, just collect and use pandas's to_json.
             kdf_or_ser = self
-            pdf = kdf_or_ser.to_pandas()
+            pdf = kdf_or_ser.to_pandas()  # type: ignore
             if isinstance(self, ks.Series):
                 pdf = pdf.to_frame()
             # To make the format consistent and readable by `read_json`, convert it to pandas' and
             # use 'records' orient for now.
-            return pdf.to_json(orient='records')
+            return pdf.to_json(orient="records")
 
         kdf = self
         if isinstance(self, ks.Series):
             kdf = self.to_frame()
-        sdf = kdf.to_spark()
+        sdf = kdf.to_spark(index_col=index_col)  # type: ignore
 
         if num_files is not None:
             sdf = sdf.repartition(num_files)
 
-        builder = sdf.write.mode("overwrite")
-        OptionUtils._set_opts(builder, compression=compression)
+        builder = sdf.write.mode(mode)
+        if partition_cols is not None:
+            builder.partitionBy(partition_cols)
+        builder._set_opts(compression=compression)
         builder.options(**options).format("json").save(path)
 
-    def to_excel(self, excel_writer, sheet_name="Sheet1", na_rep="", float_format=None,
-                 columns=None, header=True, index=True, index_label=None, startrow=0,
-                 startcol=0, engine=None, merge_cells=True, encoding=None, inf_rep="inf",
-                 verbose=True, freeze_panes=None):
+    def to_excel(
+        self,
+        excel_writer,
+        sheet_name="Sheet1",
+        na_rep="",
+        float_format=None,
+        columns=None,
+        header=True,
+        index=True,
+        index_label=None,
+        startrow=0,
+        startcol=0,
+        engine=None,
+        merge_cells=True,
+        encoding=None,
+        inf_rep="inf",
+        verbose=True,
+        freeze_panes=None,
+    ):
         """
         Write object to an Excel sheet.
 
@@ -796,10 +1032,12 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             f = pd.Series.to_excel
         else:
-            raise TypeError('Constructor expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
         return validate_arguments_and_invoke_function(
-            kdf._to_internal_pandas(), self.to_excel, f, args)
+            kdf._to_internal_pandas(), self.to_excel, f, args
+        )
 
     def mean(self, axis=None, numeric_only=True):
         """
@@ -809,9 +1047,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -835,7 +1073,7 @@ class _Frame(object):
         1    1.10
         2    1.65
         3     NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -843,7 +1081,8 @@ class _Frame(object):
         2.0
         """
         return self._reduce_for_stat_function(
-            F.mean, name="mean", numeric_only=numeric_only, axis=axis)
+            F.mean, name="mean", numeric_only=numeric_only, axis=axis
+        )
 
     def sum(self, axis=None, numeric_only=True):
         """
@@ -853,9 +1092,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -879,7 +1118,7 @@ class _Frame(object):
         1    2.2
         2    3.3
         3    0.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -887,7 +1126,8 @@ class _Frame(object):
         6.0
         """
         return self._reduce_for_stat_function(
-            F.sum, name="sum", numeric_only=numeric_only, axis=axis)
+            F.sum, name="sum", numeric_only=numeric_only, axis=axis
+        )
 
     def skew(self, axis=None, numeric_only=True):
         """
@@ -897,9 +1137,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -924,7 +1164,8 @@ class _Frame(object):
         0.0
         """
         return self._reduce_for_stat_function(
-            F.skewness, name="skew", numeric_only=numeric_only, axis=axis)
+            F.skewness, name="skew", numeric_only=numeric_only, axis=axis
+        )
 
     def kurtosis(self, axis=None, numeric_only=True):
         """
@@ -935,9 +1176,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -962,11 +1203,12 @@ class _Frame(object):
         -1.5
         """
         return self._reduce_for_stat_function(
-            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis)
+            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis
+        )
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=False):
+    def min(self, axis=None, numeric_only=None):
         """
         Return the minimum of the values.
 
@@ -975,8 +1217,9 @@ class _Frame(object):
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
         numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility. False is supported; however, the columns should
+            be all numeric or all non-numeric.
 
         Returns
         -------
@@ -1000,7 +1243,7 @@ class _Frame(object):
         1    0.2
         2    0.3
         3    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1008,9 +1251,10 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.min, name="min", numeric_only=numeric_only, axis=axis)
+            F.min, name="min", numeric_only=numeric_only, axis=axis
+        )
 
-    def max(self, axis=None, numeric_only=False):
+    def max(self, axis=None, numeric_only=None):
         """
         Return the maximum of the values.
 
@@ -1019,8 +1263,9 @@ class _Frame(object):
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
         numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility. False is supported; however, the columns should
+            be all numeric or all non-numeric.
 
         Returns
         -------
@@ -1044,7 +1289,7 @@ class _Frame(object):
         1    2.0
         2    3.0
         3    NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1052,7 +1297,8 @@ class _Frame(object):
         3.0
         """
         return self._reduce_for_stat_function(
-            F.max, name="max", numeric_only=numeric_only, axis=axis)
+            F.max, name="max", numeric_only=numeric_only, axis=axis
+        )
 
     def std(self, axis=None, numeric_only=True):
         """
@@ -1062,9 +1308,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1088,7 +1334,7 @@ class _Frame(object):
         1    1.272792
         2    1.909188
         3         NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1096,7 +1342,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.stddev, name="std", numeric_only=numeric_only, axis=axis)
+            F.stddev, name="std", numeric_only=numeric_only, axis=axis
+        )
 
     def var(self, axis=None, numeric_only=True):
         """
@@ -1106,9 +1353,9 @@ class _Frame(object):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
-            Include only float, int, boolean columns. If None, will attempt to use
-            everything, then use only numeric data. Not implemented for Series.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
 
         Returns
         -------
@@ -1132,7 +1379,7 @@ class _Frame(object):
         1    1.620
         2    3.645
         3      NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1140,7 +1387,8 @@ class _Frame(object):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.variance, name="var", numeric_only=numeric_only, axis=axis)
+            F.variance, name="var", numeric_only=numeric_only, axis=axis
+        )
 
     @property
     def size(self) -> int:
@@ -1158,9 +1406,17 @@ class _Frame(object):
 
         >>> df = ks.DataFrame({'col1': [1, 2, None], 'col2': [3, 4, None]})
         >>> df.size
-        3
+        6
+
+        >>> df = ks.DataFrame(index=[1, 2, None])
+        >>> df.size
+        0
         """
-        return len(self)  # type: ignore
+        num_columns = len(self._internal.data_spark_columns)
+        if num_columns == 0:
+            return 0
+        else:
+            return len(self) * num_columns  # type: ignore
 
     def abs(self):
         """
@@ -1172,6 +1428,7 @@ class _Frame(object):
 
         Examples
         --------
+
         Absolute numeric values in a Series.
 
         >>> s = ks.Series([-1.10, 2, -3.33, 4])
@@ -1180,7 +1437,7 @@ class _Frame(object):
         1    2.00
         2    3.33
         3    4.00
-        Name: 0, dtype: float64
+        dtype: float64
 
         Absolute numeric values in a DataFrame.
 
@@ -1197,12 +1454,11 @@ class _Frame(object):
         2  6  30   30
         3  7  40   50
         """
-        # TODO: The first example above should not have "Name: 0".
-        return _spark_col_apply(self, F.abs)
+        return self._apply_series_op(lambda kser: kser._with_new_scol(F.abs(kser.spark.column)))
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
-    def groupby(self, by, as_index: bool = True):
+    def groupby(self, by, axis=0, as_index: bool = True):
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1218,6 +1474,8 @@ class _Frame(object):
             If Series is passed, the Series or dict VALUES
             will be used to determine the groups. A label or list of
             labels may be passed to group by the columns in ``self``.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
         as_index : bool, default True
             For aggregated output, return object with group labels as the
             index. Only relevant for DataFrame input. as_index=False is
@@ -1246,60 +1504,59 @@ class _Frame(object):
         2  Parrot       24.0
         3  Parrot       26.0
 
-        >>> df.groupby(['Animal']).mean()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(['Animal']).mean().sort_index()  # doctest: +NORMALIZE_WHITESPACE
                 Max Speed
         Animal
         Falcon      375.0
         Parrot       25.0
 
-        >>> df.groupby(['Animal'], as_index=False).mean()
+        >>> df.groupby(['Animal'], as_index=False).mean().sort_values('Animal')
+        ... # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
            Animal  Max Speed
-        0  Falcon      375.0
-        1  Parrot       25.0
+        ...Falcon      375.0
+        ...Parrot       25.0
         """
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
-        df_or_s = self
-        if isinstance(by, DataFrame):
+        if isinstance(by, ks.DataFrame):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         elif isinstance(by, str):
-            if isinstance(df_or_s, Series):
+            if isinstance(self, ks.Series):
                 raise KeyError(by)
             by = [(by,)]
         elif isinstance(by, tuple):
-            if isinstance(df_or_s, Series):
+            if isinstance(self, ks.Series):
                 for key in by:
                     if isinstance(key, str):
                         raise KeyError(key)
             for key in by:
-                if isinstance(key, DataFrame):
+                if isinstance(key, ks.DataFrame):
                     raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
             by = [by]
-        elif isinstance(by, Series):
+        elif isinstance(by, ks.Series):
             by = [by]
         elif isinstance(by, Iterable):
-            if isinstance(df_or_s, Series):
+            if isinstance(self, ks.Series):
                 for key in by:
                     if isinstance(key, str):
                         raise KeyError(key)
-            by = [key if isinstance(key, (tuple, Series)) else (key,) for key in by]
+            by = [key if isinstance(key, (tuple, ks.Series)) else (key,) for key in by]
         else:
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
-            raise ValueError('No group keys passed!')
-        if isinstance(df_or_s, DataFrame):
-            df = df_or_s  # type: DataFrame
-            col_by = [_resolve_col(df, col_or_s) for col_or_s in by]
-            return DataFrameGroupBy(df_or_s, col_by, as_index=as_index)
-        if isinstance(df_or_s, Series):
-            col = df_or_s  # type: Series
-            anchor = df_or_s._kdf
-            col_by = [_resolve_col(anchor, col_or_s) for col_or_s in by]
-            return SeriesGroupBy(col, col_by, as_index=as_index)
-        raise TypeError('Constructor expects DataFrame or Series; however, '
-                        'got [%s]' % (df_or_s,))
+            raise ValueError("No group keys passed!")
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError('axis should be either 0 or "index" currently.')
+
+        if isinstance(self, ks.DataFrame):
+            return DataFrameGroupBy._build(self, by, as_index=as_index)
+        elif isinstance(self, ks.Series):
+            return SeriesGroupBy._build(self, by, as_index=as_index)
+        else:
+            raise TypeError(
+                "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
+            )
 
     def bool(self):
         """
@@ -1340,8 +1597,7 @@ class _Frame(object):
         elif isinstance(self, ks.Series):
             df = self.to_dataframe()
         else:
-            raise TypeError('bool() expects DataFrame or Series; however, '
-                            'got [%s]' % (self,))
+            raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
     def first_valid_index(self):
@@ -1394,7 +1650,7 @@ class _Frame(object):
         300    3.0
         400    4.0
         500    5.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.first_valid_index()
         300
@@ -1416,26 +1672,131 @@ class _Frame(object):
         falcon  speed     320.0
                 weight      1.0
                 length      0.3
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.first_valid_index()
         ('cow', 'weight')
         """
-        sdf = self._internal.sdf
-        column_scols = self._internal.column_scols
-        cond = reduce(lambda x, y: x & y,
-                      map(lambda x: x.isNotNull(), column_scols))
+        sdf = self._internal.spark_frame
+        data_spark_columns = self._internal.data_spark_columns
+        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
-        first_valid_row = sdf.where(cond).first()
-        first_valid_idx = tuple(first_valid_row[idx_col]
-                                for idx_col in self._internal.index_columns)
+        first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
+        # For Empty Series or DataFrame, returns None.
+        if first_valid_row is None:
+            return None
+
+        first_valid_idx = tuple(
+            first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        )
 
         if len(first_valid_idx) == 1:
             first_valid_idx = first_valid_idx[0]
 
         return first_valid_idx
 
-    def median(self, accuracy=10000):
+    def last_valid_index(self):
+        """
+        Return index for last non-NA/null value.
+
+        Returns
+        -------
+        scalar : type of index
+
+        Notes
+        -----
+        This API only works with PySpark >= 3.0.
+
+        Examples
+        --------
+
+        Support for DataFrame
+
+        >>> kdf = ks.DataFrame({'a': [1, 2, 3, None],
+        ...                     'b': [1.0, 2.0, 3.0, None],
+        ...                     'c': [100, 200, 400, None]},
+        ...                     index=['Q', 'W', 'E', 'R'])
+        >>> kdf
+             a    b      c
+        Q  1.0  1.0  100.0
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  NaN  NaN    NaN
+
+        >>> kdf.last_valid_index()  # doctest: +SKIP
+        'E'
+
+        Support for MultiIndex columns
+
+        >>> kdf.columns = pd.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> kdf
+             a    b      c
+             x    y      z
+        Q  1.0  1.0  100.0
+        W  2.0  2.0  200.0
+        E  3.0  3.0  400.0
+        R  NaN  NaN    NaN
+
+        >>> kdf.last_valid_index()  # doctest: +SKIP
+        'E'
+
+        Support for Series.
+
+        >>> s = ks.Series([1, 2, 3, None, None], index=[100, 200, 300, 400, 500])
+        >>> s
+        100    1.0
+        200    2.0
+        300    3.0
+        400    NaN
+        500    NaN
+        dtype: float64
+
+        >>> s.last_valid_index()  # doctest: +SKIP
+        300
+
+        Support for MultiIndex
+
+        >>> midx = pd.MultiIndex([['lama', 'cow', 'falcon'],
+        ...                       ['speed', 'weight', 'length']],
+        ...                      [[0, 0, 0, 1, 1, 1, 2, 2, 2],
+        ...                       [0, 1, 2, 0, 1, 2, 0, 1, 2]])
+        >>> s = ks.Series([250, 1.5, 320, 1, 0.3, None, None, None, None], index=midx)
+        >>> s
+        lama    speed     250.0
+                weight      1.5
+                length    320.0
+        cow     speed       1.0
+                weight      0.3
+                length      NaN
+        falcon  speed       NaN
+                weight      NaN
+                length      NaN
+        dtype: float64
+
+        >>> s.last_valid_index()  # doctest: +SKIP
+        ('cow', 'weight')
+        """
+        sdf = self._internal.spark_frame
+        data_spark_columns = self._internal.data_spark_columns
+        cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
+
+        last_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).tail(1)
+        # For Empty Series or DataFrame, returns None.
+        if len(last_valid_row) == 0:
+            return None
+        else:
+            last_valid_row = last_valid_row[0]
+
+        last_valid_idx = tuple(
+            last_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        )
+
+        if len(last_valid_idx) == 1:
+            last_valid_idx = last_valid_idx[0]
+
+        return last_valid_idx
+
+    def median(self, axis=None, numeric_only=True, accuracy=10000):
         """
         Return the median of the values for the requested axis.
 
@@ -1445,6 +1806,11 @@ class _Frame(object):
 
         Parameters
         ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
         accuracy : int, optional
             Default accuracy of approximation. Larger value means better accuracy.
             The relative error can be deduced by 1.0 / accuracy.
@@ -1456,21 +1822,21 @@ class _Frame(object):
         Examples
         --------
         >>> df = ks.DataFrame({
-        ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
+        ...     'a': [24., 21., 25., 33., 26.], 'b': [1., 2., 3., 4., 5.]}, columns=['a', 'b'])
         >>> df
-              a  b
-        0  24.0  1
-        1  21.0  2
-        2  25.0  3
-        3  33.0  4
-        4  26.0  5
+              a    b
+        0  24.0  1.0
+        1  21.0  2.0
+        2  25.0  3.0
+        3  33.0  4.0
+        4  26.0  5.0
 
         On a DataFrame:
 
         >>> df.median()
         a    25.0
         b     3.0
-        Name: 0, dtype: float64
+        dtype: float64
 
         On a Series:
 
@@ -1483,20 +1849,28 @@ class _Frame(object):
 
         >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
         >>> df
-              x  y
-              a  b
-        0  24.0  1
-        1  21.0  2
-        2  25.0  3
-        3  33.0  4
-        4  26.0  5
+              x    y
+              a    b
+        0  24.0  1.0
+        1  21.0  2.0
+        2  25.0  3.0
+        3  33.0  4.0
+        4  26.0  5.0
 
         On a DataFrame:
 
         >>> df.median()
         x  a    25.0
         y  b     3.0
-        Name: 0, dtype: float64
+        dtype: float64
+
+        >>> df.median(axis=1)
+        0    12.5
+        1    11.5
+        2    14.0
+        3    18.5
+        4    15.5
+        dtype: float64
 
         On a Series:
 
@@ -1508,34 +1882,12 @@ class _Frame(object):
         if not isinstance(accuracy, int):
             raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
 
-        from databricks.koalas.frame import DataFrame
-        from databricks.koalas.series import Series, _col
-
-        kdf_or_kser = self
-        if isinstance(kdf_or_kser, Series):
-            kser = _col(kdf_or_kser.to_frame())
-            return kser._reduce_for_stat_function(
-                lambda _: F.expr("approx_percentile(`%s`, 0.5, %s)"
-                                 % (kser._internal.data_columns[0], accuracy)),
-                name="median")
-        assert isinstance(kdf_or_kser, DataFrame)
-
-        # This code path cannot reuse `_reduce_for_stat_function` since there looks no proper way
-        # to get a column name from Spark column but we need it to pass it through `expr`.
-        kdf = kdf_or_kser
-        sdf = kdf._sdf.select(kdf._internal.scols)
-        median = lambda name: F.expr("approx_percentile(`%s`, 0.5, %s)" % (name, accuracy))
-        sdf = sdf.select([median(col).alias(col) for col in kdf._internal.data_columns])
-
-        # Attach a dummy column for index to avoid default index.
-        sdf = sdf.withColumn('__DUMMY__', F.monotonically_increasing_id())
-
-        # This is expected to be small so it's fine to transpose.
-        return DataFrame(kdf._internal.copy(
-            sdf=sdf,
-            index_map=[('__DUMMY__', None)],
-            column_scols=[scol_for(sdf, col) for col in kdf._internal.data_columns])) \
-            ._to_internal_pandas().transpose().iloc[:, 0]
+        return self._reduce_for_stat_function(
+            lambda scol: SF.percentile_approx(scol, 0.5, accuracy),
+            name="median",
+            numeric_only=numeric_only,
+            axis=axis,
+        )
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
     def rolling(self, window, min_periods=None):
@@ -1587,6 +1939,526 @@ class _Frame(object):
         """
         return Expanding(self, min_periods=min_periods)
 
+    def get(self, key, default=None):
+        """
+        Get item from object for given key (DataFrame column, Panel slice,
+        etc.). Returns default value if not found.
+
+        Parameters
+        ----------
+        key : object
+
+        Returns
+        -------
+        value : same type as items contained in object
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'x':range(3), 'y':['a','b','b'], 'z':['a','b','b']},
+        ...                   columns=['x', 'y', 'z'], index=[10, 20, 20])
+        >>> df
+            x  y  z
+        10  0  a  a
+        20  1  b  b
+        20  2  b  b
+
+        >>> df.get('x')
+        10    0
+        20    1
+        20    2
+        Name: x, dtype: int64
+
+        >>> df.get(['x', 'y'])
+            x  y
+        10  0  a
+        20  1  b
+        20  2  b
+
+        >>> df.x.get(10)
+        0
+
+        >>> df.x.get(20)
+        20    1
+        20    2
+        Name: x, dtype: int64
+
+        >>> df.x.get(15, -1)
+        -1
+        """
+        try:
+            return self[key]
+        except (KeyError, ValueError, IndexError):
+            return default
+
+    def squeeze(self, axis=None):
+        """
+        Squeeze 1 dimensional axis objects into scalars.
+
+        Series or DataFrames with a single element are squeezed to a scalar.
+        DataFrames with a single column or a single row are squeezed to a
+        Series. Otherwise the object is unchanged.
+
+        This method is most useful when you don't know if your
+        object is a Series or DataFrame, but you do know it has just a single
+        column. In that case you can safely call `squeeze` to ensure you have a
+        Series.
+
+        Parameters
+        ----------
+        axis : {0 or 'index', 1 or 'columns', None}, default None
+            A specific axis to squeeze. By default, all length-1 axes are
+            squeezed.
+
+        Returns
+        -------
+        DataFrame, Series, or scalar
+            The projection after squeezing `axis` or all the axes.
+
+        See Also
+        --------
+        Series.iloc : Integer-location based indexing for selecting scalars.
+        DataFrame.iloc : Integer-location based indexing for selecting Series.
+        Series.to_frame : Inverse of DataFrame.squeeze for a
+            single-column DataFrame.
+
+        Examples
+        --------
+        >>> primes = ks.Series([2, 3, 5, 7])
+
+        Slicing might produce a Series with a single value:
+
+        >>> even_primes = primes[primes % 2 == 0]
+        >>> even_primes
+        0    2
+        dtype: int64
+
+        >>> even_primes.squeeze()
+        2
+
+        Squeezing objects with more than one value in every axis does nothing:
+
+        >>> odd_primes = primes[primes % 2 == 1]
+        >>> odd_primes
+        1    3
+        2    5
+        3    7
+        dtype: int64
+
+        >>> odd_primes.squeeze()
+        1    3
+        2    5
+        3    7
+        dtype: int64
+
+        Squeezing is even more effective when used with DataFrames.
+
+        >>> df = ks.DataFrame([[1, 2], [3, 4]], columns=['a', 'b'])
+        >>> df
+           a  b
+        0  1  2
+        1  3  4
+
+        Slicing a single column will produce a DataFrame with the columns
+        having only one value:
+
+        >>> df_a = df[['a']]
+        >>> df_a
+           a
+        0  1
+        1  3
+
+        So the columns can be squeezed down, resulting in a Series:
+
+        >>> df_a.squeeze('columns')
+        0    1
+        1    3
+        Name: a, dtype: int64
+
+        Slicing a single row from a single column will produce a single
+        scalar DataFrame:
+
+        >>> df_1a = df.loc[[1], ['a']]
+        >>> df_1a
+           a
+        1  3
+
+        Squeezing the rows produces a single scalar Series:
+
+        >>> df_1a.squeeze('rows')
+        a    3
+        Name: 1, dtype: int64
+
+        Squeezing all axes will project directly into a scalar:
+
+        >>> df_1a.squeeze()
+        3
+        """
+        if axis is not None:
+            axis = "index" if axis == "rows" else axis
+            axis = validate_axis(axis)
+
+        if isinstance(self, ks.DataFrame):
+            from databricks.koalas.series import first_series
+
+            is_squeezable = len(self.columns[:2]) == 1
+            # If DataFrame has multiple columns, there is no change.
+            if not is_squeezable:
+                return self
+            series_from_column = first_series(self)
+            has_single_value = len(series_from_column.head(2)) == 1
+            # If DataFrame has only a single value, use pandas API directly.
+            if has_single_value:
+                result = self._to_internal_pandas().squeeze(axis)
+                return ks.Series(result) if isinstance(result, pd.Series) else result
+            elif axis == 0:
+                return self
+            else:
+                return series_from_column
+        elif isinstance(self, ks.Series):
+            # The case of Series is simple.
+            # If Series has only a single value, just return it as a scalar.
+            # Otherwise, there is no change.
+            self_top_two = self.head(2)
+            has_single_value = len(self_top_two) == 1
+            return self_top_two[0] if has_single_value else self
+
+    def truncate(self, before=None, after=None, axis=None, copy=True):
+        """
+        Truncate a Series or DataFrame before and after some index value.
+
+        This is a useful shorthand for boolean indexing based on index
+        values above or below certain thresholds.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        before : date, str, int
+            Truncate all rows before this index value.
+        after : date, str, int
+            Truncate all rows after this index value.
+        axis : {0 or 'index', 1 or 'columns'}, optional
+            Axis to truncate. Truncates the index (rows) by default.
+        copy : bool, default is True,
+            Return a copy of the truncated section.
+
+        Returns
+        -------
+        type of caller
+            The truncated Series or DataFrame.
+
+        See Also
+        --------
+        DataFrame.loc : Select a subset of a DataFrame by label.
+        DataFrame.iloc : Select a subset of a DataFrame by position.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'A': ['a', 'b', 'c', 'd', 'e'],
+        ...                    'B': ['f', 'g', 'h', 'i', 'j'],
+        ...                    'C': ['k', 'l', 'm', 'n', 'o']},
+        ...                   index=[1, 2, 3, 4, 5])
+        >>> df
+           A  B  C
+        1  a  f  k
+        2  b  g  l
+        3  c  h  m
+        4  d  i  n
+        5  e  j  o
+
+        >>> df.truncate(before=2, after=4)
+           A  B  C
+        2  b  g  l
+        3  c  h  m
+        4  d  i  n
+
+        The columns of a DataFrame can be truncated.
+
+        >>> df.truncate(before="A", after="B", axis="columns")
+           A  B
+        1  a  f
+        2  b  g
+        3  c  h
+        4  d  i
+        5  e  j
+
+        For Series, only rows can be truncated.
+
+        >>> df['A'].truncate(before=2, after=4)
+        2    b
+        3    c
+        4    d
+        Name: A, dtype: object
+
+        A Series has index that sorted integers.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=[1, 2, 3, 4, 5, 6, 7])
+        >>> s
+        1    10
+        2    20
+        3    30
+        4    40
+        5    50
+        6    60
+        7    70
+        dtype: int64
+
+        >>> s.truncate(2, 5)
+        2    20
+        3    30
+        4    40
+        5    50
+        dtype: int64
+
+        A Series has index that sorted strings.
+
+        >>> s = ks.Series([10, 20, 30, 40, 50, 60, 70],
+        ...               index=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        >>> s
+        a    10
+        b    20
+        c    30
+        d    40
+        e    50
+        f    60
+        g    70
+        dtype: int64
+
+        >>> s.truncate('b', 'e')
+        b    20
+        c    30
+        d    40
+        e    50
+        dtype: int64
+        """
+        from databricks.koalas.series import first_series
+
+        axis = validate_axis(axis)
+        indexes = self.index
+        indexes_increasing = indexes.is_monotonic_increasing
+        if not indexes_increasing and not indexes.is_monotonic_decreasing:
+            raise ValueError("truncate requires a sorted index")
+        if (before is None) and (after is None):
+            return self.copy() if copy else self
+        if (before is not None and after is not None) and before > after:
+            raise ValueError("Truncate: %s must be after %s" % (after, before))
+
+        if isinstance(self, ks.Series):
+            result = first_series(self.to_frame().loc[before:after]).rename(self.name)
+        elif isinstance(self, ks.DataFrame):
+            if axis == 0:
+                result = self.loc[before:after]
+            elif axis == 1:
+                result = self.loc[:, before:after]
+
+        return result.copy() if copy else result
+
+    def to_markdown(self, buf=None, mode=None):
+        """
+        Print Series or DataFrame in Markdown-friendly format.
+
+        .. note:: This method should only be used if the resulting pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        buf : writable buffer, defaults to sys.stdout
+            Where to send the output. By default, the output is printed to
+            sys.stdout. Pass a writable buffer if you need to further process
+            the output.
+        mode : str, optional
+            Mode in which file is opened.
+        **kwargs
+            These parameters will be passed to `tabulate`.
+
+        Returns
+        -------
+        str
+            Series or DataFrame in Markdown-friendly format.
+
+        Examples
+        --------
+        >>> kser = ks.Series(["elk", "pig", "dog", "quetzal"], name="animal")
+        >>> print(kser.to_markdown())  # doctest: +SKIP
+        |    | animal   |
+        |---:|:---------|
+        |  0 | elk      |
+        |  1 | pig      |
+        |  2 | dog      |
+        |  3 | quetzal  |
+
+        >>> kdf = ks.DataFrame(
+        ...     data={"animal_1": ["elk", "pig"], "animal_2": ["dog", "quetzal"]}
+        ... )
+        >>> print(kdf.to_markdown())  # doctest: +SKIP
+        |    | animal_1   | animal_2   |
+        |---:|:-----------|:-----------|
+        |  0 | elk        | dog        |
+        |  1 | pig        | quetzal    |
+        """
+        # `to_markdown` is supported in pandas >= 1.0.0 since it's newly added in pandas 1.0.0.
+        if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            raise NotImplementedError(
+                "`to_markdown()` only supported in Koalas with pandas >= 1.0.0"
+            )
+        # Make sure locals() call is at the top of the function so we don't capture local variables.
+        args = locals()
+        kser_or_kdf = self
+        internal_pandas = kser_or_kdf._to_internal_pandas()
+        return validate_arguments_and_invoke_function(
+            internal_pandas, self.to_markdown, type(internal_pandas).to_markdown, args
+        )
+
+    @abstractmethod
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+        pass
+
+    # TODO: add 'downcast' when value parameter exists
+    def bfill(self, axis=None, inplace=False, limit=None):
+        """
+        Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`bfill```.
+
+        .. note:: the current implementation of 'bfill' uses Spark's Window
+            without specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame or Series
+            DataFrame or Series with NA entries filled.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({
+        ...     'A': [None, 3, None, None],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> kdf
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  NaN  NaN  NaN  5
+        3  NaN  3.0  1.0  4
+
+        Propagate non-null values backward.
+
+        >>> kdf.bfill()
+             A    B    C  D
+        0  3.0  2.0  1.0  0
+        1  3.0  4.0  1.0  1
+        2  NaN  3.0  1.0  5
+        3  NaN  3.0  1.0  4
+
+        For Series
+
+        >>> kser = ks.Series([None, None, None, 1])
+        >>> kser
+        0    NaN
+        1    NaN
+        2    NaN
+        3    1.0
+        dtype: float64
+
+        >>> kser.bfill()
+        0    1.0
+        1    1.0
+        2    1.0
+        3    1.0
+        dtype: float64
+        """
+        return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
+
+    # TODO: add 'downcast' when value parameter exists
+    def ffill(self, axis=None, inplace=False, limit=None):
+        """
+        Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`ffill```.
+
+        .. note:: the current implementation of 'ffill' uses Spark's Window
+            without specifying partition specification. This leads to move all data into
+            single partition in single machine and could cause serious
+            performance degradation. Avoid this method against very large dataset.
+
+        Parameters
+        ----------
+        axis : {0 or `index`}
+            1 and `columns` are not supported.
+        inplace : boolean, default False
+            Fill in place (do not create a new object)
+        limit : int, default None
+            If method is specified, this is the maximum number of consecutive NaN values to
+            forward/backward fill. In other words, if there is a gap with more than this number of
+            consecutive NaNs, it will only be partially filled. If method is not specified,
+            this is the maximum number of entries along the entire axis where NaNs will be filled.
+            Must be greater than 0 if not None
+
+        Returns
+        -------
+        DataFrame or Series
+            DataFrame or Series with NA entries filled.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({
+        ...     'A': [None, 3, None, None],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> kdf
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  NaN  NaN  NaN  5
+        3  NaN  3.0  1.0  4
+
+        Propagate non-null values forward.
+
+        >>> kdf.ffill()
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  3.0  4.0  NaN  5
+        3  3.0  3.0  1.0  4
+
+        For Series
+
+        >>> kser = ks.Series([2, 4, None, 3])
+        >>> kser
+        0    2.0
+        1    4.0
+        2    NaN
+        3    3.0
+        dtype: float64
+
+        >>> kser.ffill()
+        0    2.0
+        1    4.0
+        2    4.0
+        3    3.0
+        dtype: float64
+        """
+        return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
+
     @property
     def at(self):
         return AtIndexer(self)
@@ -1594,10 +2466,16 @@ class _Frame(object):
     at.__doc__ = AtIndexer.__doc__
 
     @property
-    def iloc(self):
-        return ILocIndexer(self)
+    def iat(self):
+        return iAtIndexer(self)
 
-    iloc.__doc__ = ILocIndexer.__doc__
+    iat.__doc__ = iAtIndexer.__doc__
+
+    @property
+    def iloc(self):
+        return iLocIndexer(self)
+
+    iloc.__doc__ = iLocIndexer.__doc__
 
     @property
     def loc(self):
@@ -1605,44 +2483,17 @@ class _Frame(object):
 
     loc.__doc__ = LocIndexer.__doc__
 
-    def compute(self):
-        """Alias of `to_pandas()` to mimic dask for easily porting tests."""
-        return self.toPandas()
+    def __bool__(self):
+        raise ValueError(
+            "The truth value of a {0} is ambiguous. "
+            "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
+        )
 
     @staticmethod
     def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
         # Special handle floating point types because Spark's count treats nan as a valid value,
-        # whereas Pandas count doesn't include nan.
+        # whereas pandas count doesn't include nan.
         if isinstance(spark_type, (FloatType, DoubleType)):
             return F.count(F.nanvl(col, F.lit(None)))
         else:
             return F.count(col)
-
-
-def _resolve_col(kdf, col_like):
-    if isinstance(col_like, ks.Series):
-        if kdf is not col_like._kdf:
-            raise ValueError(
-                "Cannot combine the series because it comes from a different dataframe. "
-                "In order to allow this operation, enable 'compute.ops_on_diff_frames' option.")
-        return col_like
-    elif isinstance(col_like, tuple):
-        return kdf[col_like]
-    else:
-        raise ValueError(col_like)
-
-
-def _spark_col_apply(kdf_or_kser, sfun):
-    """
-    Performs a function to all cells on a dataframe, the function being a known sql function.
-    """
-    from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series
-    if isinstance(kdf_or_kser, Series):
-        kser = kdf_or_kser
-        return kser._with_new_scol(sfun(kser._scol))
-    assert isinstance(kdf_or_kser, DataFrame)
-    kdf = kdf_or_kser
-    sdf = kdf._sdf
-    sdf = sdf.select([sfun(kdf._internal.scol_for(col)).alias(col) for col in kdf.columns])
-    return DataFrame(sdf)

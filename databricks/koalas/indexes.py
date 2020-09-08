@@ -17,34 +17,63 @@
 """
 Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
-
-from functools import partial, reduce
+from collections import OrderedDict
+from distutils.version import LooseVersion
+from functools import partial
 from typing import Any, List, Optional, Tuple, Union
+import warnings
 
 import pandas as pd
 import numpy as np
-from pandas.api.types import is_list_like, is_interval_dtype, is_bool_dtype, \
-    is_categorical_dtype, is_integer_dtype, is_float_dtype, is_numeric_dtype, is_object_dtype
+from pandas.api.types import (
+    is_list_like,
+    is_interval_dtype,
+    is_bool_dtype,
+    is_categorical_dtype,
+    is_integer_dtype,
+    is_float_dtype,
+    is_numeric_dtype,
+    is_object_dtype,
+)
 from pandas.io.formats.printing import pprint_thing
+from pandas.api.types import is_hashable
+from pandas._libs import lib
 
+import pyspark
 from pyspark import sql as spark
-from pyspark.sql import functions as F
+from pyspark.sql import functions as F, Window
+from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.config import get_option
+from databricks.koalas.config import get_option, option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.internal import _InternalFrame
-from databricks.koalas.missing.indexes import _MissingPandasLikeIndex, _MissingPandasLikeMultiIndex
-from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string
-from databricks.koalas.internal import _InternalFrame
+from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
+from databricks.koalas.series import Series, first_series
+from databricks.koalas.utils import (
+    compare_allow_null,
+    compare_disallow_null,
+    compare_null_first,
+    compare_null_last,
+    default_session,
+    name_like_string,
+    scol_for,
+    verify_temp_column_name,
+    validate_bool_kwarg,
+)
+from databricks.koalas.internal import (
+    InternalFrame,
+    NATURAL_ORDER_COLUMN_NAME,
+    SPARK_DEFAULT_INDEX_NAME,
+    SPARK_INDEX_NAME_FORMAT,
+    SPARK_DEFAULT_SERIES_NAME,
+)
 
 
 class Index(IndexOpsMixin):
     """
-    Koalas Index that corresponds to Pandas Index logically. This might hold Spark Column
+    Koalas Index that corresponds to pandas Index logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -79,31 +108,41 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None,
-                 scol: Optional[spark.Column] = None) -> None:
+    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None) -> None:
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
-            kdf = data
         else:
-            assert scol is None
-            kdf = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
-        if scol is None:
-            scol = kdf._internal.index_scols[0]
-        internal = kdf._internal.copy(scol=scol,
-                                      column_index=kdf._internal.index_names,
-                                      column_scols=kdf._internal.index_scols,
-                                      column_index_names=None)
-        IndexOpsMixin.__init__(self, internal, kdf)
+            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
 
-    def _with_new_scol(self, scol: spark.Column) -> 'Index':
+        super(Index, self).__init__(data)
+
+    @property
+    def _internal(self) -> InternalFrame:
+        internal = self._kdf._internal
+        return internal.copy(
+            column_labels=internal.index_names,
+            data_spark_columns=internal.index_spark_columns,
+            column_label_names=None,
+        )
+
+    @property
+    def _column_label(self):
+        return self._kdf._internal.index_names[0]
+
+    def _with_new_scol(self, scol: spark.Column) -> "Index":
         """
         Copy Koalas Index with the new Spark Column.
 
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        return Index(self._kdf, scol=scol)
+        sdf = self._internal.spark_frame.select(scol.alias(SPARK_DEFAULT_INDEX_NAME))
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=OrderedDict(zip(sdf.columns, self._internal.index_names)),  # type: ignore
+        )
+        return DataFrame(internal).index
 
     # This method is used via `DataFrame.info` API internally.
     def _summary(self, name=None):
@@ -119,10 +158,9 @@ class Index(IndexOpsMixin):
         -------
         String with a summarized representation of the index
         """
-        head, tail, total_count = self._kdf._sdf.select(
-            F.first(self._scol),
-            F.last(self._scol),
-            F.count(F.expr("*"))).first()
+        head, tail, total_count = self._internal.spark_frame.select(
+            F.first(self.spark.column), F.last(self.spark.column), F.count(F.expr("*"))
+        ).first()
 
         if total_count > 0:
             index_summary = ", %s to %s" % (pprint_thing(head), pprint_thing(tail))
@@ -170,11 +208,121 @@ class Index(IndexOpsMixin):
                     ('b', 'y'),
                     ('c', 'z')],
                    )
-
         >>> midx.shape
         (3,)
         """
-        return len(self._kdf),
+        return (len(self._kdf),)
+
+    def identical(self, other):
+        """
+        Similar to equals, but check that other comparable attributes are
+        also equal.
+
+        Returns
+        -------
+        bool
+            If two Index objects have equal elements and same type True,
+            otherwise False.
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import option_context
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+
+        For Index
+
+        >>> idx.identical(idx)
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.identical(ks.Index(['a', 'b', 'c']))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.identical(ks.Index(['b', 'b', 'a']))
+        False
+        >>> idx.identical(midx)
+        False
+
+        For MultiIndex
+
+        >>> midx.identical(midx)
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.identical(ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')]))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.identical(ks.MultiIndex.from_tuples([('c', 'z'), ('b', 'y'), ('a', 'x')]))
+        False
+        >>> midx.identical(idx)
+        False
+        """
+        self_name = self.names if isinstance(self, MultiIndex) else self.name
+        other_name = other.names if isinstance(other, MultiIndex) else other.name
+
+        return (self is other) or (
+            type(self) == type(other)
+            and self_name == other_name  # to support non-index comparison by short-circuiting.
+            and self.equals(other)
+        )
+
+    def equals(self, other):
+        """
+        Determine if two Index objects contain the same elements.
+
+        Returns
+        -------
+        bool
+            True if "other" is an Index and it has the same elements as calling
+            index; False otherwise.
+
+        Examples
+        --------
+
+        >>> from databricks.koalas.config import option_context
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx.name = "name"
+        >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> midx.names = ("nameA", "nameB")
+
+        For Index
+
+        >>> idx.equals(idx)
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.equals(ks.Index(['a', 'b', 'c']))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     idx.equals(ks.Index(['b', 'b', 'a']))
+        False
+        >>> idx.equals(midx)
+        False
+
+        For MultiIndex
+
+        >>> midx.equals(midx)
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.equals(ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')]))
+        True
+        >>> with option_context('compute.ops_on_diff_frames', True):
+        ...     midx.equals(ks.MultiIndex.from_tuples([('c', 'z'), ('b', 'y'), ('a', 'x')]))
+        False
+        >>> midx.equals(idx)
+        False
+        """
+        # TODO: avoid using default index?
+        with option_context("compute.default_index_type", "distributed-sequence"):
+            # Directly using Series from both self and other seems causing
+            # some exceptions when 'compute.ops_on_diff_frames' is enabled.
+            # Working around for now via using frame.
+            return (self is other) or (
+                type(self) == type(other)
+                and (
+                    self.to_series().rename("self").to_frame().reset_index()["self"]
+                    == other.to_series().rename("other").to_frame().reset_index()["other"]
+                ).all()
+            )
 
     def transpose(self):
         """
@@ -212,7 +360,7 @@ class Index(IndexOpsMixin):
         """
         Return a pandas Index.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -223,14 +371,16 @@ class Index(IndexOpsMixin):
         >>> df['dogs'].index.to_pandas()
         Index(['a', 'b', 'c', 'd'], dtype='object')
         """
-        sdf = self._kdf._sdf.select(self._scol)
-        internal = self._kdf._internal.copy(
-            sdf=sdf,
-            index_map=[(sdf.schema[0].name, self._kdf._internal.index_names[0])],
-            column_index=[], column_scols=[], column_index_names=None)
-        return DataFrame(internal)._to_internal_pandas().index
+        return self._internal.to_pandas_frame.index  # type: ignore
 
-    toPandas = to_pandas
+    def toPandas(self):
+        warnings.warn(
+            "Index.toPandas is deprecated as of Index.to_pandas. Please use the API instead.",
+            FutureWarning,
+        )
+        return self.to_pandas()
+
+    toPandas.__doc__ = to_pandas.__doc__
 
     def to_numpy(self, dtype=None, copy=False):
         """
@@ -266,9 +416,38 @@ class Index(IndexOpsMixin):
         return result
 
     @property
+    def values(self):
+        """
+        Return an array representing the data in the Index.
+
+        .. warning:: We recommend using `Index.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+
+        Examples
+        --------
+        >>> ks.Series([1, 2, 3, 4]).index.values
+        array([0, 1, 2, 3])
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.values
+        array([(1, 4), (2, 5), (3, 6)], dtype=object)
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        return self.to_numpy()
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
-        return self.to_series().spark_type
+        warnings.warn(
+            "Index.spark_type is deprecated as of Index.spark.data_type. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.spark.data_type
 
     @property
     def has_duplicates(self) -> bool:
@@ -289,10 +468,10 @@ class Index(IndexOpsMixin):
         >>> kdf.index.has_duplicates
         True
         """
-        df = self._kdf._sdf.select(self._scol)
-        col = df.columns[0]
+        sdf = self._internal.spark_frame.select(self.spark.column)
+        scol = scol_for(sdf, sdf.columns[0])
 
-        return df.select(F.count(col) != F.countDistinct(col)).first()[0]
+        return sdf.select(F.count(scol) != F.countDistinct(scol)).first()[0]
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
@@ -306,20 +485,16 @@ class Index(IndexOpsMixin):
     @property
     def names(self) -> List[Union[str, Tuple[str, ...]]]:
         """Return names of the Index."""
-        return [name if name is None or len(name) > 1 else name[0]
-                for name in self._kdf._internal.index_names]
+        return [
+            name if name is None or len(name) > 1 else name[0]
+            for name in self._internal.index_names  # type: ignore
+        ]
 
     @names.setter
     def names(self, names: List[Union[str, Tuple[str, ...]]]) -> None:
         if not is_list_like(names):
-            raise ValueError('Names must be a list-like')
-        internal = self._kdf._internal
-        if len(internal.index_map) != len(names):
-            raise ValueError('Length of new names must be {}, got {}'
-                             .format(len(internal.index_map), len(names)))
-
-        names = [name if isinstance(name, (tuple, type(None))) else (name,) for name in names]
-        self._kdf._internal = internal.copy(index_map=list(zip(internal.index_columns, names)))
+            raise ValueError("Names must be a list-like")
+        self.rename(names, inplace=True)
 
     @property
     def nlevels(self) -> int:
@@ -336,11 +511,15 @@ class Index(IndexOpsMixin):
         >>> kdf.index.nlevels
         2
         """
-        return len(self._kdf._internal.index_columns)
+        return len(self._internal.index_spark_column_names)
 
-    def rename(self, name: Union[str, Tuple[str, ...]], inplace: bool = False):
+    def rename(
+        self,
+        name: Union[str, Tuple[str, ...], List[Union[str, Tuple[str, ...]]]],
+        inplace: bool = False,
+    ):
         """
-        Alter Index name.
+        Alter Index or MultiIndex name.
         Able to set new names without level. Defaults to returning new index.
 
         Parameters
@@ -348,11 +527,11 @@ class Index(IndexOpsMixin):
         name : label or list of labels
             Name(s) to set.
         inplace : boolean, default False
-            Modifies the object directly, instead of creating a new Index.
+            Modifies the object directly, instead of creating a new Index or MultiIndex.
 
         Returns
         -------
-        Index
+        Index or MultiIndex
             The same type as the caller or None if inplace is True.
 
         Examples
@@ -368,6 +547,7 @@ class Index(IndexOpsMixin):
         You can also change the index name in place.
 
         >>> df.index.rename("e", inplace=True)
+        >>> df.index
         Index(['A', 'C'], dtype='object', name='e')
 
         >>> df  # doctest: +NORMALIZE_WHITESPACE
@@ -375,19 +555,47 @@ class Index(IndexOpsMixin):
         e
         A  A
         C  B
-        """
-        index_columns = self._kdf._internal.index_columns
-        assert len(index_columns) == 1
 
-        if isinstance(name, str):
-            name = (name,)
-        internal = self._kdf._internal.copy(index_map=[(index_columns[0], name)])
+        Support for MultiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> kidx.names = ['hello', 'koalas']
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['hello', 'koalas'])
+
+        >>> kidx.rename(['aloha', 'databricks'])  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['aloha', 'databricks'])
+        """
+        names = self._verify_for_rename(name)
+
+        internal = self._kdf._internal.copy(
+            index_map=OrderedDict(zip(self._kdf._internal.index_spark_column_names, names))
+        )
 
         if inplace:
-            self._kdf._internal = internal
-            return self
+            self._kdf._update_internal_frame(internal)
         else:
-            return Index(DataFrame(internal), scol=self._scol)
+            return DataFrame(internal).index
+
+    def _verify_for_rename(self, name):
+        if name is None or isinstance(name, tuple):
+            return [name]
+        elif isinstance(name, str):
+            return [(name,)]
+        elif is_list_like(name):
+            if len(self._internal.index_map) != len(name):
+                raise ValueError(
+                    "Length of new names must be {}, got {}".format(
+                        len(self._internal.index_map), len(name)
+                    )
+                )
+            return [n if n is None or isinstance(n, tuple) else (n,) for n in name]
+        else:
+            raise TypeError("name must be a hashable type")
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -415,9 +623,38 @@ class Index(IndexOpsMixin):
         """
         if not isinstance(value, (float, int, str, bool)):
             raise TypeError("Unsupported type %s" % type(value))
-        sdf = self._internal.sdf.fillna(value)
-        result = DataFrame(self._kdf._internal.copy(sdf=sdf)).index
+        sdf = self._internal.spark_frame.fillna(value)
+        result = DataFrame(self._kdf._internal.with_new_sdf(sdf)).index
         return result
+
+    # TODO: ADD keep parameter
+    def drop_duplicates(self):
+        """
+        Return Index with duplicate values removed.
+
+        Returns
+        -------
+        deduplicated : Index
+
+        See Also
+        --------
+        Series.drop_duplicates : Equivalent method on Series.
+        DataFrame.drop_duplicates : Equivalent method on DataFrame.
+
+        Examples
+        --------
+        Generate an pandas.Index with duplicate values.
+
+        >>> idx = ks.Index(['lama', 'cow', 'lama', 'beetle', 'lama', 'hippo'])
+
+        >>> idx.drop_duplicates().sort_values()
+        Index(['beetle', 'cow', 'hippo', 'lama'], dtype='object')
+        """
+        sdf = self._internal.spark_frame.select(
+            self._internal.index_spark_columns
+        ).drop_duplicates()
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        return DataFrame(internal).index
 
     def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
         """
@@ -444,17 +681,108 @@ class Index(IndexOpsMixin):
         b    b
         c    c
         d    d
-        Name: 0, dtype: object
+        dtype: object
         """
+        if not is_hashable(name):
+            raise TypeError("Series.name must be a hashable type")
         kdf = self._kdf
-        scol = self._scol
+        scol = self.spark.column
         if name is not None:
             scol = scol.alias(name_like_string(name))
-        column_index = [None] if len(kdf._internal.index_map) > 1 else kdf._internal.index_names
-        return Series(kdf._internal.copy(scol=scol,
-                                         column_index=column_index,
-                                         column_index_names=None),
-                      anchor=kdf)
+        elif len(kdf._internal.index_map) == 1:
+            name = self.name
+        column_labels = (
+            [None] if name is None else [name if isinstance(name, tuple) else (name,)]
+        )  # type: List[Optional[Tuple[str, ...]]]
+        internal = kdf._internal.copy(
+            column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
+        )
+        return first_series(DataFrame(internal))
+
+    def to_frame(self, index=True, name=None) -> DataFrame:
+        """
+        Create a DataFrame with a column containing the Index.
+
+        Parameters
+        ----------
+        index : boolean, default True
+            Set the index of the returned DataFrame as the original Index.
+        name : object, default None
+            The passed name should substitute for the index name (if it has
+            one).
+
+        Returns
+        -------
+        DataFrame
+            DataFrame containing the original Index data.
+
+        See Also
+        --------
+        Index.to_series : Convert an Index to a Series.
+        Series.to_frame : Convert Series to DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['Ant', 'Bear', 'Cow'], name='animal')
+        >>> idx.to_frame()  # doctest: +NORMALIZE_WHITESPACE
+               animal
+        animal
+        Ant       Ant
+        Bear     Bear
+        Cow       Cow
+
+        By default, the original Index is reused. To enforce a new Index:
+
+        >>> idx.to_frame(index=False)
+          animal
+        0    Ant
+        1   Bear
+        2    Cow
+
+        To override the name of the resulting column, specify `name`:
+
+        >>> idx.to_frame(name='zoo')  # doctest: +NORMALIZE_WHITESPACE
+                 zoo
+        animal
+        Ant      Ant
+        Bear    Bear
+        Cow      Cow
+        """
+        if name is None:
+            if self._internal.index_names[0] is None:
+                name = (SPARK_DEFAULT_SERIES_NAME,)
+            else:
+                name = self._internal.index_names[0]
+        elif isinstance(name, str):
+            name = (name,)
+
+        return self._to_frame(index=index, names=[name])
+
+    def _to_frame(self, index, names):
+        if index:
+            index_map = self._internal.index_map
+            data_columns = self._internal.index_spark_column_names
+            sdf = self._internal.spark_frame.select(
+                self._internal.index_spark_columns + [NATURAL_ORDER_COLUMN_NAME]
+            )
+        else:
+            index_map = None
+            data_columns = [name_like_string(label) for label in names]
+            sdf = self._internal.spark_frame.select(
+                [
+                    scol.alias(col)
+                    for scol, col in zip(self._internal.index_spark_columns, data_columns)
+                ]
+                + [NATURAL_ORDER_COLUMN_NAME]
+            )
+
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=index_map,
+            column_labels=names,
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
+        )
+        return DataFrame(internal)
 
     def is_boolean(self):
         """
@@ -570,7 +898,7 @@ class Index(IndexOpsMixin):
         falcon  weight    320.0
                 weight      1.0
                 length      NaN
-        Name: 0, dtype: float64
+        dtype: float64
 
         >>> s.index.dropna()  # doctest: +SKIP
         MultiIndex([(   'cow', 'weight'),
@@ -583,31 +911,83 @@ class Index(IndexOpsMixin):
                    )
         """
         kdf = self._kdf.copy()
-        sdf = kdf._internal.sdf.select(self._internal.index_scols).dropna()
-        internal = _InternalFrame(sdf=sdf, index_map=self._internal.index_map)
-        kdf = DataFrame(internal)
-        return Index(kdf) if type(self) == Index else MultiIndex(kdf)
+        sdf = kdf._internal.spark_frame.select(self._internal.index_spark_columns).dropna()
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+        return DataFrame(internal).index
 
     def unique(self, level=None):
         """
         Return unique values in the index.
+
         Be aware the order of unique values might be different than pandas.Index.unique
 
-        :param level: int or str, optional, default is None
-        :return: Index without deuplicates
+        Parameters
+        ----------
+        level : int or str, optional, default is None
+
+        Returns
+        -------
+        Index without duplicates
+
+        See Also
+        --------
+        Series.unique
+        groupby.SeriesGroupBy.unique
 
         Examples
         --------
-        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 1, 3]).index.unique()
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[1, 1, 3]).index.unique().sort_values()
         Int64Index([1, 3], dtype='int64')
 
-        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique()
-        Index(['e', 'd'], dtype='object')
+        >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=['d', 'e', 'e']).index.unique().sort_values()
+        Index(['d', 'e'], dtype='object')
+
+        MultiIndex
+
+        >>> ks.MultiIndex.from_tuples([("A", "X"), ("A", "Y"), ("A", "X")]).unique()
+        ... # doctest: +SKIP
+        MultiIndex([('A', 'X'),
+                    ('A', 'Y')],
+                   )
         """
         if level is not None:
             self._validate_index_level(level)
-        sdf = self._kdf._sdf.select(self._scol.alias(self._internal.index_columns[0])).distinct()
-        return DataFrame(_InternalFrame(sdf=sdf, index_map=self._kdf._internal.index_map)).index
+        scols = self._internal.index_spark_columns
+        scol_names = self._internal.index_spark_column_names
+        scols = [scol.alias(scol_name) for scol, scol_name in zip(scols, scol_names)]
+        sdf = self._kdf._internal.spark_frame.select(scols).distinct()
+        return DataFrame(
+            InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map)
+        ).index
+
+    # TODO: add error parameter
+    def drop(self, labels):
+        """
+        Make new Index with passed list of labels deleted.
+
+        Parameters
+        ----------
+        labels : array-like
+
+        Returns
+        -------
+        dropped : Index
+
+        Examples
+        --------
+        >>> index = ks.Index([1, 2, 3])
+        >>> index
+        Int64Index([1, 2, 3], dtype='int64')
+
+        >>> index.drop([1])
+        Int64Index([2, 3], dtype='int64')
+        """
+        if not isinstance(labels, (tuple, list)):
+            labels = [labels]
+        sdf = self._internal.spark_frame[~self._internal.index_spark_columns[0].isin(labels)]
+        return Index(
+            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._kdf._internal.index_map))
+        )
 
     def _validate_index_level(self, level):
         """
@@ -622,17 +1002,29 @@ class Index(IndexOpsMixin):
                     " %d is not a valid level number" % (level,)
                 )
             elif level > 0:
-                raise IndexError(
-                    "Too many levels:" " Index has only 1 level, not %d" % (level + 1)
-                )
+                raise IndexError("Too many levels:" " Index has only 1 level, not %d" % (level + 1))
         elif level != self.name:
             raise KeyError(
-                "Requested level ({}) does not match index name ({})".format(
-                    level, self.name
-                )
+                "Requested level ({}) does not match index name ({})".format(level, self.name)
             )
 
-    def copy(self, name=None):
+    def get_level_values(self, level):
+        """
+        Return Index if a valid level is given.
+
+        Examples:
+        --------
+        >>> kidx = ks.Index(['a', 'b', 'c'], name='ks')
+        >>> kidx.get_level_values(0)
+        Index(['a', 'b', 'c'], dtype='object', name='ks')
+
+        >>> kidx.get_level_values('ks')
+        Index(['a', 'b', 'c'], dtype='object', name='ks')
+        """
+        self._validate_index_level(level)
+        return self
+
+    def copy(self, name=None, deep=None):
         """
         Make a copy of this object. name sets those attributes on the new object.
 
@@ -640,6 +1032,8 @@ class Index(IndexOpsMixin):
         ----------
         name : string, optional
             to set name of index
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
 
         Examples
         --------
@@ -664,11 +1058,73 @@ class Index(IndexOpsMixin):
         >>> df.index.copy(name='snake')
         Index(['cobra', 'viper', 'sidewinder'], dtype='object', name='snake')
         """
-        internal = self._kdf._internal.copy()
-        result = Index(ks.DataFrame(internal), scol=self._scol)
+        result = self._kdf.copy().index
         if name:
             result.name = name
         return result
+
+    def droplevel(self, level):
+        """
+        Return index with requested level(s) removed.
+        If resulting index has only 1 level left, the result will be
+        of Index type, not MultiIndex.
+
+        Parameters
+        ----------
+        level : int, str, tuple, or list-like, default 0
+            If a string is given, must be the name of a level
+            If list-like, elements must be names or indexes of levels.
+
+        Returns
+        -------
+        Index or MultiIndex
+
+        Examples
+        --------
+        >>> midx = ks.DataFrame({'a': ['a', 'b']}, index=[['a', 'x'], ['b', 'y'], [1, 2]]).index
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 'b', 1),
+                    ('x', 'y', 2)],
+                   )
+        >>> midx.droplevel([0, 1])  # doctest: +SKIP
+        Int64Index([1, 2], dtype='int64')
+        >>> midx.droplevel(0)  # doctest: +SKIP
+        MultiIndex([('b', 1),
+                    ('y', 2)],
+                   )
+        >>> midx.names = [("a", "b"), "b", "c"]
+        >>> midx.droplevel([('a', 'b')])  # doctest: +SKIP
+        MultiIndex([('b', 1),
+                    ('y', 2)],
+                   names=['b', 'c'])
+        """
+        names = self.names
+        nlevels = self.nlevels
+        if not isinstance(level, (tuple, list)):
+            level = [level]
+
+        for n in level:
+            if isinstance(n, int) and (n > nlevels - 1):
+                raise IndexError(
+                    "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
+                )
+            if isinstance(n, (str, tuple)) and (n not in names):
+                raise KeyError("Level {} not found".format(n))
+
+        if len(level) >= nlevels:
+            raise ValueError(
+                "Cannot remove {} levels from an index with {} "
+                "levels: at least one level must be "
+                "left.".format(len(level), nlevels)
+            )
+
+        int_level = [n if isinstance(n, int) else names.index(n) for n in level]
+        index_map = list(self._internal.index_map.items())
+        index_map = OrderedDict(index_map[c] for c in range(0, nlevels) if c not in int_level)
+        sdf = self._internal.spark_frame
+        sdf = sdf.select(*index_map.keys())
+        result = InternalFrame(spark_frame=sdf, index_map=index_map)
+        return DataFrame(result).index
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
@@ -719,26 +1175,100 @@ class Index(IndexOpsMixin):
         """
         if type(self) != type(other):
             raise NotImplementedError(
-                "Doesn't support symmetric_difference between Index & MultiIndex for now")
+                "Doesn't support symmetric_difference between Index & MultiIndex for now"
+            )
 
-        sdf_self = self._kdf._sdf.select(self._internal.index_scols)
-        sdf_other = other._kdf._sdf.select(other._internal.index_scols)
+        sdf_self = self._kdf._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._kdf._internal.spark_frame.select(other._internal.index_spark_columns)
 
-        sdf_symdiff = sdf_self.union(sdf_other) \
-                              .subtract(sdf_self.intersect(sdf_other))
+        sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
         if sort:
-            sdf_symdiff = sdf_symdiff.sort(self._internal.index_scols)
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_column_names)
 
-        internal = _InternalFrame(
-            sdf=sdf_symdiff,
-            index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
         result = Index(DataFrame(internal))
 
         if result_name:
             result.name = result_name
 
         return result
+
+    # TODO: return_indexer
+    def sort_values(self, ascending=True):
+        """
+        Return a sorted copy of the index.
+
+        .. note:: This method is not supported for pandas when index has NaN value.
+                  pandas raises unexpected TypeError, but we support treating NaN
+                  as the smallest value.
+
+        Parameters
+        ----------
+        ascending : bool, default True
+            Should the index values be sorted in an ascending order.
+
+        Returns
+        -------
+        sorted_index : ks.Index or ks.MultiIndex
+            Sorted copy of the index.
+
+        See Also
+        --------
+        Series.sort_values : Sort values of a Series.
+        DataFrame.sort_values : Sort values in a DataFrame.
+
+        Examples
+        --------
+        >>> idx = ks.Index([10, 100, 1, 1000])
+        >>> idx
+        Int64Index([10, 100, 1, 1000], dtype='int64')
+
+        Sort values in ascending order (default behavior).
+
+        >>> idx.sort_values()
+        Int64Index([1, 10, 100, 1000], dtype='int64')
+
+        Sort values in descending order.
+
+        >>> idx.sort_values(ascending=False)
+        Int64Index([1000, 100, 10, 1], dtype='int64')
+
+        Support for MultiIndex.
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('c', 'y', 2), ('b', 'z', 3)])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('c', 'y', 2),
+                    ('b', 'z', 3)],
+                   )
+
+        >>> kidx.sort_values()  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'z', 3),
+                    ('c', 'y', 2)],
+                   )
+
+        >>> kidx.sort_values(ascending=False)  # doctest: +SKIP
+        MultiIndex([('c', 'y', 2),
+                    ('b', 'z', 3),
+                    ('a', 'x', 1)],
+                   )
+        """
+        sdf = self._internal.spark_frame
+        sdf = sdf.orderBy(self._internal.index_spark_columns, ascending=ascending)
+
+        internal = InternalFrame(
+            spark_frame=sdf.select(self._internal.index_spark_columns),
+            index_map=self._internal.index_map,
+        )
+        return DataFrame(internal).index
+
+    def sort(self, *args, **kwargs):
+        """
+        Use sort_values instead.
+        """
+        raise TypeError("cannot sort an Index object in-place, use sort_values instead")
 
     def min(self):
         """
@@ -771,8 +1301,8 @@ class Index(IndexOpsMixin):
         >>> idx.min()
         ('a', 'x', 1)
         """
-        sdf = self._internal.sdf
-        min_row = sdf.select(F.min(F.struct(self._internal.index_scols))).head()
+        sdf = self._internal.spark_frame
+        min_row = sdf.select(F.min(F.struct(self._internal.index_spark_columns))).head()
         result = tuple(min_row[0])
 
         return result if len(result) > 1 else result[0]
@@ -794,11 +1324,11 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> idx = pd.Index([3, 2, 1])
+        >>> idx = ks.Index([3, 2, 1])
         >>> idx.max()
         3
 
-        >>> idx = pd.Index(['c', 'b', 'a'])
+        >>> idx = ks.Index(['c', 'b', 'a'])
         >>> idx.max()
         'c'
 
@@ -808,15 +1338,655 @@ class Index(IndexOpsMixin):
         >>> idx.max()
         ('b', 'y', 2)
         """
-        sdf = self._internal.sdf
-        max_row = sdf.select(F.max(F.struct(self._internal.index_scols))).head()
+        sdf = self._internal.spark_frame
+        max_row = sdf.select(F.max(F.struct(self._internal.index_spark_columns))).head()
         result = tuple(max_row[0])
 
         return result if len(result) > 1 else result[0]
 
+    def delete(self, loc):
+        """
+        Make new Index with passed location(-s) deleted.
+
+        .. note:: this API can be pretty expensive since it is based on
+             a global sequence internally.
+
+        Returns
+        -------
+        new_index : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10])
+        >>> kidx
+        Int64Index([10, 10, 9, 8, 4, 2, 4, 4, 2, 2, 10, 10], dtype='int64')
+
+        >>> kidx.delete(0).sort_values()
+        Int64Index([2, 2, 2, 4, 4, 4, 8, 9, 10, 10, 10], dtype='int64')
+
+        >>> kidx.delete([0, 1, 2, 3, 10, 11]).sort_values()
+        Int64Index([2, 2, 2, 4, 4, 4], dtype='int64')
+
+        MultiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x', 1),
+                    ('b', 'y', 2),
+                    ('c', 'z', 3)],
+                   )
+
+        >>> kidx.delete([0, 2]).sort_values()  # doctest: +SKIP
+        MultiIndex([('b', 'y', 2)],
+                   )
+        """
+        length = len(self)
+        if not is_list_like(loc):
+            if not isinstance(self, str) and abs(loc) >= length:
+                raise IndexError(
+                    "index {} is out of bounds for axis 0 with size {}".format(loc, length)
+                )
+            loc = [loc]
+        loc = [int(item) for item in loc]
+        loc = [item if item >= 0 else length + item for item in loc]
+
+        # we need a temporary column such as '__index_value_0__'
+        # since 'InternalFrame.attach_default_index' will be failed
+        # when self._scol has name of '__index_level_0__'
+        index_value_column_format = "__index_value_{}__"
+
+        sdf = self._internal._sdf
+        index_value_column_names = [
+            verify_temp_column_name(sdf, index_value_column_format.format(i))
+            for i in range(len(self._internal.index_spark_columns))
+        ]
+        index_value_columns = [
+            index_scol.alias(index_vcol_name)
+            for index_scol, index_vcol_name in zip(
+                self._internal.index_spark_columns, index_value_column_names
+            )
+        ]
+        sdf = sdf.select(index_value_columns)
+
+        sdf = InternalFrame.attach_default_index(sdf, default_index_type="distributed-sequence")
+        # sdf here looks as below
+        # +-----------------+-----------------+-----------------+-----------------+
+        # |__index_level_0__|__index_value_0__|__index_value_1__|__index_value_2__|
+        # +-----------------+-----------------+-----------------+-----------------+
+        # |                0|                a|                x|                1|
+        # |                1|                b|                y|                2|
+        # |                2|                c|                z|                3|
+        # +-----------------+-----------------+-----------------+-----------------+
+
+        # delete rows which are matched with given `loc`
+        sdf = sdf.where(~F.col(SPARK_INDEX_NAME_FORMAT(0)).isin(loc))
+        sdf = sdf.select(index_value_column_names)
+        # sdf here looks as below, we should alias them back to origin spark column names
+        # +-----------------+-----------------+-----------------+
+        # |__index_value_0__|__index_value_1__|__index_value_2__|
+        # +-----------------+-----------------+-----------------+
+        # |                c|                z|                3|
+        # +-----------------+-----------------+-----------------+
+        index_origin_columns = [
+            F.col(index_vcol_name).alias(index_scol_name)
+            for index_vcol_name, index_scol_name in zip(
+                index_value_column_names, self._internal.index_spark_column_names
+            )
+        ]
+
+        internal = InternalFrame(
+            spark_frame=sdf.select(index_origin_columns), index_map=self._internal.index_map,
+        )
+
+        return DataFrame(internal).index
+
+    def append(self, other):
+        """
+        Append a collection of Index options together.
+
+        Parameters
+        ----------
+        other : Index
+
+        Returns
+        -------
+        appended : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 5, 0, 5, 10, 5, 0, 10])
+        >>> kidx
+        Int64Index([10, 5, 0, 5, 10, 5, 0, 10], dtype='int64')
+
+        >>> kidx.append(kidx)
+        Int64Index([10, 5, 0, 5, 10, 5, 0, 10, 10, 5, 0, 5, 10, 5, 0, 10], dtype='int64')
+
+        Support for MiltiIndex
+
+        >>> kidx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> kidx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   )
+
+        >>> kidx.append(kidx)  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('a', 'x'),
+                    ('b', 'y')],
+                   )
+        """
+        if type(self) is not type(other):
+            raise NotImplementedError(
+                "append() between Index & MultiIndex currently is not supported"
+            )
+
+        sdf_self = self._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._internal.spark_frame.select(other._internal.index_spark_columns)
+        sdf_appended = sdf_self.union(sdf_other)
+
+        # names should be kept when MultiIndex, but Index wouldn't keep its name.
+        if isinstance(self, MultiIndex):
+            index_map = self._internal.index_map
+        else:
+            index_map = OrderedDict(
+                (idx_col, None) for idx_col in self._internal.index_spark_column_names
+            )
+
+        internal = InternalFrame(spark_frame=sdf_appended, index_map=index_map)
+
+        return DataFrame(internal).index
+
+    def argmax(self):
+        """
+        Return a maximum argument indexer.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+
+        Returns
+        -------
+        maximum argument indexer
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3])
+        >>> kidx
+        Int64Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3], dtype='int64')
+
+        >>> kidx.argmax()
+        4
+        """
+        sdf = self._internal.spark_frame.select(self.spark.column)
+        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+        # spark_frame here looks like below
+        # +-----------------+---------------+
+        # |__index_level_0__|__index_value__|
+        # +-----------------+---------------+
+        # |                0|             10|
+        # |                4|            100|
+        # |                2|              8|
+        # |                3|              7|
+        # |                6|              4|
+        # |                5|              5|
+        # |                7|              3|
+        # |                8|            100|
+        # |                1|              9|
+        # +-----------------+---------------+
+
+        return (
+            sdf.orderBy(
+                scol_for(sdf, self._internal.data_spark_column_names[0]).desc(),
+                F.col(sequence_col).asc(),
+            )
+            .select(sequence_col)
+            .first()[0]
+        )
+
+    def argmin(self):
+        """
+        Return a minimum argument indexer.
+
+        Parameters
+        ----------
+        skipna : bool, default True
+
+        Returns
+        -------
+        minimum argument indexer
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3])
+        >>> kidx
+        Int64Index([10, 9, 8, 7, 100, 5, 4, 3, 100, 3], dtype='int64')
+
+        >>> kidx.argmin()
+        7
+        """
+        sdf = self._internal.spark_frame.select(self.spark.column)
+        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
+
+        return (
+            sdf.orderBy(
+                scol_for(sdf, self._internal.data_spark_column_names[0]).asc(),
+                F.col(sequence_col).asc(),
+            )
+            .select(sequence_col)
+            .first()[0]
+        )
+
+    def set_names(self, names, level=None, inplace=False):
+        """
+        Set Index or MultiIndex name.
+        Able to set new names partially and by level.
+
+        Parameters
+        ----------
+        names : label or list of label
+            Name(s) to set.
+        level : int, label or list of int or label, optional
+            If the index is a MultiIndex, level(s) to set (None for all
+            levels). Otherwise level must be None.
+        inplace : bool, default False
+            Modifies the object directly, instead of creating a new Index or
+            MultiIndex.
+
+        Returns
+        -------
+        Index
+            The same type as the caller or None if inplace is True.
+
+        See Also
+        --------
+        Index.rename : Able to set new names without level.
+
+        Examples
+        --------
+        >>> idx = ks.Index([1, 2, 3, 4])
+        >>> idx
+        Int64Index([1, 2, 3, 4], dtype='int64')
+
+        >>> idx.set_names('quarter')
+        Int64Index([1, 2, 3, 4], dtype='int64', name='quarter')
+
+        For MultiIndex
+
+        >>> idx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y')])
+        >>> idx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   )
+
+        >>> idx.set_names(['kind', 'year'], inplace=True)
+        >>> idx  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['kind', 'year'])
+
+        >>> idx.set_names('species', level=0)  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y')],
+                   names=['species', 'year'])
+        """
+        if isinstance(self, MultiIndex):
+            if level is not None:
+                self_names = self.names
+                self_names[level] = names
+                names = self_names
+        return self.rename(name=names, inplace=inplace)
+
+    def difference(self, other, sort=None):
+        """
+        Return a new Index with elements from the index that are not in
+        `other`.
+
+        This is the set difference of two Index objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : True or None, default None
+            Whether to sort the resulting index.
+            * True : Attempt to sort the result.
+            * None : Do not sort the result.
+
+        Returns
+        -------
+        difference : Index
+
+        Examples
+        --------
+
+        >>> idx1 = ks.Index([2, 1, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.difference(idx2, sort=True)
+        Int64Index([1, 2], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'y', 2), ('c', 'z', 3)])
+        >>> midx2 = ks.MultiIndex.from_tuples([('a', 'x', 1), ('b', 'z', 2), ('k', 'z', 3)])
+        >>> midx1.difference(midx2)  # doctest: +SKIP
+        MultiIndex([('b', 'y', 2),
+                    ('c', 'z', 3)],
+                   )
+        """
+        if not is_list_like(other):
+            raise TypeError("Input must be Index or array-like")
+        if not isinstance(sort, (type(None), type(True))):
+            raise ValueError(
+                "The 'sort' keyword only takes the values of None or True; {} was passed.".format(
+                    sort
+                )
+            )
+        # Handling MultiIndex
+        if isinstance(self, ks.MultiIndex) and not isinstance(other, ks.MultiIndex):
+            if not all([isinstance(item, tuple) for item in other]):
+                raise TypeError("other must be a MultiIndex or a list of tuples")
+            other = ks.MultiIndex.from_tuples(other)
+
+        if not isinstance(other, ks.Index):
+            other = ks.Index(other)
+
+        sdf_self = self._internal.spark_frame
+        sdf_other = other._internal.spark_frame
+        idx_self = self._internal.index_spark_columns
+        idx_other = other._internal.index_spark_columns
+        sdf_diff = sdf_self.select(idx_self).subtract(sdf_other.select(idx_other))
+        internal = InternalFrame(spark_frame=sdf_diff, index_map=self._internal.index_map)
+        result = DataFrame(internal).index
+        # Name(s) will be kept when only name(s) of (Multi)Index are the same.
+        if isinstance(self, type(other)) and isinstance(self, ks.MultiIndex):
+            if self.names == other.names:
+                result.names = self.names
+        elif isinstance(self, type(other)) and not isinstance(self, ks.MultiIndex):
+            if self.name == other.name:
+                result.name = self.name
+        return result if sort is None else result.sort_values()
+
+    @property
+    def is_all_dates(self):
+        """
+        Return if all data types of the index are datetime.
+        remember that since Koalas does not support multiple data types in an index,
+        so it returns True if any type of data is datetime.
+
+        Examples
+        --------
+        >>> from datetime import datetime
+
+        >>> idx = ks.Index([datetime(2019, 1, 1, 0, 0, 0), datetime(2019, 2, 3, 0, 0, 0)])
+        >>> idx
+        DatetimeIndex(['2019-01-01', '2019-02-03'], dtype='datetime64[ns]', freq=None)
+
+        >>> idx.is_all_dates
+        True
+
+        >>> idx = ks.Index([datetime(2019, 1, 1, 0, 0, 0), None])
+        >>> idx
+        DatetimeIndex(['2019-01-01', 'NaT'], dtype='datetime64[ns]', freq=None)
+
+        >>> idx.is_all_dates
+        True
+
+        >>> idx = ks.Index([0, 1, 2])
+        >>> idx
+        Int64Index([0, 1, 2], dtype='int64')
+
+        >>> idx.is_all_dates
+        False
+        """
+        return isinstance(self.spark.data_type, TimestampType)
+
+    def repeat(self, repeats: int) -> "Index":
+        """
+        Repeat elements of a Index/MultiIndex.
+
+        Returns a new Index/MultiIndex where each element of the current Index/MultiIndex
+        is repeated consecutively a given number of times.
+
+        Parameters
+        ----------
+        repeats : int
+            The number of repetitions for each element. This should be a
+            non-negative integer. Repeating 0 times will return an empty
+            Index.
+
+        Returns
+        -------
+        repeated_index : Index/MultiIndex
+            Newly created Index/MultiIndex with repeated elements.
+
+        See Also
+        --------
+        Series.repeat : Equivalent function for Series.
+
+        Examples
+        --------
+        >>> idx = ks.Index(['a', 'b', 'c'])
+        >>> idx
+        Index(['a', 'b', 'c'], dtype='object')
+        >>> idx.repeat(2)
+        Index(['a', 'b', 'c', 'a', 'b', 'c'], dtype='object')
+
+        For MultiIndex,
+
+        >>> midx = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'c')])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c')],
+                   )
+        >>> midx.repeat(2)  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c'),
+                    ('x', 'a'),
+                    ('x', 'b'),
+                    ('y', 'c')],
+                   )
+        >>> midx.repeat(0)  # doctest: +SKIP
+        MultiIndex([], )
+        """
+        if not isinstance(repeats, int):
+            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
+        elif repeats < 0:
+            raise ValueError("negative dimensions are not allowed")
+
+        sdf = self._internal.spark_frame.select(self._internal.index_spark_columns)
+        internal = InternalFrame(
+            spark_frame=sdf, index_map=OrderedDict(zip(sdf.columns, self._internal.index_names))
+        )
+        kdf = DataFrame(internal)  # type: DataFrame
+        if repeats == 0:
+            return DataFrame(kdf._internal.with_filter(F.lit(False))).index
+        else:
+            return ks.concat([kdf] * repeats).index
+
+    def asof(self, label):
+        """
+        Return the label from the index, or, if not present, the previous one.
+
+        Assuming that the index is sorted, return the passed index label if it
+        is in the index, or return the previous index label if the passed one
+        is not in the index.
+
+        .. note:: This API is dependent on :meth:`Index.is_monotonic_increasing`
+            which can be expensive.
+
+        Parameters
+        ----------
+        label : object
+            The label up to which the method returns the latest index label.
+
+        Returns
+        -------
+        object
+            The passed label if it is in the index. The previous label if the
+            passed label is not in the sorted index or `NaN` if there is no
+            such label.
+
+        Examples
+        --------
+        `Index.asof` returns the latest index label up to the passed label.
+
+        >>> idx = ks.Index(['2013-12-31', '2014-01-02', '2014-01-03'])
+        >>> idx.asof('2014-01-01')
+        '2013-12-31'
+
+        If the label is in the index, the method returns the passed label.
+
+        >>> idx.asof('2014-01-02')
+        '2014-01-02'
+
+        If all of the labels in the index are later than the passed label,
+        NaN is returned.
+
+        >>> idx.asof('1999-01-02')
+        nan
+        """
+        sdf = self._internal.spark_frame
+        if self.is_monotonic_increasing:
+            sdf = sdf.where(self.spark.column <= label).select(F.max(self.spark.column))
+        elif self.is_monotonic_decreasing:
+            sdf = sdf.where(self.spark.column >= label).select(F.min(self.spark.column))
+        else:
+            raise ValueError("index must be monotonic increasing or decreasing")
+        result = sdf.head()[0]
+        return result if result is not None else np.nan
+
+    def union(self, other, sort=None):
+        """
+        Form the union of two Index objects.
+
+        Parameters
+        ----------
+        other : Index or array-like
+        sort : bool or None, default None
+            Whether to sort the resulting Index.
+
+        Returns
+        -------
+        union : Index
+
+        Examples
+        --------
+
+        Index
+
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.union(idx2).sort_values()
+        Int64Index([1, 2, 3, 4, 5, 6], dtype='int64')
+
+        MultiIndex
+
+        >>> midx1 = ks.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("x", "c"), ("x", "d")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("x", "c"), ("x", "d"), ("x", "e"), ("x", "f")])
+        >>> midx1.union(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('x', 'a'),
+                    ('x', 'b'),
+                    ('x', 'c'),
+                    ('x', 'd'),
+                    ('x', 'e'),
+                    ('x', 'f')],
+                   )
+        """
+        sort = True if sort is None else sort
+        sort = validate_bool_kwarg(sort, "sort")
+        if type(self) is not type(other):
+            if isinstance(self, MultiIndex):
+                if not isinstance(other, list) or not all(
+                    [isinstance(item, tuple) for item in other]
+                ):
+                    raise TypeError("other must be a MultiIndex or a list of tuples")
+                other = MultiIndex.from_tuples(other)
+            else:
+                if isinstance(other, MultiIndex):
+                    # TODO: We can't support different type of values in a single column for now.
+                    raise NotImplementedError(
+                        "Union between Index and MultiIndex is not yet supported"
+                    )
+                elif isinstance(other, Series):
+                    other = other.to_frame()
+                    other = other.set_index(other.columns[0]).index
+                elif isinstance(other, DataFrame):
+                    raise ValueError("Index data must be 1-dimensional")
+                else:
+                    other = Index(other)
+        sdf_self = self._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._internal.spark_frame.select(other._internal.index_spark_columns)
+        sdf = sdf_self.union(sdf_other.subtract(sdf_self))
+        if isinstance(self, MultiIndex):
+            sdf = sdf.drop_duplicates()
+        if sort:
+            sdf = sdf.sort(self._internal.index_spark_column_names)
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
+
+        return DataFrame(internal).index
+
+    def holds_integer(self):
+        """
+        Whether the type is an integer type.
+        Always return False for MultiIndex.
+
+        Notes
+        -----
+        When Index contains null values the result can be different with pandas
+        since Koalas cast integer to float when Index contains null values.
+
+        >>> ks.Index([1, 2, 3, None])
+        Float64Index([1.0, 2.0, 3.0, nan], dtype='float64')
+
+        Examples
+        --------
+        >>> kidx = ks.Index([1, 2, 3, 4])
+        >>> kidx.holds_integer()
+        True
+
+        Returns False for string type.
+
+        >>> kidx = ks.Index(["A", "B", "C", "D"])
+        >>> kidx.holds_integer()
+        False
+
+        Returns False for float type.
+
+        >>> kidx = ks.Index([1.1, 2.2, 3.3, 4.4])
+        >>> kidx.holds_integer()
+        False
+        """
+        return isinstance(self.spark.data_type, IntegralType)
+
+    @property
+    def inferred_type(self):
+        """
+        Return a string of the type inferred from the values.
+
+        Examples
+        --------
+        >>> from datetime import datetime
+        >>> ks.Index([1, 2, 3]).inferred_type
+        'integer'
+
+        >>> ks.Index([1.0, 2.0, 3.0]).inferred_type
+        'floating'
+
+        >>> ks.Index(['a', 'b', 'c']).inferred_type
+        'string'
+
+        >>> ks.Index([True, False, True, False]).inferred_type
+        'boolean'
+        """
+        return lib.infer_dtype([self.to_series().head(1).item()])
+
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeIndex, item):
-            property_or_func = getattr(_MissingPandasLikeIndex, item)
+        if hasattr(MissingPandasLikeIndex, item):
+            property_or_func = getattr(MissingPandasLikeIndex, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
@@ -828,26 +1998,35 @@ class Index(IndexOpsMixin):
         if max_display_count is None:
             return repr(self.to_pandas())
 
-        pindex = self._kdf.head(max_display_count + 1).index._with_new_scol(self._scol).to_pandas()
+        pindex = self._kdf._get_or_create_repr_pandas_cache(max_display_count).index
 
         pindex_length = len(pindex)
         repr_string = repr(pindex[:max_display_count])
 
         if pindex_length > max_display_count:
-            footer = '\nShowing only the first {}'.format(max_display_count)
+            footer = "\nShowing only the first {}".format(max_display_count)
             return repr_string + footer
         return repr_string
 
     def __iter__(self):
-        return _MissingPandasLikeIndex.__iter__(self)
+        return MissingPandasLikeIndex.__iter__(self)
 
     def __xor__(self, other):
         return self.symmetric_difference(other)
 
+    def __len__(self):
+        return self.size
+
+    def __bool__(self):
+        raise ValueError(
+            "The truth value of a {0} is ambiguous. "
+            "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
+        )
+
 
 class MultiIndex(Index):
     """
-    Koalas MultiIndex that corresponds to Pandas MultiIndex logically. This might hold Spark Column
+    Koalas MultiIndex that corresponds to pandas MultiIndex logically. This might hold Spark Column
     internally.
 
     :ivar _kdf: The parent dataframe
@@ -876,12 +2055,26 @@ class MultiIndex(Index):
 
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
-        scol = F.struct(kdf._internal.index_scols)
-        data_columns = kdf._sdf.select(scol).columns
-        internal = kdf._internal.copy(scol=scol,
-                                      column_index=[(col, None) for col in data_columns],
-                                      column_index_names=None)
-        IndexOpsMixin.__init__(self, internal, kdf)
+
+        super(MultiIndex, self).__init__(kdf)
+
+    @property
+    def _internal(self):
+        internal = self._kdf._internal
+        scol = F.struct(internal.index_spark_columns)
+        return internal.copy(
+            column_labels=[None], data_spark_columns=[scol], column_label_names=None
+        )
+
+    @property
+    def _column_label(self):
+        return None
+
+    def __abs__(self):
+        raise TypeError("TypeError: cannot perform __abs__ with this index type: MultiIndex")
+
+    def _with_new_scol(self, scol: spark.Column):
+        raise NotImplementedError("Not supported for type MultiIndex")
 
     def any(self, *args, **kwargs):
         raise TypeError("cannot perform any with this index type: MultiIndex")
@@ -919,8 +2112,9 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        return DataFrame(index=pd.MultiIndex.from_tuples(
-            tuples=tuples, sortorder=sortorder, names=names)).index
+        return DataFrame(
+            index=pd.MultiIndex.from_tuples(tuples=tuples, sortorder=sortorder, names=names)
+        ).index
 
     @staticmethod
     def from_arrays(arrays, sortorder=None, names=None):
@@ -952,17 +2146,127 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        return DataFrame(index=pd.MultiIndex.from_arrays(
-            arrays=arrays, sortorder=sortorder, names=names
-        )).index
+        return DataFrame(
+            index=pd.MultiIndex.from_arrays(arrays=arrays, sortorder=sortorder, names=names)
+        ).index
+
+    @staticmethod
+    def from_product(iterables, sortorder=None, names=None):
+        """
+        Make a MultiIndex from the cartesian product of multiple iterables.
+
+        Parameters
+        ----------
+        iterables : list / sequence of iterables
+            Each iterable has unique labels for each level of the index.
+        sortorder : int or None
+            Level of sortedness (must be lexicographically sorted by that
+            level).
+        names : list / sequence of str, optional
+            Names for the levels in the index.
+
+        Returns
+        -------
+        index : MultiIndex
+
+        See Also
+        --------
+        MultiIndex.from_arrays : Convert list of arrays to MultiIndex.
+        MultiIndex.from_tuples : Convert list of tuples to MultiIndex.
+
+        Examples
+        --------
+        >>> numbers = [0, 1, 2]
+        >>> colors = ['green', 'purple']
+        >>> ks.MultiIndex.from_product([numbers, colors],
+        ...                            names=['number', 'color'])  # doctest: +SKIP
+        MultiIndex([(0,  'green'),
+                    (0, 'purple'),
+                    (1,  'green'),
+                    (1, 'purple'),
+                    (2,  'green'),
+                    (2, 'purple')],
+                   names=['number', 'color'])
+        """
+        return DataFrame(
+            index=pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
+        ).index
 
     @property
     def name(self) -> str:
-        raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
+        raise PandasNotImplementedError(class_name="pd.MultiIndex", property_name="name")
 
     @name.setter
     def name(self, name: str) -> None:
-        raise PandasNotImplementedError(class_name='pd.MultiIndex', property_name='name')
+        raise PandasNotImplementedError(class_name="pd.MultiIndex", property_name="name")
+
+    def _verify_for_rename(self, name):
+        if is_list_like(name):
+            if len(self._internal.index_map) != len(name):
+                raise ValueError(
+                    "Length of new names must be {}, got {}".format(
+                        len(self._internal.index_map), len(name)
+                    )
+                )
+            return [n if n is None or isinstance(n, tuple) else (n,) for n in name]
+        else:
+            raise TypeError("Must pass list-like as `names`.")
+
+    def swaplevel(self, i=-2, j=-1):
+        """
+        Swap level i with level j.
+        Calling this method does not change the ordering of the values.
+
+        Parameters
+        ----------
+        i : int, str, default -2
+            First level of index to be swapped. Can pass level name as string.
+            Type of parameters can be mixed.
+        j : int, str, default -1
+            Second level of index to be swapped. Can pass level name as string.
+            Type of parameters can be mixed.
+
+        Returns
+        -------
+        MultiIndex
+            A new MultiIndex.
+
+        Examples
+        --------
+        >>> midx = ks.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 1),
+                    ('b', 2)],
+                   names=['word', 'number'])
+
+        >>> midx.swaplevel(0, 1)  # doctest: +SKIP
+        MultiIndex([(1, 'a'),
+                    (2, 'b')],
+                   names=['number', 'word'])
+
+        >>> midx.swaplevel('number', 'word')  # doctest: +SKIP
+        MultiIndex([(1, 'a'),
+                    (2, 'b')],
+                   names=['number', 'word'])
+        """
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.names:
+                raise KeyError("Level %s not found" % index)
+
+        i = i if isinstance(i, int) else self.names.index(i)
+        j = j if isinstance(j, int) else self.names.index(j)
+
+        for index in (i, j):
+            if index >= len(self.names) or index < -len(self.names):
+                raise IndexError(
+                    "Too many levels: Index has only %s levels, "
+                    "%s is not a valid level number" % (len(self.names), index)
+                )
+
+        index_map = list(self._internal.index_map.items())
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        result = DataFrame(self._kdf._internal.copy(index_map=OrderedDict(index_map))).index
+        return result
 
     @property
     def levshape(self):
@@ -981,15 +2285,163 @@ class MultiIndex(Index):
         >>> midx.levshape
         (3, 3)
         """
-        internal = self._internal
-        result = internal._sdf.agg(*(F.countDistinct(c) for c in internal.index_scols)).collect()[0]
+        result = self._internal.spark_frame.agg(
+            *(F.countDistinct(c) for c in self._internal.index_spark_columns)
+        ).collect()[0]
         return tuple(result)
+
+    @staticmethod
+    def _comparator_for_monotonic_increasing(data_type):
+        if isinstance(data_type, BooleanType):
+            return compare_allow_null
+        else:
+            return compare_null_last
+
+    def _is_monotonic(self, order):
+        if order == "increasing":
+            return self._is_monotonic_increasing().all()
+        else:
+            return self._is_monotonic_decreasing().all()
+
+    def _is_monotonic_increasing(self):
+        scol = self.spark.column
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        prev = F.lag(scol, 1).over(window)
+
+        cond = F.lit(True)
+        for field in self.spark.data_type[::-1]:
+            left = scol.getField(field.name)
+            right = prev.getField(field.name)
+            compare = MultiIndex._comparator_for_monotonic_increasing(field.dataType)
+            cond = F.when(left.eqNullSafe(right), cond).otherwise(
+                compare(left, right, spark.Column.__gt__)
+            )
+
+        cond = prev.isNull() | cond
+
+        internal = InternalFrame(
+            spark_frame=self._internal.spark_frame.select(
+                self._internal.index_spark_columns + [cond]
+            ),
+            index_map=self._internal.index_map,
+        )
+
+        return first_series(DataFrame(internal))
+
+    @staticmethod
+    def _comparator_for_monotonic_decreasing(data_type):
+        if isinstance(data_type, StringType):
+            return compare_disallow_null
+        elif isinstance(data_type, BooleanType):
+            return compare_allow_null
+        elif isinstance(data_type, NumericType):
+            return compare_null_last
+        else:
+            return compare_null_first
+
+    def _is_monotonic_decreasing(self):
+        scol = self.spark.column
+        window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
+        prev = F.lag(scol, 1).over(window)
+
+        cond = F.lit(True)
+        for field in self.spark.data_type[::-1]:
+            left = scol.getField(field.name)
+            right = prev.getField(field.name)
+            compare = MultiIndex._comparator_for_monotonic_decreasing(field.dataType)
+            cond = F.when(left.eqNullSafe(right), cond).otherwise(
+                compare(left, right, spark.Column.__lt__)
+            )
+
+        cond = prev.isNull() | cond
+
+        internal = InternalFrame(
+            spark_frame=self._internal.spark_frame.select(
+                self._internal.index_spark_columns + [cond]
+            ),
+            index_map=self._internal.index_map,
+        )
+
+        return first_series(DataFrame(internal))
+
+    def to_frame(self, index=True, name=None) -> DataFrame:
+        """
+        Create a DataFrame with the levels of the MultiIndex as columns.
+        Column ordering is determined by the DataFrame constructor with data as
+        a dict.
+
+        Parameters
+        ----------
+        index : boolean, default True
+            Set the index of the returned DataFrame as the original MultiIndex.
+        name : list / sequence of strings, optional
+            The passed names should substitute index level names.
+
+        Returns
+        -------
+        DataFrame : a DataFrame containing the original MultiIndex data.
+
+        See Also
+        --------
+        DataFrame
+
+        Examples
+        --------
+        >>> tuples = [(1, 'red'), (1, 'blue'),
+        ...           (2, 'red'), (2, 'blue')]
+        >>> idx = ks.MultiIndex.from_tuples(tuples, names=('number', 'color'))
+        >>> idx  # doctest: +SKIP
+        MultiIndex([(1,  'red'),
+                    (1, 'blue'),
+                    (2,  'red'),
+                    (2, 'blue')],
+                   names=['number', 'color'])
+        >>> idx.to_frame()  # doctest: +NORMALIZE_WHITESPACE
+                      number color
+        number color
+        1      red         1   red
+               blue        1  blue
+        2      red         2   red
+               blue        2  blue
+
+        By default, the original Index is reused. To enforce a new Index:
+
+        >>> idx.to_frame(index=False)
+           number color
+        0       1   red
+        1       1  blue
+        2       2   red
+        3       2  blue
+
+        To override the name of the resulting column, specify `name`:
+
+        >>> idx.to_frame(name=['n', 'c'])  # doctest: +NORMALIZE_WHITESPACE
+                      n     c
+        number color
+        1      red    1   red
+               blue   1  blue
+        2      red    2   red
+               blue   2  blue
+        """
+        if name is None:
+            name = [
+                name if name is not None else (str(i),)
+                for i, name in enumerate(self._internal.index_names)
+            ]
+        elif is_list_like(name):
+            if len(name) != len(self._internal.index_map):
+                raise ValueError("'name' should have same length as number of levels on index.")
+            name = [n if isinstance(n, tuple) else (n,) for n in name]
+        else:
+            raise TypeError("'name' must be a list / sequence of column names.")
+
+        return self._to_frame(index=index, names=name)
 
     def to_pandas(self) -> pd.MultiIndex:
         """
         Return a pandas MultiIndex.
 
-        .. note:: This method should only be used if the resulting Pandas object is expected
+        .. note:: This method should only be used if the resulting pandas object is expected
                   to be small, as all the data is loaded into the driver's memory.
 
         Examples
@@ -1009,19 +2461,51 @@ class MultiIndex(Index):
         # series-like operations. In that case, it creates new Index object instead of MultiIndex.
         return self._kdf[[]]._to_internal_pandas().index
 
-    toPandas = to_pandas
+    def toPandas(self):
+        warnings.warn(
+            "MultiIndex.toPandas is deprecated as of MultiIndex.to_pandas. "
+            "Please use the API instead.",
+            FutureWarning,
+        )
+        return self.to_pandas()
 
-    def unique(self, level=None):
-        raise PandasNotImplementedError(class_name='MultiIndex', method_name='unique')
+    toPandas.__doc__ = to_pandas.__doc__
+
+    def nunique(self, dropna=True):
+        raise NotImplementedError("isna is not defined for MultiIndex")
 
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
-    def copy(self):
+    def copy(self, deep=None):
         """
         Make a copy of this object.
+
+        Parameters
+        ----------
+        deep : None
+            this parameter is not supported but just dummy parameter to match pandas.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([(.2, .3), (.0, .6), (.6, .0), (.2, .1)],
+        ...                   columns=['dogs', 'cats'],
+        ...                   index=[list('abcd'), list('efgh')])
+        >>> df['dogs'].index  # doctest: +SKIP
+        MultiIndex([('a', 'e'),
+                    ('b', 'f'),
+                    ('c', 'g'),
+                    ('d', 'h')],
+                   )
+
+        Copy index
+
+        >>> df.index.copy()  # doctest: +SKIP
+        MultiIndex([('a', 'e'),
+                    ('b', 'f'),
+                    ('c', 'g'),
+                    ('d', 'h')],
+                   )
         """
-        internal = self._kdf._internal.copy()
-        result = MultiIndex(ks.DataFrame(internal))
-        return result
+        return super(MultiIndex, self).copy(deep=deep)
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
@@ -1090,20 +2574,18 @@ class MultiIndex(Index):
         """
         if type(self) != type(other):
             raise NotImplementedError(
-                "Doesn't support symmetric_difference between Index & MultiIndex for now")
+                "Doesn't support symmetric_difference between Index & MultiIndex for now"
+            )
 
-        sdf_self = self._kdf._sdf.select(self._internal.index_scols)
-        sdf_other = other._kdf._sdf.select(other._internal.index_scols)
+        sdf_self = self._kdf._internal.spark_frame.select(self._internal.index_spark_columns)
+        sdf_other = other._kdf._internal.spark_frame.select(other._internal.index_spark_columns)
 
-        sdf_symdiff = sdf_self.union(sdf_other) \
-                              .subtract(sdf_self.intersect(sdf_other))
+        sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
         if sort:
-            sdf_symdiff = sdf_symdiff.sort(self._internal.index_scols)
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
 
-        internal = _InternalFrame(
-            sdf=sdf_symdiff,
-            index_map=self._internal.index_map)
+        internal = InternalFrame(spark_frame=sdf_symdiff, index_map=self._internal.index_map)
         result = MultiIndex(DataFrame(internal))
 
         if result_name:
@@ -1111,32 +2593,203 @@ class MultiIndex(Index):
 
         return result
 
+    # TODO: ADD error parameter
+    def drop(self, codes, level=None):
+        """
+        Make new MultiIndex with passed list of labels deleted
+
+        Parameters
+        ----------
+        codes : array-like
+            Must be a list of tuples
+        level : int or level name, default None
+
+        Returns
+        -------
+        dropped : MultiIndex
+
+        Examples
+        --------
+        >>> index = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
+        >>> index # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['a']) # doctest: +SKIP
+        MultiIndex([('b', 'y'),
+                    ('c', 'z')],
+                   )
+
+        >>> index.drop(['x', 'y'], level=1) # doctest: +SKIP
+        MultiIndex([('c', 'z')],
+                   )
+        """
+        sdf = self._internal.spark_frame
+        index_scols = self._internal.index_spark_columns
+        if level is None:
+            scol = index_scols[0]
+        elif isinstance(level, int):
+            scol = index_scols[level]
+        else:
+            spark_column_name = None
+            for index_spark_column_name, index_name in self._internal.index_map.items():
+                if not isinstance(level, tuple):
+                    level = (level,)
+                if level == index_name:
+                    if spark_column_name is not None:
+                        raise ValueError(
+                            "The name {} occurs multiple times, use a level number".format(
+                                name_like_string(level)
+                            )
+                        )
+                    spark_column_name = index_spark_column_name
+            if spark_column_name is None:
+                raise KeyError("Level {} not found".format(name_like_string(level)))
+            scol = scol_for(sdf, spark_column_name)
+        sdf = sdf[~scol.isin(codes)]
+        return MultiIndex(
+            DataFrame(InternalFrame(spark_frame=sdf, index_map=self._internal.index_map))
+        )
+
+    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+        if (
+            LooseVersion(pyspark.__version__) < LooseVersion("2.4")
+            and default_session().conf.get("spark.sql.execution.arrow.enabled") == "true"
+            and isinstance(self, MultiIndex)
+        ):
+            raise RuntimeError(
+                "if you're using pyspark < 2.4, set conf "
+                "'spark.sql.execution.arrow.enabled' to 'false' "
+                "for using this function with MultiIndex"
+            )
+        return super(MultiIndex, self).value_counts(
+            normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna
+        )
+
+    value_counts.__doc__ = IndexOpsMixin.value_counts.__doc__
+
+    def argmax(self):
+        raise TypeError("reduction operation 'argmax' not allowed for this dtype")
+
+    def argmin(self):
+        raise TypeError("reduction operation 'argmin' not allowed for this dtype")
+
+    def asof(self, label):
+        raise NotImplementedError(
+            "only the default get_loc method is currently supported for MultiIndex"
+        )
+
+    @property
+    def is_all_dates(self):
+        """
+        is_all_dates always returns False for MultiIndex
+
+        Examples
+        --------
+        >>> from datetime import datetime
+
+        >>> idx = ks.MultiIndex.from_tuples(
+        ...     [(datetime(2019, 1, 1, 0, 0, 0), datetime(2019, 1, 1, 0, 0, 0)),
+        ...      (datetime(2019, 1, 1, 0, 0, 0), datetime(2019, 1, 1, 0, 0, 0))])
+        >>> idx  # doctest: +SKIP
+        MultiIndex([('2019-01-01', '2019-01-01'),
+                    ('2019-01-01', '2019-01-01')],
+                   )
+
+        >>> idx.is_all_dates
+        False
+        """
+        return False
+
     def __getattr__(self, item: str) -> Any:
-        if hasattr(_MissingPandasLikeMultiIndex, item):
-            property_or_func = getattr(_MissingPandasLikeMultiIndex, item)
+        if hasattr(MissingPandasLikeMultiIndex, item):
+            property_or_func = getattr(MissingPandasLikeMultiIndex, item)
             if isinstance(property_or_func, property):
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
 
-    def rename(self, name, inplace=False):
-        raise NotImplementedError()
+    def _get_level_number(self, level):
+        """
+        Return the level number if a valid level is given.
+        """
+        count = self.names.count(level)
+        if (count > 1) and not isinstance(level, int):
+            raise ValueError("The name %s occurs multiple times, use a level number" % level)
+        if level in self.names:
+            level = self.names.index(level)
+        elif isinstance(level, int):
+            nlevels = self.nlevels
+            if level >= nlevels:
+                raise IndexError(
+                    "Too many levels: Index has only %d "
+                    "levels, %d is not a valid level number" % (nlevels, level)
+                )
+            if level < 0:
+                if (level + nlevels) < 0:
+                    raise IndexError(
+                        "Too many levels: Index has only %d levels, "
+                        "not %d" % (nlevels, level + 1)
+                    )
+                level = level + nlevels
+        else:
+            raise KeyError("Level %s not found" % str(level))
 
-    def __repr__(self):
-        max_display_count = get_option("display.max_rows")
-        if max_display_count is None:
-            return repr(self.to_pandas())
+        return level
 
-        pindex = self._kdf.head(max_display_count + 1).index.to_pandas()
+    def get_level_values(self, level):
+        """
+        Return vector of label values for requested level,
+        equal to the length of the index.
 
-        pindex_length = len(pindex)
-        repr_string = repr(pindex[:max_display_count])
+        Parameters
+        ----------
+        level : int or str
+            ``level`` is either the integer position of the level in the
+            MultiIndex, or the name of the level.
 
-        if pindex_length > max_display_count:
-            footer = '\nShowing only the first {}'.format(max_display_count)
-            return repr_string + footer
-        return repr_string
+        Returns
+        -------
+        values : Index
+            Values is a level of this MultiIndex converted to
+            a single :class:`Index` (or subclass thereof).
+
+        Examples
+        --------
+
+        Create a MultiIndex:
+
+        >>> mi = ks.MultiIndex.from_tuples([('x', 'a'), ('x', 'b'), ('y', 'a')])
+        >>> mi.names = ['level_1', 'level_2']
+
+        Get level values by supplying level as either integer or name:
+
+        >>> mi.get_level_values(0)
+        Index(['x', 'x', 'y'], dtype='object', name='level_1')
+
+        >>> mi.get_level_values('level_2')
+        Index(['a', 'b', 'a'], dtype='object', name='level_2')
+        """
+        level = self._get_level_number(level)
+        index_scol_name = self._internal.index_spark_column_names[level]
+        index_name = self._internal.index_names[level]
+        scol = self._internal.index_spark_columns[level]
+        sdf = self._internal.spark_frame
+        internal = InternalFrame(
+            spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
+        )
+        return ks.DataFrame(internal).index
+
+    @property
+    def inferred_type(self):
+        """
+        Return a string of the type inferred from the values.
+        """
+        # It's always 'mixed' for MultiIndex
+        return "mixed"
 
     def __iter__(self):
-        return _MissingPandasLikeMultiIndex.__iter__(self)
+        return MissingPandasLikeMultiIndex.__iter__(self)

@@ -19,19 +19,17 @@ Attributes
    :toctree: api/
 
    Series.index
-
-.. autosummary::
-   :toctree: api/
-
    Series.dtype
    Series.dtypes
+   Series.ndim
    Series.name
-   Series.spark_type
    Series.shape
+   Series.axes
    Series.size
    Series.empty
    Series.T
    Series.hasnans
+   Series.values
 
 Conversion
 ----------
@@ -48,11 +46,16 @@ Indexing, iteration
    :toctree: api/
 
    Series.at
+   Series.iat
    Series.loc
    Series.iloc
    Series.keys
    Series.pop
+   Series.items
+   Series.iteritems
+   Series.item
    Series.xs
+   Series.get
 
 Binary operator functions
 -------------------------
@@ -76,12 +79,17 @@ Binary operator functions
    Series.rmod
    Series.floordiv
    Series.rfloordiv
+   Series.divmod
+   Series.rdivmod
+   Series.combine_first
    Series.lt
    Series.gt
    Series.le
    Series.ge
    Series.ne
    Series.eq
+   Series.product
+   Series.dot
 
 Function application, GroupBy & Window
 --------------------------------------
@@ -91,8 +99,11 @@ Function application, GroupBy & Window
    Series.apply
    Series.agg
    Series.aggregate
+   Series.transform
    Series.map
    Series.groupby
+   Series.rolling
+   Series.expanding
    Series.pipe
 
 .. _api.series.stats:
@@ -114,7 +125,9 @@ Computations / Descriptive Stats
    Series.cumsum
    Series.cumprod
    Series.describe
+   Series.filter
    Series.kurt
+   Series.mad
    Series.max
    Series.mean
    Series.min
@@ -122,7 +135,9 @@ Computations / Descriptive Stats
    Series.nlargest
    Series.nsmallest
    Series.pct_change
+   Series.prod
    Series.nunique
+   Series.is_unique
    Series.quantile
    Series.rank
    Series.skew
@@ -145,6 +160,9 @@ Reindexing / Selection / Label manipulation
    :toctree: api/
 
    Series.drop
+   Series.droplevel
+   Series.drop_duplicates
+   Series.equals
    Series.add_prefix
    Series.add_suffix
    Series.head
@@ -152,8 +170,11 @@ Reindexing / Selection / Label manipulation
    Series.idxmin
    Series.isin
    Series.rename
+   Series.reindex
    Series.reset_index
    Series.sample
+   Series.take
+   Series.tail
    Series.where
    Series.mask
    Series.truncate
@@ -177,6 +198,9 @@ Reshaping, sorting, transposing
 
    Series.sort_index
    Series.sort_values
+   Series.unstack
+   Series.repeat
+   Series.squeeze
 
 Combining / joining / merging
 -----------------------------
@@ -193,8 +217,24 @@ Time series-related
 .. autosummary::
    :toctree: api/
 
+   Series.asof
    Series.shift
    Series.first_valid_index
+   Series.last_valid_index
+
+Spark-related
+-------------
+``Series.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``Series.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.spark.data_type
+   Series.spark.nullable
+   Series.spark.column
+   Series.spark.transform
+   Series.spark.apply
 
 Accessors
 ---------
@@ -208,7 +248,6 @@ Data Type                    Accessor
 ========= ===========================
 Datetime  :ref:`dt <api.series.dt>`
 String    :ref:`str <api.series.str>`
-Plot      :ref:`plot <api.series.plot>`
 ========= ===========================
 
 .. _api.series.dt:
@@ -223,7 +262,6 @@ These can be accessed like ``Series.dt.<property>``.
 Datetime Properties
 ~~~~~~~~~~~~~~~~~~~
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -254,7 +292,6 @@ Datetime Properties
 Datetime Methods
 ~~~~~~~~~~~~~~~~
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -275,7 +312,6 @@ String Handling
 strings and apply several methods to it. These can be accessed
 like ``Series.str.<function/property>``.
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -332,14 +368,11 @@ like ``Series.str.<function/property>``.
    Series.str.wrap
    Series.str.zfill
 
-.. _api.series.plot:
-
 Plotting
 -------------------------------
 ``Series.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``Series.plot.<kind>``.
 
-.. currentmodule:: databricks.koalas.series
 .. autosummary::
    :toctree: api/
 
@@ -348,15 +381,11 @@ specific plotting methods of the form ``Series.plot.<kind>``.
    Series.plot.bar
    Series.plot.barh
    Series.plot.box
+   Series.plot.density
    Series.plot.hist
    Series.plot.line
    Series.plot.pie
    Series.plot.kde
-
-.. currentmodule:: databricks.koalas
-.. autosummary::
-   :toctree: api/
-
    Series.hist
 
 Serialization / IO / Conversion
@@ -371,7 +400,19 @@ Serialization / IO / Conversion
    Series.to_dict
    Series.to_clipboard
    Series.to_latex
+   Series.to_markdown
    Series.to_json
    Series.to_csv
    Series.to_excel
    Series.to_frame
+
+Koalas-specific
+---------------
+``Series.koalas`` provides Koalas-specific features that exists only in Koalas.
+These can be accessed by ``Series.koalas.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.koalas.transform_batch
+

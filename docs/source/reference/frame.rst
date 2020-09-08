@@ -27,9 +27,11 @@ Attributes and underlying data
 
    DataFrame.dtypes
    DataFrame.shape
+   DataFrame.axes
    DataFrame.ndim
    DataFrame.size
    DataFrame.select_dtypes
+   DataFrame.values
 
 Conversion
 ----------
@@ -50,6 +52,7 @@ Indexing, iteration
    :toctree: api/
 
    DataFrame.at
+   DataFrame.iat
    DataFrame.head
    DataFrame.idxmax
    DataFrame.idxmin
@@ -59,10 +62,13 @@ Indexing, iteration
    DataFrame.iteritems
    DataFrame.iterrows
    DataFrame.keys
+   DataFrame.pop
+   DataFrame.tail
    DataFrame.xs
    DataFrame.get
    DataFrame.where
    DataFrame.mask
+   DataFrame.query
 
 Binary operator functions
 -------------------------
@@ -97,12 +103,16 @@ Function application, GroupBy & Window
 .. autosummary::
    :toctree: api/
 
+   DataFrame.apply
    DataFrame.applymap
    DataFrame.pipe
    DataFrame.agg
    DataFrame.aggregate
    DataFrame.groupby
+   DataFrame.rolling
+   DataFrame.expanding
    DataFrame.transform
+   DataFrame.map_in_pandas
 
 .. _api.dataframe.stats:
 
@@ -120,6 +130,7 @@ Computations / Descriptive Stats
    DataFrame.describe
    DataFrame.kurt
    DataFrame.kurtosis
+   DataFrame.mad
    DataFrame.max
    DataFrame.mean
    DataFrame.min
@@ -137,6 +148,7 @@ Computations / Descriptive Stats
    DataFrame.cumprod
    DataFrame.round
    DataFrame.diff
+   DataFrame.eval
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
@@ -146,14 +158,19 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.drop
+   DataFrame.droplevel
    DataFrame.drop_duplicates
    DataFrame.duplicated
+   DataFrame.equals
    DataFrame.filter
    DataFrame.head
+   DataFrame.rename
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.take
    DataFrame.isin
    DataFrame.sample
+   DataFrame.truncate
 
 .. _api.dataframe.missing:
 
@@ -164,6 +181,7 @@ Missing data handling
 
    DataFrame.dropna
    DataFrame.fillna
+   DataFrame.replace
    DataFrame.bfill
    DataFrame.ffill
 
@@ -178,7 +196,11 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.nlargest
    DataFrame.nsmallest
+   DataFrame.stack
+   DataFrame.unstack
    DataFrame.melt
+   DataFrame.explode
+   DataFrame.squeeze
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
@@ -202,13 +224,7 @@ Time series-related
 
    DataFrame.shift
    DataFrame.first_valid_index
-
-Cache
--------------------------------
-.. autosummary::
-   :toctree: api/
-
-   DataFrame.cache
+   DataFrame.last_valid_index
 
 Serialization / IO / Conversion
 -------------------------------
@@ -232,18 +248,37 @@ Serialization / IO / Conversion
    DataFrame.to_dict
    DataFrame.to_excel
    DataFrame.to_clipboard
+   DataFrame.to_markdown
    DataFrame.to_records
    DataFrame.to_latex
    DataFrame.style
 
+Spark-related
+-------------
+``DataFrame.spark`` provides features that does not exist in pandas but
+in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.spark.schema
+   DataFrame.spark.print_schema
+   DataFrame.spark.frame
+   DataFrame.spark.cache
+   DataFrame.spark.persist
+   DataFrame.spark.hint
+   DataFrame.spark.to_table
+   DataFrame.spark.to_spark_io
+   DataFrame.spark.explain
+   DataFrame.spark.apply
+
 .. _api.dataframe.plot:
 
 Plotting
--------------------------------
+--------
 ``DataFrame.plot`` is both a callable method and a namespace attribute for
 specific plotting methods of the form ``DataFrame.plot.<kind>``.
 
-.. currentmodule:: databricks.koalas.frame
 .. autosummary::
    :toctree: api/
 
@@ -255,6 +290,18 @@ specific plotting methods of the form ``DataFrame.plot.<kind>``.
    DataFrame.plot.line
    DataFrame.plot.pie
    DataFrame.plot.scatter
-   DataFrame.plot.kde
    DataFrame.plot.density
    DataFrame.hist
+   DataFrame.kde
+
+Koalas-specific
+---------------
+``DataFrame.koalas`` provides Koalas-specific features that exists only in Koalas.
+These can be accessed by ``DataFrame.koalas.<function/property>``.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrame.koalas.attach_id_column
+   DataFrame.koalas.apply_batch
+   DataFrame.koalas.transform_batch

@@ -17,25 +17,42 @@ import importlib.util
 import errno
 
 from databricks import koalas
+from databricks.koalas import utils
 sys.path.insert(0, os.path.abspath('.'))
 
-# Remove previously generated rst files. Ignore errors just in case it stops generating whole docs.
-shutil.rmtree("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
-try:
-    os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
-except OSError as e:
-    if e.errno != errno.EEXIST:
-        raise
+# Read the Docs builds multiple times. To speed up, we don't delete the generated rst
+# files to reuse in Read the Docs build
+if "READTHEDOCS" not in os.environ:
+    # Remove previously generated rst files. Ignore errors just in case it stops
+    # generating whole docs.
+    shutil.rmtree(
+        "%s/reference/api" % os.path.dirname(os.path.abspath(__file__)), ignore_errors=True)
+    try:
+        os.mkdir("%s/reference/api" % os.path.dirname(os.path.abspath(__file__)))
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
+
+# Lower the number of partitions to speed up documentation build
+utils.default_session({"spark.sql.shuffle.partitions": "4"})
 
 
 def gendoc():
     """Get releases from Github and generate reStructuredText files for release notes."""
+    source_dir = os.path.dirname(os.path.abspath(__file__))
+    whatsnew_dir = "%s/whatsnew" % source_dir
+
+    # Read the Docs builds multiple times. To speed up, we don't delete the generated rst
+    # files to reuse in Read the Docs build
+    if "READTHEDOCS" in os.environ and os.path.isdir(whatsnew_dir):
+        return
+
     dev_dir = "%s/../../dev" % os.path.dirname(os.path.abspath(__file__))
     spec = importlib.util.spec_from_file_location("gendoc", "%s/gendoc.py" % dev_dir)
     gendoc = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(gendoc)
     gendoc.download_pandoc_if_needed(dev_dir)
-    source_dir = os.path.dirname(os.path.abspath(__file__))
     gendoc.gen_release_notes(source_dir)
 
 
@@ -45,7 +62,7 @@ gendoc()
 # -- Project information -----------------------------------------------------
 
 project = 'Koalas'
-copyright = '2019, Databricks'
+copyright = '2020, Databricks'
 author = 'The Koalas Team'
 
 # The full version, including alpha/beta/rc tags
@@ -106,21 +123,34 @@ autosummary_generate = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'nature_with_gtoc'
+html_theme = "pydata_sphinx_theme"
+
+# The name of an image file (relative to this directory) to place at the top
+# of the sidebar.
+html_logo = "../../icons/koalas-logo-docs.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ['_static']
+
+html_css_files = [
+    'css/koalas.css',
+]
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = ['themes']
+# html_theme_path = ['themes']
 
 # If false, no index is generated.
 html_use_index = False
 
 # If false, no module index is generated.
 html_domain_indices = False
+
+# The name of an image file (relative to this directory) to use as a favicon of
+# the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
+# pixels large.
+html_favicon = '../../icons/koalas-favicon.ico'
 
 
 # -- Options for manual page output ---------------------------------------

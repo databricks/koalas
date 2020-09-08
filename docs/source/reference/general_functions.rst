@@ -27,6 +27,7 @@ Data manipulations and SQL
    get_dummies
    concat
    sql
+   broadcast
 
 Top-level missing data
 ----------------------
@@ -47,10 +48,3 @@ Top-level dealing with datetimelike
 
    to_datetime
 
-
-Integration with Spark and pandas
----------------------------------
-.. autosummary::
-   :toctree: api/
-
-   pandas_wraps

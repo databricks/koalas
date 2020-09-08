@@ -8,6 +8,7 @@
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 .idea/
+.vscode/
 
 *.iml
 
@@ -48,6 +49,7 @@ _build
 
 # Coverage
 .coverage*
+coverage.xml
 
 # Spark
 spark-warehouse/
