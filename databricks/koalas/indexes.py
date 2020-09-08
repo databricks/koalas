@@ -2825,9 +2825,7 @@ class MultiIndex(Index):
         >>> kmidx.item()
         ('a', 'x')
         """
-        if len(self._kdf.head(2)) == 1:
-            return self.to_pandas().item()
-        raise ValueError("can only convert an array of size 1 to a Python scalar")
+        self._kdf.head(2).to_pandas().index.item()
 
     @property
     def inferred_type(self):
