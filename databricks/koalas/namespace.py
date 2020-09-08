@@ -2668,13 +2668,13 @@ def crosstab(index, columns, rownames=None, colnames=None):
     # if `index` or `columns` has multiple values,
     # we should merge(group) them to estimate crosstab properly
     if len(tmp_index_names) > 1:
-        index_name = verify_temp_column_name("__index_merged__")
+        index_name = verify_temp_column_name(sdf, "__index_merged__")
         sdf = sdf.withColumn(index_name, F.struct(*tmp_index_names))
     else:
         index_name = tmp_index_names[0]
 
     if len(tmp_columns_names) > 1:
-        columns_name = verify_temp_column_name("__columns_merged__")
+        columns_name = verify_temp_column_name(sdf, "__columns_merged__")
         sdf = sdf.withColumn(columns_name, F.struct(*tmp_columns_names))
     else:
         columns_name = tmp_columns_names[0]
@@ -2692,7 +2692,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
 
     # In above `sdf`, the type of `__index_merged_____columns_merged__` is `string`, not `struct`
     # Therefore, we need to make `struct` column for addressing MultiIndex.
-    merged_col = verify_temp_column_name(index_name + "_" + columns_name)
+    merged_col = verify_temp_column_name(sdf, index_name + "_" + columns_name)
 
     sdf_struct_map = sdf.select(
         sdf[index_name], F.regexp_replace(sdf[index_name].cast("string"), " ", "").alias(merged_col)
