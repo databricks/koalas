@@ -2692,7 +2692,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
 
     # In above `sdf`, the type of `__index_merged_____columns_merged__` is `string`, not `struct`
     # Therefore, we need to make `struct` column for addressing MultiIndex.
-    merged_col = verify_temp_column_name(sdf, index_name + "_" + columns_name)
+    merged_col = index_name + "_" + columns_name
 
     sdf_struct_map = sdf.select(
         sdf[index_name], F.regexp_replace(sdf[index_name].cast("string"), " ", "").alias(merged_col)
