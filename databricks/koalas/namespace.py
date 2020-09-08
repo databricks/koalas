@@ -58,6 +58,7 @@ from databricks.koalas.utils import (
     same_anchor,
     scol_for,
     validate_axis,
+    verify_temp_column_name,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import (
@@ -2634,8 +2635,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
     index = [Series(idx) if isinstance(idx, np.ndarray) else idx for idx in index]
     columns = [Series(col) if isinstance(col, np.ndarray) else col for col in columns]
 
-    # since there is a high possibility duplicated index and column names,
-    # we just make temporal names for all index & columns like pandas
+    # Make temporal names for all index & columns like pandas if names are not specified.
     #
     # >>> pd.crosstab([a, a, a, a, a], [c, c, c, c])
     # col_0                         dull shiny
@@ -2652,11 +2652,11 @@ def crosstab(index, columns, rownames=None, colnames=None):
         "col_{}".format(i) if ser.name is None else ser.name for i, ser in enumerate(columns)
     ]
 
-    # make base DataFrame `kdf` from the first factor of `index`,
+    # Make base DataFrame `kdf` from the first item of `index`,
     first = index[0].rename(tmp_index_names[0])
     kdf = first.to_frame()
 
-    # append all Series in `index` and `columns` to `kdf`
+    # Append all Series in `index` and `columns` to `kdf`
     for kser, tmp_index_name in zip(index[1:], tmp_index_names[1:]):
         kdf[tmp_index_name] = kser
     for kser, tmp_columns_name in zip(columns, tmp_columns_names):
@@ -2668,13 +2668,13 @@ def crosstab(index, columns, rownames=None, colnames=None):
     # if `index` or `columns` has multiple values,
     # we should merge(group) them to estimate crosstab properly
     if len(tmp_index_names) > 1:
-        index_name = "__index_merged__"
+        index_name = verify_temp_column_name("__index_merged__")
         sdf = sdf.withColumn(index_name, F.struct(*tmp_index_names))
     else:
         index_name = tmp_index_names[0]
 
     if len(tmp_columns_names) > 1:
-        columns_name = "__columns_merged__"
+        columns_name = verify_temp_column_name("__columns_merged__")
         sdf = sdf.withColumn(columns_name, F.struct(*tmp_columns_names))
     else:
         columns_name = tmp_columns_names[0]
@@ -2690,9 +2690,9 @@ def crosstab(index, columns, rownames=None, colnames=None):
     # |                      [foo,foo,foo]|                  2|                  1|             ...
     # +-----------------------------------+-------------------+-------------------+-------------...
 
-    # since the type of `__index_merged_____columns_merged__` is `string`, not `struct`
-    # we need to make `struct` column for address multi index.
-    merged_col = index_name + "_" + columns_name
+    # In above `sdf`, the type of `__index_merged_____columns_merged__` is `string`, not `struct`
+    # Therefore, we need to make `struct` column for addressing MultiIndex.
+    merged_col = verify_temp_column_name(index_name + "_" + columns_name)
 
     sdf_struct_map = sdf.select(
         sdf[index_name], F.regexp_replace(sdf[index_name].cast("string"), " ", "").alias(merged_col)
