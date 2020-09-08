@@ -2504,6 +2504,7 @@ def broadcast(obj):
 def crosstab(index, columns, rownames=None, colnames=None):
     """
     Compute a simple cross tabulation of two factors.
+
     Parameters
     ----------
     index : array-like, Series, or list of arrays/Series
@@ -2514,10 +2515,12 @@ def crosstab(index, columns, rownames=None, colnames=None):
         If passed, must match number of row arrays passed.
     colnames : sequence, default None
         If passed, must match number of column arrays passed.
+
     Returns
     -------
     DataFrame
         Cross tabulation of the data.
+
     Examples
     --------
     >>> from databricks.koalas.config import set_option, reset_option
@@ -2526,15 +2529,18 @@ def crosstab(index, columns, rownames=None, colnames=None):
     ...               "bar", "bar", "foo", "foo", "foo"], dtype=object)
     >>> b = np.array(["one", "one", "one", "two", "one", "one",
     ...               "one", "two", "two", "two", "one"], dtype=object)
+
     Since Koalas doesn't support duplicated index or columns names internally,
     you sould specify `rownames` or `colnames` if you want to use duplicated name.
     if not, default names are made automatically started with `row_`, `cols_`.
+
     >>> ks.crosstab(a, b).sort_index()
     ... # doctest: +NORMALIZE_WHITESPACE
     col_0  one  two
     row_0
     bar      3    1
     foo      4    3
+
     >>> ks.crosstab(a, b, rownames=['0'], colnames=['0']).sort_index()
     ... # doctest: +NORMALIZE_WHITESPACE
     0    one  two
@@ -2542,6 +2548,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
     bar    3    1
     foo    4    3
     You can specify multiple index or columns
+
     >>> ks.crosstab([a, b], a).sort_index()
     ... # doctest: +NORMALIZE_WHITESPACE
     col_0        bar  foo
@@ -2550,6 +2557,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
           two      1    0
     foo   one      0    4
           two      0    3
+
     >>> ks.crosstab(a, [b, a]).sort_index()
     ... # doctest: +NORMALIZE_WHITESPACE
     col_0 one     two
@@ -2557,6 +2565,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
     row_0
     bar     3   0   1   0
     foo     0   4   0   3
+
     >>> ks.crosstab([a, b], [b, a]).sort_index()
     ... # doctest: +NORMALIZE_WHITESPACE
     col_0       one     two
@@ -2566,7 +2575,9 @@ def crosstab(index, columns, rownames=None, colnames=None):
           two     0   0   1   0
     foo   one     0   4   0   0
           two     0   0   0   3
+
     Of course, with specifying multiple names of index or columns
+
     >>> ks.crosstab([a, b], a,
     ...             rownames=['myidx_1', 'myidx_2'],
     ...             colnames=['mycol_1']).sort_index()
@@ -2577,6 +2588,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
             two        1    0
     foo     one        0    4
             two        0    3
+
     >>> ks.crosstab(a, [b, a],
     ...             rownames=['myidx_1'],
     ...             colnames=['mycol_1', 'mycol_2']).sort_index()
@@ -2586,6 +2598,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
     myidx_1
     bar       3   0   1   0
     foo       0   4   0   3
+
     >>> ks.crosstab([a, b], [b, a],
     ...             rownames=['myidx_1', 'myidx_2'],
     ...             colnames=['mycol_1', 'mycol_2']).sort_index()
@@ -2597,6 +2610,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
             two       0   0   1   0
     foo     one       0   4   0   0
             two       0   0   0   3
+
     >>> reset_option("compute.ops_on_diff_frames")
     """
     if not isinstance(index, (np.ndarray, Series, list)):
