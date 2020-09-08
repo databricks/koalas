@@ -2548,6 +2548,7 @@ def crosstab(index, columns, rownames=None, colnames=None):
     0
     bar    3    1
     foo    4    3
+
     You can specify multiple index or columns
 
     >>> ks.crosstab([a, b], a).sort_index()
