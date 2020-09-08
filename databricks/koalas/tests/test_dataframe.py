@@ -3814,7 +3814,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             sys.stdout = prev
 
     def test_mad(self):
-        pdf = pd.DataFrame({"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]})
+        pdf = pd.DataFrame(
+            {
+                "A": [1, 2, None, 4, np.nan],
+                "B": [-0.1, 0.2, -0.3, np.nan, 0.5],
+                "C": ["a", "b", "c", "d", "e"],
+            }
+        )
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.mad(), pdf.mad())
@@ -3824,7 +3830,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.mad(axis=2)
 
         # MultiIndex columns
-        columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y")])
+        columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y"), ("A", "Z")])
         pdf.columns = columns
         kdf.columns = columns
 
