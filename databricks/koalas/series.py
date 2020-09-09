@@ -1022,6 +1022,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def alias(self, name):
         """An alias for :meth:`Series.rename`."""
+        warnings.warn(
+            "Series.alias is deprecated as of Series.rename. Please use the API instead.",
+            FutureWarning,
+        )
         return self.rename(name)
 
     @property
