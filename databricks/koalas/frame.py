@@ -53,6 +53,8 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     ArrayType,
+    LongType,
+    FractionalType,
 )
 from pyspark.sql.window import Window
 
@@ -10077,6 +10079,85 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         new_sdf = default_session().createDataFrame(rows, sdf.schema)
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
+
+    def product(self):
+        """
+        Return the product of the values as Series.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Examples
+        --------
+
+        Non-numeric type column is not included to the result.
+
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4, 5],
+        ...                     'B': [10, 20, 30, 40, 50],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A   B  C
+        0  1  10  a
+        1  2  20  b
+        2  3  30  c
+        3  4  40  d
+        4  5  50  e
+
+        >>> kdf.prod().sort_index()
+        A         120
+        B    12000000
+        dtype: int64
+
+        If there is no numeric type columns, returns empty Series.
+
+        >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
+        Series([], dtype: float64)
+        """
+        from databricks.koalas.series import first_series
+
+        has_float_col = False
+        column_labels = []
+        # Filtering out only column names of numeric type column.
+        for column_label in self._internal.column_labels:
+            dtype = self._kser_for(column_label).spark.data_type
+            if isinstance(dtype, NumericType):
+                column_labels.append(column_label)
+                if isinstance(dtype, FractionalType):
+                    has_float_col = True
+
+        # Getting spark columns from column names.
+        spark_columns = [
+            self._internal.spark_column_for(column_label) for column_label in column_labels
+        ]
+        if not spark_columns:
+            # If DataFrame has no numeric type columns, return empty Series.
+            return ks.Series([])
+
+        spark_frame = self._internal.spark_frame
+        conds = []
+        for spark_column, column_label in zip(spark_columns, column_labels):
+            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
+            conds.append(F.exp(F.sum(F.log(cond))).alias(name_like_string(column_label)))
+
+        spark_frame = spark_frame.select(
+            [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + conds
+        )
+
+        internal = InternalFrame(
+            spark_frame=spark_frame,
+            index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
+            column_labels=column_labels,
+            column_label_names=self._internal.column_label_names,
+        )
+
+        with ks.option_context("compute.max_rows", None):
+            result = first_series(DataFrame(internal).T)
+            if not has_float_col:
+                return result.spark.transform(lambda col: F.round(col).cast(LongType()))
+            else:
+                return result
+
+    prod = product
 
     def _to_internal_pandas(self):
         """

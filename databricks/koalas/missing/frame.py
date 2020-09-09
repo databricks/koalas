@@ -55,8 +55,6 @@ class _MissingPandasLikeDataFrame(object):
     last = _unsupported_function("last")
     lookup = _unsupported_function("lookup")
     mode = _unsupported_function("mode")
-    prod = _unsupported_function("prod")
-    product = _unsupported_function("product")
     reindex_like = _unsupported_function("reindex_like")
     rename_axis = _unsupported_function("rename_axis")
     reorder_levels = _unsupported_function("reorder_levels")

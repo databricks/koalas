@@ -3908,3 +3908,71 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
+
+    def test_product(self):
+        pdf = pd.DataFrame(
+            {"A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50], "C": ["a", "b", "c", "d", "e"]}
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # Named columns
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # Named MultiIndex columns
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # No numeric columns
+        pdf = pd.DataFrame({"key": ["a", "b", "c"], "val": ["x", "y", "z"]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # No numeric named columns
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+
+        # No numeric MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+
+        # No numeric named MultiIndex columns
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+
+        # All NaN columns
+        pdf = pd.DataFrame(
+            {
+                "A": [np.nan, np.nan, np.nan, np.nan, np.nan],
+                "B": [10, 20, 30, 40, 50],
+                "C": ["a", "b", "c", "d", "e"],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+        # All NaN named columns
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+        # All NaN MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+        # All NaN named MultiIndex columns
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
