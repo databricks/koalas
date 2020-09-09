@@ -1728,6 +1728,12 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
+        import os
+
+        self.assertEqual(
+            ks.get_option("compute.default_index_type"), os.getenv("DEFAULT_INDEX_TYPE", "sequence")
+        )
+
         acc = ks.utils.default_session().sparkContext.accumulator(0)
 
         def sum_with_acc_frame(x) -> ks.DataFrame[np.float64, np.float64]:
