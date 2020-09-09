@@ -2825,7 +2825,7 @@ class MultiIndex(Index):
         >>> kmidx.item()
         ('a', 'x')
         """
-        return self._kdf.head(2).to_pandas().index.item()
+        return self._kdf.head(2)._to_internal_pandas().index.item()
 
     @property
     def inferred_type(self):
