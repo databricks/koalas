@@ -93,20 +93,26 @@ def column_op(f):
         # To cover this case, explicitly check if the argument is Koalas Series and
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
+
         if all(same_anchor(self, col) for col in cols):
             # Same DataFrame anchors
             args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self.spark.column, *args)
             scol = booleanize_null(self.spark.column, scol, f)
 
-            return self._with_new_scol(scol)
+            kser = self._with_new_scol(scol)
         else:
             # Different DataFrame anchors
             def apply_func(this_column, *that_columns):
                 scol = f(this_column, *that_columns)
                 return booleanize_null(this_column, scol, f)
 
-            return align_diff_series(apply_func, self, *args, how="full")
+            kser = align_diff_series(apply_func, self, *args, how="full")
+
+        if not all(self.name == col.name for col in cols):
+            kser = kser.rename()
+
+        return kser
 
     return wrapper
 
