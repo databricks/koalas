@@ -125,14 +125,14 @@ a    4.0
 b    NaN
 c    6.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.radd(df.b)
 a    4.0
 b    NaN
 c    6.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 _sub_example_SERIES = """
@@ -153,14 +153,14 @@ a    0.0
 b    NaN
 c    2.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.rsub(df.b)
 a    0.0
 b    NaN
 c   -2.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 _mul_example_SERIES = """
@@ -181,14 +181,14 @@ a    4.0
 b    NaN
 c    8.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.rmul(df.b)
 a    4.0
 b    NaN
 c    8.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 _div_example_SERIES = """
@@ -209,14 +209,14 @@ a    1.0
 b    NaN
 c    2.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.rdiv(df.b)
 a    1.0
 b    NaN
 c    0.5
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 _pow_example_SERIES = """
@@ -237,14 +237,14 @@ a     4.0
 b     NaN
 c    16.0
 d     NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.rpow(df.b)
 a     4.0
 b     NaN
 c    16.0
 d     NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 _mod_example_SERIES = """
@@ -265,14 +265,14 @@ a    0.0
 b    NaN
 c    0.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.rmod(df.b)
 a    0.0
 b    NaN
 c    2.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 _floordiv_example_SERIES = """
@@ -293,14 +293,14 @@ a    1.0
 b    NaN
 c    2.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 
 >>> df.a.rfloordiv(df.b)
 a    1.0
 b    NaN
 c    0.0
 d    NaN
-Name: a, dtype: float64
+dtype: float64
 """
 
 T = TypeVar("T")
@@ -441,7 +441,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def radd(self, other):
-        return (other + self).rename(self.name)
+        return other + self
 
     radd.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Addition",
@@ -465,7 +465,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     divide = div
 
     def rdiv(self, other):
-        return (other / self).rename(self.name)
+        return other / self
 
     rdiv.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Floating division",
@@ -487,7 +487,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def rtruediv(self, other):
-        return (other / self).rename(self.name)
+        return other / self
 
     rtruediv.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Floating division",
@@ -511,7 +511,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     multiply = mul
 
     def rmul(self, other):
-        return (other * self).rename(self.name)
+        return other * self
 
     rmul.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Multiplication",
@@ -535,7 +535,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     subtract = sub
 
     def rsub(self, other):
-        return (other - self).rename(self.name)
+        return other - self
 
     rsub.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Subtraction",
@@ -557,7 +557,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def rmod(self, other):
-        return (other % self).rename(self.name)
+        return other % self
 
     rmod.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Modulo",
@@ -579,7 +579,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def rpow(self, other):
-        return (other ** self).rename(self.name)
+        return other ** self
 
     rpow.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Exponential power",
@@ -601,7 +601,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     )
 
     def rfloordiv(self, other):
-        return (other // self).rename(self.name)
+        return other // self
 
     rfloordiv.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Integer division",

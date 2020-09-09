@@ -431,13 +431,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertNotIn(5, dir(kdf))
 
     def test_column_names(self):
-        kdf = self.kdf
+        pdf, kdf = self.df_pair
 
-        self.assert_eq(kdf.columns, pd.Index(["a", "b"]))
-        self.assert_eq(kdf[["b", "a"]].columns, pd.Index(["b", "a"]))
-        self.assertEqual(kdf["a"].name, "a")
-        self.assertEqual((kdf["a"] + 1).name, "a")
-        self.assertEqual((kdf["a"] + kdf["b"]).name, "a")  # TODO: None
+        self.assert_eq(kdf.columns, pdf.columns)
+        self.assert_eq(kdf[["b", "a"]].columns, pdf[["b", "a"]].columns)
+        self.assert_eq(kdf["a"].name, pdf["a"].name)
+        self.assert_eq((kdf["a"] + 1).name, (pdf["a"] + 1).name)
+
+        self.assert_eq((kdf.a + kdf.b).name, (pdf.a + pdf.b).name)
+        self.assert_eq((kdf.a + kdf.b.rename("a")).name, (pdf.a + pdf.b.rename("a")).name)
+        self.assert_eq((kdf.a + kdf.b.rename()).name, (pdf.a + pdf.b.rename()).name)
+        self.assert_eq((kdf.a.rename() + kdf.b).name, (pdf.a.rename() + pdf.b).name)
+        self.assert_eq(
+            (kdf.a.rename() + kdf.b.rename()).name, (pdf.a.rename() + pdf.b.rename()).name
+        )
 
     def test_rename_columns(self):
         pdf = pd.DataFrame(

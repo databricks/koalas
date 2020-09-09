@@ -717,7 +717,9 @@ class DataFrame(Frame, Generic[T]):
                 def apply_op(kdf, this_column_labels, that_column_labels):
                     for this_label, that_label in zip(this_column_labels, that_column_labels):
                         yield (
-                            getattr(kdf._kser_for(this_label), op)(kdf._kser_for(that_label)),
+                            getattr(kdf._kser_for(this_label), op)(
+                                kdf._kser_for(that_label)
+                            ).rename(this_label),
                             this_label,
                         )
 
@@ -10293,7 +10295,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def apply_op(kdf, this_column_labels, that_column_labels):
                 for this_label, that_label in zip(this_column_labels, that_column_labels):
                     yield (
-                        ufunc(kdf._kser_for(this_label), kdf._kser_for(that_label), **kwargs),
+                        ufunc(
+                            kdf._kser_for(this_label), kdf._kser_for(that_label), **kwargs
+                        ).rename(this_label),
                         this_label,
                     )
 
@@ -10309,7 +10313,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for inp in inputs:
                     arguments.append(inp[label] if isinstance(inp, DataFrame) else inp)
                 # both binary and unary.
-                applied.append(ufunc(*arguments, **kwargs))
+                applied.append(ufunc(*arguments, **kwargs).rename(label))
 
             internal = this._internal.with_new_columns(applied)
             return DataFrame(internal)

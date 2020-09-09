@@ -176,10 +176,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(
-            (pdf["left"] | pdf["right"]).rename("left"),  # TODO: Fix the Series name
-            kdf["left"] | kdf["right"],
-        )
+        self.assert_eq(pdf["left"] | pdf["right"], kdf["left"] | kdf["right"])
 
     def test_and(self):
         pdf = pd.DataFrame(
@@ -191,8 +188,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            (pdf["left"] & pdf["right"]).rename("left"),  # TODO: Fix the Series name
-            kdf["left"] & kdf["right"],
+            pdf["left"] & pdf["right"], kdf["left"] & kdf["right"],
         )
 
     def test_to_numpy(self):
@@ -1502,7 +1498,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kmod, pmod)
 
     def test_rdivmod(self):
-        pser = pd.Series([100, None, 300, None, 500], name="Koalas")
+        pser = pd.Series([100, None, 300, None, 500])
         kser = ks.from_pandas(pser)
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
@@ -1536,7 +1532,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b).rename("a"))
+        self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b))
 
     def test_rmod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
@@ -1548,7 +1544,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.a.rmod(kdf.b), pdf.a.rmod(pdf.b).rename("a"))
+        self.assert_eq(kdf.a.rmod(kdf.b), pdf.a.rmod(pdf.b))
 
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")

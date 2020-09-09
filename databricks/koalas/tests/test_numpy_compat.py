@@ -48,7 +48,7 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
     @property
     def pdf(self):
         return pd.DataFrame(
-            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0]},
             index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
         )
 
@@ -59,9 +59,7 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
     def test_np_add_series(self):
         kdf = self.kdf
         pdf = self.pdf
-        self.assert_eq(
-            np.add(kdf.a, kdf.b), np.add(pdf.a, pdf.b).rename("a")  # TODO: Fix the Series name
-        )
+        self.assert_eq(np.add(kdf.a, kdf.b), np.add(pdf.a, pdf.b))
 
         kdf = self.kdf
         pdf = self.pdf
@@ -107,11 +105,7 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
             if np_name not in self.blacklist:
                 try:
                     # binary ufunc
-                    self.assert_eq(
-                        np_func(pdf.a, pdf.b).rename("a"),  # TODO: Fix the Series name
-                        np_func(kdf.a, kdf.b),
-                        almost=True,
-                    )
+                    self.assert_eq(np_func(pdf.a, pdf.b), np_func(kdf.a, kdf.b), almost=True)
                     self.assert_eq(np_func(pdf.a, 1), np_func(kdf.a, 1), almost=True)
                 except Exception as e:
                     raise AssertionError("Test in '%s' function was failed." % np_name) from e
@@ -125,9 +119,7 @@ class NumPyCompatTest(ReusedSQLTestCase, SQLTestUtils):
                     try:
                         # binary ufunc
                         self.assert_eq(
-                            np_func(pdf.a, pdf2.b)
-                            .rename("a")
-                            .sort_index(),  # TODO: Fix the Series name
+                            np_func(pdf.a, pdf2.b).sort_index(),
                             np_func(kdf.a, kdf2.b).sort_index(),
                             almost=True,
                         )
