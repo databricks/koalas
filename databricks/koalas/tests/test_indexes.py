@@ -14,8 +14,9 @@
 # limitations under the License.
 #
 
-from distutils.version import LooseVersion
 import inspect
+from distutils.version import LooseVersion
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -1388,6 +1389,36 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
+
+    def test_item(self):
+        pidx = pd.Index([10])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        # with timestamp
+        pidx = pd.Index([datetime(1990, 3, 9)])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.item(), kmidx.item())
+
+        # MultiIndex with timestamp
+        pmidx = pd.MultiIndex.from_tuples([(datetime(1990, 3, 9), datetime(2019, 8, 15))])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        err_msg = "can only convert an array of size 1 to a Python scalar"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            ks.Index([10, 20]).item()
+        with self.assertRaisesRegex(ValueError, err_msg):
+            ks.MultiIndex.from_tuples([("a", "x"), ("b", "y")]).item()
 
     def test_inferred_type(self):
         # Integer

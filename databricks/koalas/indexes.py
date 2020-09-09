@@ -1962,6 +1962,28 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
+    def item(self):
+        """
+        Return the first element of the underlying data as a python scalar.
+
+        Returns
+        -------
+        scalar
+            The first element of Index.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10])
+        >>> kidx.item()
+        10
+        """
+        return self.to_series().item()
+
     @property
     def inferred_type(self):
         """
@@ -2782,6 +2804,28 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
+
+    def item(self):
+        """
+        Return the first element of the underlying data as a python tuple.
+
+        Returns
+        -------
+        tuple
+            The first element of MultiIndex.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kmidx = ks.MultiIndex.from_tuples([('a', 'x')])
+        >>> kmidx.item()
+        ('a', 'x')
+        """
+        return self._kdf.head(2)._to_internal_pandas().index.item()
 
     @property
     def inferred_type(self):

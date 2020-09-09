@@ -99,6 +99,7 @@ Conversion
    :toctree: api/
 
    Index.astype
+   Index.item
    Index.to_series
    Index.to_frame
    Index.to_numpy
@@ -240,6 +241,7 @@ MultiIndex Conversion
    :toctree: api/
 
    MultiIndex.astype
+   MultiIndex.item
    MultiIndex.to_series
    MultiIndex.to_frame
    MultiIndex.to_numpy
