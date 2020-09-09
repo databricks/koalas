@@ -14,6 +14,4 @@
 # limitations under the License.
 #
 
-from databricks.koalas.typedef.typehints import *
-
-__all__ = ["as_spark_type", "infer_pd_series_spark_type"]
+from databricks.koalas.typedef.typehints import *  # noqa: F401,F405
