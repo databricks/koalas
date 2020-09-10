@@ -53,6 +53,8 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     ArrayType,
+    LongType,
+    FractionalType,
 )
 from pyspark.sql.window import Window
 
@@ -717,7 +719,9 @@ class DataFrame(Frame, Generic[T]):
                 def apply_op(kdf, this_column_labels, that_column_labels):
                     for this_label, that_label in zip(this_column_labels, that_column_labels):
                         yield (
-                            getattr(kdf._kser_for(this_label), op)(kdf._kser_for(that_label)),
+                            getattr(kdf._kser_for(this_label), op)(
+                                kdf._kser_for(that_label)
+                            ).rename(this_label),
                             this_label,
                         )
 
@@ -3491,7 +3495,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
-        Dataframe.notnull
+        DataFrame.notnull
 
         Examples
         --------
@@ -3523,7 +3527,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
-        Dataframe.isnull
+        DataFrame.isnull
 
         Examples
         --------
@@ -6915,7 +6919,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         original DataFrame’s index in the result unlike pandas.
 
         >>> join_kdf = kdf1.join(kdf2.set_index('key'), on='key')
-        >>> join_kdf.index.sort_values()
+        >>> join_kdf.index
         Int64Index([0, 1, 2, 3], dtype='int64')
         """
         if isinstance(right, ks.Series):
@@ -6978,7 +6982,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  1  2
         1  3  4
 
-        >>> df.append(df, ignore_index=True).sort_index()
+        >>> df.append(df, ignore_index=True)
            A  B
         0  1  2
         1  3  4
@@ -7921,7 +7925,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  b  3  4
         2  c  5  6
 
-        >>> ks.melt(df).sort_index()
+        >>> ks.melt(df)
           variable value
         0        A     a
         1        B     1
@@ -7933,7 +7937,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         7        B     5
         8        C     6
 
-        >>> df.melt(id_vars='A').sort_index()
+        >>> df.melt(id_vars='A')
            A variable  value
         0  a        B      1
         1  a        C      2
@@ -7942,19 +7946,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  c        B      5
         5  c        C      6
 
-        >>> df.melt(value_vars='A').sort_index()
+        >>> df.melt(value_vars='A')
           variable value
         0        A     a
         1        A     b
         2        A     c
 
-        >>> ks.melt(df, id_vars=['A', 'B']).sort_index()
+        >>> ks.melt(df, id_vars=['A', 'B'])
            A  B variable  value
         0  a  1        C      2
         1  b  3        C      4
         2  c  5        C      6
 
-        >>> df.melt(id_vars=['A'], value_vars=['C']).sort_index()
+        >>> df.melt(id_vars=['A'], value_vars=['C'])
            A variable  value
         0  a        C      2
         1  b        C      4
@@ -7963,7 +7967,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         The names of 'variable' and 'value' columns can be customized:
 
         >>> ks.melt(df, id_vars=['A'], value_vars=['B'],
-        ...         var_name='myVarname', value_name='myValname').sort_index()
+        ...         var_name='myVarname', value_name='myValname')
            A myVarname  myValname
         0  a         B          1
         1  b         B          3
@@ -9940,18 +9944,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                 return scol
 
+            new_column_labels = []
+            for label in self._internal.column_labels:
+                # Filtering out only columns of numeric and boolean type column.
+                dtype = self._kser_for(label).spark.data_type
+                if isinstance(dtype, (NumericType, BooleanType)):
+                    new_column_labels.append(label)
+
             new_columns = [
                 F.avg(get_spark_column(self, label)).alias(name_like_string(label))
-                for label in self._internal.column_labels
+                for label in new_column_labels
             ]
+
             mean_data = self._internal.spark_frame.select(new_columns).first()
 
             new_columns = [
                 F.avg(
                     F.abs(get_spark_column(self, label) - mean_data[name_like_string(label)])
                 ).alias(name_like_string(label))
-                for label in self._internal.column_labels
+                for label in new_column_labels
             ]
+
             sdf = self._internal.spark_frame.select(
                 [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + new_columns
             )
@@ -9960,7 +9973,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 internal = InternalFrame(
                     spark_frame=sdf,
                     index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
-                    column_labels=self._internal.column_labels,
+                    column_labels=new_column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
 
@@ -10066,6 +10079,85 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         new_sdf = default_session().createDataFrame(rows, sdf.schema)
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
+
+    def product(self):
+        """
+        Return the product of the values as Series.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Examples
+        --------
+
+        Non-numeric type column is not included to the result.
+
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4, 5],
+        ...                     'B': [10, 20, 30, 40, 50],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A   B  C
+        0  1  10  a
+        1  2  20  b
+        2  3  30  c
+        3  4  40  d
+        4  5  50  e
+
+        >>> kdf.prod().sort_index()
+        A         120
+        B    12000000
+        dtype: int64
+
+        If there is no numeric type columns, returns empty Series.
+
+        >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
+        Series([], dtype: float64)
+        """
+        from databricks.koalas.series import first_series
+
+        has_float_col = False
+        column_labels = []
+        # Filtering out only column names of numeric type column.
+        for column_label in self._internal.column_labels:
+            dtype = self._kser_for(column_label).spark.data_type
+            if isinstance(dtype, NumericType):
+                column_labels.append(column_label)
+                if isinstance(dtype, FractionalType):
+                    has_float_col = True
+
+        # Getting spark columns from column names.
+        spark_columns = [
+            self._internal.spark_column_for(column_label) for column_label in column_labels
+        ]
+        if not spark_columns:
+            # If DataFrame has no numeric type columns, return empty Series.
+            return ks.Series([])
+
+        spark_frame = self._internal.spark_frame
+        conds = []
+        for spark_column, column_label in zip(spark_columns, column_labels):
+            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
+            conds.append(F.exp(F.sum(F.log(cond))).alias(name_like_string(column_label)))
+
+        spark_frame = spark_frame.select(
+            [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + conds
+        )
+
+        internal = InternalFrame(
+            spark_frame=spark_frame,
+            index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
+            column_labels=column_labels,
+            column_label_names=self._internal.column_label_names,
+        )
+
+        with ks.option_context("compute.max_rows", None):
+            result = first_series(DataFrame(internal).T)
+            if not has_float_col:
+                return result.spark.transform(lambda col: F.round(col).cast(LongType()))
+            else:
+                return result
+
+    prod = product
 
     def _to_internal_pandas(self):
         """
@@ -10284,7 +10376,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             def apply_op(kdf, this_column_labels, that_column_labels):
                 for this_label, that_label in zip(this_column_labels, that_column_labels):
                     yield (
-                        ufunc(kdf._kser_for(this_label), kdf._kser_for(that_label), **kwargs),
+                        ufunc(
+                            kdf._kser_for(this_label), kdf._kser_for(that_label), **kwargs
+                        ).rename(this_label),
                         this_label,
                     )
 
@@ -10300,7 +10394,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for inp in inputs:
                     arguments.append(inp[label] if isinstance(inp, DataFrame) else inp)
                 # both binary and unary.
-                applied.append(ufunc(*arguments, **kwargs))
+                applied.append(ufunc(*arguments, **kwargs).rename(label))
 
             internal = this._internal.with_new_columns(applied)
             return DataFrame(internal)

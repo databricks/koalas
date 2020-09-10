@@ -19,7 +19,7 @@ import unittest
 import pandas
 import pandas as pd
 import numpy as np
-from pyspark.sql.types import *
+from pyspark.sql.types import FloatType, IntegerType, LongType, StringType, StructField, StructType
 
 from databricks.koalas.typedef import infer_return_type
 from databricks import koalas as ks
@@ -90,13 +90,13 @@ class TypeHintTests(unittest.TestCase):
         "Type inference from pandas instances is supported with Python 3.7+",
     )
     def test_infer_schema_with_names_pandas_instances(self):
-        def func() -> 'pd.DataFrame["a" : np.float, "b":str]':
+        def func() -> 'pd.DataFrame["a" : np.float, "b":str]':  # noqa: F821
             pass
 
         expected = StructType([StructField("a", FloatType()), StructField("b", StringType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
-        def func() -> "pd.DataFrame['a': np.float, 'b': int]":
+        def func() -> "pd.DataFrame['a': np.float, 'b': int]":  # noqa: F821
             pass
 
         expected = StructType([StructField("a", FloatType()), StructField("b", IntegerType())])
@@ -116,7 +116,7 @@ class TypeHintTests(unittest.TestCase):
     )
     def test_infer_schema_with_names_pandas_instances_negative(self):
         def try_infer_return_type():
-            def f() -> 'pd.DataFrame["a" : np.float : 1, "b":str:2]':
+            def f() -> 'pd.DataFrame["a" : np.float : 1, "b":str:2]':  # noqa: F821
                 pass
 
             infer_return_type(f)
@@ -135,7 +135,7 @@ class TypeHintTests(unittest.TestCase):
         self.assertRaisesRegex(TypeError, "not understood", try_infer_return_type)
 
         def try_infer_return_type():
-            def f() -> 'pd.DataFrame["a" : np.float : 1, "b":str:2]':
+            def f() -> 'pd.DataFrame["a" : np.float : 1, "b":str:2]':  # noqa: F821
                 pass
 
             infer_return_type(f)
@@ -155,7 +155,7 @@ class TypeHintTests(unittest.TestCase):
 
     def test_infer_schema_with_names_negative(self):
         def try_infer_return_type():
-            def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':
+            def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':  # noqa: F821
                 pass
 
             infer_return_type(f)
@@ -174,7 +174,7 @@ class TypeHintTests(unittest.TestCase):
         self.assertRaisesRegex(TypeError, "not understood", try_infer_return_type)
 
         def try_infer_return_type():
-            def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':
+            def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':  # noqa: F821
                 pass
 
             infer_return_type(f)

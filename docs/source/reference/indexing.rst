@@ -24,6 +24,7 @@ Properties
    Index.has_duplicates
    Index.hasnans
    Index.dtype
+   Index.inferred_type
    Index.is_all_dates
    Index.shape
    Index.name
@@ -98,6 +99,7 @@ Conversion
    :toctree: api/
 
    Index.astype
+   Index.item
    Index.to_series
    Index.to_frame
    Index.to_numpy
@@ -171,6 +173,7 @@ MultiIndex Properties
 
    MultiIndex.has_duplicates
    MultiIndex.hasnans
+   MultiIndex.inferred_type
    MultiIndex.is_all_dates
    MultiIndex.shape
    MultiIndex.names
@@ -238,6 +241,7 @@ MultiIndex Conversion
    :toctree: api/
 
    MultiIndex.astype
+   MultiIndex.item
    MultiIndex.to_series
    MultiIndex.to_frame
    MultiIndex.to_numpy

@@ -74,10 +74,9 @@ elif "ARROW_PRE_0_15_IPC_FORMAT" in os.environ:
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.config import get_option, set_option, reset_option, options
 from databricks.koalas.groupby import NamedAgg
 
-__all__ = [
+__all__ = [  # noqa: F405
     "read_csv",
     "read_parquet",
     "to_datetime",
@@ -159,6 +158,6 @@ _auto_patch_spark()
 _auto_patch_pandas()
 
 # Import after the usage logger is attached.
-from databricks.koalas.config import *
-from databricks.koalas.namespace import *
+from databricks.koalas.config import get_option, options, option_context, reset_option, set_option
+from databricks.koalas.namespace import *  # F405
 from databricks.koalas.sql import sql

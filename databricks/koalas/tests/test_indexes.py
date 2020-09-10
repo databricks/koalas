@@ -14,8 +14,9 @@
 # limitations under the License.
 #
 
-from distutils.version import LooseVersion
 import inspect
+from distutils.version import LooseVersion
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -75,19 +76,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
 
         self.assert_eq(kidx.to_series(), pidx.to_series())
-        self.assert_eq(repr(kidx.to_series(name="a")), repr(pidx.to_series(name="a")))
+        self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
         # With name
         pidx.name = "Koalas"
         kidx.name = "Koalas"
-        self.assert_eq(repr(kidx.to_series()), repr(pidx.to_series()))
-        self.assert_eq(repr(kidx.to_series(name=("x", "a"))), repr(pidx.to_series(name=("x", "a"))))
+        self.assert_eq(kidx.to_series(), pidx.to_series())
+        self.assert_eq(kidx.to_series(name=("x", "a")), pidx.to_series(name=("x", "a")))
 
         # With tupled name
         pidx.name = ("x", "a")
         kidx.name = ("x", "a")
-        self.assert_eq(repr(kidx.to_series()), repr(pidx.to_series()))
-        self.assert_eq(repr(kidx.to_series(name="a")), repr(pidx.to_series(name="a")))
+        self.assert_eq(kidx.to_series(), pidx.to_series())
+        self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
         self.assert_eq((kidx + 1).to_series(), (pidx + 1).to_series())
 
@@ -106,43 +107,34 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.index
         kidx = self.kdf.index
 
-        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(
-            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
-        )
+        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
 
         pidx.name = "a"
         kidx.name = "a"
 
-        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(
-            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
-        )
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
-            self.assert_eq(repr(kidx.to_frame(name="x")), repr(pidx.to_frame(name="x")))
+            self.assert_eq(kidx.to_frame(name="x"), pidx.to_frame(name="x"))
             self.assert_eq(
-                repr(kidx.to_frame(index=False, name="x").sort_index()),
-                repr(pidx.to_frame(index=False, name="x")),
+                kidx.to_frame(index=False, name="x"), pidx.to_frame(index=False, name="x"),
             )
 
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
-        self.assert_eq(repr(kidx.to_frame()), repr(pidx.to_frame()))
-        self.assert_eq(
-            repr(kidx.to_frame(index=False).sort_index()), repr(pidx.to_frame(index=False))
-        )
+        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
+            self.assert_eq(kidx.to_frame(name=["x", "y"]), pidx.to_frame(name=["x", "y"]))
             self.assert_eq(
-                repr(kidx.to_frame(name=["x", "y"])), repr(pidx.to_frame(name=["x", "y"]))
-            )
-            self.assert_eq(
-                repr(kidx.to_frame(index=False, name=["x", "y"]).sort_index()),
-                repr(pidx.to_frame(index=False, name=["x", "y"])),
+                kidx.to_frame(index=False, name=["x", "y"]),
+                pidx.to_frame(index=False, name=["x", "y"]),
             )
 
     def test_index_names(self):
@@ -1397,3 +1389,59 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pser = pd.Series([pd.Timestamp("2020-07-30"), np.nan, pd.Timestamp("2020-07-30")])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
+
+    def test_item(self):
+        pidx = pd.Index([10])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        # with timestamp
+        pidx = pd.Index([datetime(1990, 3, 9)])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.item(), kmidx.item())
+
+        # MultiIndex with timestamp
+        pmidx = pd.MultiIndex.from_tuples([(datetime(1990, 3, 9), datetime(2019, 8, 15))])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pidx.item(), kidx.item())
+
+        err_msg = "can only convert an array of size 1 to a Python scalar"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            ks.Index([10, 20]).item()
+        with self.assertRaisesRegex(ValueError, err_msg):
+            ks.MultiIndex.from_tuples([("a", "x"), ("b", "y")]).item()
+
+    def test_inferred_type(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.inferred_type, kidx.inferred_type)
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.inferred_type, kidx.inferred_type)
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.inferred_type, kidx.inferred_type)
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.inferred_type, kidx.inferred_type)
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)

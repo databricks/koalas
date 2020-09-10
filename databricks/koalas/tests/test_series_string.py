@@ -65,8 +65,8 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         # TODO: Fix the Series names
-        self.assert_eq(kdf["col1"] + kdf["col2"], (pdf["col1"] + pdf["col2"]).rename("col1"))
-        self.assert_eq(kdf["col2"] + kdf["col1"], (pdf["col2"] + pdf["col1"]).rename("col2"))
+        self.assert_eq(kdf["col1"] + kdf["col2"], pdf["col1"] + pdf["col2"])
+        self.assert_eq(kdf["col2"] + kdf["col1"], pdf["col2"] + pdf["col1"])
 
     def test_string_add_str_lit(self):
         pdf = pd.DataFrame(dict(col1=["a", "b", "c"]))

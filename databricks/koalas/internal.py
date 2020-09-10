@@ -21,6 +21,8 @@ import re
 from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
 from collections import OrderedDict
+import os
+import py4j
 
 import numpy as np
 import pandas as pd
@@ -441,9 +443,19 @@ class InternalFrame(object):
                 "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
             )
 
+            if data_spark_columns is not None:
+                spark_frame = spark_frame.select(data_spark_columns)
+
             # Create default index.
             spark_frame = InternalFrame.attach_default_index(spark_frame)
             index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
+
+            if data_spark_columns is not None:
+                data_spark_columns = [
+                    scol_for(spark_frame, col)
+                    for col in spark_frame.columns
+                    if col != SPARK_DEFAULT_INDEX_NAME
+                ]
 
         if NATURAL_ORDER_COLUMN_NAME not in spark_frame.columns:
             spark_frame = spark_frame.withColumn(
@@ -577,6 +589,46 @@ class InternalFrame(object):
 
         >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark()
         >>> sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name="sequence")
+        >>> sdf.show()  # doctest: +NORMALIZE_WHITESPACE
+        +--------+---+
+        |sequence|  0|
+        +--------+---+
+        |       0|  a|
+        |       1|  b|
+        |       2|  c|
+        +--------+---+
+        """
+        if len(sdf.columns) > 0:
+            try:
+                jdf = sdf._jdf.toDF()
+
+                sql_ctx = sdf.sql_ctx
+                encoders = sql_ctx._jvm.org.apache.spark.sql.Encoders
+                encoder = encoders.tuple(jdf.exprEnc(), encoders.scalaLong())
+
+                jrdd = jdf.rdd().zipWithIndex()
+
+                df = spark.DataFrame(
+                    sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
+                )
+                columns = df.columns
+                return df.selectExpr(
+                    "`{}` as `{}`".format(columns[1], column_name), "`{}`.*".format(columns[0])
+                )
+            except py4j.protocol.Py4JError:
+                if "KOALAS_TESTING" in os.environ:
+                    raise
+                return InternalFrame._attach_distributed_sequence_column(sdf, column_name)
+        else:
+            return default_session().createDataFrame(
+                [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
+            )
+
+    @staticmethod
+    def _attach_distributed_sequence_column(sdf, column_name):
+        """
+        >>> sdf = ks.DataFrame(['a', 'b', 'c']).to_spark()
+        >>> sdf = InternalFrame._attach_distributed_sequence_column(sdf, column_name="sequence")
         >>> sdf.sort("sequence").show()  # doctest: +NORMALIZE_WHITESPACE
         +--------+---+
         |sequence|  0|
@@ -586,7 +638,6 @@ class InternalFrame(object):
         |       2|  c|
         +--------+---+
         """
-
         scols = [scol_for(sdf, column) for column in sdf.columns]
 
         spark_partition_column = verify_temp_column_name(sdf, "__spark_partition_id__")

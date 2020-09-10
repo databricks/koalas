@@ -170,6 +170,7 @@ Reindexing / Selection / Label manipulation
    Series.idxmin
    Series.isin
    Series.rename
+   Series.reindex
    Series.reset_index
    Series.sample
    Series.take

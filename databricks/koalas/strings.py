@@ -25,8 +25,6 @@ from pyspark.sql.types import StringType, BinaryType, ArrayType, LongType, MapTy
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 
-from databricks.koalas.base import column_op
-
 if TYPE_CHECKING:
     import databricks.koalas as ks
 
@@ -115,7 +113,7 @@ class StringMethods(object):
         3              swapcase
         dtype: object
         """
-        return column_op(lambda c: F.lower(c))(self._data).alias(self._data.name)
+        return self._data.spark.transform(F.lower)
 
     def upper(self) -> "ks.Series":
         """
@@ -138,7 +136,7 @@ class StringMethods(object):
         3              SWAPCASE
         dtype: object
         """
-        return column_op(lambda c: F.upper(c))(self._data).alias(self._data.name)
+        return self._data.spark.transform(F.upper)
 
     def swapcase(self) -> "ks.Series":
         """
@@ -1271,13 +1269,9 @@ class StringMethods(object):
         dtype: int64
         """
         if isinstance(self._data.spark.data_type, (ArrayType, MapType)):
-            return column_op(lambda c: F.size(c).cast(LongType()))(self._data).alias(
-                self._data.name
-            )
+            return self._data.spark.transform(lambda c: F.size(c).cast(LongType()))
         else:
-            return column_op(lambda c: F.length(c).cast(LongType()))(self._data).alias(
-                self._data.name
-            )
+            return self._data.spark.transform(lambda c: F.length(c).cast(LongType()))
 
     def ljust(self, width, fillchar=" ") -> "ks.Series":
         """

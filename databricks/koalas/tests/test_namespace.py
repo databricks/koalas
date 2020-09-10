@@ -76,8 +76,8 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         objs = [
             ([kdf, kdf], [pdf, pdf]),
-            ([kdf, kdf.reset_index().sort_index()], [pdf, pdf.reset_index()]),
-            ([kdf.reset_index().sort_index(), kdf], [pdf.reset_index(), pdf]),
+            ([kdf, kdf.reset_index()], [pdf, pdf.reset_index()]),
+            ([kdf.reset_index(), kdf], [pdf.reset_index(), pdf]),
             ([kdf, kdf[["C", "A"]]], [pdf, pdf[["C", "A"]]]),
             ([kdf[["C", "A"]], kdf], [pdf[["C", "A"]], pdf]),
             ([kdf, kdf["C"]], [pdf, pdf["C"]]),
@@ -90,11 +90,8 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             for obj in objs:
                 kdfs, pdfs = obj
                 with self.subTest(ignore_index=ignore_index, join=join, sort=sort, objs=pdfs):
-                    actual = ks.concat(kdfs, ignore_index=ignore_index, join=join, sort=sort)
-                    if ignore_index:
-                        actual = actual.sort_index()
                     self.assert_eq(
-                        actual,
+                        ks.concat(kdfs, ignore_index=ignore_index, join=join, sort=sort),
                         pd.concat(pdfs, ignore_index=ignore_index, join=join, sort=sort),
                         almost=(join == "outer"),
                     )
@@ -120,8 +117,8 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         objs = [
             ([kdf3, kdf3], [pdf3, pdf3]),
-            ([kdf3, kdf3.reset_index().sort_index()], [pdf3, pdf3.reset_index()]),
-            ([kdf3.reset_index().sort_index(), kdf3], [pdf3.reset_index(), pdf3]),
+            ([kdf3, kdf3.reset_index()], [pdf3, pdf3.reset_index()]),
+            ([kdf3.reset_index(), kdf3], [pdf3.reset_index(), pdf3]),
             ([kdf3, kdf3[[("Y", "C"), ("X", "A")]]], [pdf3, pdf3[[("Y", "C"), ("X", "A")]]]),
             ([kdf3[[("Y", "C"), ("X", "A")]], kdf3], [pdf3[[("Y", "C"), ("X", "A")]], pdf3]),
         ]
@@ -130,11 +127,9 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             for obj in objs:
                 kdfs, pdfs = obj
                 with self.subTest(ignore_index=ignore_index, join="outer", sort=sort, objs=pdfs):
-                    actual = ks.concat(kdfs, ignore_index=ignore_index, join="outer", sort=sort)
-                    if ignore_index:
-                        actual = actual.sort_index()
                     self.assert_eq(
-                        actual, pd.concat(pdfs, ignore_index=ignore_index, join="outer", sort=sort),
+                        ks.concat(kdfs, ignore_index=ignore_index, join="outer", sort=sort),
+                        pd.concat(pdfs, ignore_index=ignore_index, join="outer", sort=sort),
                     )
 
         # Skip tests for `join="inner" and sort=False` since pandas is flaky.
@@ -142,11 +137,9 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             for obj in objs:
                 kdfs, pdfs = obj
                 with self.subTest(ignore_index=ignore_index, join="inner", sort=True, objs=pdfs):
-                    actual = ks.concat(kdfs, ignore_index=ignore_index, join="inner", sort=True)
-                    if ignore_index:
-                        actual = actual.sort_index()
                     self.assert_eq(
-                        actual, pd.concat(pdfs, ignore_index=ignore_index, join="inner", sort=True),
+                        ks.concat(kdfs, ignore_index=ignore_index, join="inner", sort=True),
+                        pd.concat(pdfs, ignore_index=ignore_index, join="inner", sort=True),
                     )
 
         self.assertRaisesRegex(
@@ -243,11 +236,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
                     actual = ks.concat(kdfs, axis=1, ignore_index=ignore_index, join=join)
                     expected = pd.concat(pdfs, axis=1, ignore_index=ignore_index, join=join)
                     self.assert_eq(
-                        repr(
-                            actual.sort_values(list(actual.columns))
-                            .reset_index(drop=True)
-                            .sort_index()
-                        ),
+                        repr(actual.sort_values(list(actual.columns)).reset_index(drop=True)),
                         repr(expected.sort_values(list(expected.columns)).reset_index(drop=True)),
                     )
 
