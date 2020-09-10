@@ -345,7 +345,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             assert not copy
             assert not fastpath
 
-            super(Series, self).__init__(data)
+            super().__init__(data)
             self._column_label = index
         else:
             if isinstance(data, pd.Series):
@@ -364,7 +364,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 internal = internal.copy(column_labels=[None])
             anchor = DataFrame(internal)
 
-            super(Series, self).__init__(anchor)
+            super().__init__(anchor)
             self._column_label = anchor._internal.column_labels[0]
             anchor._kseries = {self._column_label: self}
 
@@ -5363,7 +5363,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             fields = []
         else:
             fields = [f for f in self.spark.data_type.fieldNames() if " " not in f]
-        return super(Series, self).__dir__() + fields
+        return super().__dir__() + fields
 
     def __iter__(self):
         return MissingPandasLikeSeries.__iter__(self)

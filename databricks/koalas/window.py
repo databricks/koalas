@@ -137,7 +137,7 @@ class Rolling(RollingAndExpanding):
             Window.currentRow - (window - 1), Window.currentRow
         )
 
-        super(Rolling, self).__init__(kdf_or_kser, window, min_periods)
+        super().__init__(kdf_or_kser, window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeRolling, item):
@@ -200,7 +200,7 @@ class Rolling(RollingAndExpanding):
         2  2.0
         3  2.0
         """
-        return super(Rolling, self).count()
+        return super().count()
 
     def sum(self):
         """
@@ -278,7 +278,7 @@ class Rolling(RollingAndExpanding):
         3  10.0  38.0
         4  13.0  65.0
         """
-        return super(Rolling, self).sum()
+        return super().sum()
 
     def min(self):
         """
@@ -356,7 +356,7 @@ class Rolling(RollingAndExpanding):
         3  2.0  4.0
         4  2.0  4.0
         """
-        return super(Rolling, self).min()
+        return super().min()
 
     def max(self):
         """
@@ -433,7 +433,7 @@ class Rolling(RollingAndExpanding):
         3  5.0  25.0
         4  6.0  36.0
         """
-        return super(Rolling, self).max()
+        return super().max()
 
     def mean(self):
         """
@@ -511,7 +511,7 @@ class Rolling(RollingAndExpanding):
         3  3.333333  12.666667
         4  4.333333  21.666667
         """
-        return super(Rolling, self).mean()
+        return super().mean()
 
     def std(self):
         """
@@ -561,7 +561,7 @@ class Rolling(RollingAndExpanding):
         5  0.000000   0.000000
         6  0.000000   0.000000
         """
-        return super(Rolling, self).std()
+        return super().std()
 
     def var(self):
         """
@@ -611,7 +611,7 @@ class Rolling(RollingAndExpanding):
         5  0.0    0.0
         6  0.0    0.0
         """
-        return super(Rolling, self).var()
+        return super().var()
 
 
 class RollingGroupby(Rolling):
@@ -629,7 +629,7 @@ class RollingGroupby(Rolling):
                 "however, got: %s" % type(groupby)
             )
 
-        super(RollingGroupby, self).__init__(kdf_or_kser, window, min_periods)
+        super().__init__(kdf_or_kser, window, min_periods)
 
         self._groupby = groupby
         self._window = self._window.partitionBy(*[ser.spark.column for ser in groupby._groupkeys])
@@ -764,7 +764,7 @@ class RollingGroupby(Rolling):
         5 9   1.0  1.0
           10  2.0  2.0
         """
-        return super(RollingGroupby, self).count()
+        return super().count()
 
     def sum(self):
         """
@@ -818,7 +818,7 @@ class RollingGroupby(Rolling):
         5 9    NaN   NaN
           10  10.0  50.0
         """
-        return super(RollingGroupby, self).sum()
+        return super().sum()
 
     def min(self):
         """
@@ -872,7 +872,7 @@ class RollingGroupby(Rolling):
         5 9   NaN   NaN
           10  5.0  25.0
         """
-        return super(RollingGroupby, self).min()
+        return super().min()
 
     def max(self):
         """
@@ -926,7 +926,7 @@ class RollingGroupby(Rolling):
         5 9   NaN   NaN
           10  5.0  25.0
         """
-        return super(RollingGroupby, self).max()
+        return super().max()
 
     def mean(self):
         """
@@ -980,7 +980,7 @@ class RollingGroupby(Rolling):
         5 9   NaN   NaN
           10  5.0  25.0
         """
-        return super(RollingGroupby, self).mean()
+        return super().mean()
 
     def std(self):
         """
@@ -999,7 +999,7 @@ class RollingGroupby(Rolling):
         DataFrame.std : Equivalent method for DataFrame.
         numpy.std : Equivalent method for Numpy array.
         """
-        return super(RollingGroupby, self).std()
+        return super().std()
 
     def var(self):
         """
@@ -1018,7 +1018,7 @@ class RollingGroupby(Rolling):
         DataFrame.var : Equivalent method for DataFrame.
         numpy.var : Equivalent method for Numpy array.
         """
-        return super(RollingGroupby, self).var()
+        return super().var()
 
 
 class Expanding(RollingAndExpanding):
@@ -1037,7 +1037,7 @@ class Expanding(RollingAndExpanding):
             Window.unboundedPreceding, Window.currentRow
         )
 
-        super(Expanding, self).__init__(kdf_or_kser, window, min_periods)
+        super().__init__(kdf_or_kser, window, min_periods)
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeExpanding, item):
@@ -1162,7 +1162,7 @@ class Expanding(RollingAndExpanding):
         3  10.0  30.0
         4  15.0  55.0
         """
-        return super(Expanding, self).sum()
+        return super().sum()
 
     def min(self):
         """
@@ -1199,7 +1199,7 @@ class Expanding(RollingAndExpanding):
         4    2.0
         dtype: float64
         """
-        return super(Expanding, self).min()
+        return super().min()
 
     def max(self):
         """
@@ -1235,7 +1235,7 @@ class Expanding(RollingAndExpanding):
         4    6.0
         dtype: float64
         """
-        return super(Expanding, self).max()
+        return super().max()
 
     def mean(self):
         """
@@ -1279,7 +1279,7 @@ class Expanding(RollingAndExpanding):
         3    2.5
         dtype: float64
         """
-        return super(Expanding, self).mean()
+        return super().mean()
 
     def std(self):
         """
@@ -1329,7 +1329,7 @@ class Expanding(RollingAndExpanding):
         5  0.836660   9.928075
         6  0.786796   9.327379
         """
-        return super(Expanding, self).std()
+        return super().std()
 
     def var(self):
         """
@@ -1379,7 +1379,7 @@ class Expanding(RollingAndExpanding):
         5  0.700000   98.566667
         6  0.619048   87.000000
         """
-        return super(Expanding, self).var()
+        return super().var()
 
 
 class ExpandingGroupby(Expanding):
@@ -1397,7 +1397,7 @@ class ExpandingGroupby(Expanding):
                 "however, got: %s" % type(groupby)
             )
 
-        super(ExpandingGroupby, self).__init__(kdf_or_kser, min_periods)
+        super().__init__(kdf_or_kser, min_periods)
 
         self._groupby = groupby
         self._window = self._window.partitionBy(*[ser.spark.column for ser in groupby._groupkeys])
@@ -1468,7 +1468,7 @@ class ExpandingGroupby(Expanding):
         5 9   NaN  NaN
           10  2.0  2.0
         """
-        return super(ExpandingGroupby, self).count()
+        return super().count()
 
     def sum(self):
         """
@@ -1522,7 +1522,7 @@ class ExpandingGroupby(Expanding):
         5 9    NaN   NaN
           10  10.0  50.0
         """
-        return super(ExpandingGroupby, self).sum()
+        return super().sum()
 
     def min(self):
         """
@@ -1576,7 +1576,7 @@ class ExpandingGroupby(Expanding):
         5 9   NaN   NaN
           10  5.0  25.0
         """
-        return super(ExpandingGroupby, self).min()
+        return super().min()
 
     def max(self):
         """
@@ -1629,7 +1629,7 @@ class ExpandingGroupby(Expanding):
         5 9   NaN   NaN
           10  5.0  25.0
         """
-        return super(ExpandingGroupby, self).max()
+        return super().max()
 
     def mean(self):
         """
@@ -1683,7 +1683,7 @@ class ExpandingGroupby(Expanding):
         5 9   NaN   NaN
           10  5.0  25.0
         """
-        return super(ExpandingGroupby, self).mean()
+        return super().mean()
 
     def std(self):
         """
@@ -1703,7 +1703,7 @@ class ExpandingGroupby(Expanding):
         DataFrame.std : Equivalent method for DataFrame.
         numpy.std : Equivalent method for Numpy array.
         """
-        return super(ExpandingGroupby, self).std()
+        return super().std()
 
     def var(self):
         """
@@ -1722,4 +1722,4 @@ class ExpandingGroupby(Expanding):
         DataFrame.var : Equivalent method for DataFrame.
         numpy.var : Equivalent method for Numpy array.
         """
-        return super(ExpandingGroupby, self).var()
+        return super().var()

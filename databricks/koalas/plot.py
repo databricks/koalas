@@ -133,7 +133,7 @@ class SampledPlot:
 
 class KoalasBarPlot(BarPlot, TopNPlot):
     def __init__(self, data, **kwargs):
-        super(KoalasBarPlot, self).__init__(self.get_top_n(data), **kwargs)
+        super().__init__(self.get_top_n(data), **kwargs)
 
     def _plot(self, ax, x, y, w, start=0, log=False, **kwds):
         self.set_result_text(ax)
@@ -619,38 +619,38 @@ class KoalasHistPlot(HistPlot):
 
 class KoalasPiePlot(PiePlot, TopNPlot):
     def __init__(self, data, **kwargs):
-        super(KoalasPiePlot, self).__init__(self.get_top_n(data), **kwargs)
+        super().__init__(self.get_top_n(data), **kwargs)
 
     def _make_plot(self):
         self.set_result_text(self._get_ax(0))
-        super(KoalasPiePlot, self)._make_plot()
+        super()._make_plot()
 
 
 class KoalasAreaPlot(AreaPlot, SampledPlot):
     def __init__(self, data, **kwargs):
-        super(KoalasAreaPlot, self).__init__(self.get_sampled(data), **kwargs)
+        super().__init__(self.get_sampled(data), **kwargs)
 
     def _make_plot(self):
         self.set_result_text(self._get_ax(0))
-        super(KoalasAreaPlot, self)._make_plot()
+        super()._make_plot()
 
 
 class KoalasLinePlot(LinePlot, SampledPlot):
     def __init__(self, data, **kwargs):
-        super(KoalasLinePlot, self).__init__(self.get_sampled(data), **kwargs)
+        super().__init__(self.get_sampled(data), **kwargs)
 
     def _make_plot(self):
         self.set_result_text(self._get_ax(0))
-        super(KoalasLinePlot, self)._make_plot()
+        super()._make_plot()
 
 
 class KoalasBarhPlot(BarhPlot, TopNPlot):
     def __init__(self, data, **kwargs):
-        super(KoalasBarhPlot, self).__init__(self.get_top_n(data), **kwargs)
+        super().__init__(self.get_top_n(data), **kwargs)
 
     def _make_plot(self):
         self.set_result_text(self._get_ax(0))
-        super(KoalasBarhPlot, self)._make_plot()
+        super()._make_plot()
 
 
 class KoalasScatterPlot(ScatterPlot, TopNPlot):
@@ -659,7 +659,7 @@ class KoalasScatterPlot(ScatterPlot, TopNPlot):
 
     def _make_plot(self):
         self.set_result_text(self._get_ax(0))
-        super(KoalasScatterPlot, self)._make_plot()
+        super()._make_plot()
 
 
 class KoalasKdePlot(KdePlot):
