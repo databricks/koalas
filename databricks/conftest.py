@@ -96,7 +96,7 @@ def add_db(doctest_namespace):
     doctest_namespace["db"] = db_name
 
 
-@pytest.fixture(autouse=os.getenv("KOALAS_USAGE_LOGGER", None) is not None)
+@pytest.fixture(autouse=os.getenv("KOALAS_USAGE_LOGGER", "") != "")
 def add_caplog(caplog):
     with caplog.at_level(logging.INFO, logger="databricks.koalas.usage_logger"):
         yield
@@ -106,3 +106,10 @@ def add_caplog(caplog):
 def close_figs():
     yield
     plt.close("all")
+
+
+@pytest.fixture(autouse=True)
+def check_options():
+    orig_default_index_type = ks.options.compute.default_index_type
+    yield
+    assert ks.options.compute.default_index_type == orig_default_index_type

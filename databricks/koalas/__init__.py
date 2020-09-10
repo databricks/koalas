@@ -107,8 +107,8 @@ def _auto_patch_spark():
     import logging
 
     # Attach a usage logger.
-    logger_module = os.getenv("KOALAS_USAGE_LOGGER", None)
-    if logger_module is not None:
+    logger_module = os.getenv("KOALAS_USAGE_LOGGER", "")
+    if logger_module != "":
         try:
             from databricks.koalas import usage_logging
 
