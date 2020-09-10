@@ -1731,7 +1731,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         import os
 
         self.assertEqual(
-            ks.get_option("compute.default_index_type"), os.getenv("DEFAULT_INDEX_TYPE", "sequence")
+            ks.get_option("compute.default_index_type"),
+            os.getenv("DEFAULT_INDEX_TYPE", "") or "sequence",
         )
 
         acc = ks.utils.default_session().sparkContext.accumulator(0)
