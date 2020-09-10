@@ -4939,7 +4939,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> kser.item()
         10
         """
-        return self.head(2).to_pandas().item()
+        return self.head(2)._to_internal_pandas().item()
 
     def iteritems(self):
         """
