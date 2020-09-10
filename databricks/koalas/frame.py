@@ -1222,7 +1222,7 @@ class DataFrame(Frame, Generic[T]):
         #     sum  12.0  NaN
         #
         # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
-        pdf = kdf.to_pandas().stack()
+        pdf = kdf._to_internal_pandas().stack()
         pdf.index = pdf.index.droplevel()
         pdf.columns.names = [None]
         pdf.index.names = [None]
@@ -3109,7 +3109,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         <pandas.io.formats.style.Styler object at ...>
         """
         max_results = get_option("compute.max_rows")
-        pdf = self.head(max_results + 1).to_pandas()
+        pdf = self.head(max_results + 1)._to_internal_pandas()
         if len(pdf) > max_results:
             warnings.warn("'style' property will only use top %s rows." % max_results, UserWarning)
         return pdf.head(max_results).style
@@ -9218,9 +9218,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cond = reduce(lambda x, y: x | y, conds)
 
         kdf = DataFrame(self._internal.with_filter(cond))
-        pdf = kdf.to_pandas()
 
-        return ks.from_pandas(pdf.idxmax())
+        return ks.from_pandas(kdf._to_internal_pandas().idxmax())
 
     # TODO: axis = 1
     def idxmin(self, axis=0):
@@ -9291,9 +9290,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cond = reduce(lambda x, y: x | y, conds)
 
         kdf = DataFrame(self._internal.with_filter(cond))
-        pdf = kdf.to_pandas()
 
-        return ks.from_pandas(pdf.idxmin())
+        return ks.from_pandas(kdf._to_internal_pandas().idxmin())
 
     def info(self, verbose=None, buf=None, max_cols=None, null_counts=None):
         """
