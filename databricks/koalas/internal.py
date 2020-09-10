@@ -620,7 +620,13 @@ class InternalFrame(object):
                     raise
                 return InternalFrame._attach_distributed_sequence_column(sdf, column_name)
         else:
-            return default_session().range(sdf.count()).toDF(column_name)
+            cnt = sdf.count()
+            if cnt > 0:
+                return default_session().range(cnt).toDF(column_name)
+            else:
+                return default_session().createDataFrame(
+                    [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
+                )
 
     @staticmethod
     def _attach_distributed_sequence_column(sdf, column_name):
