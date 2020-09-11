@@ -2214,6 +2214,72 @@ class MultiIndex(Index):
             index=pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
         ).index
 
+    @staticmethod
+    def from_frame(df, sortorder=None, names=None):
+        """
+        Make a MultiIndex from a DataFrame.
+
+        .. note:: This method should only be used if the resulting pandas object is expected
+                  to be small, as all the data is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted to MultiIndex.
+        sortorder : int, optional
+            Level of sortedness (must be lexicographically sorted by that
+            level).
+        names : list-like, optional
+            If no names are provided, use the column names, or tuple of column
+            names if the columns is a MultiIndex. If a sequence, overwrite
+            names with the given sequence.
+
+        Returns
+        -------
+        MultiIndex
+            The MultiIndex representation of the given DataFrame.
+
+        See Also
+        --------
+        MultiIndex.from_arrays : Convert list of arrays to MultiIndex.
+        MultiIndex.from_tuples : Convert list of tuples to MultiIndex.
+        MultiIndex.from_product : Make a MultiIndex from cartesian product
+                                  of iterables.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([['HI', 'Temp'], ['HI', 'Precip'],
+        ...                    ['NJ', 'Temp'], ['NJ', 'Precip']],
+        ...                   columns=['a', 'b'])
+        >>> df  # doctest: +SKIP
+              a       b
+        0    HI    Temp
+        1    HI  Precip
+        2    NJ    Temp
+        3    NJ  Precip
+
+        >>> ks.MultiIndex.from_frame(df)  # doctest: +SKIP
+        MultiIndex([('HI',   'Temp'),
+                    ('HI', 'Precip'),
+                    ('NJ',   'Temp'),
+                    ('NJ', 'Precip')],
+                   names=['a', 'b'])
+
+        Using explicit names, instead of the column names
+
+        >>> ks.MultiIndex.from_frame(df, names=['state', 'observation'])  # doctest: +SKIP
+        MultiIndex([('HI',   'Temp'),
+                    ('HI', 'Precip'),
+                    ('NJ',   'Temp'),
+                    ('NJ', 'Precip')],
+                   names=['state', 'observation'])
+        """
+        return DataFrame(
+            index=pd.MultiIndex.from_frame(
+                df=df._to_internal_pandas(), sortorder=sortorder, names=names
+            )
+        ).index
+
     @property
     def name(self) -> str:
         raise PandasNotImplementedError(class_name="pd.MultiIndex", property_name="name")

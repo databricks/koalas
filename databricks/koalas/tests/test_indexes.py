@@ -1445,3 +1445,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples([("a", "x")])
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
+
+    def test_multiindex_from_frame(self):
+        pdf = pd.DataFrame(
+            [["HI", "Temp"], ["HI", "Precip"], ["NJ", "Temp"], ["NJ", "Precip"]], columns=["a", "b"]
+        )
+        kdf = ks.from_pandas(pdf)
+        pidx = pd.MultiIndex.from_frame(pdf)
+        kidx = ks.MultiIndex.from_frame(kdf)
+
+        self.assert_eq(pidx, kidx)
+
+        # Specify `names`
+        pidx = pd.MultiIndex.from_frame(pdf, names=["state", "observation"])
+        kidx = ks.MultiIndex.from_frame(kdf, names=["state", "observation"])
+        self.assert_eq(pidx, kidx)
