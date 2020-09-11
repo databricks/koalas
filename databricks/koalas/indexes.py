@@ -456,22 +456,57 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=list('aac'))
-        >>> kdf.index.has_duplicates
+        >>> import databricks.koalas as ks
+        >>> idx = ks.Index([1, 5, 7, 7])
+        >>> idx.has_duplicates
         True
 
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
-        >>> kdf.index.has_duplicates
+        >>> idx = ks.Index([1, 5, 7])
+        >>> idx.has_duplicates
         False
 
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
-        >>> kdf.index.has_duplicates
+        >>> idx = ks.Index(["Watermelon", "Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.has_duplicates
         True
+
+        >>> idx = ks.Index(["Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.has_duplicates
+        False
         """
         sdf = self._internal.spark_frame.select(self.spark.column)
         scol = scol_for(sdf, sdf.columns[0])
 
         return sdf.select(F.count(scol) != F.countDistinct(scol)).first()[0]
+
+    @property
+    def is_unique(self):
+        """
+        Return if the index has unique values.
+
+        Examples
+        --------
+        >>> import databricks.koalas as ks
+        >>> idx = ks.Index([1, 5, 7, 7])
+        >>> idx.is_unique
+        False
+
+        >>> idx = ks.Index([1, 5, 7])
+        >>> idx.is_unique
+        True
+
+        >>> idx = ks.Index(["Watermelon", "Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.is_unique
+        False
+
+        >>> idx = ks.Index(["Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.is_unique
+        True
+        """
+        return not self.has_duplicates
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
