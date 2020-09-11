@@ -1445,3 +1445,29 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples([("a", "x")])
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
+
+    def test_asi8(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        self.assertTrue(all(pidx.asi8 == kidx.asi8))
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)

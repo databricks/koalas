@@ -440,6 +440,30 @@ class Index(IndexOpsMixin):
         return self.to_numpy()
 
     @property
+    def asi8(self):
+        """
+        Integer representation of the values.
+
+        .. warning:: We recommend using `Index.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+            An ndarray with int64 dtype.
+
+        Examples
+        --------
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        if self.dtype == "int64":
+            return self.to_numpy()
+        else:
+            return
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         warnings.warn(
