@@ -10352,7 +10352,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         fields = [
             f for f in self._internal.resolved_copy.spark_frame.schema.fieldNames() if " " not in f
         ]
-        return super(DataFrame, self).__dir__() + fields
+        return super().__dir__() + fields
 
     def __iter__(self):
         return iter(self.columns)
@@ -10441,7 +10441,7 @@ class CachedDataFrame(DataFrame):
             raise TypeError(
                 "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"
             )
-        super(CachedDataFrame, self).__init__(internal)
+        super().__init__(internal)
 
     def __enter__(self):
         return self

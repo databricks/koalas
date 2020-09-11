@@ -33,13 +33,13 @@ matplotlib.use("agg")
 class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
-        super(SeriesPlotTest, cls).setUpClass()
+        super().setUpClass()
         set_option("plotting.max_rows", 1000)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("plotting.max_rows")
-        super(SeriesPlotTest, cls).tearDownClass()
+        super().tearDownClass()
 
     @property
     def pdf1(self):

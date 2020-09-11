@@ -24,13 +24,13 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 class OpsOnDiffFramesGroupByRollingTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesGroupByRollingTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", True)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesGroupByRollingTest, cls).tearDownClass()
+        super().tearDownClass()
 
     def _test_groupby_rolling_func(self, f):
         pser = pd.Series([1, 2, 3], name="a")
