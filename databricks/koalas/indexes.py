@@ -115,7 +115,7 @@ class Index(IndexOpsMixin):
         else:
             data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
 
-        super(Index, self).__init__(data)
+        super().__init__(data)
 
     @property
     def _internal(self) -> InternalFrame:
@@ -2012,6 +2012,28 @@ class Index(IndexOpsMixin):
         )
         return DataFrame(internal).index
 
+    def item(self):
+        """
+        Return the first element of the underlying data as a python scalar.
+
+        Returns
+        -------
+        scalar
+            The first element of Index.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kidx = ks.Index([10])
+        >>> kidx.item()
+        10
+        """
+        return self.to_series().item()
+
     @property
     def inferred_type(self):
         """
@@ -2106,7 +2128,7 @@ class MultiIndex(Index):
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
 
-        super(MultiIndex, self).__init__(kdf)
+        super().__init__(kdf)
 
     @property
     def _internal(self):
@@ -2555,7 +2577,7 @@ class MultiIndex(Index):
                     ('d', 'h')],
                    )
         """
-        return super(MultiIndex, self).copy(deep=deep)
+        return super().copy(deep=deep)
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
@@ -2714,7 +2736,7 @@ class MultiIndex(Index):
                 "'spark.sql.execution.arrow.enabled' to 'false' "
                 "for using this function with MultiIndex"
             )
-        return super(MultiIndex, self).value_counts(
+        return super().value_counts(
             normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna
         )
 
@@ -2832,6 +2854,28 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
+
+    def item(self):
+        """
+        Return the first element of the underlying data as a python tuple.
+
+        Returns
+        -------
+        tuple
+            The first element of MultiIndex.
+
+        Raises
+        ------
+        ValueError
+            If the data is not length-1.
+
+        Examples
+        --------
+        >>> kmidx = ks.MultiIndex.from_tuples([('a', 'x')])
+        >>> kmidx.item()
+        ('a', 'x')
+        """
+        return self._kdf.head(2)._to_internal_pandas().index.item()
 
     @property
     def inferred_type(self):

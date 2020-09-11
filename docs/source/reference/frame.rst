@@ -136,6 +136,8 @@ Computations / Descriptive Stats
    DataFrame.min
    DataFrame.median
    DataFrame.pct_change
+   DataFrame.prod
+   DataFrame.product
    DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew

@@ -69,7 +69,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
 
-        self.assertEqual(kdf.a.notnull().alias("x").name, "x")
+        self.assertEqual(kdf.a.notnull().rename("x").name, "x")
 
         # check ks.DataFrame(ks.Series)
         pser = pd.Series([1, 2, 3], name="x", index=np.random.rand(3))
@@ -431,13 +431,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertNotIn(5, dir(kdf))
 
     def test_column_names(self):
-        kdf = self.kdf
+        pdf, kdf = self.df_pair
 
-        self.assert_eq(kdf.columns, pd.Index(["a", "b"]))
-        self.assert_eq(kdf[["b", "a"]].columns, pd.Index(["b", "a"]))
-        self.assertEqual(kdf["a"].name, "a")
-        self.assertEqual((kdf["a"] + 1).name, "a")
-        self.assertEqual((kdf["a"] + kdf["b"]).name, "a")  # TODO: None
+        self.assert_eq(kdf.columns, pdf.columns)
+        self.assert_eq(kdf[["b", "a"]].columns, pdf[["b", "a"]].columns)
+        self.assert_eq(kdf["a"].name, pdf["a"].name)
+        self.assert_eq((kdf["a"] + 1).name, (pdf["a"] + 1).name)
+
+        self.assert_eq((kdf.a + kdf.b).name, (pdf.a + pdf.b).name)
+        self.assert_eq((kdf.a + kdf.b.rename("a")).name, (pdf.a + pdf.b.rename("a")).name)
+        self.assert_eq((kdf.a + kdf.b.rename()).name, (pdf.a + pdf.b.rename()).name)
+        self.assert_eq((kdf.a.rename() + kdf.b).name, (pdf.a.rename() + pdf.b).name)
+        self.assert_eq(
+            (kdf.a.rename() + kdf.b.rename()).name, (pdf.a.rename() + pdf.b.rename()).name
+        )
 
     def test_rename_columns(self):
         pdf = pd.DataFrame(
@@ -2162,16 +2169,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assertEqual(repr(pdf1.transpose().sort_index()), repr(kdf1.transpose().sort_index()))
-
-        self.assert_eq(repr(pdf2.transpose().sort_index()), repr(kdf2.transpose().sort_index()))
+        self.assert_eq(
+            pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
+        )
+        self.assert_eq(
+            pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
+        )
 
         with option_context("compute.max_rows", None):
-            self.assertEqual(
-                repr(pdf1.transpose().sort_index()), repr(kdf1.transpose().sort_index())
+            self.assert_eq(
+                pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
             )
 
-            self.assert_eq(repr(pdf2.transpose().sort_index()), repr(kdf2.transpose().sort_index()))
+            self.assert_eq(
+                pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
+            )
 
         pdf3 = pd.DataFrame(
             {
@@ -2184,12 +2196,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf3 = ks.from_pandas(pdf3)
 
-        self.assertEqual(repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index()))
+        self.assert_eq(pdf3.transpose().sort_index(), kdf3.transpose().sort_index())
 
         with option_context("compute.max_rows", None):
-            self.assertEqual(
-                repr(pdf3.transpose().sort_index()), repr(kdf3.transpose().sort_index())
-            )
+            self.assert_eq(pdf3.transpose().sort_index(), kdf3.transpose().sort_index())
 
     def _test_cummin(self, pdf, kdf):
         self.assert_eq(pdf.cummin(), kdf.cummin())
@@ -3274,7 +3284,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(repr(kdf.pct_change(2)), repr(pdf.pct_change(2)))
+        self.assert_eq(kdf.pct_change(2), pdf.pct_change(2), check_exact=False)
 
     def test_where(self):
         kdf = ks.from_pandas(self.pdf)
@@ -3811,7 +3821,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             sys.stdout = prev
 
     def test_mad(self):
-        pdf = pd.DataFrame({"A": [1, 2, None, 4, np.nan], "B": [-0.1, 0.2, -0.3, np.nan, 0.5]})
+        pdf = pd.DataFrame(
+            {
+                "A": [1, 2, None, 4, np.nan],
+                "B": [-0.1, 0.2, -0.3, np.nan, 0.5],
+                "C": ["a", "b", "c", "d", "e"],
+            }
+        )
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.mad(), pdf.mad())
@@ -3821,7 +3837,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.mad(axis=2)
 
         # MultiIndex columns
-        columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y")])
+        columns = pd.MultiIndex.from_tuples([("A", "X"), ("A", "Y"), ("A", "Z")])
         pdf.columns = columns
         kdf.columns = columns
 
@@ -3849,8 +3865,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        for p_items, k_items in zip(pdf.iteritems(), kdf.iteritems()):
-            self.assert_eq(repr(p_items), repr(k_items))
+        for (p_name, p_items), (k_name, k_items) in zip(pdf.iteritems(), kdf.iteritems()):
+            self.assert_eq(p_name, k_name)
+            self.assert_eq(p_items, k_items)
 
     def test_tail(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
@@ -3891,3 +3908,71 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
+
+    def test_product(self):
+        pdf = pd.DataFrame(
+            {"A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50], "C": ["a", "b", "c", "d", "e"]}
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # Named columns
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # Named MultiIndex columns
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # No numeric columns
+        pdf = pd.DataFrame({"key": ["a", "b", "c"], "val": ["x", "y", "z"]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index())
+
+        # No numeric named columns
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+
+        # No numeric MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+
+        # No numeric named MultiIndex columns
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), almost=True)
+
+        # All NaN columns
+        pdf = pd.DataFrame(
+            {
+                "A": [np.nan, np.nan, np.nan, np.nan, np.nan],
+                "B": [10, 20, 30, 40, 50],
+                "C": ["a", "b", "c", "d", "e"],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+        # All NaN named columns
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+        # All NaN MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+        # All NaN named MultiIndex columns
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
