@@ -1453,3 +1453,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assertTrue(isinstance(kmidx, ks.MultiIndex))
         self.assert_eq(pmidx, kmidx)
+
+        # Specify the `names`
+        pmidx = pd.Index(tuples, names=["Hello", "Koalas"])
+        kmidx = ks.Index(tuples, names=["Hello", "Koalas"])
+
+        self.assertTrue(isinstance(kmidx, ks.MultiIndex))
+        self.assert_eq(pmidx, kmidx)

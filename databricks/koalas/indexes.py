@@ -108,20 +108,20 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None):
+    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
         if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
             # MultiIndex
-            return MultiIndex.from_tuples(data)
+            return MultiIndex.from_tuples(data, names=names)
         else:
             # Index
             return super().__new__(cls)
 
-    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None) -> None:
+    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None, names=None) -> None:
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
         else:
-            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
+            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name, names=names))
 
         # Setting anchor via IndexOpsMixin
         super().__init__(data)
