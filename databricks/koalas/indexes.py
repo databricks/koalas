@@ -456,7 +456,6 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> import databricks.koalas as ks
         >>> idx = ks.Index([1, 5, 7, 7])
         >>> idx.has_duplicates
         True
@@ -487,7 +486,6 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> import databricks.koalas as ks
         >>> idx = ks.Index([1, 5, 7, 7])
         >>> idx.is_unique
         False
