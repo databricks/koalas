@@ -25,13 +25,13 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesGroupByTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", True)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesGroupByTest, cls).tearDownClass()
+        super().tearDownClass()
 
     def test_groupby_different_lengths(self):
         pdfs1 = [

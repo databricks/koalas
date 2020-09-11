@@ -27,13 +27,13 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 class OpsOnDiffFramesGroupByExpandingTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesGroupByExpandingTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", True)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesGroupByExpandingTest, cls).tearDownClass()
+        super().tearDownClass()
 
     def _test_groupby_expanding_func(self, f):
         pser = pd.Series([1, 2, 3])

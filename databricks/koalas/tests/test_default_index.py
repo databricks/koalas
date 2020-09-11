@@ -23,13 +23,13 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase
 class OneByOneDefaultIndexTest(ReusedSQLTestCase):
     @classmethod
     def setUpClass(cls):
-        super(OneByOneDefaultIndexTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.default_index_type", "sequence")
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.default_index_type")
-        super(OneByOneDefaultIndexTest, cls).tearDownClass()
+        super().tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
@@ -39,13 +39,13 @@ class OneByOneDefaultIndexTest(ReusedSQLTestCase):
 class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase):
     @classmethod
     def setUpClass(cls):
-        super(DistributedOneByOneDefaultIndexTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.default_index_type", "distributed-sequence")
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.default_index_type")
-        super(DistributedOneByOneDefaultIndexTest, cls).tearDownClass()
+        super().tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)
@@ -55,13 +55,13 @@ class DistributedOneByOneDefaultIndexTest(ReusedSQLTestCase):
 class DistributedDefaultIndexTest(ReusedSQLTestCase):
     @classmethod
     def setUpClass(cls):
-        super(DistributedDefaultIndexTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.default_index_type", "distributed")
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.default_index_type")
-        super(DistributedDefaultIndexTest, cls).tearDownClass()
+        super().tearDownClass()
 
     def test_default_index(self):
         sdf = self.spark.range(1000)

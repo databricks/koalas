@@ -2536,7 +2536,7 @@ class MultiIndex(Index):
                     ('d', 'h')],
                    )
         """
-        return super(MultiIndex, self).copy(deep=deep)
+        return super().copy(deep=deep)
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
@@ -2695,7 +2695,7 @@ class MultiIndex(Index):
                 "'spark.sql.execution.arrow.enabled' to 'false' "
                 "for using this function with MultiIndex"
             )
-        return super(MultiIndex, self).value_counts(
+        return super().value_counts(
             normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna
         )
 
