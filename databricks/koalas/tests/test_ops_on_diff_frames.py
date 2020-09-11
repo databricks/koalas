@@ -28,13 +28,13 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesEnabledTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", True)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesEnabledTest, cls).tearDownClass()
+        super().tearDownClass()
 
     @property
     def pdf1(self):
@@ -915,13 +915,13 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesDisabledTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", False)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesDisabledTest, cls).tearDownClass()
+        super().tearDownClass()
 
     @property
     def pdf1(self):

@@ -115,7 +115,7 @@ class Index(IndexOpsMixin):
         else:
             data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
 
-        super(Index, self).__init__(data)
+        super().__init__(data)
 
     @property
     def _internal(self) -> InternalFrame:
@@ -2078,7 +2078,7 @@ class MultiIndex(Index):
     def __init__(self, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
 
-        super(MultiIndex, self).__init__(kdf)
+        super().__init__(kdf)
 
     @property
     def _internal(self):
@@ -2527,7 +2527,7 @@ class MultiIndex(Index):
                     ('d', 'h')],
                    )
         """
-        return super(MultiIndex, self).copy(deep=deep)
+        return super().copy(deep=deep)
 
     def symmetric_difference(self, other, result_name=None, sort=None):
         """
@@ -2686,7 +2686,7 @@ class MultiIndex(Index):
                 "'spark.sql.execution.arrow.enabled' to 'false' "
                 "for using this function with MultiIndex"
             )
-        return super(MultiIndex, self).value_counts(
+        return super().value_counts(
             normalize=normalize, sort=sort, ascending=ascending, bins=bins, dropna=dropna
         )
 

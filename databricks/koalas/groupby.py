@@ -2535,9 +2535,7 @@ class SeriesGroupBy(GroupBy):
     def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
         assert not should_include_groupkeys, should_include_groupkeys
         return first_series(
-            super(SeriesGroupBy, self)._reduce_for_stat_function(
-                sfun, only_numeric, should_include_groupkeys
-            )
+            super()._reduce_for_stat_function(sfun, only_numeric, should_include_groupkeys)
         )
 
     def agg(self, *args, **kwargs):
@@ -2547,29 +2545,27 @@ class SeriesGroupBy(GroupBy):
         return MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
     def transform(self, func, *args, **kwargs):
-        return first_series(super(SeriesGroupBy, self).transform(func, *args, **kwargs)).rename(
-            self._kser.name
-        )
+        return first_series(super().transform(func, *args, **kwargs)).rename(self._kser.name)
 
     transform.__doc__ = GroupBy.transform.__doc__
 
     def idxmin(self, skipna=True):
-        return first_series(super(SeriesGroupBy, self).idxmin(skipna))
+        return first_series(super().idxmin(skipna))
 
     idxmin.__doc__ = GroupBy.idxmin.__doc__
 
     def idxmax(self, skipna=True):
-        return first_series(super(SeriesGroupBy, self).idxmax(skipna))
+        return first_series(super().idxmax(skipna))
 
     idxmax.__doc__ = GroupBy.idxmax.__doc__
 
     def head(self, n=5):
-        return first_series(super(SeriesGroupBy, self).head(n)).rename(self._kser.name)
+        return first_series(super().head(n)).rename(self._kser.name)
 
     head.__doc__ = GroupBy.head.__doc__
 
     def size(self):
-        return super(SeriesGroupBy, self).size().rename(self._kser.name)
+        return super().size().rename(self._kser.name)
 
     size.__doc__ = GroupBy.size.__doc__
 
