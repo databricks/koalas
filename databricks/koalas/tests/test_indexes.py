@@ -15,6 +15,7 @@
 #
 
 import inspect
+import unittest
 from distutils.version import LooseVersion
 from datetime import datetime
 
@@ -1446,6 +1447,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
 
+    @unittest.skipIf(
+        LooseVersion(pd.__version__) < LooseVersion("0.24"),
+        "MultiIndex.from_frame is new in pandas 0.24",
+    )
     def test_multiindex_from_frame(self):
         pdf = pd.DataFrame(
             [["HI", "Temp"], ["HI", "Precip"], ["NJ", "Temp"], ["NJ", "Precip"]], columns=["a", "b"]
