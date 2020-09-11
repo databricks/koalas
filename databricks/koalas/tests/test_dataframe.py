@@ -69,7 +69,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf, kdf = self.df_pair
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
 
-        self.assertEqual(kdf.a.notnull().alias("x").name, "x")
+        self.assertEqual(kdf.a.notnull().rename("x").name, "x")
 
         # check ks.DataFrame(ks.Series)
         pser = pd.Series([1, 2, 3], name="x", index=np.random.rand(3))
