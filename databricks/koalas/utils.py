@@ -20,6 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
+import os
 from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
@@ -363,6 +364,11 @@ def align_diff_series(func, this_series, *args, how="full"):
     return first_series(DataFrame(internal))
 
 
+def is_testing():
+    """ Indicates whether Koalas is currently running tests. """
+    return "KOALAS_TESTING" in os.environ
+
+
 def default_session(conf=None):
     if conf is None:
         conf = dict()
@@ -382,6 +388,10 @@ def default_session(conf=None):
     # Currently, Koalas is dependent on such join due to 'compute.ops_on_diff_frames'
     # configuration. This is needed with Spark 3.0+.
     builder.config("spark.sql.analyzer.failAmbiguousSelfJoin", False)
+
+    if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.1") and is_testing():
+        builder.config("spark.executor.allowSparkContext", False)
+
     session = builder.getOrCreate()
 
     if not should_use_legacy_ipc:

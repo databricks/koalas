@@ -21,7 +21,6 @@ import re
 from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
 from collections import OrderedDict
-import os
 import py4j
 
 import numpy as np
@@ -49,6 +48,7 @@ from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_
 from databricks.koalas.utils import (
     column_labels_level,
     default_session,
+    is_testing,
     lazy_property,
     name_like_string,
     scol_for,
@@ -616,7 +616,7 @@ class InternalFrame(object):
                     "`{}` as `{}`".format(columns[1], column_name), "`{}`.*".format(columns[0])
                 )
             except py4j.protocol.Py4JError:
-                if "KOALAS_TESTING" in os.environ:
+                if is_testing():
                     raise
                 return InternalFrame._attach_distributed_sequence_column(sdf, column_name)
         else:
