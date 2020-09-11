@@ -861,6 +861,24 @@ class Index(IndexOpsMixin):
         """
         return is_object_dtype(self.dtype)
 
+    def is_type_compatible(self, kind):
+        """
+        Whether the index type is compatible with the provided type.
+
+        Examples
+        --------
+        >>> kidx = ks.Index([1, 2, 3])
+        >>> kidx.is_type_compatible('integer')
+        True
+
+        >>> kidx = ks.Index([1.0, 2.0, 3.0])
+        >>> kidx.is_type_compatible('integer')
+        False
+        >>> kidx.is_type_compatible('floating')
+        True
+        """
+        return kind == self.inferred_type
+
     def dropna(self):
         """
         Return Index or MultiIndex without NA/NaN values

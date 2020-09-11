@@ -1445,3 +1445,35 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples([("a", "x")])
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
+
+    def test_is_type_compatible(self):
+        data_types = ["integer", "floating", "string", "boolean"]
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+        for data_type in data_types:
+            self.assert_eq(pmidx.is_type_compatible(data_type), kmidx.is_type_compatible(data_type))
