@@ -1445,3 +1445,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples([("a", "x")])
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
+
+    def test_multi_index_from_index(self):
+        tuples = [(1, "red"), (1, "blue"), (2, "red"), (2, "blue")]
+        pmidx = pd.Index(tuples)
+        kmidx = ks.Index(tuples)
+
+        self.assertTrue(isinstance(kmidx, ks.MultiIndex))
+        self.assert_eq(pmidx, kmidx)
