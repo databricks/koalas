@@ -1990,7 +1990,7 @@ class Index(IndexOpsMixin):
                 return MultiIndex.from_tuples([(0, 0)]).take([])
             spark_frame_other = other._internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
         elif isinstance(other, Series):
-            spark_frame_other = other._kdf.to_spark()
+            spark_frame_other = other.to_frame().to_spark()
         elif isinstance(other, DataFrame):
             return Series([])
         elif is_list_like(other):
