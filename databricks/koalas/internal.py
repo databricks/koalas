@@ -606,7 +606,7 @@ class InternalFrame(object):
                 encoders = sql_ctx._jvm.org.apache.spark.sql.Encoders
                 encoder = encoders.tuple(jdf.exprEnc(), encoders.scalaLong())
 
-                jrdd = jdf.rdd().zipWithIndex()
+                jrdd = jdf.localCheckpoint(False).rdd().zipWithIndex()
 
                 df = spark.DataFrame(
                     sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
@@ -620,9 +620,13 @@ class InternalFrame(object):
                     raise
                 return InternalFrame._attach_distributed_sequence_column(sdf, column_name)
         else:
-            return default_session().createDataFrame(
-                [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
-            )
+            cnt = sdf.count()
+            if cnt > 0:
+                return default_session().range(cnt).toDF(column_name)
+            else:
+                return default_session().createDataFrame(
+                    [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
+                )
 
     @staticmethod
     def _attach_distributed_sequence_column(sdf, column_name):
