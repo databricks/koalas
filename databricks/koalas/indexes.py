@@ -456,6 +456,13 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
+        >>> ks.Index([1, 2, 3]).asi8
+        array([1, 2, 3])
+
+        Returns None for non-int64 dtype
+
+        >>> ks.Index(['a', 'b', 'c']).asi8 is None
+        True
         """
         warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
         if self.dtype == "int64":
