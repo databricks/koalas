@@ -121,7 +121,11 @@ class Index(IndexOpsMixin):
             assert dtype is None
             assert name is None
         else:
-            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name, names=names))
+            if names is not None:
+                index = pd.Index(data=data, dtype=dtype, names=names)
+            else:
+                index = pd.Index(data=data, dtype=dtype, name=name)
+            data = DataFrame(index=index)
 
         # Setting anchor via IndexOpsMixin
         super().__init__(data)
