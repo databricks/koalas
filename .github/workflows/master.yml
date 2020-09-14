@@ -1,4 +1,4 @@
-name: master
+name: Build and test
 
 on:
   push:
@@ -110,11 +110,11 @@ jobs:
             pyarrow-version: 0.15.1
             default-index-type: 'distributed-sequence'
           - python-version: 3.7
-            spark-version: 3.0.0
+            spark-version: 3.0.1
             pandas-version: 0.25.3
             pyarrow-version: 0.15.1
           - python-version: 3.8
-            spark-version: 3.0.0
+            spark-version: 3.0.1
             pandas-version: 1.0.5
             pyarrow-version: 1.0.1
             default-index-type: 'distributed-sequence'

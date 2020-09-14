@@ -68,6 +68,7 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
 )
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
+from databricks.koalas.exceptions import DataError
 
 # to keep it the same as pandas
 NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
@@ -90,7 +91,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return [s.spark.column for s in self._agg_columns]
 
     @abstractmethod
-    def _apply_series_op(self, op, should_resolve: bool = False):
+    def _apply_series_op(self, op, should_resolve: bool = False, is_cum_func: bool = False):
         pass
 
     # TODO: Series support is not implemented yet.
@@ -743,6 +744,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._apply_series_op(
             lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
+            is_cum_func=True,
         )
 
     def cummin(self):
@@ -791,6 +793,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._apply_series_op(
             lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
+            is_cum_func=True,
         )
 
     def cumprod(self):
@@ -837,7 +840,9 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols), should_resolve=True
+            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
+            is_cum_func=True,
         )
 
     def cumsum(self):
@@ -886,6 +891,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._apply_series_op(
             lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
+            is_cum_func=True,
         )
 
     def apply(self, func, *args, **kwargs):
@@ -2380,10 +2386,14 @@ class DataFrameGroupBy(GroupBy):
                 agg_columns=item,
             )
 
-    def _apply_series_op(self, op, should_resolve: bool = False):
+    def _apply_series_op(self, op, should_resolve: bool = False, is_cum_func: bool = False):
         applied = []
         for column in self._agg_columns:
             applied.append(op(column.groupby(self._groupkeys)))
+        if is_cum_func:
+            applied = [col for col in applied if isinstance(col.spark.data_type, NumericType)]
+            if not applied:
+                raise DataError("No numeric types to aggregate")
         internal = self._kdf._internal.with_new_columns(applied, keep_order=False)
         if should_resolve:
             internal = internal.resolved_copy
@@ -2513,7 +2523,9 @@ class SeriesGroupBy(GroupBy):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    def _apply_series_op(self, op, should_resolve: bool = False):
+    def _apply_series_op(self, op, should_resolve: bool = False, is_cum_func: bool = False):
+        if is_cum_func and not isinstance(self._agg_columns[0].spark.data_type, NumericType):
+            raise DataError("No numeric types to aggregate")
         kser = op(self)
         if should_resolve:
             internal = kser._internal.resolved_copy

@@ -1465,3 +1465,29 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.MultiIndex.from_frame(pdf, names=["state", "observation"])
         kidx = ks.MultiIndex.from_frame(kdf, names=["state", "observation"])
         self.assert_eq(pidx, kidx)
+
+    def test_index_is_unique(self):
+        indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
+        names = [None, "ks", "ks", None]
+        is_uniq = [True, False, False, True]
+
+        for idx, name, expected in zip(indexes, names, is_uniq):
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(idx, name=name))
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.is_unique, expected)
+
+    def test_multiindex_is_unique(self):
+        indexes = [
+            [list("abc"), list("edf")],
+            [list("aac"), list("edf")],
+            [list("aac"), list("eef")],
+            [[1, 4, 4], [4, 6, 6]],
+        ]
+        is_uniq = [True, True, False, False]
+
+        for idx, expected in zip(indexes, is_uniq):
+            pdf = pd.DataFrame({"a": [1, 2, 3]}, index=idx)
+            kdf = ks.from_pandas(pdf)
+
+            self.assertEqual(kdf.index.is_unique, expected)
