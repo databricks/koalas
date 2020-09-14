@@ -2215,20 +2215,14 @@ class MultiIndex(Index):
         ).index
 
     @staticmethod
-    def from_frame(df, sortorder=None, names=None):
+    def from_frame(df, names=None):
         """
         Make a MultiIndex from a DataFrame.
-
-        .. note:: This method should only be used if the resulting pandas object is expected
-                  to be small, as all the data is loaded into the driver's memory.
 
         Parameters
         ----------
         df : DataFrame
             DataFrame to be converted to MultiIndex.
-        sortorder : int, optional
-            Level of sortedness (must be lexicographically sorted by that
-            level).
         names : list-like, optional
             If no names are provided, use the column names, or tuple of column
             names if the columns is a MultiIndex. If a sequence, overwrite
@@ -2274,11 +2268,13 @@ class MultiIndex(Index):
                     ('NJ', 'Precip')],
                    names=['state', 'observation'])
         """
-        return DataFrame(
-            index=pd.MultiIndex.from_frame(
-                df=df._to_internal_pandas(), sortorder=sortorder, names=names
-            )
-        ).index
+        sdf = df.to_spark()
+        if names is not None:
+            index_map = OrderedDict([column, (name,)] for column, name in zip(sdf.columns, names))
+        else:
+            index_map = OrderedDict([column, (column,)] for column in sdf.columns)
+        internal = InternalFrame(spark_frame=sdf, index_map=index_map)
+        return DataFrame(internal).index
 
     @property
     def name(self) -> str:
