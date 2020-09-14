@@ -1450,7 +1450,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # Integer
         pidx = pd.Index([1, 2, 3])
         kidx = ks.from_pandas(pidx)
-        self.assertTrue(all(pidx.asi8 == kidx.asi8))
+        self.assert_array_eq(pidx.asi8, kidx.asi8)
+
+        # Datetime
+        pidx = pd.date_range(end="1/1/2018", periods=3)
+        kidx = ks.from_pandas(pidx)
+        self.assert_array_eq(pidx.asi8, kidx.asi8)
 
         # Floating
         pidx = pd.Index([1.0, 2.0, 3.0])
@@ -1468,6 +1473,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.asi8, kidx.asi8)
 
         # MultiIndex
-        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        pmidx = pd.MultiIndex.from_tuples([(1, 2)])
         kmidx = ks.from_pandas(pmidx)
-        self.assert_eq(pidx.asi8, kidx.asi8)
+        self.assert_eq(pmidx.asi8, kmidx.asi8)

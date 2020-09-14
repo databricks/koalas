@@ -467,8 +467,10 @@ class Index(IndexOpsMixin):
         warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
         if self.dtype == "int64":
             return self.to_numpy()
+        elif self.dtype == "<M8[ns]":
+            return np.array(list(map(lambda x: x.astype(np.int64), self.to_numpy())))
         else:
-            return
+            return None
 
     @property
     def spark_type(self):
@@ -2863,8 +2865,16 @@ class MultiIndex(Index):
         """
         Return a string of the type inferred from the values.
         """
-        # It's always 'mixed' for MultiIndex
+        # Always returns "mixed" for MultiIndex
         return "mixed"
+
+    @property
+    def asi8(self):
+        """
+        Integer representation of the values.
+        """
+        # Always returns None for MultiIndex
+        return None
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)
