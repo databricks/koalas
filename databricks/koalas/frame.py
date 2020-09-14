@@ -1169,14 +1169,31 @@ class DataFrame(Frame, Generic[T]):
 
         Aggregate these functions over the rows.
 
-        >>> df.agg(['sum', 'min'])[['A', 'B', 'C']]
+        >>> df.agg(['sum', 'min'])[['A', 'B', 'C']].sort_index()
                 A     B     C
         min   1.0   2.0   3.0
         sum  12.0  15.0  18.0
 
         Different aggregations per column.
 
-        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})[['A', 'B']]
+        >>> df.agg({'A' : ['sum', 'min'], 'B' : ['min', 'max']})[['A', 'B']].sort_index()
+                A    B
+        max   NaN  8.0
+        min   1.0  2.0
+        sum  12.0  NaN
+
+        For multi-index columns:
+
+        >>> df.columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
+        >>> df.agg(['sum', 'min'])[[("X", "A"), ("X", "B"), ("Y", "C")]].sort_index()
+                X           Y
+                A     B     C
+        min   1.0   2.0   3.0
+        sum  12.0  15.0  18.0
+
+        >>> aggregated = df.agg({("X", "A") : ['sum', 'min'], ("X", "B") : ['min', 'max']})
+        >>> aggregated[[("X", "A"), ("X", "B")]].sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                X
                 A    B
         max   NaN  8.0
         min   1.0  2.0
@@ -1194,7 +1211,7 @@ class DataFrame(Frame, Generic[T]):
                 )
 
         if not isinstance(func, dict) or not all(
-            isinstance(key, str)
+            isinstance(key, (str, tuple))
             and (
                 isinstance(value, str)
                 or isinstance(value, list)
@@ -1207,27 +1224,24 @@ class DataFrame(Frame, Generic[T]):
                 "functions (list of strings)."
             )
 
-        kdf = DataFrame(GroupBy._spark_groupby(self, func))  # type: DataFrame
+        with option_context("compute.default_index_type", "distributed"):
+            kdf = DataFrame(GroupBy._spark_groupby(self, func))  # type: DataFrame
 
-        # The codes below basically converts:
-        #
-        #           A         B
-        #         sum  min  min  max
-        #     0  12.0  1.0  2.0  8.0
-        #
-        # to:
-        #             A    B
-        #     max   NaN  8.0
-        #     min   1.0  2.0
-        #     sum  12.0  NaN
-        #
-        # Aggregated output is usually pretty much small. So it is fine to directly use pandas API.
-        pdf = kdf._to_internal_pandas().stack()
-        pdf.index = pdf.index.droplevel()
-        pdf.columns.names = [None]
-        pdf.index.names = [None]
+            # The codes below basically converts:
+            #
+            #           A         B
+            #         sum  min  min  max
+            #     0  12.0  1.0  2.0  8.0
+            #
+            # to:
+            #             A    B
+            #     max   NaN  8.0
+            #     min   1.0  2.0
+            #     sum  12.0  NaN
+            #
+            # Aggregated output is usually pretty much small.
 
-        return DataFrame(pdf[list(func.keys())])
+            return kdf.stack().droplevel(0)[list(func.keys())]
 
     agg = aggregate
 
