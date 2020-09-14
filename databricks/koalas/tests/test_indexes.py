@@ -1398,6 +1398,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx_other = pd.Index([3, 4, 5, 6])
         kidx_other = ks.from_pandas(pidx_other)
         self.assert_eq(pidx.intersection(pidx_other), kidx.intersection(kidx_other).sort_values())
+        self.assert_eq(
+            (pidx + 1).intersection(pidx_other), (kidx + 1).intersection(kidx_other).sort_values()
+        )
 
         # other = MultiIndex
         pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
@@ -1405,23 +1408,32 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             pidx.intersection(pmidx), kidx.intersection(kmidx).sort_values(), almost=True
         )
+        self.assert_eq(
+            (pidx + 1).intersection(pmidx),
+            (kidx + 1).intersection(kmidx).sort_values(),
+            almost=True,
+        )
 
         # other = Series
         pser = pd.Series([3, 4, 5, 6])
         kser = ks.from_pandas(pser)
         self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
+        self.assert_eq((pidx + 1).intersection(pser), (kidx + 1).intersection(kser).sort_values())
 
         # other = list
         other = [3, 4, 5, 6]
         self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
+        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
 
         # other = tuple
         other = (3, 4, 5, 6)
         self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
+        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
 
         # other = dict
         other = {3: None, 4: None, 5: None, 6: None}
         self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
+        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
 
         # MultiIndex / other = Index
         self.assert_eq(
