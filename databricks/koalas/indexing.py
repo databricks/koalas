@@ -1420,9 +1420,7 @@ class iLocIndexer(LocIndexerLike):
         stop = rows_sel.stop
         if stop is not None:
             verify_type(stop)
-            if stop == 0:
-                stop = None
-            elif stop < 0:
+            if stop < 0:
                 has_negative = True
 
         step = rows_sel.step
