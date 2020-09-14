@@ -480,7 +480,7 @@ class Index(IndexOpsMixin):
         return sdf.select(F.count(scol) != F.countDistinct(scol)).first()[0]
 
     @property
-    def is_unique(self):
+    def is_unique(self) -> bool:
         """
         Return if the index has unique values.
 
