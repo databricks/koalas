@@ -6922,6 +6922,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> join_kdf.index
         Int64Index([0, 1, 2, 3], dtype='int64')
         """
+        from databricks.koalas.indexes import MultiIndex
+
         if isinstance(right, ks.Series):
             common = list(self.columns.intersection([right.name]))
         else:
@@ -6930,12 +6932,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError(
                 "columns overlap but no suffix specified: " "{rename}".format(rename=common)
             )
-        if on:
+
+        has_multi_index = isinstance(self.index, MultiIndex) or isinstance(right.index, MultiIndex)
+        if on and has_multi_index:
+            if len(on) != right.index.nlevels:
+                raise ValueError(
+                    'len(left_on) must equal the number of levels in the index of "right"'
+                )
+            elif set(on) == set(right.index.names):
+                join_kdf = self.merge(
+                    right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix),
+                )
+        elif on and not has_multi_index:
             self = self.set_index(on)
             join_kdf = self.merge(
                 right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
             ).reset_index()
-        else:
+        elif not on:
             join_kdf = self.merge(
                 right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
             )
