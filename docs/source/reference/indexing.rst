@@ -1,8 +1,8 @@
 .. _api.indexing:
 
-========
-Indexing
-========
+=============
+Index objects
+=============
 
 Index
 -----
