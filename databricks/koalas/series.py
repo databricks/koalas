@@ -2895,7 +2895,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.agg('min')
         1
 
-        >>> s.agg(['min', 'max'])
+        >>> s.agg(['min', 'max']).sort_index()
         max    4
         min    1
         dtype: int64
