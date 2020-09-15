@@ -1241,7 +1241,12 @@ class DataFrame(Frame, Generic[T]):
             #
             # Aggregated output is usually pretty much small.
 
-            return kdf.stack().droplevel(0)[list(func.keys())]
+            if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+                return kdf.stack().droplevel(0)[list(func.keys())]
+            else:
+                pdf = kdf._to_internal_pandas().stack()
+                pdf.index = pdf.index.droplevel()
+                return ks.from_pandas(pdf[list(func.keys())])
 
     agg = aggregate
 
