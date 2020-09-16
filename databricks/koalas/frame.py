@@ -6933,26 +6933,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "columns overlap but no suffix specified: " "{rename}".format(rename=common)
             )
 
-        has_multi_index = isinstance(self.index, MultiIndex) or isinstance(right.index, MultiIndex)
-        if on and has_multi_index:
+        need_set_index = False
+        if on:
+            if not is_list_like(on):
+                on = [on]
             if len(on) != right.index.nlevels:
                 raise ValueError(
                     'len(left_on) must equal the number of levels in the index of "right"'
                 )
-            elif set(on) == set(right.index.names):
-                join_kdf = self.merge(
-                    right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix),
-                )
-        elif on and not has_multi_index:
+
+            need_set_index = len(set(on) & set(self.index.names)) == 0
+        if need_set_index:
             self = self.set_index(on)
-            join_kdf = self.merge(
-                right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
-            ).reset_index()
-        elif not on:
-            join_kdf = self.merge(
-                right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
-            )
-        return join_kdf
+
+        join_kdf = self.merge(
+            right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
+        )
+        return join_kdf.reset_index() if need_set_index else join_kdf
 
     def append(
         self,

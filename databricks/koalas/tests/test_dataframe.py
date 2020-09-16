@@ -1606,6 +1606,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
+        join_pdf = pdf1.set_index("key").join(
+            pdf2.set_index("key"), on="key", lsuffix="_left", rsuffix="_right"
+        )
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.set_index("key").join(
+            kdf2.set_index("key"), on="key", lsuffix="_left", rsuffix="_right"
+        )
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
         # multi-index columns
         columns1 = pd.MultiIndex.from_tuples([("x", "key"), ("Y", "A")])
         columns2 = pd.MultiIndex.from_tuples([("x", "key"), ("Y", "B")])
@@ -1629,6 +1640,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
         join_kdf = kdf1.join(
+            kdf2.set_index(("x", "key")), on=[("x", "key")], lsuffix="_left", rsuffix="_right"
+        )
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
+        join_pdf = pdf1.set_index(("x", "key")).join(
+            pdf2.set_index(("x", "key")), on=[("x", "key")], lsuffix="_left", rsuffix="_right"
+        )
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.set_index(("x", "key")).join(
             kdf2.set_index(("x", "key")), on=[("x", "key")], lsuffix="_left", rsuffix="_right"
         )
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
