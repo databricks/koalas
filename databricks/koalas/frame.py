@@ -6934,7 +6934,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         need_set_index = False
         if on:
             if not is_list_like(on):
-                on = [on]
+                on = [on]  # type: ignore
             if len(on) != right.index.nlevels:
                 raise ValueError(
                     'len(left_on) must equal the number of levels in the index of "right"'
