@@ -2114,18 +2114,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             filter(lambda x: x not in internal_index_columns, transposed_df.columns)
         )
 
+        column_labels = [
+            None if len(label) == 1 and label[0] is None else label
+            for label in (tuple(json.loads(col)["a"]) for col in new_data_columns)
+        ]
+
         internal = self._internal.copy(
             spark_frame=transposed_df,
-            index_map=OrderedDict(
-                (col, name if name is None or isinstance(name, tuple) else (name,))
-                for col, name in zip(
-                    internal_index_columns,
-                    self._internal.column_label_names
-                    if self._internal.column_label_names is not None
-                    else ([None] * len(internal_index_columns)),
-                )
-            ),
-            column_labels=[tuple(json.loads(col)["a"]) for col in new_data_columns],
+            index_map=OrderedDict(zip(internal_index_columns, self._internal.column_label_names)),
+            column_labels=column_labels,
             data_spark_columns=[scol_for(transposed_df, col) for col in new_data_columns],
             column_label_names=self._internal.index_names,
         )
@@ -3759,11 +3756,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         # The data is expected to be small so it's fine to transpose/use default index.
         with ks.option_context("compute.max_rows", None):
-            internal = InternalFrame(
+            internal = self._internal.copy(
                 spark_frame=sdf,
                 index_map=OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)]),
-                column_labels=self._internal.column_labels,
-                column_label_names=self._internal.column_label_names,
+                data_spark_columns=[
+                    scol_for(sdf, col) for col in self._internal.data_spark_column_names
+                ],
             )
 
             return first_series(DataFrame(internal).transpose())
@@ -5312,9 +5310,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         for name in data_columns
                     ]
                     index_map = OrderedDict(zip(index_columns, index))
-                    column_label_names = ([None] * column_labels_level(values)) + [
-                        str(columns) if len(columns) > 1 else columns[0]
-                    ]
+                    column_label_names = ([None] * column_labels_level(values)) + [columns]
                     internal = InternalFrame(
                         spark_frame=sdf,
                         index_map=index_map,
@@ -5326,9 +5322,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     column_labels = [tuple(list(values[0]) + [column]) for column in data_columns]
                     index_map = OrderedDict(zip(index_columns, index))
-                    column_label_names = ([None] * len(values[0])) + [
-                        str(columns) if len(columns) > 1 else columns[0]
-                    ]
+                    column_label_names = ([None] * len(values[0])) + [columns]
                     internal = InternalFrame(
                         spark_frame=sdf,
                         index_map=index_map,
@@ -5341,9 +5335,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 index_columns = [self._internal.spark_column_name_for(label) for label in index]
                 index_map = OrderedDict(zip(index_columns, index))
-                column_label_names = [str(columns) if len(columns) > 1 else columns[0]]
                 internal = InternalFrame(
-                    spark_frame=sdf, index_map=index_map, column_label_names=column_label_names
+                    spark_frame=sdf, index_map=index_map, column_label_names=[columns]
                 )
                 return DataFrame(internal)
         else:
@@ -5356,9 +5349,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 colname = SPARK_INDEX_NAME_FORMAT(i)
                 sdf = sdf.withColumn(colname, F.lit(index_value))
                 index_map[colname] = None
-            column_label_names = [str(columns) if len(columns) > 1 else columns[0]]
             internal = InternalFrame(
-                spark_frame=sdf, index_map=index_map, column_label_names=column_label_names
+                spark_frame=sdf, index_map=index_map, column_label_names=[columns]
             )
             return DataFrame(internal)
 
@@ -5507,33 +5499,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             columns = pd.MultiIndex.from_tuples(self._internal.column_labels)
         else:
             columns = pd.Index([label[0] for label in self._internal.column_labels])
-        if self._internal.column_label_names is not None:
-            columns.names = self._internal.column_label_names
+        columns.names = [
+            name if name is None or len(name) > 1 else name[0]
+            for name in self._internal.column_label_names
+        ]
         return columns
 
     @columns.setter
     def columns(self, columns):
         if isinstance(columns, pd.MultiIndex):
             column_labels = columns.tolist()
-            old_names = self._internal.column_labels
-            if len(old_names) != len(column_labels):
-                raise ValueError(
-                    "Length mismatch: Expected axis has %d elements, new values have %d elements"
-                    % (len(old_names), len(column_labels))
-                )
-            column_label_names = columns.names
         else:
-            old_names = self._internal.column_labels
-            if len(old_names) != len(columns):
-                raise ValueError(
-                    "Length mismatch: Expected axis has %d elements, new values have %d elements"
-                    % (len(old_names), len(columns))
-                )
             column_labels = [col if isinstance(col, tuple) else (col,) for col in columns]
-            if isinstance(columns, pd.Index):
-                column_label_names = columns.names
-            else:
-                column_label_names = None
+
+        if len(self._internal.column_labels) != len(column_labels):
+            raise ValueError(
+                "Length mismatch: Expected axis has %d elements, new values have %d elements"
+                % (len(self._internal.column_labels), len(column_labels))
+            )
+
+        if isinstance(columns, pd.Index):
+            column_label_names = [
+                name if name is None or isinstance(name, tuple) else (name,)
+                for name in columns.names
+            ]
+        else:
+            column_label_names = None
+
         data_columns = [name_like_string(label) for label in column_labels]
         data_spark_columns = [
             self._internal.spark_column_for(label).alias(name)
@@ -8066,13 +8058,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         sdf = self._internal.spark_frame
 
         if var_name is None:
-            if self._internal.column_label_names is not None:
-                var_name = self._internal.column_label_names
-            elif self._internal.column_labels_level == 1:
+            if (
+                self._internal.column_labels_level == 1
+                and self._internal.column_label_names[0] is None
+            ):
                 var_name = ["variable"]
             else:
                 var_name = [
-                    "variable_{}".format(i) for i in range(self._internal.column_labels_level)
+                    name_like_string(name) if name is not None else "variable_{}".format(i)
+                    for name, i in zip(
+                        self._internal.column_label_names, range(self._internal.column_labels_level)
+                    )
                 ]
         elif isinstance(var_name, str):
             var_name = [var_name]
@@ -8097,8 +8093,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.spark_column_for(label).alias(name_like_string(label))
                 for label in id_vars
             ]
-            + [F.col("pairs.%s" % name) for name in var_name[: self._internal.column_labels_level]]
-            + [F.col("pairs.%s" % value_name)]
+            + [
+                F.col("pairs.`%s`" % name)
+                for name in var_name[: self._internal.column_labels_level]
+            ]
+            + [F.col("pairs.`%s`" % value_name)]
         )
         exploded_df = sdf.withColumn("pairs", pairs).select(columns)
 
@@ -8232,15 +8231,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         column_labels = OrderedDict(sorted(column_labels.items(), key=lambda x: x[0]))
 
-        if self._internal.column_label_names is None:
-            column_label_names = None
-            index_name = None
-        else:
-            column_label_names = self._internal.column_label_names[:-1]
-            if self._internal.column_label_names[-1] is None:
-                index_name = None
-            else:
-                index_name = (self._internal.column_label_names[-1],)
+        index_name = self._internal.column_label_names[-1]
+        column_label_names = self._internal.column_label_names[:-1]
+        if len(column_label_names) == 0:
+            column_label_names = [None]
 
         index_column = SPARK_INDEX_NAME_FORMAT(len(self._internal.index_map))
         index_map = list(self._internal.index_map.items()) + [(index_column, index_name)]
@@ -8400,11 +8394,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             SPARK_INDEX_NAME_FORMAT(i) for i in range(self._internal.column_labels_level)
         ]
 
-        new_index_map = []
-        if self._internal.column_label_names is not None:
-            new_index_map.extend(zip(new_index_columns, self._internal.column_label_names))
-        else:
-            new_index_map.extend(zip(new_index_columns, [None] * len(new_index_columns)))
+        new_index_map = list(zip(new_index_columns, self._internal.column_label_names))
 
         pairs = F.explode(
             F.array(
@@ -8519,15 +8509,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         sdf = sdf.selectExpr("col.*")
 
-        index_column_name = lambda i: (
-            None
-            if self._internal.column_label_names is None
-            else (self._internal.column_label_names[i],)
-        )
         internal = self._internal.copy(
             spark_frame=sdf,
             index_map=OrderedDict(
-                (SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
+                (SPARK_INDEX_NAME_FORMAT(i), self._internal.column_label_names[i])
                 for i in range(self._internal.column_labels_level)
             ),
             column_labels=[None],
@@ -8611,15 +8596,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         sdf = sdf.selectExpr("col.*")
 
-        index_column_name = lambda i: (
-            None
-            if self._internal.column_label_names is None
-            else (self._internal.column_label_names[i],)
-        )
         internal = self._internal.copy(
             spark_frame=sdf,
             index_map=OrderedDict(
-                (SPARK_INDEX_NAME_FORMAT(i), index_column_name(i))
+                (SPARK_INDEX_NAME_FORMAT(i), self._internal.column_label_names[i])
                 for i in range(self._internal.column_labels_level)
             ),
             column_labels=[None],
