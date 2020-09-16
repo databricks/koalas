@@ -5173,14 +5173,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2       [3, 4]
         dtype: object
 
-        >>> s.explode()
-        0      1
-        0      2
-        0      3
+        >>> kser.explode()
+        0    1.0
+        0    2.0
+        0    3.0
         1    NaN
-        2      3
-        2      4
-        dtype: object
+        2    3.0
+        2    4.0
+        dtype: float64
         """
         if not isinstance(self.spark.data_type, ArrayType):
             return self.copy()
