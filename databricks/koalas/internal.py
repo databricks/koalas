@@ -25,7 +25,7 @@ import py4j
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
@@ -372,7 +372,7 @@ class InternalFrame(object):
         index_map: Optional[Dict[str, Optional[Tuple[str, ...]]]],
         column_labels: Optional[List[Tuple[str, ...]]] = None,
         data_spark_columns: Optional[List[spark.Column]] = None,
-        column_label_names: Optional[List[str]] = None,
+        column_label_names: Optional[List[Optional[Tuple[str, ...]]]] = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -408,7 +408,7 @@ class InternalFrame(object):
                                 4       5  6
         zoo         bar         7       8  9
 
-        >>> internal = kdf[('a', 'y')]._internal
+        >>> internal = kdf._internal
 
         >>> internal._sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
         +-----------------+-----------------+------+------+------+...
@@ -425,13 +425,13 @@ class InternalFrame(object):
          ('(a, x)', ('a', 'x'))])
 
         >>> internal._column_labels
-        [('a', 'y')]
+        [('a', 'y'), ('b', 'z')]
 
         >>> internal._data_spark_columns
-        [Column<b'(a, y)'>]
+        [Column<b'(a, y)'>, Column<b'(b, z)'>]
 
-        >>> list(internal._column_label_names)
-        ['column_labels_a', 'column_labels_b']
+        >>> internal._column_label_names
+        [('column_labels_a',), ('column_labels_b',)]
         """
 
         assert isinstance(spark_frame, spark.DataFrame)
@@ -512,15 +512,23 @@ class InternalFrame(object):
                 assert len(set(len(label) for label in column_labels)) <= 1, column_labels
             self._column_labels = column_labels
 
-        if column_label_names is not None and not is_list_like(column_label_names):
-            raise ValueError("Column_index_names should be list-like or None for a MultiIndex")
-
-        if isinstance(column_label_names, list):
-            if all(name is None for name in column_label_names):
-                self._column_label_names = None
-            else:
-                self._column_label_names = column_label_names
+        if column_label_names is None:
+            self._column_label_names = [
+                None
+            ] * self.column_labels_level  # type: List[Optional[Tuple[str, ...]]]
         else:
+            assert len(column_label_names) == self.column_labels_level, (
+                len(column_label_names),
+                self.column_labels_level,
+            )
+            assert all(
+                column_label_name is None
+                or (
+                    isinstance(column_label_name, tuple)
+                    and all(isinstance(name, str) for name in column_label_name)
+                )
+                for column_label_name in column_label_names
+            ), column_label_names
             self._column_label_names = column_label_names
 
     @staticmethod
@@ -776,7 +784,7 @@ class InternalFrame(object):
         return column_labels_level(self._column_labels)
 
     @property
-    def column_label_names(self) -> Optional[List[str]]:
+    def column_label_names(self) -> List[Optional[Tuple[str, ...]]]:
         """ Return names of the index levels. """
         return self._column_label_names
 
@@ -835,8 +843,10 @@ class InternalFrame(object):
             pdf.columns = pd.MultiIndex.from_tuples(self._column_labels)
         else:
             pdf.columns = [None if label is None else label[0] for label in self._column_labels]
-        if self._column_label_names is not None:
-            pdf.columns.names = self._column_label_names
+
+        pdf.columns.names = [
+            name if name is None or len(name) > 1 else name[0] for name in self._column_label_names
+        ]
 
         index_names = self.index_names
         if len(index_names) > 0:
@@ -983,7 +993,9 @@ class InternalFrame(object):
         assert column_label in self.column_labels, column_label
 
         return self.copy(
-            column_labels=[column_label], data_spark_columns=[self.spark_column_for(column_label)]
+            column_labels=[column_label],
+            data_spark_columns=[self.spark_column_for(column_label)],
+            column_label_names=None,
         )
 
     def copy(
@@ -992,7 +1004,9 @@ class InternalFrame(object):
         index_map: Optional[Union[Dict[str, Optional[Tuple[str, ...]]], _NoValueType]] = _NoValue,
         column_labels: Optional[Union[List[Tuple[str, ...]], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
-        column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
+        column_label_names: Optional[
+            Union[List[Optional[Tuple[str, ...]]], _NoValueType]
+        ] = _NoValue,
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
@@ -1034,7 +1048,9 @@ class InternalFrame(object):
             column_labels = columns.tolist()
         else:
             column_labels = None
-        column_label_names = columns.names
+        column_label_names = [
+            name if name is None or isinstance(name, tuple) else (name,) for name in columns.names
+        ]
 
         index_names = [
             name if name is None or isinstance(name, tuple) else (name,) for name in pdf.index.names

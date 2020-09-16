@@ -165,10 +165,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf1 = ks.from_pandas(pdf)
         self.assert_eq(kdf1.columns.names, pdf.columns.names)
 
-        with self.assertRaisesRegex(
-            ValueError, "Column_index_names should " "be list-like or None for a MultiIndex"
-        ):
-            ks.DataFrame(kdf1._internal.copy(column_label_names="level"))
+        self.assertRaises(
+            AssertionError, lambda: ks.DataFrame(kdf1._internal.copy(column_label_names=("level",)))
+        )
 
         self.assert_eq(kdf["X"], pdf["X"])
         self.assert_eq(kdf["X"].columns.names, pdf["X"].columns.names)
