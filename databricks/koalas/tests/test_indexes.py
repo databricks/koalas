@@ -1451,6 +1451,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index([1, 2, 3])
         kidx = ks.from_pandas(pidx)
         self.assert_array_eq(pidx.asi8, kidx.asi8)
+        self.assert_array_eq(pidx.astype("int").asi8, kidx.astype("int").asi8)
+        self.assert_array_eq(pidx.astype("int16").asi8, kidx.astype("int16").asi8)
+        self.assert_array_eq(pidx.astype("int8").asi8, kidx.astype("int8").asi8)
+
+        # Integer with missing value
+        pidx = pd.Index([1, 2, None, 4, 5])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
 
         # Datetime
         pidx = pd.date_range(end="1/1/2018", periods=3)

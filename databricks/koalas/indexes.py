@@ -465,9 +465,9 @@ class Index(IndexOpsMixin):
         True
         """
         warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
-        if self.dtype == "int64":
+        if isinstance(self.spark.data_type, IntegralType):
             return self.to_numpy()
-        elif self.dtype == "<M8[ns]":
+        elif isinstance(self.spark.data_type, TimestampType):
             return np.array(list(map(lambda x: x.astype(np.int64), self.to_numpy())))
         else:
             return None
