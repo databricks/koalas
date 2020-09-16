@@ -6922,8 +6922,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> join_kdf.index
         Int64Index([0, 1, 2, 3], dtype='int64')
         """
-        from databricks.koalas.indexes import MultiIndex
-
         if isinstance(right, ks.Series):
             common = list(self.columns.intersection([right.name]))
         else:
