@@ -709,14 +709,23 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(
-            kdf.groupby(("x", "a")).nunique().sort_index(),
-            pdf.groupby(("x", "a")).nunique().sort_index(),
-        )
-        self.assert_eq(
-            kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
-            pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            expected = ks.DataFrame({("y", "b"): [2, 2]}, index=pd.Index([0, 1], name=("x", "a")))
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique().sort_index(), expected,
+            )
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(), expected,
+            )
+        elif LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique().sort_index(),
+                pdf.groupby(("x", "a")).nunique().sort_index(),
+            )
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+                pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+            )
 
     def test_unique(self):
         for pdf in [
