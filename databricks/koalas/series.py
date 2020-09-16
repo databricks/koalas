@@ -5142,7 +5142,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         kser = self._cum(cumprod, skipna, part_cols)
         result = kser._with_new_scol(F.exp(kser.spark.column))
-        if isinstance(data_type, LongType):
+        if isinstance(data_type, IntegralType):
             result = result.spark.transform(lambda col: F.round(col).cast(LongType()))
         return result
 
