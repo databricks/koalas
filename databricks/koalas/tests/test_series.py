@@ -1980,3 +1980,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
+
+    def test_explode(self):
+        pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+        # MultiIndex
+        pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+        # non-array type Series
+        pser = pd.Series([1, 2, 3, 4])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.explode(), kser.explode())
