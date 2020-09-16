@@ -10176,6 +10176,42 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     prod = product
 
+    @staticmethod
+    def from_dict(data, dtype=None) -> "DataFrame":
+        """
+        Construct DataFrame from dict of array-like or dicts.
+        Creates DataFrame object from dictionary by columns
+        fallowing dtype specification.
+
+        Parameters
+        ----------
+        data : dict
+            Of the form {field : array-like} or {field : dict}.
+        dtype : dtype, default None
+            Data type to force, otherwise infer.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        DataFrame.from_records : DataFrame from structured ndarray, sequence
+            of tuples or dicts, or DataFrame.
+        DataFrame : DataFrame object creation using constructor.
+
+        Examples
+        --------
+        >>> data = {'col_1': [3, 2, 1, 0], 'col_2': ['a', 'b', 'c', 'd']}
+        >>> pd.DataFrame.from_dict(data)
+           col_1 col_2
+        0      3     a
+        1      2     b
+        2      1     c
+        3      0     d
+        """
+        return DataFrame(data, dtype=dtype)
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
