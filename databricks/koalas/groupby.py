@@ -2104,13 +2104,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 + F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0)
             )
 
-        # The behavior of GroupBy.nunique has been changed since pandas 1.1.0
-        should_include_groupkeys = False
-        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
-            should_include_groupkeys = isinstance(self, DataFrameGroupBy)
-        return self._reduce_for_stat_function(
-            stat_function, only_numeric=False, should_include_groupkeys=should_include_groupkeys
-        )
+        return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
     def rolling(self, window, min_periods=None):
         """
@@ -2161,13 +2155,9 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return ExpandingGroupby(self, min_periods=min_periods)
 
-    def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
-        if should_include_groupkeys:
-            agg_columns = self._groupkeys + self._agg_columns
-            agg_columns_scols = self._groupkeys_scols + self._agg_columns_scols
-        else:
-            agg_columns = self._agg_columns
-            agg_columns_scols = self._agg_columns_scols
+    def _reduce_for_stat_function(self, sfun, only_numeric):
+        agg_columns = self._agg_columns
+        agg_columns_scols = self._agg_columns_scols
 
         groupkey_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
         groupkey_scols = [s.alias(name) for s, name in zip(self._groupkeys_scols, groupkey_names)]
@@ -2544,11 +2534,8 @@ class SeriesGroupBy(GroupBy):
     def _agg_columns(self):
         return [self._kser]
 
-    def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
-        assert not should_include_groupkeys, should_include_groupkeys
-        return first_series(
-            super()._reduce_for_stat_function(sfun, only_numeric, should_include_groupkeys)
-        )
+    def _reduce_for_stat_function(self, sfun, only_numeric):
+        return first_series(super()._reduce_for_stat_function(sfun, only_numeric))
 
     def agg(self, *args, **kwargs):
         return MissingPandasLikeSeriesGroupBy.agg(self, *args, **kwargs)

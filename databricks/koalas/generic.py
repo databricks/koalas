@@ -2251,10 +2251,11 @@ class Frame(object, metaclass=ABCMeta):
             else:
                 result = first_series(self.to_frame().loc[after:before]).rename(self.name)
         elif isinstance(self, ks.DataFrame):
-            if indexes_increasing and axis == 0:
-                result = self.loc[before:after]
-            elif not indexes_increasing and axis == 0:
-                result = self.loc[after:before]
+            if axis == 0:
+                if indexes_increasing:
+                    result = self.loc[before:after]
+                else:
+                    result = self.loc[after:before]
             elif axis == 1:
                 result = self.loc[:, before:after]
 
