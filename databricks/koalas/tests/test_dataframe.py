@@ -3420,7 +3420,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.take(range(-1, -3), axis=1).sort_index(),
             pdf.take(range(-1, -3), axis=1).sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),

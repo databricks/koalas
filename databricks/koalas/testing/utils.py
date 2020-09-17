@@ -197,6 +197,9 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                     self.assertEqual(lnull, rnull, msg=msg)
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
                     self.assertAlmostEqual(lval, rval, msg=msg)
+            self.assertEqual(
+                name_like_string(left.columns.names), name_like_string(right.columns.names), msg=msg
+            )
         elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
             msg = (
                 "Series are not almost equal: "
