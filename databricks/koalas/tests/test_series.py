@@ -1984,7 +1984,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     @unittest.skipIf(
         LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-        "explode work't work properly with PySpark<2.4",
+        "explode won't work properly with PySpark<2.4",
     )
     def test_explode(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
