@@ -10224,7 +10224,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         keys as rows:
 
         >>> data = {'row_1': [3, 2, 1, 0], 'row_2': [10, 20, 30, 40]}
-        >>> ks.DataFrame.from_dict(data, orient='index')
+        >>> ks.DataFrame.from_dict(data, orient='index').sort_index()
                 0   1   2   3
         row_1   3   2   1   0
         row_2  10  20  30  40
@@ -10233,7 +10233,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         specified manually:
 
         >>> ks.DataFrame.from_dict(data, orient='index',
-        ...                        columns=['A', 'B', 'C', 'D'])
+        ...                        columns=['A', 'B', 'C', 'D']).sort_index()
                 A   B   C   D
         row_1   3   2   1   0
         row_2  10  20  30  40
