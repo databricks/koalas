@@ -3978,11 +3978,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
 
     def test_from_dict(self):
-        data = {"row_1": [3, 2, 1, 0], "row_2": ["a", "b", "c", "d"]}
+        data = {"row_1": [3, 2, 1, 0], "row_2": [10, 20, 30, 40]}
         pdf = pd.DataFrame.from_dict(data)
         kdf = ks.DataFrame.from_dict(data)
         self.assert_eq(pdf, kdf)
 
         pdf = pd.DataFrame.from_dict(data, dtype="int8")
         kdf = ks.DataFrame.from_dict(data, dtype="int8")
+        self.assert_eq(pdf, kdf)
+
+        pdf = pd.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
+        kdf = ks.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
         self.assert_eq(pdf, kdf)
