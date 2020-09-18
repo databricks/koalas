@@ -68,7 +68,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_concat_index_axis(self):
         pdf = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5], "C": [6, 7, 8]})
-        pdf.columns.names = ["ABC"]
+        # TODO: pdf.columns.names = ["ABC"]
         kdf = ks.from_pandas(pdf)
 
         ignore_indexes = [True, False]
@@ -88,9 +88,10 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         ]
 
         for ignore_index, join, sort in itertools.product(ignore_indexes, joins, sorts):
-            for obj in objs:
-                kdfs, pdfs = obj
-                with self.subTest(ignore_index=ignore_index, join=join, sort=sort, objs=pdfs):
+            for i, (kdfs, pdfs) in enumerate(objs):
+                with self.subTest(
+                    ignore_index=ignore_index, join=join, sort=sort, pdfs=pdfs, pair=i
+                ):
                     self.assert_eq(
                         ks.concat(kdfs, ignore_index=ignore_index, join=join, sort=sort),
                         pd.concat(pdfs, ignore_index=ignore_index, join=join, sort=sort),
@@ -112,9 +113,8 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf3 = pdf.copy()
         kdf3 = kdf.copy()
 
-        columns = pd.MultiIndex.from_tuples(
-            [("X", "A"), ("X", "B"), ("Y", "C")], names=["XYZ", "ABC"]
-        )
+        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
+        # TODO: colums.names = ["XYZ", "ABC"]
         pdf3.columns = columns
         kdf3.columns = columns
 
@@ -127,9 +127,10 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         ]
 
         for ignore_index, sort in itertools.product(ignore_indexes, sorts):
-            for obj in objs:
-                kdfs, pdfs = obj
-                with self.subTest(ignore_index=ignore_index, join="outer", sort=sort, objs=pdfs):
+            for i, (kdfs, pdfs) in enumerate(objs):
+                with self.subTest(
+                    ignore_index=ignore_index, join="outer", sort=sort, pdfs=pdfs, pair=i
+                ):
                     self.assert_eq(
                         ks.concat(kdfs, ignore_index=ignore_index, join="outer", sort=sort),
                         pd.concat(pdfs, ignore_index=ignore_index, join="outer", sort=sort),
@@ -137,9 +138,10 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Skip tests for `join="inner" and sort=False` since pandas is flaky.
         for ignore_index in ignore_indexes:
-            for obj in objs:
-                kdfs, pdfs = obj
-                with self.subTest(ignore_index=ignore_index, join="inner", sort=True, objs=pdfs):
+            for i, (kdfs, pdfs) in enumerate(objs):
+                with self.subTest(
+                    ignore_index=ignore_index, join="inner", sort=True, pdfs=pdfs, pair=i
+                ):
                     self.assert_eq(
                         ks.concat(kdfs, ignore_index=ignore_index, join="inner", sort=True),
                         pd.concat(pdfs, ignore_index=ignore_index, join="inner", sort=True),
