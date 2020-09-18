@@ -1446,6 +1446,45 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
 
+    def test_asi8(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        self.assert_array_eq(pidx.asi8, kidx.asi8)
+        self.assert_array_eq(pidx.astype("int").asi8, kidx.astype("int").asi8)
+        self.assert_array_eq(pidx.astype("int16").asi8, kidx.astype("int16").asi8)
+        self.assert_array_eq(pidx.astype("int8").asi8, kidx.astype("int8").asi8)
+
+        # Integer with missing value
+        pidx = pd.Index([1, 2, None, 4, 5])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # Datetime
+        pidx = pd.date_range(end="1/1/2018", periods=3)
+        kidx = ks.from_pandas(pidx)
+        self.assert_array_eq(pidx.asi8, kidx.asi8)
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([(1, 2)])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.asi8, kmidx.asi8)
+
     def test_index_is_unique(self):
         indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
         names = [None, "ks", "ks", None]
