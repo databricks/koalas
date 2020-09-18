@@ -150,7 +150,12 @@ jobs:
         conda config --env --add pinned_packages pandas==$PANDAS_VERSION
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
         conda config --env --add pinned_packages pyspark==$SPARK_VERSION
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
+        if [[ "$SPARK_VERSION" < "3.0" ]]; then
+          pip install pyspark==$SPARK_VERSION
+        else
+          conda install -c conda-forge --yes pyspark==$SPARK_VERSION
+        fi
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
         conda list
