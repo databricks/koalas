@@ -473,7 +473,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
             column_label_names = self._internal.column_label_names[-column_labels_level:]
         else:
-            column_label_names = None
+            column_label_names = self._internal.column_label_names
 
         try:
             sdf = self._internal.spark_frame

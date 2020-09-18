@@ -2004,6 +2004,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
         index_names_of_kdfs = [[] for _ in objs]
     else:
         index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
+
     if all(name == index_names_of_kdfs[0] for name in index_names_of_kdfs) and all(
         idx == column_labels_of_kdfs[0] for idx in column_labels_of_kdfs
     ):
@@ -2075,6 +2076,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
     index_map = None if ignore_index else kdfs[0]._internal.index_map
+
     result_kdf = DataFrame(
         kdfs[0]._internal.copy(
             spark_frame=concatenated,

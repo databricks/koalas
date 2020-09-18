@@ -5495,14 +5495,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     @property
     def columns(self):
         """The column labels of the DataFrame."""
-        if self._internal.column_labels_level > 1:
-            columns = pd.MultiIndex.from_tuples(self._internal.column_labels)
-        else:
-            columns = pd.Index([label[0] for label in self._internal.column_labels])
-        columns.names = [
+        names = [
             name if name is None or len(name) > 1 else name[0]
             for name in self._internal.column_label_names
         ]
+        if self._internal.column_labels_level > 1:
+            columns = pd.MultiIndex.from_tuples(self._internal.column_labels, names=names)
+        else:
+            columns = pd.Index([label[0] for label in self._internal.column_labels], name=names[0])
         return columns
 
     @columns.setter
@@ -8212,7 +8212,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import first_series
 
         if len(self._internal.column_labels) == 0:
-            return DataFrame(self._internal.with_filter(F.lit(False)))
+            return DataFrame(
+                self._internal.copy(
+                    column_label_names=self._internal.column_label_names[:-1]
+                ).with_filter(F.lit(False))
+            )
 
         column_labels = defaultdict(dict)
         index_values = set()
@@ -10386,7 +10390,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             [
                 tuple([name_like_string(label)] + ([""] * (level - 1)))
                 for label in kdf._internal.column_labels
-            ]
+            ],
         )
 
         return kdf

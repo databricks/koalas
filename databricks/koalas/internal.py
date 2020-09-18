@@ -388,7 +388,7 @@ class InternalFrame(object):
                                    Spark Columns to appear as columns. If spark_column is not None,
                                    this argument is ignored, otherwise if this is None, calculated
                                    from spark_frame.
-        :param column_label_names: Names for each of the index levels.
+        :param column_label_names: Names for each of the column index levels.
 
         See the examples below to refer what each parameter means.
 
@@ -513,14 +513,17 @@ class InternalFrame(object):
             self._column_labels = column_labels
 
         if column_label_names is None:
-            self._column_label_names = [
-                None
-            ] * self.column_labels_level  # type: List[Optional[Tuple[str, ...]]]
+            self._column_label_names = [None] * column_labels_level(
+                self._column_labels
+            )  # type: List[Optional[Tuple[str, ...]]]
         else:
-            assert len(column_label_names) == self.column_labels_level, (
-                len(column_label_names),
-                self.column_labels_level,
-            )
+            if len(self._column_labels) > 0:
+                assert len(column_label_names) == column_labels_level(self._column_labels), (
+                    len(column_label_names),
+                    column_labels_level(self._column_labels),
+                )
+            else:
+                assert len(column_label_names) > 0, len(column_label_names)
             assert all(
                 column_label_name is None
                 or (
@@ -781,7 +784,7 @@ class InternalFrame(object):
     @lazy_property
     def column_labels_level(self) -> int:
         """ Return the level of the column index. """
-        return column_labels_level(self._column_labels)
+        return len(self._column_label_names)
 
     @property
     def column_label_names(self) -> List[Optional[Tuple[str, ...]]]:
@@ -839,14 +842,16 @@ class InternalFrame(object):
             append = True
         pdf = pdf[column_names]
 
-        if self.column_labels_level > 1:
-            pdf.columns = pd.MultiIndex.from_tuples(self._column_labels)
-        else:
-            pdf.columns = [None if label is None else label[0] for label in self._column_labels]
-
-        pdf.columns.names = [
+        names = [
             name if name is None or len(name) > 1 else name[0] for name in self._column_label_names
         ]
+        if self.column_labels_level > 1:
+            pdf.columns = pd.MultiIndex.from_tuples(self._column_labels, names=names)
+        else:
+            pdf.columns = pd.Index(
+                [None if label is None else label[0] for label in self._column_labels],
+                name=names[0],
+            )
 
         index_names = self.index_names
         if len(index_names) > 0:
@@ -890,7 +895,9 @@ class InternalFrame(object):
         self,
         scols_or_ksers: List[Union[spark.Column, "Series"]],
         column_labels: Optional[List[Tuple[str, ...]]] = None,
-        column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
+        column_label_names: Optional[
+            Union[List[Optional[Tuple[str, ...]]], _NoValueType]
+        ] = _NoValue,
         keep_order: bool = True,
     ) -> "InternalFrame":
         """
@@ -900,6 +907,7 @@ class InternalFrame(object):
         :param column_labels: the new column index.
             If None, the its column_labels is used when the corresponding `scols_or_ksers` is
             Series, otherwise the original one is used.
+        :param column_label_names: the new names of the column index levels.
         :return: the copied InternalFrame.
         """
         from databricks.koalas.series import Series
@@ -1014,7 +1022,7 @@ class InternalFrame(object):
         :param index_map: the new index information. If None, then the original one is used.
         :param column_labels: the new column index.
         :param data_spark_columns: the new Spark Columns. If None, then the original ones are used.
-        :param column_label_names: the new names of the index levels.
+        :param column_label_names: the new names of the column index levels.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
