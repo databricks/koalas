@@ -10327,7 +10327,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 tuple([name_like_string(label)] + ([""] * (level - 1)))
                 for label in kdf._internal.column_labels
             ],
-            names=kdf._internal.column_label_names[:level],
         )
 
         return kdf
