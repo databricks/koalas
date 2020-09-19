@@ -1466,6 +1466,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_frame(kdf, names=["state", "observation"])
         self.assert_eq(pidx, kidx)
 
+        # MultiIndex columns
+        pidx = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x")])
+        pdf.columns = pidx
+        kdf = ks.from_pandas(pdf)
+
+        pidx = pd.MultiIndex.from_frame(pdf)
+        kidx = ks.MultiIndex.from_frame(kdf)
+
+        self.assert_eq(pidx, kidx)
+
     def test_index_is_unique(self):
         indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
         names = [None, "ks", "ks", None]

@@ -2302,10 +2302,10 @@ class MultiIndex(Index):
                    names=['state', 'observation'])
         """
         sdf = df.to_spark()
-        if names is not None:
-            index_map = OrderedDict([column, (name,)] for column, name in zip(sdf.columns, names))
-        else:
-            index_map = OrderedDict([column, (column,)] for column in sdf.columns)
+        if names is None:
+            names = df.columns.values
+        names = [(name,) if not isinstance(name, tuple) else name for name in names]
+        index_map = OrderedDict([column, name] for column, name in zip(sdf.columns, names))
         internal = InternalFrame(spark_frame=sdf, index_map=index_map)
         return DataFrame(internal).index
 
