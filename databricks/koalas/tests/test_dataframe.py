@@ -2272,14 +2272,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf = ks.from_pandas(pdf)
             self._test_cumprod(pdf, kdf)
         else:
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
-                pdf = pd.DataFrame(
-                    [[2, 1, 1], [5, 1, 2], [1, 1, 3], [2, 4, 4], [4, 9, 5]],
-                    columns=list("ABC"),
-                    index=np.random.rand(5),
-                )
-                kdf = ks.from_pandas(pdf)
-                self._test_cumprod(pdf, kdf)
+            pdf = pd.DataFrame(
+                [[2, 1, 1], [5, 1, 2], [1, 1, 3], [2, 4, 4], [4, 9, 5]],
+                columns=list("ABC"),
+                index=np.random.rand(5),
+            )
+            kdf = ks.from_pandas(pdf)
+            self._test_cumprod(pdf, kdf)
 
     def test_cumprod_multiindex_columns(self):
         arrays = [np.array(["A", "A", "B", "B"]), np.array(["one", "two", "one", "two"])]
