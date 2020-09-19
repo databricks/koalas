@@ -390,6 +390,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = self._kdf._internal.copy(
             column_labels=[self._column_label],
             data_spark_columns=[scol.alias(name_like_string(self._column_label))],
+            column_label_names=None,
         )
         return first_series(DataFrame(internal))
 
@@ -1088,7 +1089,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             index = (index,)
         scol = self.spark.column.alias(name_like_string(index))
 
-        internal = self._kdf._internal.copy(column_labels=[index], data_spark_columns=[scol])
+        internal = self._kdf._internal.copy(
+            column_labels=[index], data_spark_columns=[scol], column_label_names=None
+        )
         kdf = DataFrame(internal)  # type: DataFrame
 
         if kwargs.get("inplace", False):
@@ -2895,7 +2898,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.agg('min')
         1
 
-        >>> s.agg(['min', 'max'])
+        >>> s.agg(['min', 'max']).sort_index()
         max    4
         min    1
         dtype: int64
@@ -4573,13 +4576,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = combined._internal.spark_frame.select(
             *index_scols, cond.alias(self._internal.data_spark_column_names[0])
         ).distinct()
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=self._internal.index_map,
-            column_labels=self._internal.column_labels,
-            data_spark_columns=[scol_for(sdf, self._internal.data_spark_column_names[0])],
-            column_label_names=self._internal.column_label_names,
-        )
+        internal = self._internal.with_new_sdf(sdf)
         return first_series(ks.DataFrame(internal))
 
     def dot(self, other):
@@ -4913,9 +4910,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             (index_scol_name, self._internal.index_map[index_scol_name])
             for index_scol_name in index_scol_names
         )
-        column_label_names = self._internal.index_map[pivot_col]
-        if column_label_names is not None:
-            column_label_names = [name_like_string(column_label_names)]
+        column_label_names = [self._internal.index_map[pivot_col]]
 
         sdf = sdf.groupby(index_scol_names).pivot(pivot_col).agg(F.first(scol))
         internal = InternalFrame(

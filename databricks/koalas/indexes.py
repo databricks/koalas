@@ -440,6 +440,39 @@ class Index(IndexOpsMixin):
         return self.to_numpy()
 
     @property
+    def asi8(self):
+        """
+        Integer representation of the values.
+
+        .. warning:: We recommend using `Index.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+            An ndarray with int64 dtype.
+
+        Examples
+        --------
+        >>> ks.Index([1, 2, 3]).asi8
+        array([1, 2, 3])
+
+        Returns None for non-int64 dtype
+
+        >>> ks.Index(['a', 'b', 'c']).asi8 is None
+        True
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        if isinstance(self.spark.data_type, IntegralType):
+            return self.to_numpy()
+        elif isinstance(self.spark.data_type, TimestampType):
+            return np.array(list(map(lambda x: x.astype(np.int64), self.to_numpy())))
+        else:
+            return None
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         warnings.warn(
@@ -2883,8 +2916,16 @@ class MultiIndex(Index):
         """
         Return a string of the type inferred from the values.
         """
-        # It's always 'mixed' for MultiIndex
+        # Always returns "mixed" for MultiIndex
         return "mixed"
+
+    @property
+    def asi8(self):
+        """
+        Integer representation of the values.
+        """
+        # Always returns None for MultiIndex
+        return None
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)
