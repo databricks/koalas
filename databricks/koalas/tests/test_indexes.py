@@ -25,7 +25,7 @@ import pyspark
 import databricks.koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
-from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils, SPARK_CONF_ARROW_ENABLED
 
 
 class IndexesTest(ReusedSQLTestCase, TestUtils):
@@ -95,7 +95,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
@@ -199,7 +199,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
             # PySpark < 2.4 does not support struct type with arrow enabled.
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 self.assert_eq(kidx, pidx)
         else:
             self.assert_eq(kidx, pidx)
