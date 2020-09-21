@@ -115,16 +115,11 @@ class Index(IndexOpsMixin):
             assert dtype is None
             assert name is None
         else:
-            if names is not None:
-                index = pd.Index(data=data, dtype=dtype, names=names)
-            else:
-                index = pd.Index(data=data, dtype=dtype, name=name)
-
             if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
                 instance = MultiIndex.from_tuples(data, names=names)
             else:
                 instance = object.__new__(cls)
-
+            index = pd.Index(data=data, dtype=dtype, name=name, names=names)
             data = DataFrame(index=index)
 
         instance._anchor = data
