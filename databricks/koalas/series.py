@@ -339,13 +339,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     """
 
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
+        assert data is not None
+
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
             assert not copy
             assert not fastpath
 
-            super().__init__(data)
+            self._anchor = data
             self._column_label = index
         else:
             if isinstance(data, pd.Series):
@@ -364,7 +366,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 internal = internal.copy(column_labels=[None])
             anchor = DataFrame(internal)
 
-            super().__init__(anchor)
+            self._anchor = anchor
             self._column_label = anchor._internal.column_labels[0]
             anchor._kseries = {self._column_label: self}
 

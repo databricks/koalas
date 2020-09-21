@@ -109,14 +109,8 @@ class Index(IndexOpsMixin):
     """
 
     def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
-        if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
-            # MultiIndex
-            return MultiIndex.from_tuples(data, names=names)
-        else:
-            # Index
-            return super().__new__(cls)
+        assert data is not None
 
-    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None, names=None) -> None:
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
@@ -125,10 +119,17 @@ class Index(IndexOpsMixin):
                 index = pd.Index(data=data, dtype=dtype, names=names)
             else:
                 index = pd.Index(data=data, dtype=dtype, name=name)
+
+            if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
+                instance = MultiIndex.from_tuples(data, names=names)
+            else:
+                instance = object.__new__(cls)
+
             data = DataFrame(index=index)
 
-        # Setting anchor via IndexOpsMixin
-        super().__init__(data)
+        instance._anchor = data
+
+        return instance
 
     @property
     def _internal(self) -> InternalFrame:

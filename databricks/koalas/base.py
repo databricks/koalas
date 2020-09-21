@@ -143,10 +143,6 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     :type _anchor: ks.DataFrame
     """
 
-    def __init__(self, anchor: DataFrame):
-        assert anchor is not None
-        self._anchor = anchor
-
     @property
     @abstractmethod
     def _internal(self) -> InternalFrame:
