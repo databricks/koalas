@@ -30,7 +30,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -2155,6 +2155,56 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return ExpandingGroupby(self, min_periods=min_periods)
 
+    def get_group(self, name):
+        """
+        Construct DataFrame from group with provided name.
+
+        Parameters
+        ----------
+        name : object
+            The name of the group to get as a DataFrame.
+
+        Returns
+        -------
+        group : same type as obj
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                     ('parrot', 'bird', 24.0),
+        ...                     ('lion', 'mammal', 80.5),
+        ...                     ('monkey', 'mammal', np.nan)],
+        ...                    columns=['name', 'class', 'max_speed'],
+        ...                    index=[0, 2, 3, 1])
+        >>> kdf
+             name   class  max_speed
+        0  falcon    bird      389.0
+        2  parrot    bird       24.0
+        3    lion  mammal       80.5
+        1  monkey  mammal        NaN
+
+        >>> kdf.groupby("class").get_group("bird").sort_index()
+             name class  max_speed
+        0  falcon  bird      389.0
+        2  parrot  bird       24.0
+
+        >>> kdf.groupby("class").get_group("mammal").sort_index()
+             name   class  max_speed
+        1  monkey  mammal        NaN
+        3    lion  mammal       80.5
+        """
+        if not is_hashable(name):
+            raise TypeError("unhashable type: '{}'".format(type(name).__name__))
+        agg_columns = self._agg_columns
+        groupkey = self._groupkeys[0]
+        scol = groupkey.spark.column
+        sdf = self._kdf._internal.spark_frame.where(scol == name)
+        if sdf.head() is None:
+            raise KeyError(name)
+        internal = self._kdf._internal.copy(spark_frame=sdf)
+
+        return DataFrame(internal)
+
     def _reduce_for_stat_function(self, sfun, only_numeric):
         agg_columns = self._agg_columns
         agg_columns_scols = self._agg_columns_scols
@@ -2565,6 +2615,11 @@ class SeriesGroupBy(GroupBy):
 
     def size(self):
         return super().size().rename(self._kser.name)
+
+    size.__doc__ = GroupBy.size.__doc__
+
+    def get_group(self, name):
+        return first_series(super().get_group(name))
 
     size.__doc__ = GroupBy.size.__doc__
 

@@ -2245,3 +2245,34 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         assert is_multi_agg_with_relabel(a="max") is False
         assert is_multi_agg_with_relabel(a_min=("a", "max"), a_max=("a", "min")) is True
+
+    def test_get_group(self):
+        pdf = pd.DataFrame(
+            [
+                ("falcon", "bird", 389.0),
+                ("parrot", "bird", 24.0),
+                ("lion", "mammal", 80.5),
+                ("monkey", "mammal", np.nan),
+            ],
+            columns=["name", "class", "max_speed"],
+            index=[0, 2, 3, 1],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.groupby("class").get_group("bird"),
+            pdf.groupby("class").get_group("bird"),
+            check_exact=False,
+        )
+        self.assert_eq(
+            kdf.groupby("class")["name"].get_group("mammal"),
+            pdf.groupby("class")["name"].get_group("mammal"),
+            check_exact=False,
+        )
+
+        self.assertRaises(KeyError, lambda: kdf.groupby("class").get_group("fish"))
+        self.assertRaises(TypeError, lambda: kdf.groupby("class").get_group(["bird", "mammal"]))
+        self.assertRaises(KeyError, lambda: kdf.groupby("class")["name"].get_group("fish"))
+        self.assertRaises(
+            TypeError, lambda: kdf.groupby("class")["name"].get_group(["bird", "mammal"])
+        )
