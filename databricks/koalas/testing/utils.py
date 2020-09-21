@@ -20,14 +20,22 @@ import tempfile
 import unittest
 import warnings
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 
 import pandas as pd
+import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
 from databricks.koalas.utils import name_like_string, default_session
+
+
+if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+    SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.enabled"
+else:
+    SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.pyspark.enabled"
 
 
 class SQLTestUtils(object):
@@ -122,7 +130,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
         cls.spark = default_session()
-        cls.spark.conf.set("spark.sql.execution.arrow.enabled", True)
+        cls.spark.conf.set(SPARK_CONF_ARROW_ENABLED, True)
 
     @classmethod
     def tearDownClass(cls):

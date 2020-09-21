@@ -28,7 +28,11 @@ from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import (
+    ReusedSQLTestCase,
+    SQLTestUtils,
+    SPARK_CONF_ARROW_ENABLED,
+)
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.frame import CachedDataFrame
@@ -336,7 +340,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
@@ -351,7 +355,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_nullable_object(self):
@@ -370,7 +374,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf, pdf)
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf, pdf)
 
@@ -3451,7 +3455,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"a": [sparse_vector], "b": [10]})
 
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 kdf = ks.from_pandas(pdf)
                 self.assert_eq(kdf, pdf)
         else:
