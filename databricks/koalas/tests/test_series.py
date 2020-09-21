@@ -979,6 +979,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
         self.assert_eq(pser.cumprod().sum(), kser.cumprod().sum())
 
+        # with integer type
+        pser = pd.Series([1, 10, 1, 4, 9])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
+        self.assert_eq(pser.cumprod().sum(), kser.cumprod().sum())
+
         # with reversed index
         pser.index = [4, 3, 2, 1, 0]
         kser = ks.from_pandas(pser)

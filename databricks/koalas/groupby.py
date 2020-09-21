@@ -824,11 +824,11 @@ class GroupBy(object, metaclass=ABCMeta):
         By default, iterates over rows and finds the sum in each column.
 
         >>> df.groupby("A").cumprod().sort_index()
-              B     C
-        0   NaN   4.0
-        1   0.1  12.0
-        2   2.0  24.0
-        3  10.0   1.0
+              B   C
+        0   NaN   4
+        1   0.1  12
+        2   2.0  24
+        3  10.0   1
 
         It works as below in Series.
 
