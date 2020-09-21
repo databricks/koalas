@@ -1268,8 +1268,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser1.truncate(after=5), pser1.truncate(after=5))
         self.assert_eq(kser1.truncate(copy=False), pser1.truncate(copy=False))
         self.assert_eq(kser1.truncate(2, 5, copy=False), pser1.truncate(2, 5, copy=False))
-        self.assert_eq(kser2.truncate(4, 6), pser2.truncate(4, 6))
-        self.assert_eq(kser2.truncate(4, 6, copy=False), pser2.truncate(4, 6, copy=False))
+        # The bug for these tests has been fixed in pandas 1.1.0.
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
+            self.assert_eq(kser2.truncate(4, 6), pser2.truncate(4, 6))
+            self.assert_eq(kser2.truncate(4, 6, copy=False), pser2.truncate(4, 6, copy=False))
+        else:
+            expected_kser = ks.Series([20, 30, 40], index=[6, 5, 4])
+            self.assert_eq(kser2.truncate(4, 6), expected_kser)
+            self.assert_eq(kser2.truncate(4, 6, copy=False), expected_kser)
 
         kser = ks.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 3, 2, 1])
         msg = "truncate requires a sorted index"

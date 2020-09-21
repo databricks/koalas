@@ -916,9 +916,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
         datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, None)])
         datas.append([(1, 100), (2, 200), (None, None), (4, 400), (5, 500)])
-        datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
-        datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
-        datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
+        # The datas below cannot be an arguments for `MultiIndex.from_tuples` in pandas >= 1.1.0.
+        # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560 for detail.
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
+            datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
+            datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
 
         # duplicated index value tests
         datas.append([("x", "d"), ("y", "c"), ("y", "b"), ("z", "a")])
