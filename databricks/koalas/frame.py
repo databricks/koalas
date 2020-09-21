@@ -4142,7 +4142,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             format="delta",
             partition_cols=partition_cols,
             index_col=index_col,
-            **options
+            **options,
         )
 
     def to_parquet(
@@ -7840,7 +7840,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if isinstance(index, ks.Index):
             if nlevels != index.nlevels:
-                # Use a temporary column so we can call reindex in order to fill columns on new index
+                # Use temporary column so we can call reindex in order to fill columns on new index
                 return DataFrame(
                     index._internal.with_new_columns(
                         [F.lit(0)],
