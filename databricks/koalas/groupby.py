@@ -2621,7 +2621,7 @@ class SeriesGroupBy(GroupBy):
     def get_group(self, name):
         return first_series(super().get_group(name))
 
-    size.__doc__ = GroupBy.size.__doc__
+    get_group.__doc__ = GroupBy.get_group.__doc__
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):
