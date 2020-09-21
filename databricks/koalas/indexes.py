@@ -2180,7 +2180,7 @@ class MultiIndex(Index):
     def __new__(cls, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
 
-        return object.__new__(cls)
+        return super().__new__(cls, data=kdf)
 
     @property
     def _internal(self):
