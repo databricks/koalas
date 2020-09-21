@@ -581,33 +581,66 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_droplevel(self):
+        pdf = (
+            pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
+            .set_index([0, 1])
+            .rename_axis(["a", "b"])
+        )
+        pdf.columns = pd.MultiIndex.from_tuples(
+            [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
+        self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
+        self.assertRaises(ValueError, lambda: kdf.droplevel([1, 1, 1, 1, 1]))
+        self.assertRaises(IndexError, lambda: kdf.droplevel(-3))
+
         # droplevel is new in pandas 0.24.0
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            pdf = (
-                pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
-                .set_index([0, 1])
-                .rename_axis(["a", "b"])
-            )
-
-            pdf.columns = pd.MultiIndex.from_tuples(
-                [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
-            )
-            kdf = ks.from_pandas(pdf)
-
             self.assert_eq(pdf.droplevel("a"), kdf.droplevel("a"))
             self.assert_eq(pdf.droplevel(0), kdf.droplevel(0))
             self.assert_eq(pdf.droplevel(-1), kdf.droplevel(-1))
             self.assert_eq(pdf.droplevel("level_1", axis=1), kdf.droplevel("level_1", axis=1))
             self.assert_eq(pdf.droplevel(0, axis=1), kdf.droplevel(0, axis=1))
-            self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
-            self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
-            self.assertRaises(ValueError, lambda: kdf.droplevel([1, 1, 1, 1, 1]))
-            self.assertRaises(IndexError, lambda: kdf.droplevel(-3))
 
             # Tupled names
             pdf.index.names = [("a", "b"), ("x", "y")]
             kdf = ks.from_pandas(pdf)
             self.assert_eq(pdf.droplevel([("a", "b")]), kdf.droplevel([("a", "b")]))
+        else:
+            expected = ks.DataFrame(
+                [[3, 4], [7, 8], [11, 12]], index=pd.Index([2, 6, 10], name="b")
+            )
+            columns = pd.MultiIndex.from_tuples(
+                [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
+            )
+            expected.columns = columns
+
+            self.assert_eq(expected, kdf.droplevel("a"))
+            self.assert_eq(expected, kdf.droplevel(0))
+
+            expected = ks.DataFrame([[3, 4], [7, 8], [11, 12]], index=pd.Index([1, 5, 9], name="a"))
+            expected.columns = columns
+
+            self.assert_eq(expected, kdf.droplevel(-1))
+
+            index = pd.MultiIndex.from_tuples([(1, 2), (5, 6), (9, 10)], names=["a", "b"])
+            expected = ks.DataFrame([[3, 4], [7, 8], [11, 12]], index=index)
+            expected.columns = pd.Index(["e", "f"], name="level_2")
+
+            self.assert_eq(expected, kdf.droplevel("level_1", axis=1))
+            self.assert_eq(expected, kdf.droplevel(0, axis=1))
+
+            # Tupled names
+            pdf.index.names = [("a", "b"), ("x", "y")]
+            kdf = ks.from_pandas(pdf)
+            expected = ks.DataFrame(
+                [[3, 4], [7, 8], [11, 12]], index=pd.Index([2, 6, 10], name=("x", "y"))
+            )
+            expected.columns = columns
+
+            self.assert_eq(expected, kdf.droplevel([("a", "b")]))
 
     def test_drop(self):
         pdf = pd.DataFrame({"x": [1, 2], "y": [3, 4], "z": [5, 6]}, index=np.random.rand(2))
