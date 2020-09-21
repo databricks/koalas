@@ -5168,7 +5168,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2       [3, 4]
         dtype: object
 
-        >>> kser.explode()
+        >>> kser.explode()  # doctest: +SKIP
         0    1.0
         0    2.0
         0    3.0
@@ -5177,6 +5177,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    4.0
         dtype: float64
         """
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            raise RuntimeError("explode can be used in PySpark >= 2.4")
         if not isinstance(self.spark.data_type, ArrayType):
             return self.copy()
 
