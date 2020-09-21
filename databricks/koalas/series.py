@@ -371,6 +371,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             anchor._kseries = {self._column_label: self}
 
     @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
+
+    @property
     def _internal(self) -> InternalFrame:
         return self._kdf._internal.select_column(self._column_label)
 

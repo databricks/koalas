@@ -132,6 +132,10 @@ class Index(IndexOpsMixin):
         return instance
 
     @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
+
+    @property
     def _internal(self) -> InternalFrame:
         internal = self._kdf._internal
         return internal.copy(
