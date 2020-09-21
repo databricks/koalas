@@ -680,7 +680,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kdf.groupby("a").nunique(dropna=False).sort_index(), expected,
             )
-        elif LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
+        else:
             self.assert_eq(
                 kdf.groupby("a").nunique().sort_index(), pdf.groupby("a").nunique().sort_index()
             )
@@ -717,7 +717,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(), expected,
             )
-        elif LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
+        else:
             self.assert_eq(
                 kdf.groupby(("x", "a")).nunique().sort_index(),
                 pdf.groupby(("x", "a")).nunique().sort_index(),
