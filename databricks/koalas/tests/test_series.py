@@ -15,6 +15,7 @@
 #
 
 import base64
+import unittest
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -1985,6 +1986,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        "explode won't work properly with PySpark<2.4."
+        "See https://issues.apache.org/jira/browse/SPARK-24488 for more detail",
+    )
     def test_explode(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
             pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
