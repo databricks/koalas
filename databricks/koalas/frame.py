@@ -7863,7 +7863,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if fill_value is not None:
             frame_index_columns = [
-                verify_temp_column_name(frame, f"__frame_index_column_{i}__")
+                verify_temp_column_name(frame, "__frame_index_column_{}__".format(i))
                 for i in range(nlevels)
             ]
             cols = [F.col(t[0]).alias(t[1]) for t in zip(index_columns, frame_index_columns)]
