@@ -28,7 +28,11 @@ from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import (
+    ReusedSQLTestCase,
+    SQLTestUtils,
+    SPARK_CONF_ARROW_ENABLED,
+)
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.frame import CachedDataFrame
@@ -165,10 +169,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf1 = ks.from_pandas(pdf)
         self.assert_eq(kdf1.columns.names, pdf.columns.names)
 
-        with self.assertRaisesRegex(
-            ValueError, "Column_index_names should " "be list-like or None for a MultiIndex"
-        ):
-            ks.DataFrame(kdf1._internal.copy(column_label_names="level"))
+        self.assertRaises(
+            AssertionError, lambda: ks.DataFrame(kdf1._internal.copy(column_label_names=("level",)))
+        )
 
         self.assert_eq(kdf["X"], pdf["X"])
         self.assert_eq(kdf["X"].columns.names, pdf["X"].columns.names)
@@ -337,7 +340,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
@@ -352,7 +355,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_nullable_object(self):
@@ -371,7 +374,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf, pdf)
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf, pdf)
 
@@ -3421,7 +3424,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.take(range(-1, -3), axis=1).sort_index(),
             pdf.take(range(-1, -3), axis=1).sort_index(),
-            almost=True,
         )
         self.assert_eq(
             kdf.take([2, 1], axis=1).sort_index(), pdf.take([2, 1], axis=1).sort_index(),
@@ -3453,7 +3455,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"a": [sparse_vector], "b": [10]})
 
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 kdf = ks.from_pandas(pdf)
                 self.assert_eq(kdf, pdf)
         else:
@@ -3976,3 +3978,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns.names = ["Hello", "Koalas"]
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.prod(), kdf.prod().sort_index(), check_exact=False)
+
+    def test_from_dict(self):
+        data = {"row_1": [3, 2, 1, 0], "row_2": [10, 20, 30, 40]}
+        pdf = pd.DataFrame.from_dict(data)
+        kdf = ks.DataFrame.from_dict(data)
+        self.assert_eq(pdf, kdf)
+
+        pdf = pd.DataFrame.from_dict(data, dtype="int8")
+        kdf = ks.DataFrame.from_dict(data, dtype="int8")
+        self.assert_eq(pdf, kdf)
+
+        pdf = pd.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
+        kdf = ks.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
+        self.assert_eq(pdf, kdf)
