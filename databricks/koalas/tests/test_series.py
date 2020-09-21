@@ -33,7 +33,11 @@ from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas import Series
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import (
+    ReusedSQLTestCase,
+    SQLTestUtils,
+    SPARK_CONF_ARROW_ENABLED,
+)
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import MissingPandasLikeSeries
 
@@ -83,7 +87,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.from_pandas(a), a)
         self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(ks.from_pandas(a), a)
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
@@ -95,7 +99,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
         self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
             self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
@@ -549,7 +553,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_value_counts(self):
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 self._test_value_counts()
             self.assertRaises(
                 RuntimeError,
@@ -1428,7 +1432,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([sparse_vector])
 
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 kser = ks.from_pandas(pser)
                 self.assert_eq(kser, pser)
         else:

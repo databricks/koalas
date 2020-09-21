@@ -25,7 +25,7 @@ import pyspark
 import databricks.koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
-from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils, SPARK_CONF_ARROW_ENABLED
 
 
 class IndexesTest(ReusedSQLTestCase, TestUtils):
@@ -95,7 +95,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(kidx.to_series(), pidx.to_series())
             self.assert_eq(kidx.to_series(name="a"), pidx.to_series(name="a"))
 
@@ -199,7 +199,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(kidx.names, pidx.names)
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
             # PySpark < 2.4 does not support struct type with arrow enabled.
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 self.assert_eq(kidx, pidx)
         else:
             self.assert_eq(kidx, pidx)
@@ -1445,6 +1445,77 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples([("a", "x")])
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
+
+    def test_is_type_compatible(self):
+        data_types = ["integer", "floating", "string", "boolean"]
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        for data_type in data_types:
+            self.assert_eq(pidx.is_type_compatible(data_type), kidx.is_type_compatible(data_type))
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        kmidx = ks.from_pandas(pmidx)
+        for data_type in data_types:
+            self.assert_eq(pmidx.is_type_compatible(data_type), kmidx.is_type_compatible(data_type))
+
+    def test_asi8(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        self.assert_array_eq(pidx.asi8, kidx.asi8)
+        self.assert_array_eq(pidx.astype("int").asi8, kidx.astype("int").asi8)
+        self.assert_array_eq(pidx.astype("int16").asi8, kidx.astype("int16").asi8)
+        self.assert_array_eq(pidx.astype("int8").asi8, kidx.astype("int8").asi8)
+
+        # Integer with missing value
+        pidx = pd.Index([1, 2, None, 4, 5])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # Datetime
+        pidx = pd.date_range(end="1/1/2018", periods=3)
+        kidx = ks.from_pandas(pidx)
+        self.assert_array_eq(pidx.asi8, kidx.asi8)
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.asi8, kidx.asi8)
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([(1, 2)])
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.asi8, kmidx.asi8)
 
     def test_index_is_unique(self):
         indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
