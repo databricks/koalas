@@ -392,7 +392,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             column_labels=[self._column_label],
             data_spark_columns=[scol.alias(name_like_string(self._column_label))],
             column_label_names=None,
-        ).resolved_copy
+        )
         return first_series(DataFrame(internal))
 
     @property
@@ -5183,7 +5183,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         scol_name = self._internal.data_spark_column_names[0]
         scol = F.explode_outer(self.spark.column).alias(scol_name)
 
-        return self._with_new_scol(scol)
+        internal = self._kdf._internal.copy(
+            column_labels=[self._column_label],
+            data_spark_columns=[scol.alias(name_like_string(self._column_label))],
+            column_label_names=None,
+        ).resolved_copy
+
+        return first_series(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
