@@ -1982,10 +1982,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
 
-    @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-        "explode won't work properly with PySpark<2.4",
-    )
     def test_explode(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
             pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
@@ -2004,13 +2000,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
             kser = ks.from_pandas(pser)
-            expected = ks.Series([1.0, 2.0, 3.0, None, None, 3.0, 4.0], index=[0, 0, 0, 1, 2, 3, 3])
+            expected = pd.Series([1.0, 2.0, 3.0, None, None, 3.0, 4.0], index=[0, 0, 0, 1, 2, 3, 3])
             self.assert_eq(kser.explode(), expected)
 
             # MultiIndex
             pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
             kser = ks.from_pandas(pser)
-            expected = ks.Series(
+            expected = pd.Series(
                 [1.0, 2.0, 3.0, None, None, 3.0, 4.0],
                 index=pd.MultiIndex.from_tuples(
                     [
@@ -2029,5 +2025,5 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             # non-array type Series
             pser = pd.Series([1, 2, 3, 4])
             kser = ks.from_pandas(pser)
-            expected = kser.copy()
+            expected = pser
             self.assert_eq(kser.explode(), expected)

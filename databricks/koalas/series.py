@@ -5185,7 +5185,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if not isinstance(self.spark.data_type, ArrayType):
             return self.copy()
 
-        return self._with_new_scol(F.explode_outer(self.spark.column))
+        scol_name = self._internal.data_spark_column_names[0]
+        scol = F.explode_outer(self.spark.column).alias(scol_name)
+        sdf = self._kdf.to_spark().select(scol)
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=None,
+            column_labels=self._internal.column_labels,
+            column_label_names=self._internal.column_label_names,
+        )
+        return first_series(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
