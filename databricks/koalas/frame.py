@@ -10252,18 +10252,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                     'B': [10.0, 20.0, 30.0, 40.0, 50.0],
         ...                     'C': ['a', 'b', 'c', 'd', 'e']})
         >>> kdf
-           A     B  C   D
-        0  3  10.0  a NaN
-        1  4  20.0  b NaN
-        2  5  30.0  c NaN
-        3  6  40.0  d NaN
-        4  7  50.0  e NaN
+           A     B  C
+        0  3  10.0  a
+        1  4  20.0  b
+        2  5  30.0  c
+        3  6  40.0  d
+        4  7  50.0  e
 
         >>> kdf.lookup([0], ["C"])
         array(['a'], dtype=object)
 
-        >>> kdf.lookup([2, 3], ["A", "D"])
-        array([ 5., nan])
+        >>> kdf.lookup([2, 3], ["A", "B"])
+        array([ 5., 40.])
         """
         if len(row_labels) != len(col_labels):
             raise ValueError("Row labels must have same size as column labels")
