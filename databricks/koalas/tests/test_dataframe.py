@@ -4019,3 +4019,34 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
         kdf = ks.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
         self.assert_eq(pdf, kdf)
+
+    def test_lookup(self):
+        pdf = pd.DataFrame(
+            {
+                "A": [3, 4, 5, 6, 7],
+                "B": [10.0, 20.0, 30.0, 40.0, 50.0],
+                "C": ["a", "b", "c", "d", "e"],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.lookup([0], ["C"]), kdf.lookup([0], ["C"]))
+        self.assert_list_eq(
+            pdf.lookup([0, 3, 4], ["A", "C", "A"]), kdf.lookup([0, 3, 4], ["A", "C", "A"])
+        )
+
+        # MultiIndex
+        pdf.index = pd.MultiIndex.from_tuples(
+            [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.lookup([("a", "v")], ["C"]), kdf.lookup([("a", "v")], ["C"]))
+        self.assert_list_eq(
+            pdf.lookup([("a", "v"), ("d", "y"), ("e", "z")], ["A", "C", "A"]),
+            kdf.lookup([("a", "v"), ("d", "y"), ("e", "z")], ["A", "C", "A"]),
+        )
+
+        err_msg = "Row labels must have same size as column labels"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            kdf.lookup([0, 3, 4], ["A", "C"])

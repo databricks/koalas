@@ -10224,6 +10224,54 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return DataFrame(pd.DataFrame.from_dict(data, orient=orient, dtype=dtype, columns=columns))
 
+    def lookup(self, row_labels, col_labels) -> np.ndarray:
+        """
+        Label-based "fancy indexing" function for DataFrame.
+
+        Given equal-length arrays of row and column labels, return an
+        array of the values corresponding to each (row, col) pair.
+
+        .. note:: This method should only be used when the length of `row_labels` is small enough,
+                  as all the result is loaded into the driver's memory.
+
+        Parameters
+        ----------
+        row_labels : sequence
+            The row labels to use for lookup.
+        col_labels : sequence
+            The column labels to use for lookup.
+
+        Returns
+        -------
+        numpy.ndarray
+            The found values.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'A': [3, 4, 5, 6, 7],
+        ...                     'B': [10.0, 20.0, 30.0, 40.0, 50.0],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A     B  C   D
+        0  3  10.0  a NaN
+        1  4  20.0  b NaN
+        2  5  30.0  c NaN
+        3  6  40.0  d NaN
+        4  7  50.0  e NaN
+
+        >>> kdf.lookup([0], ["C"])
+        array(['a'], dtype=object)
+
+        >>> kdf.lookup([2, 3], ["A", "D"])
+        array([ 5., nan])
+        """
+        if len(row_labels) != len(col_labels):
+            raise ValueError("Row labels must have same size as column labels")
+        lookups = [
+            self.loc[row_label, col_label] for row_label, col_label in zip(row_labels, col_labels)
+        ]
+        return pd.Series(lookups).to_numpy()
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
