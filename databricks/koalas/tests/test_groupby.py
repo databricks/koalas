@@ -2262,32 +2262,26 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby("class").get_group("bird"),
             pdf.groupby("class").get_group("bird"),
-            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby("class")["name"].get_group("mammal"),
             pdf.groupby("class")["name"].get_group("mammal"),
-            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby("class")[["name"]].get_group("mammal"),
             pdf.groupby("class")[["name"]].get_group("mammal"),
-            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(["class", "name"]).get_group(("mammal", "lion")),
             pdf.groupby(["class", "name"]).get_group(("mammal", "lion")),
-            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(["class", "name"])["max_speed"].get_group(("mammal", "lion")),
             pdf.groupby(["class", "name"])["max_speed"].get_group(("mammal", "lion")),
-            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
             pdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
-            check_exact=False,
         )
 
         self.assertRaises(KeyError, lambda: kdf.groupby("class").get_group("fish"))
