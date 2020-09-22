@@ -1476,6 +1476,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx, kidx)
 
+        # tuples for names
+        pidx = pd.MultiIndex.from_frame(pdf, names=[("a", "w"), ("b", "x")])
+        kidx = ks.MultiIndex.from_frame(kdf, names=[("a", "w"), ("b", "x")])
+
+        self.assert_eq(pidx, kidx)
+
     def test_is_type_compatible(self):
         data_types = ["integer", "floating", "string", "boolean"]
         # Integer
