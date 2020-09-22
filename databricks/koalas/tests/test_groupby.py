@@ -2269,6 +2269,26 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("class")["name"].get_group("mammal"),
             check_exact=False,
         )
+        self.assert_eq(
+            kdf.groupby("class")[["name"]].get_group("mammal"),
+            pdf.groupby("class")[["name"]].get_group("mammal"),
+            check_exact=False,
+        )
+        self.assert_eq(
+            kdf.groupby(["class", "name"]).get_group(("mammal", "lion")),
+            pdf.groupby(["class", "name"]).get_group(("mammal", "lion")),
+            check_exact=False,
+        )
+        self.assert_eq(
+            kdf.groupby(["class", "name"])["max_speed"].get_group(("mammal", "lion")),
+            pdf.groupby(["class", "name"])["max_speed"].get_group(("mammal", "lion")),
+            check_exact=False,
+        )
+        self.assert_eq(
+            kdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
+            pdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
+            check_exact=False,
+        )
 
         self.assertRaises(KeyError, lambda: kdf.groupby("class").get_group("fish"))
         self.assertRaises(TypeError, lambda: kdf.groupby("class").get_group(["bird", "mammal"]))
@@ -2276,3 +2296,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(
             TypeError, lambda: kdf.groupby("class")["name"].get_group(["bird", "mammal"])
         )
+        self.assertRaises(
+            KeyError, lambda: kdf.groupby(["class", "name"]).get_group(("lion", "mammal"))
+        )
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("lion"))

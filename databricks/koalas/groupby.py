@@ -2193,15 +2193,27 @@ class GroupBy(object, metaclass=ABCMeta):
         1  monkey  mammal        NaN
         3    lion  mammal       80.5
         """
+        groupkeys = self._groupkeys
         if not is_hashable(name):
             raise TypeError("unhashable type: '{}'".format(type(name).__name__))
-        agg_columns = self._agg_columns
-        groupkey = self._groupkeys[0]
-        scol = groupkey.spark.column
-        sdf = self._kdf._internal.spark_frame.where(scol == name)
-        if sdf.head() is None:
+        elif len(groupkeys) > 1 and not isinstance(name, tuple):
+            raise ValueError("must supply a tuple to get_group with multiple grouping keys")
+        if isinstance(name, str):
+            name = [name]
+        cond = F.lit(True)
+        for groupkey, item in zip(groupkeys, name):
+            scol = groupkey.spark.column
+            cond = cond & (scol == item)
+        internal = self._kdf._internal.with_filter(cond)
+        if internal.spark_frame.head() is None:
             raise KeyError(name)
-        internal = self._kdf._internal.copy(spark_frame=sdf)
+        if self._agg_columns_selected:
+            internal = InternalFrame(
+                spark_frame=internal.spark_frame.select(
+                    internal.index_spark_columns + self._agg_columns_scols
+                ),
+                index_map=internal.index_map,
+            )
 
         return DataFrame(internal)
 
