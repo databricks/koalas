@@ -64,10 +64,10 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SPARK_DEFAULT_SERIES_NAME,
 )
 
 
@@ -816,7 +816,7 @@ class Index(IndexOpsMixin):
         """
         if name is None:
             if self._internal.index_names[0] is None:
-                name = (SPARK_DEFAULT_SERIES_NAME,)
+                name = (DEFAULT_SERIES_NAME,)
             else:
                 name = self._internal.index_names[0]
         elif isinstance(name, str):
@@ -2531,7 +2531,7 @@ class MultiIndex(Index):
         """
         if name is None:
             name = [
-                name if name is not None else (str(i),)
+                name if name is not None else (i,)
                 for i, name in enumerate(self._internal.index_names)
             ]
         elif is_list_like(name):

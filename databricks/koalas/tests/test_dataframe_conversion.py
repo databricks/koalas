@@ -221,18 +221,14 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         )
         # Assert using a list of tuples as input
         self.assert_eq(
-            ks.DataFrame.from_records([(1, 2), (3, 4)]),
-            pd.DataFrame.from_records([(1, 2), (3, 4)]).rename(columns=str),
+            ks.DataFrame.from_records([(1, 2), (3, 4)]), pd.DataFrame.from_records([(1, 2), (3, 4)])
         )
         # Assert using a NumPy array as input
-        self.assert_eq(
-            ks.DataFrame.from_records(np.eye(3)),
-            pd.DataFrame.from_records(np.eye(3)).rename(columns=str),
-        )
+        self.assert_eq(ks.DataFrame.from_records(np.eye(3)), pd.DataFrame.from_records(np.eye(3)))
         # Asserting using a custom index
         self.assert_eq(
             ks.DataFrame.from_records([(1, 2), (3, 4)], index=[2, 3]),
-            pd.DataFrame.from_records([(1, 2), (3, 4)], index=[2, 3]).rename(columns=str),
+            pd.DataFrame.from_records([(1, 2), (3, 4)], index=[2, 3]),
         )
         # Assert excluding excluding column(s)
         self.assert_eq(
@@ -247,5 +243,5 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         # Assert limiting to a number of rows
         self.assert_eq(
             ks.DataFrame.from_records([(1, 2), (3, 4)], nrows=1),
-            pd.DataFrame.from_records([(1, 2), (3, 4)], nrows=1).rename(columns=str),
+            pd.DataFrame.from_records([(1, 2), (3, 4)], nrows=1),
         )

@@ -57,6 +57,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_DEFAULT_SERIES_NAME,
@@ -1049,7 +1050,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
     # taking dictionary and function to change index are not supported.
-    def rename(self, index: Union[str, Tuple[str, ...]] = None, **kwargs):
+    def rename(self, index: Union[str, Tuple] = None, **kwargs):
         """
         Alter Series name.
 
@@ -1232,7 +1233,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[str, Tuple[str, ...]] = None) -> spark.DataFrame:
+    def to_frame(self, name: Union[str, Tuple] = None) -> spark.DataFrame:
         """
         Convert Series to DataFrame.
 
@@ -1266,7 +1267,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if name is not None:
             renamed = self.rename(name)
         elif self._column_label is None:
-            renamed = self.rename(SPARK_DEFAULT_SERIES_NAME)
+            renamed = self.rename(DEFAULT_SERIES_NAME)
         else:
             renamed = self
         return DataFrame(renamed._internal)

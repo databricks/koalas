@@ -28,14 +28,15 @@ from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
+from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.frame import CachedDataFrame
+from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.testing.utils import (
     ReusedSQLTestCase,
     SQLTestUtils,
     SPARK_CONF_ARROW_ENABLED,
 )
-from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.frame import CachedDataFrame
+from databricks.koalas.utils import name_like_string
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -2250,21 +2251,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(
-            pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
-        )
-        self.assert_eq(
-            pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
-        )
+        self.assert_eq(pdf1.transpose().sort_index(), kdf1.transpose().sort_index())
+        self.assert_eq(pdf2.transpose().sort_index(), kdf2.transpose().sort_index())
 
         with option_context("compute.max_rows", None):
-            self.assert_eq(
-                pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
-            )
+            self.assert_eq(pdf1.transpose().sort_index(), kdf1.transpose().sort_index())
 
-            self.assert_eq(
-                pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
-            )
+            self.assert_eq(pdf2.transpose().sort_index(), kdf2.transpose().sort_index())
 
         pdf3 = pd.DataFrame(
             {
@@ -2582,16 +2575,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.melt(id_vars=[("X", "A")])
             .sort_values(["variable_0", "variable_1", "value"])
             .reset_index(drop=True),
-            pdf.melt(id_vars=[("X", "A")]).sort_values(["variable_0", "variable_1", "value"]),
+            pdf.melt(id_vars=[("X", "A")])
+            .sort_values(["variable_0", "variable_1", "value"])
+            .rename(columns=name_like_string),
             almost=True,
         )
         self.assert_eq(
             kdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")])
             .sort_values(["variable_0", "variable_1", "value"])
             .reset_index(drop=True),
-            pdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")]).sort_values(
-                ["variable_0", "variable_1", "value"]
-            ),
+            pdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")])
+            .sort_values(["variable_0", "variable_1", "value"])
+            .rename(columns=name_like_string),
             almost=True,
         )
         self.assert_eq(
@@ -2608,7 +2603,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 value_vars=[("X", "B")],
                 var_name=["myV1", "myV2"],
                 value_name="myValname",
-            ).sort_values(["myV1", "myV2", "myValname"]),
+            )
+            .sort_values(["myV1", "myV2", "myValname"])
+            .rename(columns=name_like_string),
             almost=True,
         )
 

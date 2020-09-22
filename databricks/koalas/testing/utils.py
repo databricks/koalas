@@ -200,21 +200,19 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             )
             self.assertEqual(left.shape, right.shape, msg=msg)
             for lcol, rcol in zip(left.columns, right.columns):
-                self.assertEqual(name_like_string(lcol), name_like_string(rcol), msg=msg)
+                self.assertEqual(lcol, rcol, msg=msg)
                 for lnull, rnull in zip(left[lcol].isnull(), right[rcol].isnull()):
                     self.assertEqual(lnull, rnull, msg=msg)
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
                     self.assertAlmostEqual(lval, rval, msg=msg)
-            self.assertEqual(
-                name_like_string(left.columns.names), name_like_string(right.columns.names), msg=msg
-            )
+            self.assertEqual(left.columns.names, right.columns.names, msg=msg)
         elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
             msg = (
                 "Series are not almost equal: "
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
                 + "\n\nRight:\n%s\n%s" % (right, right.dtype)
             )
-            self.assertEqual(str(left.name), str(right.name), msg=msg)
+            self.assertEqual(left.name, right.name, msg=msg)
             self.assertEqual(len(left), len(right), msg=msg)
             for lnull, rnull in zip(left.isnull(), right.isnull()):
                 self.assertEqual(lnull, rnull, msg=msg)

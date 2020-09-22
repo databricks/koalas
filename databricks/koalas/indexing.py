@@ -462,7 +462,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             none_column = 0
             for i, label in enumerate(column_labels):
                 if label is None:
-                    label = (str(none_column),)
+                    label = (none_column,)
                     none_column += 1
                 if len(label) < column_labels_level:
                     label = tuple(list(label) + ([""]) * (column_labels_level - len(label)))
