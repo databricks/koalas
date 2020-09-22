@@ -2260,8 +2260,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            kdf.groupby("class").get_group("bird"),
-            pdf.groupby("class").get_group("bird"),
+            kdf.groupby("class").get_group("bird"), pdf.groupby("class").get_group("bird"),
         )
         self.assert_eq(
             kdf.groupby("class")["name"].get_group("mammal"),
