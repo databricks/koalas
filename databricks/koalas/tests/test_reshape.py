@@ -22,7 +22,8 @@ import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
-from databricks.koalas.testing.utils import ReusedSQLTestCase, name_like_string
+from databricks.koalas.testing.utils import ReusedSQLTestCase
+from databricks.koalas.utils import name_like_string
 
 
 class ReshapeTest(ReusedSQLTestCase):

@@ -1050,7 +1050,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
     # taking dictionary and function to change index are not supported.
-    def rename(self, index: Union[str, Tuple] = None, **kwargs):
+    def rename(self, index=None, **kwargs):
         """
         Alter Series name.
 

@@ -29,7 +29,7 @@ from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
-from databricks.koalas.utils import name_like_string, default_session
+from databricks.koalas.utils import default_session
 
 
 if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
