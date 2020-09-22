@@ -2098,7 +2098,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     @unittest.skipIf(
         LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-        "stack won't work property with PySpark<2.4",
+        "stack won't work properly with PySpark<2.4",
     )
     def test_stack(self):
         pdf_single_level_cols = pd.DataFrame(
