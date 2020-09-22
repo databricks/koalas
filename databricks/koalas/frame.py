@@ -10277,7 +10277,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         lookups = [
             self.loc[row_label, col_label] for row_label, col_label in zip(row_labels, col_labels)
         ]
-        return pd.Series(lookups).to_numpy()
+        return Series(lookups).to_numpy()
 
     def _to_internal_pandas(self):
         """
