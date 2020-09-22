@@ -1391,15 +1391,37 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pser.hasnans, kser.hasnans)
 
     def test_intersection(self):
-        pidx = pd.Index([1, 2, 3, 4])
+        pidx = pd.Index([1, 2, 3, 4], name="Koalas")
         kidx = ks.from_pandas(pidx)
 
         # other = Index
-        pidx_other = pd.Index([3, 4, 5, 6])
+        pidx_other = pd.Index([3, 4, 5, 6], name="Koalas")
         kidx_other = ks.from_pandas(pidx_other)
         self.assert_eq(pidx.intersection(pidx_other), kidx.intersection(kidx_other).sort_values())
         self.assert_eq(
             (pidx + 1).intersection(pidx_other), (kidx + 1).intersection(kidx_other).sort_values()
+        )
+
+        pidx_other_different_name = pd.Index([3, 4, 5, 6], name="Databricks")
+        kidx_other_different_name = ks.from_pandas(pidx_other_different_name)
+        self.assert_eq(
+            pidx.intersection(pidx_other_different_name),
+            kidx.intersection(kidx_other_different_name).sort_values(),
+        )
+        self.assert_eq(
+            (pidx + 1).intersection(pidx_other_different_name),
+            (kidx + 1).intersection(kidx_other_different_name).sort_values(),
+        )
+
+        pidx_other_from_frame = pd.DataFrame({"a": [3, 4, 5, 6]}).set_index("a").index
+        kidx_other_from_frame = ks.from_pandas(pidx_other_from_frame)
+        self.assert_eq(
+            pidx.intersection(pidx_other_from_frame),
+            kidx.intersection(kidx_other_from_frame).sort_values(),
+        )
+        self.assert_eq(
+            (pidx + 1).intersection(pidx_other_from_frame),
+            (kidx + 1).intersection(kidx_other_from_frame).sort_values(),
         )
 
         # other = MultiIndex
@@ -1420,6 +1442,17 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
         self.assert_eq((pidx + 1).intersection(pser), (kidx + 1).intersection(kser).sort_values())
 
+        pser_different_name = pd.Series([3, 4, 5, 6], name="Databricks")
+        kser_different_name = ks.from_pandas(pser_different_name)
+        self.assert_eq(
+            pidx.intersection(pser_different_name),
+            kidx.intersection(kser_different_name).sort_values(),
+        )
+        self.assert_eq(
+            (pidx + 1).intersection(pser_different_name),
+            (kidx + 1).intersection(kser_different_name).sort_values(),
+        )
+
         # other = list
         other = [3, 4, 5, 6]
         self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
@@ -1438,6 +1471,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # MultiIndex / other = Index
         self.assert_eq(
             pmidx.intersection(pidx), kmidx.intersection(kidx).sort_values(), almost=True
+        )
+        self.assert_eq(
+            pmidx.intersection(pidx_other_from_frame),
+            kmidx.intersection(kidx_other_from_frame).sort_values(),
+            almost=True,
         )
 
         # MultiIndex / other = MultiIndex

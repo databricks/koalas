@@ -1983,14 +1983,31 @@ class Index(IndexOpsMixin):
         >>> idx1.intersection(idx2).sort_values()
         Int64Index([3, 4], dtype='int64')
         """
+        keep_name = True
+
+        def check_keep_name(obj1, obj2):
+            """Check if the name for both object are same"""
+            if isinstance(obj1, MultiIndex):
+                return True
+            else:
+                return obj1.name == obj2.name
+
         if isinstance(other, Index):
             if type(self) != type(other):
                 # If self Index and MultiIndex coexist on both sides,
                 # it always returns an empty MultiIndex.
                 return MultiIndex.from_tuples([(0, 0)]).take([])
-            spark_frame_other = other._internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
+            if isinstance(other, MultiIndex):
+                default_name = [SPARK_INDEX_NAME_FORMAT(i) for i in range(other.nlevels)]
+            else:
+                default_name = SPARK_DEFAULT_INDEX_NAME
+            spark_frame_other = (
+                other.to_frame(name=default_name).to_spark().drop(NATURAL_ORDER_COLUMN_NAME)
+            )
+            keep_name = check_keep_name(self, other)
         elif isinstance(other, Series):
             spark_frame_other = other.to_frame().to_spark()
+            keep_name = check_keep_name(self, other)
         elif isinstance(other, DataFrame):
             return Series([])
         elif is_list_like(other):
@@ -2000,16 +2017,24 @@ class Index(IndexOpsMixin):
                     NATURAL_ORDER_COLUMN_NAME
                 )
             else:
-                spark_frame_other = Index(other)._internal.spark_frame.drop(
-                    NATURAL_ORDER_COLUMN_NAME
-                )
+                other = Index(other)
+                spark_frame_other = other._internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
+                keep_name = check_keep_name(self, other)
         else:
             raise TypeError("Input must be Index or array-like")
-        spark_frame_self = self._internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
-        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
-        internal = InternalFrame(
-            spark_frame=spark_frame_intersected, index_map=self._internal.index_map
+        if isinstance(self, MultiIndex):
+            default_name = [SPARK_INDEX_NAME_FORMAT(i) for i in range(self.nlevels)]
+        else:
+            default_name = SPARK_DEFAULT_INDEX_NAME
+        spark_frame_self = (
+            self.to_frame(name=default_name).to_spark().drop(NATURAL_ORDER_COLUMN_NAME)
         )
+        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
+        if keep_name:
+            index_map = self._internal.index_map
+        else:
+            index_map = OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)])
+        internal = InternalFrame(spark_frame=spark_frame_intersected, index_map=index_map)
         return DataFrame(internal).index
 
     def item(self):
