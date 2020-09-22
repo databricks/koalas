@@ -5177,20 +5177,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    4.0
         dtype: float64
         """
-        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            raise RuntimeError("explode can be used in PySpark >= 2.4")
         if not isinstance(self.spark.data_type, ArrayType):
             return self.copy()
 
-        scol_name = self._internal.data_spark_column_names[0]
-        scol = F.explode_outer(self.spark.column).alias(scol_name)
+        scol = F.explode_outer(self.spark.column).alias(name_like_string(self._column_label))
 
         internal = self._kdf._internal.copy(
-            column_labels=[self._column_label],
-            data_spark_columns=[scol.alias(name_like_string(self._column_label))],
-            column_label_names=None,
+            column_labels=[self._column_label], data_spark_columns=[scol], column_label_names=None
         ).resolved_copy
-
+        # For resetting `__natural_order__` to remove duplication order.
+        internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
         return first_series(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
