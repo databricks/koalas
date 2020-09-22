@@ -10232,7 +10232,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         array of the values corresponding to each (row, col) pair.
 
         .. note:: This method should only be used when the length of `row_labels` is small enough,
-                  as all the result is loaded into the driver's memory.
+                  as all the data belongs to the `row_labels` is loaded into the driver's memory.
 
         Parameters
         ----------
@@ -10265,8 +10265,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> kdf.lookup([2, 3], ["A", "B"])
         array([ 5., 40.])
         """
+        from databricks.koalas.series import Series
+        from databricks.koalas.indexes import Index
+
         if len(row_labels) != len(col_labels):
             raise ValueError("Row labels must have same size as column labels")
+        if isinstance(row_labels, (Series, Index)):
+            row_labels = row_labels.to_numpy().tolist()
+        if isinstance(col_labels, (Series, Index)):
+            col_labels = col_labels.to_numpy().tolist()
         lookups = [
             self.loc[row_label, col_label] for row_label, col_label in zip(row_labels, col_labels)
         ]

@@ -4030,9 +4030,42 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
+        # list
         self.assert_eq(pdf.lookup([0], ["C"]), kdf.lookup([0], ["C"]))
         self.assert_list_eq(
             pdf.lookup([0, 3, 4], ["A", "C", "A"]), kdf.lookup([0, 3, 4], ["A", "C", "A"])
+        )
+
+        # tuple
+        self.assert_eq(pdf.lookup((0,), ("C",)), kdf.lookup((0,), ("C",)))
+        self.assert_list_eq(
+            pdf.lookup((0, 3, 4), ("A", "C", "A")), kdf.lookup((0, 3, 4), ("A", "C", "A"))
+        )
+
+        # dict
+        self.assert_eq(pdf.lookup({0: None}, {"C": None}), kdf.lookup({0: None}, {"C": None}))
+        self.assert_list_eq(
+            pdf.lookup({0: None, 3: None, 4: None}, {"A": None, "C": None, "B": None}),
+            kdf.lookup({0: None, 3: None, 4: None}, {"A": None, "C": None, "B": None}),
+        )
+
+        # Index
+        self.assert_eq(
+            pdf.lookup(pd.Index([0]), pd.Index(["C"])), kdf.lookup(ks.Index([0]), ks.Index(["C"]))
+        )
+        self.assert_list_eq(
+            pdf.lookup(pd.Index([0, 3, 4]), pd.Index(["A", "C", "A"])),
+            kdf.lookup(ks.Index([0, 3, 4]), ks.Index(["A", "C", "A"])),
+        )
+
+        # Series
+        self.assert_eq(
+            pdf.lookup(pd.Series([0]), pd.Series(["C"])),
+            kdf.lookup(ks.Series([0]), ks.Series(["C"])),
+        )
+        self.assert_list_eq(
+            pdf.lookup(pd.Series([0, 3, 4]), pd.Series(["A", "C", "A"])),
+            kdf.lookup(ks.Series([0, 3, 4]), ks.Series(["A", "C", "A"])),
         )
 
         # MultiIndex
