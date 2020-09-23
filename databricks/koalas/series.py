@@ -5249,11 +5249,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
         ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
-        >>> s.sort_index()
+        >>> s
+        Corn Flakes              100.0
         Almond Delight           110.0
         Cinnamon Toast Crunch    120.0
         Cocoa Puff               110.0
-        Corn Flakes              100.0
         dtype: float64
 
         >>> s.argmin()
