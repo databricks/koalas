@@ -1501,6 +1501,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.intersection(4)
         with self.assertRaisesRegex(TypeError, "other must be a MultiIndex or a list of tuples"):
             kmidx.intersection(4)
+        with self.assertRaisesRegex(TypeError, "other must be a MultiIndex or a list of tuples"):
+            kmidx.intersection(ks.Series([3, 4, 5, 6]))
         with self.assertRaisesRegex(ValueError, "Index data must be 1-dimensional"):
             kidx.intersection(ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}))
         with self.assertRaisesRegex(ValueError, "Index data must be 1-dimensional"):
