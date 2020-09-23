@@ -2293,3 +2293,46 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             KeyError, lambda: kdf.groupby(["class", "name"]).get_group(("lion", "mammal"))
         )
         self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("lion"))
+
+        # MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("A", "name"), ("B", "class"), ("C", "max_speed")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            kdf.groupby(("B", "class")).get_group("bird"),
+            pdf.groupby(("B", "class")).get_group("bird"),
+        )
+        self.assert_eq(
+            kdf.groupby(("B", "class"))[[("A", "name")]].get_group("mammal"),
+            pdf.groupby(("B", "class"))[[("A", "name")]].get_group("mammal"),
+        )
+        self.assert_eq(
+            kdf.groupby([("B", "class"), ("A", "name")]).get_group(("mammal", "lion")),
+            pdf.groupby([("B", "class"), ("A", "name")]).get_group(("mammal", "lion")),
+        )
+        self.assert_eq(
+            kdf.groupby([("B", "class"), ("A", "name")])[[("C", "max_speed")]].get_group(
+                ("mammal", "lion")
+            ),
+            pdf.groupby([("B", "class"), ("A", "name")])[[("C", "max_speed")]].get_group(
+                ("mammal", "lion")
+            ),
+        )
+
+        self.assertRaises(KeyError, lambda: kdf.groupby(("B", "class")).get_group("fish"))
+        self.assertRaises(
+            TypeError, lambda: kdf.groupby(("B", "class")).get_group(["bird", "mammal"])
+        )
+        self.assertRaises(
+            KeyError, lambda: kdf.groupby(("B", "class"))[("A", "name")].get_group("fish")
+        )
+        self.assertRaises(
+            KeyError,
+            lambda: kdf.groupby(("B", "class"))[("A", "name")].get_group(["bird", "mammal"]),
+        )
+        self.assertRaises(
+            KeyError,
+            lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("lion", "mammal")),
+        )
+        self.assertRaises(
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("lion")
+        )
