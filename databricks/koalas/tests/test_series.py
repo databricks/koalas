@@ -2060,3 +2060,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.argmin(), kser.argmin())
         self.assert_eq(pser.argmax(), kser.argmax())
+
+        # MultiIndex
+        pser.index = pd.MultiIndex.from_tuples(
+            [("a", "u"), ("b", "v"), ("c", "w"), ("d", "x"), ("e", "y"), ("f", "z")]
+        )
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argmin(), kser.argmin())
+        self.assert_eq(pser.argmax(), kser.argmax())
