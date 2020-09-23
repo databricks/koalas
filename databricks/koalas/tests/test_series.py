@@ -2008,3 +2008,49 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.pad(inplace=True)
         kser.pad(inplace=True)
         self.assert_eq(pser, kser)
+
+    def test_explode(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+            # non-array type Series
+            pser = pd.Series([1, 2, 3, 4])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode())
+        else:
+            pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+            kser = ks.from_pandas(pser)
+            expected = pd.Series([1.0, 2.0, 3.0, None, None, 3.0, 4.0], index=[0, 0, 0, 1, 2, 3, 3])
+            self.assert_eq(kser.explode(), expected)
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+            kser = ks.from_pandas(pser)
+            expected = pd.Series(
+                [1.0, 2.0, 3.0, None, None, 3.0, 4.0],
+                index=pd.MultiIndex.from_tuples(
+                    [
+                        ("a", "w"),
+                        ("a", "w"),
+                        ("a", "w"),
+                        ("b", "x"),
+                        ("c", "y"),
+                        ("d", "z"),
+                        ("d", "z"),
+                    ]
+                ),
+            )
+            self.assert_eq(kser.explode(), expected)
+
+            # non-array type Series
+            pser = pd.Series([1, 2, 3, 4])
+            kser = ks.from_pandas(pser)
+            expected = pser
+            self.assert_eq(kser.explode(), expected)

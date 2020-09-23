@@ -200,6 +200,7 @@ Reshaping, sorting, transposing
    Series.sort_index
    Series.sort_values
    Series.unstack
+   Series.explode
    Series.repeat
    Series.squeeze
 
