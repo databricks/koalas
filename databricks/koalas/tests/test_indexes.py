@@ -1499,8 +1499,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
             kidx.intersection(4)
-        with self.assertRaisesRegex(TypeError, "Input must be Index or array-like"):
+        with self.assertRaisesRegex(TypeError, "other must be a MultiIndex or a list of tuples"):
             kmidx.intersection(4)
+        with self.assertRaisesRegex(ValueError, "Index data must be 1-dimensional"):
+            kidx.intersection(ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}))
+        with self.assertRaisesRegex(ValueError, "Index data must be 1-dimensional"):
+            kmidx.intersection(ks.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]}))
 
     def test_item(self):
         pidx = pd.Index([10])
