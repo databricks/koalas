@@ -2490,7 +2490,7 @@ class Frame(object, metaclass=ABCMeta):
         2  NaN  NaN  NaN  5
         3  NaN  3.0  1.0  4
 
-        >>> df.pad()
+        >>> df.pad()  # doctest: +SKIP
              A    B    C  D
         0  NaN  2.0  NaN  0
         1  3.0  4.0  NaN  1
@@ -2509,7 +2509,7 @@ class Frame(object, metaclass=ABCMeta):
         5    6.0
         Name: x, dtype: float64
 
-        >>> s.pad()
+        >>> s.pad()  # doctest: +SKIP
         0    NaN
         1    2.0
         2    3.0

@@ -4110,9 +4110,25 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf.pad(), kdf.pad())
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pdf.pad(), kdf.pad())
 
-        # Test `inplace=True`
-        pdf.pad(inplace=True)
-        kdf.pad(inplace=True)
-        self.assert_eq(pdf, kdf)
+            # Test `inplace=True`
+            pdf.pad(inplace=True)
+            kdf.pad(inplace=True)
+            self.assert_eq(pdf, kdf)
+        else:
+            expected = ks.DataFrame(
+                {
+                    "A": [None, 3, 3, 3],
+                    "B": [2.0, 4.0, 4.0, 3.0],
+                    "C": [None, None, None, 1],
+                    "D": [0, 1, 5, 4],
+                },
+                columns=["A", "B", "C", "D"],
+            )
+            self.assert_eq(expected, kdf.pad())
+
+            # Test `inplace=True`
+            kdf.pad(inplace=True)
+            self.assert_eq(expected, kdf)

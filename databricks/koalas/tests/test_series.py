@@ -2002,12 +2002,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
         kser = ks.from_pandas(pser)
 
-        self.assert_eq(pser.pad(), kser.pad())
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pser.pad(), kser.pad())
 
-        # Test `inplace=True`
-        pser.pad(inplace=True)
-        kser.pad(inplace=True)
-        self.assert_eq(pser, kser)
+            # Test `inplace=True`
+            pser.pad(inplace=True)
+            kser.pad(inplace=True)
+            self.assert_eq(pser, kser)
+        else:
+            expected = ks.Series([np.nan, 2, 3, 4, 4, 6], name="x")
+            self.assert_eq(expected, kser.pad())
+
+            # Test `inplace=True`
+            kser.pad(inplace=True)
+            self.assert_eq(expected, kser)
 
     def test_explode(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
