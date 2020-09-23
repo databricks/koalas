@@ -1997,3 +1997,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
+
+    def test_pad(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.pad(), kser.pad())
+
+        # Test `inplace=True`
+        pser.pad(inplace=True)
+        kser.pad(inplace=True)
+        self.assert_eq(pser, kser)

@@ -188,6 +188,7 @@ Missing data handling
    Series.isnull
    Series.notna
    Series.notnull
+   Series.pad
    Series.dropna
    Series.fillna
 

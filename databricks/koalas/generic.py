@@ -2465,6 +2465,61 @@ class Frame(object, metaclass=ABCMeta):
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
 
+    def pad(self, inplace=False):
+        """
+        Synonym for :meth:`DataFrame.fillna` or :meth:`Series.fillna` with ``method='ffill'``.
+
+        Returns
+        -------
+        DataFrame or Series or None
+            Object with missing values filled or None if ``inplace=True``.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'A': [None, 3, None, None],
+        ...     'B': [2, 4, None, 3],
+        ...     'C': [None, None, None, 1],
+        ...     'D': [0, 1, 5, 4]
+        ...     },
+        ...     columns=['A', 'B', 'C', 'D'])
+        >>> df
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  NaN  NaN  NaN  5
+        3  NaN  3.0  1.0  4
+
+        >>> df.pad()
+             A    B    C  D
+        0  NaN  2.0  NaN  0
+        1  3.0  4.0  NaN  1
+        2  3.0  4.0  NaN  5
+        3  3.0  3.0  1.0  4
+
+        Series
+
+        >>> s = ks.Series([np.nan, 2, 3, 4, np.nan, 6], name='x')
+        >>> s
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    NaN
+        5    6.0
+        Name: x, dtype: float64
+
+        >>> s.pad()
+        0    NaN
+        1    2.0
+        2    3.0
+        3    4.0
+        4    4.0
+        5    6.0
+        Name: x, dtype: float64
+        """
+        return self.fillna(inplace=inplace, method="ffill")
+
     @property
     def at(self):
         return AtIndexer(self)
