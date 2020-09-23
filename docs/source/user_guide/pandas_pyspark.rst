@@ -104,7 +104,7 @@ to use as an index when possible.
 
    >>> # Create a Koalas DataFrame with an explicit index.
    ... kdf = ks.DataFrame({'id': range(10)}, index=range(10))
-   >>> # Keep the explcit index.
+   >>> # Keep the explicit index.
    ... sdf = kdf.to_spark(index_col='index')
    >>> # Call Spark APIs
    ... sdf = sdf.filter("id > 5")

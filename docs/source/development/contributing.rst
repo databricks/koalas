@@ -48,7 +48,7 @@ Environment Setup
 Conda
 -----
 
-If you are using Conda, the Koalas installation and developement enviornment are as follows.
+If you are using Conda, the Koalas installation and development environment are as follows.
 
 .. code-block:: bash
 
