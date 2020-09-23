@@ -2045,3 +2045,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
             expected = pser
             self.assert_eq(kser.explode(), expected)
+
+    def test_argsort(self):
+        pser = pd.Series(np.random.rand(5), index=np.random.rand(5), name="Koalas")
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+
+        # MultiIndex
+        pser.index = pd.MultiIndex.from_tuples(
+            [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
+        )
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())

@@ -5189,6 +5189,123 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
         return first_series(DataFrame(internal))
 
+    def argsort(self) -> "Series":
+        """
+        Return the integer indices that would sort the Series values.
+        Unlike pandas, the index order is not preserved in the result.
+
+        Returns
+        -------
+        Series
+            Positions of values within the sort order with -1 indicating
+            nan values.
+
+        Examples
+        --------
+        >>> kser = ks.Series([3, 3, 4, 1, 6, 2, 3, 7, 8, 7, 10])
+        >>> kser
+        0      3
+        1      3
+        2      4
+        3      1
+        4      6
+        5      2
+        6      3
+        7      7
+        8      8
+        9      7
+        10    10
+        dtype: int64
+
+        >>> kser.argsort().sort_index()
+        0      1
+        1      3
+        2      8
+        3      9
+        4      0
+        5      5
+        6     10
+        7      7
+        8      2
+        9      6
+        10     4
+        dtype: int64
+        """
+        sdf = self._kdf.to_spark()
+
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=seq_col_name)
+
+        data_scol_name = self._internal.data_spark_column_names[0]
+        sdf = sdf.sort(data_scol_name).select(F.col(seq_col_name).alias(data_scol_name))
+        sdf_index = self._internal.spark_frame.select(self._internal.index_spark_columns)
+        # sdf_index:            sdf:
+        # +-----------------+   +---+
+        # |__index_level_0__|   |  0|
+        # +-----------------+   +---+
+        # |                0|   |  3|
+        # |                1|   |  5|
+        # |                2|   |  1|
+        # |                3|   |  0|
+        # |                4|   |  6|
+        # |                5|   |  2|
+        # |                6|   |  4|
+        # |                7|   |  9|
+        # |                8|   |  7|
+        # |                9|   |  8|
+        # |               10|   | 10|
+        # +-----------------+   +---+
+
+        tmp_join_key = verify_temp_column_name(sdf, "__tmp_join_key__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=tmp_join_key)
+        tmp_join_key = verify_temp_column_name(sdf_index, "__tmp_join_key__")
+        sdf_index = InternalFrame.attach_distributed_sequence_column(
+            sdf_index, column_name=tmp_join_key
+        )
+        # sdf_index:                             sdf:
+        # +----------------+-----------------+   +----------------+---+
+        # |__tmp_join_key__|__index_level_0__|   |__tmp_join_key__|  0|
+        # +----------------+-----------------+   +----------------+---+
+        # |               0|                0|   |               0|  3|
+        # |               1|                1|   |               1|  5|
+        # |               2|                2|   |               2|  0|
+        # |               3|                3|   |               3|  1|
+        # |               4|                4|   |               4|  6|
+        # |               5|                5|   |               5|  2|
+        # |               6|                6|   |               6|  4|
+        # |               7|                7|   |               7|  7|
+        # |               8|                8|   |               8|  9|
+        # |               9|                9|   |               9|  8|
+        # |              10|               10|   |              10| 10|
+        # +----------------+-----------------+   +----------------+---+
+
+        sdf = sdf_index.join(sdf, tmp_join_key).drop(tmp_join_key)
+        # sdf:
+        # +-----------------+---+
+        # |__index_level_0__|  0|
+        # +-----------------+---+
+        # |                0|  3|
+        # |                7|  7|
+        # |                6|  4|
+        # |                9|  8|
+        # |                5|  2|
+        # |                1|  5|
+        # |               10| 10|
+        # |                3|  1|
+        # |                8|  9|
+        # |                2|  0|
+        # |                4|  6|
+        # +-----------------+---+
+
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=self._internal.index_map,
+            column_labels=[self._column_label],
+            data_spark_columns=[sdf[data_scol_name]],
+        )
+
+        return first_series(DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 

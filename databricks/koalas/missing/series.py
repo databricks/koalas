@@ -36,7 +36,6 @@ class MissingPandasLikeSeries(object):
 
     # Functions
     align = _unsupported_function("align")
-    argsort = _unsupported_function("argsort")
     asfreq = _unsupported_function("asfreq")
     at_time = _unsupported_function("at_time")
     autocorr = _unsupported_function("autocorr")
