@@ -2058,13 +2058,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             }
         )
         kser = ks.from_pandas(pser)
-        self.assert_eq(pser.argmin(), kser.argmin())
-        self.assert_eq(pser.argmax(), kser.argmax())
 
-        # MultiIndex
-        pser.index = pd.MultiIndex.from_tuples(
-            [("a", "u"), ("b", "v"), ("c", "w"), ("d", "x"), ("e", "y"), ("f", "z")]
-        )
-        kser = ks.from_pandas(pser)
-        self.assert_eq(pser.argmin(), kser.argmin())
-        self.assert_eq(pser.argmax(), kser.argmax())
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "u"), ("b", "v"), ("c", "w"), ("d", "x"), ("e", "y"), ("f", "z")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+        else:
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "u"), ("b", "v"), ("c", "w"), ("d", "x"), ("e", "y"), ("f", "z")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
