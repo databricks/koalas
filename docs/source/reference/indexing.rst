@@ -215,6 +215,7 @@ MultiIndex Modifying and computations
    :toctree: api/
 
    MultiIndex.equals
+   MultiIndex.equal_levels
    MultiIndex.identical
    MultiIndex.drop
    MultiIndex.copy
