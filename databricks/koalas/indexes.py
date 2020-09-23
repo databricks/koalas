@@ -2352,6 +2352,8 @@ class MultiIndex(Index):
                     ('NJ', 'Precip')],
                    names=['state', 'observation'])
         """
+        if not isinstance(df, DataFrame):
+            raise TypeError("Input must be a DataFrame")
         sdf = df.to_spark()
         if names is None:
             names = df._internal.column_labels

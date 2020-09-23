@@ -1485,6 +1485,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx, kidx)
 
+        err_msg = "Input must be a DataFrame"
+        with self.assertRaisesRegex(TypeError, err_msg):
+            ks.MultiIndex.from_frame({"a": [1, 2, 3], "b": [4, 5, 6]})
+
     def test_is_type_compatible(self):
         data_types = ["integer", "floating", "string", "boolean"]
         # Integer
