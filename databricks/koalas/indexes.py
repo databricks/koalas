@@ -2973,6 +2973,30 @@ class MultiIndex(Index):
         """
         return self._kdf.head(2)._to_internal_pandas().index.item()
 
+    def equal_levels(self, other):
+        """
+        Return True if the levels of both MultiIndex objects are the same
+
+        Examples
+        --------
+        >>> kmidx1 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        >>> kmidx2 = ks.MultiIndex.from_tuples([("b", "y"), ("a", "x"), ("c", "z")])
+        >>> kmidx1.equal_levels(kmidx2)
+        True
+        """
+        nlevels = self.nlevels
+        if nlevels != other.nlevels:
+            return False
+        self = self.sort_values()
+        other = other.sort_values()
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            for i in range(nlevels):
+                self_level_values = self.get_level_values(i)
+                other_level_values = other.get_level_values(i)
+                if not self_level_values.equals(other_level_values):
+                    return False
+        return True
+
     @property
     def inferred_type(self):
         """
