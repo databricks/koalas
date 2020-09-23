@@ -1581,3 +1581,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kdf = ks.from_pandas(pdf)
 
             self.assertEqual(kdf.index.is_unique, expected)
+
+    def test_view(self):
+        pidx = pd.Index([1, 2, 3, 4], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.view(), kidx.view())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.view(), kmidx.view())
