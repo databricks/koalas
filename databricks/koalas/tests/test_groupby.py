@@ -674,13 +674,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("a").agg({"b": "nunique"}).sort_index(),
             pdf.groupby("a").agg({"b": "nunique"}).sort_index(),
         )
-        self.assert_eq(
-            kdf.groupby("a").nunique().sort_index(), pdf.groupby("a").nunique().sort_index()
-        )
-        self.assert_eq(
-            kdf.groupby("a").nunique(dropna=False).sort_index(),
-            pdf.groupby("a").nunique(dropna=False).sort_index(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            expected = ks.DataFrame({"b": [2, 2]}, index=pd.Index([0, 1], name="a"))
+            self.assert_eq(kdf.groupby("a").nunique().sort_index(), expected)
+            self.assert_eq(
+                kdf.groupby("a").nunique(dropna=False).sort_index(), expected,
+            )
+        else:
+            self.assert_eq(
+                kdf.groupby("a").nunique().sort_index(), pdf.groupby("a").nunique().sort_index()
+            )
+            self.assert_eq(
+                kdf.groupby("a").nunique(dropna=False).sort_index(),
+                pdf.groupby("a").nunique(dropna=False).sort_index(),
+            )
         self.assert_eq(
             kdf.groupby("a")["b"].nunique().sort_index(),
             pdf.groupby("a")["b"].nunique().sort_index(),
@@ -702,14 +709,23 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(
-            kdf.groupby(("x", "a")).nunique().sort_index(),
-            pdf.groupby(("x", "a")).nunique().sort_index(),
-        )
-        self.assert_eq(
-            kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
-            pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            expected = ks.DataFrame({("y", "b"): [2, 2]}, index=pd.Index([0, 1], name=("x", "a")))
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique().sort_index(), expected,
+            )
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(), expected,
+            )
+        else:
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique().sort_index(),
+                pdf.groupby(("x", "a")).nunique().sort_index(),
+            )
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+                pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+            )
 
     def test_unique(self):
         for pdf in [

@@ -45,6 +45,7 @@ from pyspark.sql.types import (
     StringType,
     StructType,
     IntegralType,
+    ArrayType,
 )
 from pyspark.sql.window import Window
 
@@ -5146,6 +5147,54 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     prod = product
 
+    def explode(self) -> "Series":
+        """
+        Transform each element of a list-like to a row.
+
+        Returns
+        -------
+        Series
+            Exploded lists to rows; index will be duplicated for these rows.
+
+        See Also
+        --------
+        Series.str.split : Split string values on specified separator.
+        Series.unstack : Unstack, a.k.a. pivot, Series with MultiIndex
+            to produce DataFrame.
+        DataFrame.melt : Unpivot a DataFrame from wide format to long format.
+        DataFrame.explode : Explode a DataFrame from list-like
+            columns to long format.
+
+        Examples
+        --------
+        >>> kser = ks.Series([[1, 2, 3], [], [3, 4]])
+        >>> kser
+        0    [1, 2, 3]
+        1           []
+        2       [3, 4]
+        dtype: object
+
+        >>> kser.explode()  # doctest: +SKIP
+        0    1.0
+        0    2.0
+        0    3.0
+        1    NaN
+        2    3.0
+        2    4.0
+        dtype: float64
+        """
+        if not isinstance(self.spark.data_type, ArrayType):
+            return self.copy()
+
+        scol = F.explode_outer(self.spark.column).alias(name_like_string(self._column_label))
+
+        internal = self._kdf._internal.copy(
+            column_labels=[self._column_label], data_spark_columns=[scol], column_label_names=None
+        ).resolved_copy
+        # For resetting `__natural_order__` to remove duplication order.
+        internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
+        return first_series(DataFrame(internal))
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
@@ -5236,8 +5285,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def _cumprod(self, skipna, part_cols=()):
         from pyspark.sql.functions import pandas_udf
 
+        data_type = self.spark.data_type
+
         def cumprod(scol):
-            @pandas_udf(returnType=self.spark.data_type)
+            @pandas_udf(returnType=data_type)
             def negative_check(s):
                 assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
                     "values should be bigger than 0: %s" % s
@@ -5247,7 +5298,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return F.sum(F.log(negative_check(scol)))
 
         kser = self._cum(cumprod, skipna, part_cols)
-        return kser._with_new_scol(F.exp(kser.spark.column))
+        result = kser._with_new_scol(F.exp(kser.spark.column))
+        if isinstance(data_type, IntegralType):
+            result = result.spark.transform(lambda col: F.round(col).cast(LongType()))
+        return result
 
     # ----------------------------------------------------------------------
     # Accessor Methods
