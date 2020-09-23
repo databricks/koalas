@@ -15,6 +15,7 @@
 #
 
 import base64
+import unittest
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -104,7 +105,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-    def test_head_tail(self):
+    def test_head(self):
         kser = self.kser
         pser = self.pser
 
@@ -112,8 +113,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(0), pser.head(0))
         self.assert_eq(kser.head(-3), pser.head(-3))
         self.assert_eq(kser.head(-10), pser.head(-10))
-
-        # TODO: self.assert_eq(kser.tail(3), pser.tail(3))
 
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -1877,19 +1876,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 pser.droplevel([("a", "1"), ("c", "3")]), kser.droplevel([("a", "1"), ("c", "3")])
             )
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "tail won't work properly with PySpark<3.0",
+    )
     def test_tail(self):
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series(range(1000), name="Koalas")
-            kser = ks.from_pandas(pser)
+        pser = pd.Series(range(1000), name="Koalas")
+        kser = ks.from_pandas(pser)
 
-            self.assert_eq(pser.tail(), kser.tail())
-            self.assert_eq(pser.tail(10), kser.tail(10))
-            self.assert_eq(pser.tail(-990), kser.tail(-990))
-            self.assert_eq(pser.tail(0), kser.tail(0))
-            self.assert_eq(pser.tail(1001), kser.tail(1001))
-            self.assert_eq(pser.tail(-1001), kser.tail(-1001))
-            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
-                kser.tail("10")
+        self.assert_eq(pser.tail(), kser.tail())
+        self.assert_eq(pser.tail(10), kser.tail(10))
+        self.assert_eq(pser.tail(-990), kser.tail(-990))
+        self.assert_eq(pser.tail(0), kser.tail(0))
+        self.assert_eq(pser.tail(1001), kser.tail(1001))
+        self.assert_eq(pser.tail(-1001), kser.tail(-1001))
+        with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+            kser.tail("10")
 
     def test_product(self):
         pser = pd.Series([10, 20, 30, 40, 50])
