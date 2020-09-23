@@ -5189,6 +5189,90 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
         return first_series(DataFrame(internal))
 
+    def argmax(self):
+        """
+        Return int position of the largest value in the Series.
+
+        If the maximum is achieved in multiple locations,
+        the first row position is returned.
+
+        Returns
+        -------
+        int
+            Row position of the maximum value.
+
+        Examples
+        --------
+        Consider dataset containing cereal calories
+
+        >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
+        ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
+        >>> s
+        Corn Flakes              100.0
+        Almond Delight           110.0
+        Cinnamon Toast Crunch    120.0
+        Cocoa Puff               110.0
+        dtype: float64
+
+        >>> s.argmax()
+        2
+        """
+        sdf = self._kdf.to_spark()
+
+        # We should remember the natural sequence started from 0
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
+
+        col_name = SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label
+        max_value = sdf.select(F.max(col_name)).head(1)[0][0]
+
+        # If the maximum is achieved in multiple locations, the first row position is returned.
+        max_value_position = sdf.filter(F.col(col_name) == max_value).head(1)[0][0]
+
+        return max_value_position
+
+    def argmin(self):
+        """
+        Return int position of the smallest value in the Series.
+
+        If the minimum is achieved in multiple locations,
+        the first row position is returned.
+
+        Returns
+        -------
+        int
+            Row position of the minimum value.
+
+        Examples
+        --------
+        Consider dataset containing cereal calories
+
+        >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
+        ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
+        >>> s
+        Corn Flakes              100.0
+        Almond Delight           110.0
+        Cinnamon Toast Crunch    120.0
+        Cocoa Puff               110.0
+        dtype: float64
+
+        >>> s.argmin()
+        0
+        """
+        sdf = self._kdf.to_spark()
+
+        # We should remember the natural sequence started from 0
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
+
+        col_name = SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label
+        min_value = sdf.select(F.min(col_name)).head(1)[0][0]
+
+        # If the minimum is achieved in multiple locations, the first row position is returned.
+        min_value_position = sdf.filter(F.col(col_name) == min_value).head(1)[0][0]
+
+        return min_value_position
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 

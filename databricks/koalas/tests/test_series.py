@@ -2045,3 +2045,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
             expected = pser
             self.assert_eq(kser.explode(), expected)
+
+    def test_argmin_argmax(self):
+        pser = pd.Series(
+            {
+                "Corn Flakes": 100.0,
+                "Almond Delight": 110.0,
+                "Cinnamon Toast Crunch": 120.0,
+                "Cocoa Puff": 110.0,
+                "Expensive Flakes": 120.0,
+                "Cheap Flakes": 100.0,
+            }
+        )
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argmin(), kser.argmin())
+        self.assert_eq(pser.argmax(), kser.argmax())
