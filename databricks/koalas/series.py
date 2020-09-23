@@ -5218,17 +5218,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
 
         >>> kser.argsort().sort_index()
-        0      1
-        1      3
-        2      8
-        3      9
-        4      0
-        5      5
-        6     10
+        0      3
+        1      5
+        2      0
+        3      1
+        4      6
+        5      2
+        6      4
         7      7
-        8      2
-        9      6
-        10     4
+        8      9
+        9      8
+        10    10
         dtype: int64
         """
         sdf = self._kdf.to_spark()
