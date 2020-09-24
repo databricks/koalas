@@ -209,10 +209,13 @@ class GroupBy(object, metaclass=ABCMeta):
 
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or not all(
-                isinstance(value, str)
-                or isinstance(value, list)
-                and all(isinstance(v, str) for v in value)
-                for value in func_or_funcs.values()
+                (isinstance(key, tuple) or not is_list_like(key))
+                and (
+                    isinstance(value, str)
+                    or isinstance(value, list)
+                    and all(isinstance(v, str) for v in value)
+                )
+                for key, value in func_or_funcs.items()
             ):
                 raise ValueError(
                     "aggs must be a dict mapping from column name "
