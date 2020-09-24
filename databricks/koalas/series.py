@@ -5237,7 +5237,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         column_name = internal.column_labels[0][0]
         spark_frame = internal.spark_frame.select(index_scols + [data_scol.alias(column_name)])
 
-        sdf = spark_frame.select(index_scols + [column_name])
+        sdf = spark_frame.select(index_scols + [scol_for(spark_frame, column_name)])
         cond = F.isnull(scol_for(sdf, column_name))
         null_frame = sdf.filter(cond).select(index_scols + [F.when(cond, -1).alias(column_name)])
         not_null_frame = None
