@@ -1220,9 +1220,12 @@ class DataFrame(Frame, Generic[T]):
                 )
 
         if not isinstance(func, dict) or not all(
-            isinstance(value, str)
-            or (isinstance(value, list) and all(isinstance(v, str) for v in value))
-            for value in func.values()
+            (isinstance(key, tuple) or not is_list_like(key))
+            and (
+                isinstance(value, str)
+                or (isinstance(value, list) and all(isinstance(v, str) for v in value))
+            )
+            for key, value in func.items()
         ):
             raise ValueError(
                 "aggs must be a dict mapping from column name (string) to aggregate "
@@ -5172,7 +5175,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         if not isinstance(aggfunc, str) and (
             not isinstance(aggfunc, dict)
-            or not all(isinstance(value, str) for value in aggfunc.values())
+            or not all(
+                (isinstance(key, tuple) or not is_list_like(key)) and isinstance(value, str)
+                for key, value in aggfunc.items()
+            )
         ):
             raise ValueError(
                 "aggfunc must be a dict mapping from column name (string or tuple) "
