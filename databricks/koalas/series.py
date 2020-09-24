@@ -45,6 +45,7 @@ from pyspark.sql.types import (
     StringType,
     StructType,
     IntegralType,
+    ArrayType,
 )
 from pyspark.sql.window import Window
 
@@ -5140,6 +5141,54 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             raise TypeError("cannot perform prod with type {}".format(self.dtype))
 
     prod = product
+
+    def explode(self) -> "Series":
+        """
+        Transform each element of a list-like to a row.
+
+        Returns
+        -------
+        Series
+            Exploded lists to rows; index will be duplicated for these rows.
+
+        See Also
+        --------
+        Series.str.split : Split string values on specified separator.
+        Series.unstack : Unstack, a.k.a. pivot, Series with MultiIndex
+            to produce DataFrame.
+        DataFrame.melt : Unpivot a DataFrame from wide format to long format.
+        DataFrame.explode : Explode a DataFrame from list-like
+            columns to long format.
+
+        Examples
+        --------
+        >>> kser = ks.Series([[1, 2, 3], [], [3, 4]])
+        >>> kser
+        0    [1, 2, 3]
+        1           []
+        2       [3, 4]
+        dtype: object
+
+        >>> kser.explode()  # doctest: +SKIP
+        0    1.0
+        0    2.0
+        0    3.0
+        1    NaN
+        2    3.0
+        2    4.0
+        dtype: float64
+        """
+        if not isinstance(self.spark.data_type, ArrayType):
+            return self.copy()
+
+        scol = F.explode_outer(self.spark.column).alias(name_like_string(self._column_label))
+
+        internal = self._kdf._internal.copy(
+            column_labels=[self._column_label], data_spark_columns=[scol], column_label_names=None
+        ).resolved_copy
+        # For resetting `__natural_order__` to remove duplication order.
+        internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
+        return first_series(DataFrame(internal))
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.

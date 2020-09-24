@@ -15,6 +15,7 @@
 #
 
 import base64
+import unittest
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -104,7 +105,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-    def test_head_tail(self):
+    def test_head(self):
         kser = self.kser
         pser = self.pser
 
@@ -112,8 +113,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(0), pser.head(0))
         self.assert_eq(kser.head(-3), pser.head(-3))
         self.assert_eq(kser.head(-10), pser.head(-10))
-
-        # TODO: self.assert_eq(kser.tail(3), pser.tail(3))
 
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -1877,19 +1876,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 pser.droplevel([("a", "1"), ("c", "3")]), kser.droplevel([("a", "1"), ("c", "3")])
             )
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "tail won't work properly with PySpark<3.0",
+    )
     def test_tail(self):
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series(range(1000), name="Koalas")
-            kser = ks.from_pandas(pser)
+        pser = pd.Series(range(1000), name="Koalas")
+        kser = ks.from_pandas(pser)
 
-            self.assert_eq(pser.tail(), kser.tail())
-            self.assert_eq(pser.tail(10), kser.tail(10))
-            self.assert_eq(pser.tail(-990), kser.tail(-990))
-            self.assert_eq(pser.tail(0), kser.tail(0))
-            self.assert_eq(pser.tail(1001), kser.tail(1001))
-            self.assert_eq(pser.tail(-1001), kser.tail(-1001))
-            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
-                kser.tail("10")
+        self.assert_eq(pser.tail(), kser.tail())
+        self.assert_eq(pser.tail(10), kser.tail(10))
+        self.assert_eq(pser.tail(-990), kser.tail(-990))
+        self.assert_eq(pser.tail(0), kser.tail(0))
+        self.assert_eq(pser.tail(1001), kser.tail(1001))
+        self.assert_eq(pser.tail(-1001), kser.tail(-1001))
+        with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+            kser.tail("10")
 
     def test_product(self):
         pser = pd.Series([10, 20, 30, 40, 50])
@@ -1997,3 +1999,49 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
+
+    def test_explode(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+            # non-array type Series
+            pser = pd.Series([1, 2, 3, 4])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode())
+        else:
+            pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+            kser = ks.from_pandas(pser)
+            expected = pd.Series([1.0, 2.0, 3.0, None, None, 3.0, 4.0], index=[0, 0, 0, 1, 2, 3, 3])
+            self.assert_eq(kser.explode(), expected)
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+            kser = ks.from_pandas(pser)
+            expected = pd.Series(
+                [1.0, 2.0, 3.0, None, None, 3.0, 4.0],
+                index=pd.MultiIndex.from_tuples(
+                    [
+                        ("a", "w"),
+                        ("a", "w"),
+                        ("a", "w"),
+                        ("b", "x"),
+                        ("c", "y"),
+                        ("d", "z"),
+                        ("d", "z"),
+                    ]
+                ),
+            )
+            self.assert_eq(kser.explode(), expected)
+
+            # non-array type Series
+            pser = pd.Series([1, 2, 3, 4])
+            kser = ks.from_pandas(pser)
+            expected = pser
+            self.assert_eq(kser.explode(), expected)
