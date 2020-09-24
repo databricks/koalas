@@ -2047,9 +2047,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.explode(), expected)
 
     def test_argsort(self):
-        pser = pd.Series(np.random.rand(5), index=np.random.rand(5), name="Koalas")
+        # Without null values
+        pser = pd.Series([0, -100, 50, 100, 20], index=["A", "B", "C", "D", "E"])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
 
         # MultiIndex
         pser.index = pd.MultiIndex.from_tuples(
@@ -2057,3 +2059,82 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # With name
+        pser.name = "Koalas"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # Series from Index
+        pidx = pd.Index([4.0, -6.0, 2.0, -100.0, 11.0, 20.0, 1.0, -99.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from Index with name
+        pidx.name = "Koalas"
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from DataFrame
+        pdf = pd.DataFrame({"A": [4.0, -6.0, 2.0, np.nan, -100.0, 11.0, 20.0, np.nan, 1.0, -99.0]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.A.argsort().sort_index(), kdf.A.argsort().sort_index())
+        self.assert_eq((-pdf.A).argsort().sort_index(), (-kdf.A).argsort().sort_index())
+
+        # With null values
+        pser = pd.Series([0, -100, np.nan, 100, np.nan], index=["A", "B", "C", "D", "E"])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # MultiIndex with null values
+        pser.index = pd.MultiIndex.from_tuples(
+            [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
+        )
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # With name with null values
+        pser.name = "Koalas"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # Series from Index with null values
+        pidx = pd.Index([4.0, -6.0, 2.0, np.nan, -100.0, 11.0, 20.0, np.nan, 1.0, -99.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from Index with name with null values
+        pidx.name = "Koalas"
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from DataFrame with null values
+        pdf = pd.DataFrame({"A": [4.0, -6.0, 2.0, np.nan, -100.0, 11.0, 20.0, np.nan, 1.0, -99.0]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.A.argsort().sort_index(), kdf.A.argsort().sort_index())
+        self.assert_eq((-pdf.A).argsort().sort_index(), (-kdf.A).argsort().sort_index())
