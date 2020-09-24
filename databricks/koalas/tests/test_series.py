@@ -2055,7 +2055,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 "Cocoa Puff": 110.0,
                 "Expensive Flakes": 120.0,
                 "Cheap Flakes": 100.0,
-            }
+            },
+            name="Koalas",
         )
         kser = ks.from_pandas(pser)
 
@@ -2081,3 +2082,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
             self.assert_eq(pser.values.argmin(), kser.argmin())
             self.assert_eq(pser.values.argmax(), kser.argmax())
+
+        with self.assertRaisesRegex(ValueError, "attempt to get argmin of an empty sequence"):
+            ks.Series([]).argmin()
+        with self.assertRaisesRegex(ValueError, "attempt to get argmax of an empty sequence"):
+            ks.Series([]).argmax()

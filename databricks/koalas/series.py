@@ -5217,13 +5217,18 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.argmax()
         2
         """
-        sdf = self._kdf.to_spark()
+        if self.empty:
+            raise ValueError("attempt to get argmax of an empty sequence")
+
+        sdf = self._internal.spark_frame.select(self._internal.data_spark_columns)
 
         # We should remember the natural sequence started from 0
         seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
 
-        col_name = SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label
+        col_name = (
+            SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label[0]
+        )
         max_value = sdf.select(F.max(col_name)).head(1)[0][0]
 
         # If the maximum is achieved in multiple locations, the first row position is returned.
@@ -5259,13 +5264,18 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.argmin()
         0
         """
-        sdf = self._kdf.to_spark()
+        if self.empty:
+            raise ValueError("attempt to get argmin of an empty sequence")
+
+        sdf = self._internal.spark_frame.select(self._internal.data_spark_columns)
 
         # We should remember the natural sequence started from 0
         seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
 
-        col_name = SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label
+        col_name = (
+            SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label[0]
+        )
         min_value = sdf.select(F.min(col_name)).head(1)[0][0]
 
         # If the minimum is achieved in multiple locations, the first row position is returned.
