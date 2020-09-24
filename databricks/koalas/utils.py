@@ -21,7 +21,7 @@ import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
 import os
-from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -33,6 +33,7 @@ from pandas.api.types import is_list_like
 
 # For running doctests and reference resolution in PyCharm.
 from databricks import koalas as ks  # noqa: F401
+from databricks.koalas.typedef.typehints import as_spark_type
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
@@ -536,6 +537,94 @@ def name_like_string(name: Optional[Union[str, Tuple]]) -> str:
     else:
         name = (str(name),)
     return ("(%s)" % ", ".join(name)) if len(name) > 1 else name[0]
+
+
+def name_or_tuple(name: Optional[Tuple]) -> Union[Any, Tuple]:
+    """
+    Return a single value if the given tuple has a single value or a tuple from the given tuple.
+
+    Examples
+    --------
+    >>> name_or_tuple(('abc',))
+    'abc'
+    >>> name_or_tuple(('abc', 1))
+    ('abc', 1)
+    >>> name_or_tuple(None)
+    """
+    return name if name is None or len(name) > 1 else name[0]
+
+
+def is_name_tuple(value: Any) -> bool:
+    """
+    Check the given value is able to be used as a name.
+
+    Examples
+    --------
+    >>> is_name_tuple(('abc',))
+    True
+    >>> is_name_tuple((1,))
+    True
+    >>> is_name_tuple(('abc', 1, None))
+    True
+    >>> is_name_tuple('abc')
+    False
+    >>> is_name_tuple(tuple())
+    False
+    """
+    try:
+        return (
+            isinstance(value, tuple)
+            and len(value) > 0
+            and all(v is None or as_spark_type(type(v)) is not None for v in value)
+        )
+    except TypeError:
+        return False
+
+
+def validate_name_like_tuple(value: Any) -> Tuple:
+    """
+    Check the given value is able to be used as names and return a tuple.
+
+    Examples
+    --------
+    >>> validate_name_like_tuple('abc')
+    ('abc',)
+    >>> validate_name_like_tuple(('abc',))
+    ('abc',)
+    >>> validate_name_like_tuple(('x', 1))
+    ('x', 1)
+    """
+    if isinstance(value, tuple):
+        return value
+    elif not is_list_like(value):
+        return (value,)
+    else:
+        raise ValueError("The given value type is not supported: {}".format(type(value)))
+
+
+def validate_name_like_list(value: Any) -> List[Optional[Tuple]]:
+    """
+    Check the given value is able to be used as a list of names and return a list of tuples.
+
+    Examples
+    --------
+    >>> validate_name_like_list('abc')
+    [('abc',)]
+    >>> validate_name_like_list(('abc',))
+    [('abc',)]
+    >>> validate_name_like_list(('x', 1))
+    [('x', 1)]
+    >>> validate_name_like_list(['abc', ('x', 1)])
+    [('abc',), ('x', 1)]
+    >>> validate_name_like_list(['abc', None])
+    [('abc',), None]
+    """
+    if isinstance(value, tuple):
+        return [value]
+    elif not is_list_like(value):
+        return [(value,)]
+    else:
+        return [v if v is None else validate_name_like_tuple(v) for v in value]
 
 
 def validate_axis(axis=0, none_axis=0):

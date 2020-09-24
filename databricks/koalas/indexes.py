@@ -58,9 +58,12 @@ from databricks.koalas.utils import (
     compare_null_last,
     default_session,
     name_like_string,
+    name_or_tuple,
     scol_for,
     verify_temp_column_name,
     validate_bool_kwarg,
+    validate_name_like_list,
+    validate_name_like_tuple,
 )
 from databricks.koalas.internal import (
     InternalFrame,
@@ -283,7 +286,7 @@ class Index(IndexOpsMixin):
         >>> idx = ks.Index(['a', 'b', 'c'])
         >>> idx.name = "name"
         >>> midx = ks.MultiIndex.from_tuples([('a', 'x'), ('b', 'y'), ('c', 'z')])
-        >>> midx.names = ("nameA", "nameB")
+        >>> midx.names = ["nameA", "nameB"]
 
         For Index
 
@@ -540,25 +543,22 @@ class Index(IndexOpsMixin):
         return not self.has_duplicates
 
     @property
-    def name(self) -> Union[str, Tuple[str, ...]]:
+    def name(self) -> Union[Any, Tuple]:
         """Return name of the Index."""
         return self.names[0]
 
     @name.setter
-    def name(self, name: Union[str, Tuple[str, ...]]) -> None:
+    def name(self, name: Union[Any, Tuple]) -> None:
         self.names = [name]
 
     @property
-    def names(self) -> List[Union[str, Tuple[str, ...]]]:
+    def names(self) -> List[Union[Any, Tuple]]:
         """Return names of the Index."""
-        return [
-            name if name is None or len(name) > 1 else name[0]
-            for name in self._internal.index_names  # type: ignore
-        ]
+        return [name_or_tuple(name) for name in self._internal.index_names]
 
     @names.setter
-    def names(self, names: List[Union[str, Tuple[str, ...]]]) -> None:
-        if not is_list_like(names):
+    def names(self, names: List[Union[Any, Tuple]]) -> None:
+        if isinstance(names, tuple) or not is_list_like(names):
             raise ValueError("Names must be a list-like")
         self.rename(names, inplace=True)
 
@@ -648,20 +648,18 @@ class Index(IndexOpsMixin):
             return DataFrame(internal).index
 
     def _verify_for_rename(self, name):
-        if name is None or isinstance(name, tuple):
-            return [name]
-        elif isinstance(name, str):
-            return [(name,)]
-        elif is_list_like(name):
+        if name is None:
+            return [None]
+        elif isinstance(name, tuple) or not is_list_like(name):
+            return [validate_name_like_tuple(name)]
+        else:
             if len(self._internal.index_map) != len(name):
                 raise ValueError(
                     "Length of new names must be {}, got {}".format(
                         len(self._internal.index_map), len(name)
                     )
                 )
-            return [n if n is None or isinstance(n, tuple) else (n,) for n in name]
-        else:
-            raise TypeError("name must be a hashable type")
+            return validate_name_like_list(name)
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value):
@@ -722,7 +720,7 @@ class Index(IndexOpsMixin):
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map)
         return DataFrame(internal).index
 
-    def to_series(self, name: Union[str, Tuple[str, ...]] = None) -> Series:
+    def to_series(self, name: Union[Any, Tuple] = None) -> Series:
         """
         Create a Series with both index and values equal to the index keys
         useful with map for returning an indexer based on an index.
@@ -757,9 +755,9 @@ class Index(IndexOpsMixin):
             scol = scol.alias(name_like_string(name))
         elif len(kdf._internal.index_map) == 1:
             name = self.name
-        column_labels = (
-            [None] if name is None else [name if isinstance(name, tuple) else (name,)]
-        )  # type: List[Optional[Tuple[str, ...]]]
+        column_labels = [
+            None if name is None else validate_name_like_tuple(name)
+        ]  # type: List[Optional[Tuple]]
         internal = kdf._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
         )
@@ -1066,7 +1064,7 @@ class Index(IndexOpsMixin):
         >>> index.drop([1])
         Int64Index([2, 3], dtype='int64')
         """
-        if not isinstance(labels, (tuple, list)):
+        if not is_list_like(labels):  # TODO: tuple?
             labels = [labels]
         sdf = self._internal.spark_frame[~self._internal.index_spark_columns[0].isin(labels)]
         return Index(
@@ -1184,15 +1182,16 @@ class Index(IndexOpsMixin):
         """
         names = self.names
         nlevels = self.nlevels
-        if not isinstance(level, (tuple, list)):
+        if not is_list_like(level):  # TODO: tuple?
             level = [level]
 
         for n in level:
-            if isinstance(n, int) and (n > nlevels - 1):
-                raise IndexError(
-                    "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
-                )
-            if isinstance(n, (str, tuple)) and (n not in names):
+            if isinstance(n, int):
+                if n > nlevels - 1:
+                    raise IndexError(
+                        "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
+                    )
+            elif n not in names:
                 raise KeyError("Level {} not found".format(n))
 
         if len(level) >= nlevels:
@@ -2357,7 +2356,7 @@ class MultiIndex(Index):
         sdf = df.to_spark()
         if names is None:
             names = df._internal.column_labels
-        names = [(name,) if not isinstance(name, tuple) else name for name in names]
+        names = validate_name_like_list(names)
         index_map = OrderedDict(zip(sdf.columns, names))
         internal = InternalFrame(spark_frame=sdf, index_map=index_map)
         return DataFrame(internal).index
@@ -2378,7 +2377,7 @@ class MultiIndex(Index):
                         len(self._internal.index_map), len(name)
                     )
                 )
-            return [n if n is None or isinstance(n, tuple) else (n,) for n in name]
+            return validate_name_like_list(name)
         else:
             raise TypeError("Must pass list-like as `names`.")
 
@@ -2601,7 +2600,7 @@ class MultiIndex(Index):
         elif is_list_like(name):
             if len(name) != len(self._internal.index_map):
                 raise ValueError("'name' should have same length as number of levels on index.")
-            name = [n if isinstance(n, tuple) else (n,) for n in name]
+            name = validate_name_like_list(name)
         else:
             raise TypeError("'name' must be a list / sequence of column names.")
 
@@ -2805,8 +2804,7 @@ class MultiIndex(Index):
         else:
             spark_column_name = None
             for index_spark_column_name, index_name in self._internal.index_map.items():
-                if not isinstance(level, tuple):
-                    level = (level,)
+                level = validate_name_like_tuple(level)
                 if level == index_name:
                     if spark_column_name is not None:
                         raise ValueError(

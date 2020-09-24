@@ -119,7 +119,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kdf.groupby("a", as_index=False)["a"])
         self.assertRaises(ValueError, lambda: kdf.groupby("a", as_index=False)[["a"]])
         self.assertRaises(ValueError, lambda: kdf.groupby("a", as_index=False)[["a", "c"]])
-        self.assertRaises(ValueError, lambda: kdf.groupby(0, as_index=False)[["a", "c"]])
+        self.assertRaises(KeyError, lambda: kdf.groupby(0, as_index=False)[["a", "c"]])
         self.assertRaises(KeyError, lambda: kdf.groupby([0], as_index=False)[["a", "c"]])
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
@@ -381,8 +381,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                     )
 
         expected_error_message = (
-            r"aggs must be a dict mapping from column name \(string or "
-            r"tuple\) to aggregate functions \(string or list of strings\)."
+            r"aggs must be a dict mapping from column name "
+            r"to aggregate functions \(string or list of strings\)."
         )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kdf.groupby("A", as_index=as_index).agg(0)

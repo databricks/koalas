@@ -1146,15 +1146,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.drop(labels="weight", level=2)
         msg = (
             "If the given index is a list, it "
-            "should only contains names as strings, "
-            "or a list of tuples that contain "
-            "index names as strings"
+            "should only contains names as all tuples or all non tuples "
+            "that contain index names"
         )
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(["lama", ["cow", "falcon"]])
-        msg = "'index' type should be one of str, list, tuple"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.drop({"lama": "speed"})
         msg = "Cannot specify both 'labels' and 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop("lama", index="cow")
@@ -1178,15 +1174,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
-        msg = "'key' should be string or tuple that contains strings"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(0)
-        msg = (
-            "'key' should have index names as only strings "
-            "or a tuple that contain index names as only strings"
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(("lama", 0))
         msg = r"'Key length \(3\) exceeds index depth \(2\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.pop(("lama", "speed", "x"))
@@ -1831,19 +1818,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pser.droplevel(-1), kser.droplevel(-1))
             self.assert_eq(pser.droplevel([0]), kser.droplevel([0]))
             self.assert_eq(pser.droplevel(["level_1"]), kser.droplevel(["level_1"]))
-            self.assert_eq(pser.droplevel((0,)), kser.droplevel((0,)))
             self.assert_eq(pser.droplevel(("level_1",)), kser.droplevel(("level_1",)))
             self.assert_eq(pser.droplevel([0, 2]), kser.droplevel([0, 2]))
             self.assert_eq(
                 pser.droplevel(["level_1", "level_3"]), kser.droplevel(["level_1", "level_3"])
             )
-            self.assert_eq(pser.droplevel((1, 2)), kser.droplevel((1, 2)))
-            self.assert_eq(
-                pser.droplevel(("level_2", "level_3")), kser.droplevel(("level_2", "level_3"))
-            )
 
-            with self.assertRaisesRegex(KeyError, "Level {0, 1, 2} not found"):
-                kser.droplevel({0, 1, 2})
             with self.assertRaisesRegex(KeyError, "Level level_100 not found"):
                 kser.droplevel(["level_1", "level_100"])
             with self.assertRaisesRegex(

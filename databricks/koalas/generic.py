@@ -27,6 +27,7 @@ import warnings
 
 import numpy as np  # noqa: F401
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -41,6 +42,7 @@ from databricks.koalas.utils import (
     scol_for,
     validate_arguments_and_invoke_function,
     validate_axis,
+    validate_name_like_list,
 )
 from databricks.koalas.window import Rolling, Expanding
 
@@ -738,14 +740,8 @@ class Frame(object, metaclass=ABCMeta):
 
         if columns is None:
             column_labels = kdf._internal.column_labels
-        elif isinstance(columns, str):
-            column_labels = [(columns,)]
-        elif isinstance(columns, tuple):
-            column_labels = [columns]
         else:
-            column_labels = [
-                lb if isinstance(lb, tuple) else (lb,) for lb in columns  # type: ignore
-            ]
+            column_labels = validate_name_like_list(columns)  # type: ignore
 
         if isinstance(index_col, str):
             index_cols = [index_col]
@@ -1520,29 +1516,31 @@ class Frame(object, metaclass=ABCMeta):
 
         if isinstance(by, ks.DataFrame):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
-        elif isinstance(by, str):
-            if isinstance(self, ks.Series):
-                raise KeyError(by)
-            by = [(by,)]
         elif isinstance(by, tuple):
-            if isinstance(self, ks.Series):
-                for key in by:
-                    if isinstance(key, str):
-                        raise KeyError(key)
             for key in by:
                 if isinstance(key, ks.DataFrame):
                     raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
+            if isinstance(self, ks.Series):
+                for key in by:
+                    if not isinstance(key, ks.Series):
+                        raise KeyError(key)
             by = [by]
         elif isinstance(by, ks.Series):
             by = [by]
-        elif isinstance(by, Iterable):
+        elif is_list_like(by):
+            for key in by:
+                if isinstance(key, ks.DataFrame):
+                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
             if isinstance(self, ks.Series):
                 for key in by:
-                    if isinstance(key, str):
+                    if not isinstance(key, ks.Series):
                         raise KeyError(key)
             by = [key if isinstance(key, (tuple, ks.Series)) else (key,) for key in by]
         else:
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
+            if isinstance(self, ks.Series):
+                if not isinstance(by, ks.Series):
+                    raise KeyError(by)
+            by = [(by,)]
         if not len(by):
             raise ValueError("No group keys passed!")
         axis = validate_axis(axis)
