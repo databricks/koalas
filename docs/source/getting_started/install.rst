@@ -125,7 +125,7 @@ Package       Minimum supported version
 `PySpark`     2.4
 `pyarrow`     0.10
 `matplotlib`  3.0.0
-`numpy     `  1.14
+`numpy`       1.14
 ============= =========================
 
 
