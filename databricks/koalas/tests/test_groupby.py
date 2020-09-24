@@ -2257,6 +2257,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             columns=["name", "class", "max_speed"],
             index=[0, 2, 3, 1],
         )
+        pdf.columns.name = "Koalas"
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
@@ -2300,6 +2301,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         # MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("A", "name"), ("B", "class"), ("C", "max_speed")])
+        pdf.columns.names = ["Hello", "Koalas"]
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
             kdf.groupby(("B", "class")).get_group("bird"),

@@ -2217,6 +2217,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 spark_frame=spark_frame,
                 index_map=internal.index_map,
                 column_labels=[s._column_label for s in self._agg_columns],
+                column_label_names=internal.column_label_names,
             )
 
         return DataFrame(internal)
