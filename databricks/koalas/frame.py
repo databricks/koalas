@@ -10231,8 +10231,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Given equal-length arrays of row and column labels, return an
         array of the values corresponding to each (row, col) pair.
 
-        .. note:: This method should only be used when the length of `row_labels` is small enough,
-                  as all the data belongs to the `row_labels` is loaded into the driver's memory.
+        `row_labels` and `col_labels` are not support the type `Series` and `Index`
+        to prevent performance degradation.
 
         Parameters
         ----------
@@ -10268,12 +10268,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         from databricks.koalas.series import Series
         from databricks.koalas.indexes import Index
 
+        if isinstance(row_labels, (Series, Index)):
+            raise TypeError(
+                "'row_labels' doesn't support type '{}'.".format(type(row_labels).__name__)
+            )
+        if isinstance(col_labels, (Series, Index)):
+            raise TypeError(
+                "'col_labels' doesn't support type '{}'.".format(type(col_labels).__name__)
+            )
         if len(row_labels) != len(col_labels):
             raise ValueError("Row labels must have same size as column labels")
-        if isinstance(row_labels, (Series, Index)):
-            row_labels = row_labels.to_numpy().tolist()
-        if isinstance(col_labels, (Series, Index)):
-            col_labels = col_labels.to_numpy().tolist()
         lookups = [
             self.loc[row_label, col_label] for row_label, col_label in zip(row_labels, col_labels)
         ]

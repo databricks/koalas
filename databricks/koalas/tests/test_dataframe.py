@@ -4049,25 +4049,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.lookup({0: None, 3: None, 4: None}, {"A": None, "C": None, "B": None}),
         )
 
-        # Index
-        self.assert_eq(
-            pdf.lookup(pd.Index([0]), pd.Index(["C"])), kdf.lookup(ks.Index([0]), ks.Index(["C"]))
-        )
-        self.assert_list_eq(
-            pdf.lookup(pd.Index([0, 3, 4]), pd.Index(["A", "C", "A"])),
-            kdf.lookup(ks.Index([0, 3, 4]), ks.Index(["A", "C", "A"])),
-        )
-
-        # Series
-        self.assert_eq(
-            pdf.lookup(pd.Series([0]), pd.Series(["C"])),
-            kdf.lookup(ks.Series([0]), ks.Series(["C"])),
-        )
-        self.assert_list_eq(
-            pdf.lookup(pd.Series([0, 3, 4]), pd.Series(["A", "C", "A"])),
-            kdf.lookup(ks.Series([0, 3, 4]), ks.Series(["A", "C", "A"])),
-        )
-
         # MultiIndex
         pdf.index = pd.MultiIndex.from_tuples(
             [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
@@ -4083,3 +4064,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         err_msg = "Row labels must have same size as column labels"
         with self.assertRaisesRegex(ValueError, err_msg):
             kdf.lookup([0, 3, 4], ["A", "C"])
+        err_msg = "'row_labels' doesn't support type 'Index'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup(ks.Index([0]), ["C"])
+        err_msg = "'row_labels' doesn't support type 'Series'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup(ks.Series([0]), ["C"])
+        err_msg = "'col_labels' doesn't support type 'Index'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup([0], ks.Index(["C"]))
+        err_msg = "'col_labels' doesn't support type 'Series'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup([0], ks.Series(["C"]))
