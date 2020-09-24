@@ -2988,10 +2988,19 @@ class MultiIndex(Index):
 
         Examples
         --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+
         >>> kmidx1 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         >>> kmidx2 = ks.MultiIndex.from_tuples([("b", "y"), ("a", "x"), ("c", "z")])
         >>> kmidx1.equal_levels(kmidx2)
         True
+
+        >>> kmidx2 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "j")])
+        >>> kmidx1.equal_levels(kmidx2)
+        False
+
+        >>> reset_option("compute.ops_on_diff_frames")
         """
         nlevels = self.nlevels
         if (nlevels != other.nlevels) or (len(self) != len(other)):
