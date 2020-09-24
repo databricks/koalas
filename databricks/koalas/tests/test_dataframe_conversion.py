@@ -208,11 +208,9 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
 
             kdf = ks.from_pandas(pdf)
 
-            self.assert_array_eq(kdf.to_records(), pdf.to_records())
-            self.assert_array_eq(kdf.to_records(index=False), pdf.to_records(index=False))
-            self.assert_array_eq(
-                kdf.to_records(index_dtypes="<S2"), pdf.to_records(index_dtypes="<S2")
-            )
+            self.assert_eq(kdf.to_records(), pdf.to_records())
+            self.assert_eq(kdf.to_records(index=False), pdf.to_records(index=False))
+            self.assert_eq(kdf.to_records(index_dtypes="<S2"), pdf.to_records(index_dtypes="<S2"))
 
     def test_from_records(self):
         # Assert using a dict as input

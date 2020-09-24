@@ -1362,7 +1362,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_axes(self):
         pser = pd.Series([90, 91, 85], index=[2, 4, 1])
         kser = ks.from_pandas(pser)
-        self.assert_list_eq(kser.axes, pser.axes)
+        self.assert_eq(kser.axes, pser.axes)
 
         # for MultiIndex
         midx = pd.MultiIndex(
@@ -1371,7 +1371,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
         kser = ks.from_pandas(pser)
-        self.assert_list_eq(kser.axes, pser.axes)
+        self.assert_eq(kser.axes, pser.axes)
 
     def test_combine_first(self):
         pser1 = pd.Series({"falcon": 330.0, "eagle": 160.0})

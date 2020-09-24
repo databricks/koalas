@@ -151,8 +151,8 @@ class IndexingTest(ReusedSQLTestCase):
         # Assert .at for DataFrames
         self.assertEqual(kdf.at[3, "b"], 6)
         self.assertEqual(kdf.at[3, "b"], pdf.at[3, "b"])
-        np.testing.assert_array_equal(kdf.at[9, "b"], np.array([0, 0, 0]))
-        np.testing.assert_array_equal(kdf.at[9, "b"], pdf.at[9, "b"])
+        np.testing.assert_equal(kdf.at[9, "b"], np.array([0, 0, 0]))
+        np.testing.assert_equal(kdf.at[9, "b"], pdf.at[9, "b"])
 
         # Assert .at for Series
         self.assertEqual(test_series.at["b"], 6)

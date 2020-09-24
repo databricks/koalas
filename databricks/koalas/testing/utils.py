@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from distutils.version import LooseVersion
 
 import pandas as pd
+from pandas.api.types import is_list_like
 import pyspark
 
 from databricks import koalas as ks
@@ -254,32 +255,28 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
         :param almost: if this is enabled, the comparison is delegated to `unittest`'s
                        `assertAlmostEqual`. See its documentation for more details.
         """
-        lpdf = self._to_pandas(left)
-        rpdf = self._to_pandas(right)
-        if isinstance(lpdf, (pd.DataFrame, pd.Series, pd.Index)):
+        lobj = self._to_pandas(left)
+        robj = self._to_pandas(right)
+        if isinstance(lobj, (pd.DataFrame, pd.Series, pd.Index)):
             if almost:
-                self.assertPandasAlmostEqual(lpdf, rpdf)
+                self.assertPandasAlmostEqual(lobj, robj)
             else:
-                self.assertPandasEqual(lpdf, rpdf, check_exact=check_exact)
+                self.assertPandasEqual(lobj, robj, check_exact=check_exact)
+        elif is_list_like(lobj) and is_list_like(robj):
+            for litem, ritem in zip(left, right):
+                self.assert_eq(litem, ritem)
         else:
             if almost:
-                self.assertAlmostEqual(lpdf, rpdf)
+                self.assertAlmostEqual(lobj, robj)
             else:
-                self.assertEqual(lpdf, rpdf)
-
-    def assert_array_eq(self, left, right):
-        self.assertTrue((left == right).all())
-
-    def assert_list_eq(self, left, right):
-        for litem, ritem in zip(left, right):
-            self.assert_eq(litem, ritem)
+                self.assertEqual(lobj, robj)
 
     @staticmethod
-    def _to_pandas(df):
-        if isinstance(df, (DataFrame, Series, Index)):
-            return df.toPandas()
+    def _to_pandas(obj):
+        if isinstance(obj, (DataFrame, Series, Index)):
+            return obj.toPandas()
         else:
-            return df
+            return obj
 
 
 class TestUtils(object):
