@@ -5231,80 +5231,37 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         10    10
         dtype: int64
         """
-        internal = self.to_frame()._internal
-        index_scols = internal.index_spark_columns
-        data_scol = internal.data_spark_columns[0]
-        column_name = internal.column_labels[0][0]
-        spark_frame = internal.spark_frame.select(index_scols + [data_scol.alias(column_name)])
+        notnull = self.loc[self.notnull()]
 
-        sdf = spark_frame.select(index_scols + [scol_for(spark_frame, column_name)])
-        cond = F.isnull(scol_for(sdf, column_name))
-        null_frame = sdf.filter(cond).select(index_scols + [F.when(cond, -1).alias(column_name)])
-        not_null_frame = None
+        sdf_for_index = notnull._internal.spark_frame.select(notnull._internal.index_spark_columns)
 
-        sdf = sdf.dropna()
-        if len(null_frame.head(1)) != 0:
-            not_null_frame = sdf
-
-        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
-        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=seq_col_name)
-        # sdf:
-        # +-------------------------------+-----------------+---+
-        # |__distributed_sequence_column__|__index_level_0__|  0|
-        # +-------------------------------+-----------------+---+
-        # |                              0|                0|  3|
-        # |                              1|                1|  3|
-        # |                              2|                2|  4|
-        # |                              3|                3|  1|
-        # |                              4|                4|  6|
-        # +-------------------------------+-----------------+---+
-
-        sdf = sdf.sort(column_name).select(
-            scol_for(sdf, seq_col_name).alias(column_name)  # type: ignore
-        )
-        if not_null_frame is not None:
-            sdf_index = not_null_frame.select(index_scols).union(null_frame.select(index_scols))
-            sdf = sdf.union(null_frame.select(column_name))
-        else:
-            sdf_index = self._internal.spark_frame.select(index_scols)
-            # sdf_index:           sdf:
-            # +-----------------+  +---+
-            # |__index_level_0__|  |  0|
-            # +-----------------+  +---+
-            # |                0|  |  3|
-            # |                1|  |  0|
-            # |                2|  |  1|
-            # |                3|  |  2|
-            # |                4|  |  4|
-            # +-----------------+  +---+
-
-        tmp_join_key = verify_temp_column_name(sdf, "__tmp_join_key__")
-        sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=tmp_join_key)
-        tmp_join_key = verify_temp_column_name(sdf_index, "__tmp_join_key__")
-        sdf_index = InternalFrame.attach_distributed_sequence_column(
-            sdf_index, column_name=tmp_join_key
+        tmp_join_key = verify_temp_column_name(sdf_for_index, "__tmp_join_key__")
+        sdf_for_index = InternalFrame.attach_distributed_sequence_column(
+            sdf_for_index, tmp_join_key
         )
 
-        sdf = sdf_index.join(sdf, tmp_join_key).drop(tmp_join_key)
-        # sdf:
-        # +-----------------+---+
-        # |__index_level_0__|  0|
-        # +-----------------+---+
-        # |                0|  3|
-        # |                1|  0|
-        # |                3|  2|
-        # |                2|  1|
-        # |                4|  4|
-        # +-----------------+---+
-
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_map=self._internal.index_map,
-            column_labels=[self._column_label],
-            data_spark_columns=[scol_for(sdf, column_name)],
+        sdf_for_data = notnull._internal.spark_frame.select(
+            notnull.spark.column.alias("values"), NATURAL_ORDER_COLUMN_NAME
+        )
+        sdf_for_data = InternalFrame.attach_distributed_sequence_column(
+            sdf_for_data, SPARK_DEFAULT_SERIES_NAME
         )
 
-        return first_series(DataFrame(internal))
+        sdf_for_data = sdf_for_data.sort(
+            scol_for(sdf_for_data, "values"), NATURAL_ORDER_COLUMN_NAME
+        ).drop("values", NATURAL_ORDER_COLUMN_NAME)
+
+        tmp_join_key = verify_temp_column_name(sdf_for_data, "__tmp_join_key__")
+        sdf_for_data = InternalFrame.attach_distributed_sequence_column(sdf_for_data, tmp_join_key)
+
+        sdf = sdf_for_index.join(sdf_for_data, on=tmp_join_key).drop(tmp_join_key)
+
+        internal = self._internal.with_new_sdf(
+            spark_frame=sdf, data_columns=[SPARK_DEFAULT_SERIES_NAME]
+        )
+        kser = first_series(DataFrame(internal))
+
+        return ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
