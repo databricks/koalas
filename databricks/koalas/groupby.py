@@ -2208,19 +2208,15 @@ class GroupBy(object, metaclass=ABCMeta):
         if internal.spark_frame.head() is None:
             raise KeyError(name)
         if self._agg_columns_selected:
+            internal = self._kdf._internal
             spark_frame = internal.spark_frame.select(
                 internal.index_spark_columns + self._agg_columns_scols
-            )
-            column_labels = list()
-            for agg_column in self._agg_columns:
-                agg_column_name = agg_column.name
-                if isinstance(agg_column_name, tuple):
-                    column_labels.append(agg_column_name)
-                else:
-                    column_labels.append((agg_column_name,))
+            ).filter(cond)
 
             internal = InternalFrame(
-                spark_frame=spark_frame, index_map=internal.index_map, column_labels=column_labels,
+                spark_frame=spark_frame,
+                index_map=internal.index_map,
+                column_labels=[s._column_label for s in self._agg_columns],
             )
 
         return DataFrame(internal)

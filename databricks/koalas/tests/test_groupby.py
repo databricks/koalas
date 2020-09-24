@@ -2282,6 +2282,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
             pdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
         )
+        self.assert_eq(
+            (kdf.max_speed + 1).groupby(kdf["class"]).get_group("mammal"),
+            (pdf.max_speed + 1).groupby(pdf["class"]).get_group("mammal"),
+        )
 
         self.assertRaises(KeyError, lambda: kdf.groupby("class").get_group("fish"))
         self.assertRaises(TypeError, lambda: kdf.groupby("class").get_group(["bird", "mammal"]))
@@ -2316,6 +2320,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("B", "class"), ("A", "name")])[[("C", "max_speed")]].get_group(
                 ("mammal", "lion")
             ),
+        )
+        self.assert_eq(
+            (kdf[("C", "max_speed")] + 1).groupby(kdf[("B", "class")]).get_group("mammal"),
+            (pdf[("C", "max_speed")] + 1).groupby(pdf[("B", "class")]).get_group("mammal"),
         )
 
         self.assertRaises(KeyError, lambda: kdf.groupby(("B", "class")).get_group("fish"))
