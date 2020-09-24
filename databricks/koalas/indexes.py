@@ -2069,6 +2069,12 @@ class Index(IndexOpsMixin):
         """
         return self.to_series().item()
 
+    def view(self):
+        """
+        this is defined as a copy with the same identity
+        """
+        return self.copy()
+
     @property
     def inferred_type(self):
         """
@@ -2353,6 +2359,8 @@ class MultiIndex(Index):
                     ('NJ', 'Precip')],
                    names=['state', 'observation'])
         """
+        if not isinstance(df, DataFrame):
+            raise TypeError("Input must be a DataFrame")
         sdf = df.to_spark()
         if names is None:
             names = df._internal.column_labels

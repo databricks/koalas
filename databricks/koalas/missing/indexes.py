@@ -64,7 +64,6 @@ class MissingPandasLikeIndex(object):
     sortlevel = _unsupported_function("sortlevel")
     to_flat_index = _unsupported_function("to_flat_index")
     to_native_types = _unsupported_function("to_native_types")
-    view = _unsupported_function("view")
     where = _unsupported_function("where")
 
     # Deprecated functions
@@ -138,7 +137,6 @@ class MissingPandasLikeMultiIndex(object):
     to_flat_index = _unsupported_function("to_flat_index")
     to_native_types = _unsupported_function("to_native_types")
     truncate = _unsupported_function("truncate")
-    view = _unsupported_function("view")
     where = _unsupported_function("where")
 
     # Deprecated functions

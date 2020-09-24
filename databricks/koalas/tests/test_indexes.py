@@ -1485,6 +1485,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx, kidx)
 
+        err_msg = "Input must be a DataFrame"
+        with self.assertRaisesRegex(TypeError, err_msg):
+            ks.MultiIndex.from_frame({"a": [1, 2, 3], "b": [4, 5, 6]})
+
     def test_is_type_compatible(self):
         data_types = ["integer", "floating", "string", "boolean"]
         # Integer
@@ -1593,3 +1597,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx2 = pd.MultiIndex.from_tuples([("a", "x", "q"), ("b", "y", "w"), ("c", "z", "e")])
         kmidx2 = ks.from_pandas(pmidx2)
         self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
+
+    def test_view(self):
+        pidx = pd.Index([1, 2, 3, 4], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.view(), kidx.view())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.view(), kmidx.view())

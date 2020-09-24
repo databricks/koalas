@@ -103,6 +103,7 @@ Conversion
    Index.item
    Index.to_series
    Index.to_frame
+   Index.view
    Index.to_numpy
 
 Spark-related
@@ -247,6 +248,7 @@ MultiIndex Conversion
    MultiIndex.item
    MultiIndex.to_series
    MultiIndex.to_frame
+   MultiIndex.view
    MultiIndex.to_numpy
 
 MultiIndex Spark-related

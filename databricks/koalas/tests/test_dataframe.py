@@ -411,7 +411,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf, pdf)
 
-    def test_head_tail(self):
+    def test_head(self):
         pdf, kdf = self.df_pair
 
         self.assert_eq(kdf.head(2), pdf.head(2))
@@ -3976,19 +3976,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(p_name, k_name)
             self.assert_eq(p_items, k_items)
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "tail won't work properly with PySpark<3.0",
+    )
     def test_tail(self):
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pdf = pd.DataFrame({"x": range(1000)})
-            kdf = ks.from_pandas(pdf)
+        pdf = pd.DataFrame({"x": range(1000)})
+        kdf = ks.from_pandas(pdf)
 
-            self.assert_eq(pdf.tail(), kdf.tail())
-            self.assert_eq(pdf.tail(10), kdf.tail(10))
-            self.assert_eq(pdf.tail(-990), kdf.tail(-990))
-            self.assert_eq(pdf.tail(0), kdf.tail(0))
-            self.assert_eq(pdf.tail(-1001), kdf.tail(-1001))
-            self.assert_eq(pdf.tail(1001), kdf.tail(1001))
-            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
-                kdf.tail("10")
+        self.assert_eq(pdf.tail(), kdf.tail())
+        self.assert_eq(pdf.tail(10), kdf.tail(10))
+        self.assert_eq(pdf.tail(-990), kdf.tail(-990))
+        self.assert_eq(pdf.tail(0), kdf.tail(0))
+        self.assert_eq(pdf.tail(-1001), kdf.tail(-1001))
+        self.assert_eq(pdf.tail(1001), kdf.tail(1001))
+        with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+            kdf.tail("10")
 
     def test_last_valid_index(self):
         # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
