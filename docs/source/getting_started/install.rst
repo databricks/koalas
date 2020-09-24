@@ -121,10 +121,11 @@ Dependencies
 ============= =========================
 Package       Minimum supported version
 ============= =========================
-`pandas`      0.23
+`pandas`      0.23.2
 `PySpark`     2.4
 `pyarrow`     0.10
 `matplotlib`  3.0.0
+`numpy     `  1.14
 ============= =========================
 
 
