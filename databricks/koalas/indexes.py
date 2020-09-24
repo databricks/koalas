@@ -52,6 +52,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.utils import (
+    combine_frames,
     compare_allow_null,
     compare_disallow_null,
     compare_null_first,
@@ -2985,17 +2986,17 @@ class MultiIndex(Index):
         True
         """
         nlevels = self.nlevels
-        if nlevels != other.nlevels:
+        if (nlevels != other.nlevels) or (len(self) != len(other)):
             return False
-        self = self.sort_values()
-        other = other.sort_values()
-        with ks.option_context("compute.ops_on_diff_frames", True):
-            for i in range(nlevels):
-                self_level_values = self.get_level_values(i)
-                other_level_values = other.get_level_values(i)
-                if not self_level_values.equals(other_level_values):
-                    return False
-        return True
+        self_frame = self.sort_values().to_frame()
+        other_frame = other.sort_values().to_frame()
+        combined = combine_frames(self_frame, other_frame)
+
+        sdf = combined._internal.spark_frame
+        that_index_name = "__that_{}".format(other._internal.index_spark_column_names[0])
+        that_index_scol = scol_for(sdf, that_index_name)
+
+        return len(sdf.filter(that_index_scol.isNull()).head(1)) == 0
 
     @property
     def inferred_type(self):

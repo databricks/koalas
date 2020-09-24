@@ -1584,13 +1584,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_multiindex_equal_levels(self):
         pmidx1 = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        pmidx2 = pd.MultiIndex.from_tuples([("b", "y"), ("a", "x"), ("c", "z")])
         kmidx1 = ks.from_pandas(pmidx1)
-        kmidx2 = ks.from_pandas(pmidx2)
-
-        self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
 
         pmidx2 = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
         kmidx2 = ks.from_pandas(pmidx2)
+        self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
 
+        pmidx2 = pd.MultiIndex.from_tuples([("a", "x", "q"), ("b", "y", "w"), ("c", "z", "e")])
+        kmidx2 = ks.from_pandas(pmidx2)
         self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
