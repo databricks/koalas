@@ -2301,6 +2301,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             KeyError, lambda: kdf.groupby(["class", "name"]).get_group(("lion", "mammal"))
         )
         self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("lion"))
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("mammal"))
 
         # MultiIndex columns
         pdf.columns = pd.MultiIndex.from_tuples([("A", "name"), ("B", "class"), ("C", "max_speed")])
@@ -2352,4 +2353,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         self.assertRaises(
             ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("lion")
+        )
+        self.assertRaises(
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("mammal")
         )
