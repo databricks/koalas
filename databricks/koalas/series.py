@@ -5239,6 +5239,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf_for_index = InternalFrame.attach_distributed_sequence_column(
             sdf_for_index, tmp_join_key
         )
+        # sdf_for_index:
+        # +----------------+-----------------+
+        # |__tmp_join_key__|__index_level_0__|
+        # +----------------+-----------------+
+        # |               0|                0|
+        # |               1|                1|
+        # |               2|                2|
+        # |               3|                3|
+        # |               4|                4|
+        # +----------------+-----------------+
 
         sdf_for_data = notnull._internal.spark_frame.select(
             notnull.spark.column.alias("values"), NATURAL_ORDER_COLUMN_NAME
@@ -5246,6 +5256,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf_for_data = InternalFrame.attach_distributed_sequence_column(
             sdf_for_data, SPARK_DEFAULT_SERIES_NAME
         )
+        # sdf_for_data:
+        # +---+------+-----------------+
+        # |  0|values|__natural_order__|
+        # +---+------+-----------------+
+        # |  0|     3|      25769803776|
+        # |  1|     3|      51539607552|
+        # |  2|     4|      77309411328|
+        # |  3|     1|     103079215104|
+        # |  4|     2|     128849018880|
+        # +---+------+-----------------+
 
         sdf_for_data = sdf_for_data.sort(
             scol_for(sdf_for_data, "values"), NATURAL_ORDER_COLUMN_NAME
@@ -5253,6 +5273,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         tmp_join_key = verify_temp_column_name(sdf_for_data, "__tmp_join_key__")
         sdf_for_data = InternalFrame.attach_distributed_sequence_column(sdf_for_data, tmp_join_key)
+        # sdf_for_index:                         sdf_for_data:
+        # +----------------+-----------------+   +----------------+---+
+        # |__tmp_join_key__|__index_level_0__|   |__tmp_join_key__|  0|
+        # +----------------+-----------------+   +----------------+---+
+        # |               0|                0|   |               0|  3|
+        # |               1|                1|   |               1|  4|
+        # |               2|                2|   |               2|  0|
+        # |               3|                3|   |               3|  1|
+        # |               4|                4|   |               4|  2|
+        # +----------------+-----------------+   +----------------+---+
 
         sdf = sdf_for_index.join(sdf_for_data, on=tmp_join_key).drop(tmp_join_key)
 
