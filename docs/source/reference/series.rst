@@ -197,6 +197,8 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   Series.argmin
+   Series.argmax
    Series.sort_index
    Series.sort_values
    Series.unstack

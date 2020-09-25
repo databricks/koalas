@@ -2064,3 +2064,53 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
             expected = pser
             self.assert_eq(kser.explode(), expected)
+
+    def test_argmin_argmax(self):
+        pser = pd.Series(
+            {
+                "Corn Flakes": 100.0,
+                "Almond Delight": 110.0,
+                "Cinnamon Toast Crunch": 120.0,
+                "Cocoa Puff": 110.0,
+                "Expensive Flakes": 120.0,
+                "Cheap Flakes": 100.0,
+            },
+            name="Koalas",
+        )
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(pd.Series([np.nan]).argmin(), ks.Series([np.nan]).argmin())
+            self.assert_eq(pd.Series([np.nan]).argmax(), ks.Series([np.nan]).argmax())
+        else:
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(-1, ks.Series([np.nan]).argmin())
+            self.assert_eq(-1, ks.Series([np.nan]).argmax())
+
+        with self.assertRaisesRegex(ValueError, "attempt to get argmin of an empty sequence"):
+            ks.Series([]).argmin()
+        with self.assertRaisesRegex(ValueError, "attempt to get argmax of an empty sequence"):
+            ks.Series([]).argmax()
