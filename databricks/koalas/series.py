@@ -5217,21 +5217,24 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.argmax()  # doctest: +SKIP
         2
         """
-        sdf = self._internal.spark_frame.select(self._internal.data_spark_columns)
-
+        sdf = self._internal.spark_frame.select(self.spark.column, NATURAL_ORDER_COLUMN_NAME)
+        max_value = sdf.select(
+            F.max(scol_for(sdf, self._internal.data_spark_column_names[0])),
+            F.first(NATURAL_ORDER_COLUMN_NAME),
+        ).head()
+        if max_value[1] is None:
+            raise ValueError("attempt to get argmax of an empty sequence")
+        elif max_value[0] is None:
+            return -1
         # We should remember the natural sequence started from 0
         seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
-        sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
-
-        scol = scol_for(sdf, self._internal.data_spark_column_names[0])
-        max_value = sdf.select(F.max(scol)).head(1)[0][0]
-        if max_value is None:
-            raise ValueError("attempt to get argmax of an empty sequence")
-
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf.drop(NATURAL_ORDER_COLUMN_NAME), seq_col_name
+        )
         # If the maximum is achieved in multiple locations, the first row position is returned.
-        max_value_position = sdf.filter(scol == max_value).head(1)[0][0]
-
-        return max_value_position
+        return sdf.filter(
+            scol_for(sdf, self._internal.data_spark_column_names[0]) == max_value[0]
+        ).head()[0]
 
     def argmin(self):
         """
@@ -5261,21 +5264,24 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.argmin()  # doctest: +SKIP
         0
         """
-        sdf = self._internal.spark_frame.select(self._internal.data_spark_columns)
-
+        sdf = self._internal.spark_frame.select(self.spark.column, NATURAL_ORDER_COLUMN_NAME)
+        min_value = sdf.select(
+            F.min(scol_for(sdf, self._internal.data_spark_column_names[0])),
+            F.first(NATURAL_ORDER_COLUMN_NAME),
+        ).head()
+        if min_value[1] is None:
+            raise ValueError("attempt to get argmin of an empty sequence")
+        elif min_value[0] is None:
+            return -1
         # We should remember the natural sequence started from 0
         seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
-        sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
-
-        scol = scol_for(sdf, self._internal.data_spark_column_names[0])
-        min_value = sdf.select(F.min(scol)).head(1)[0][0]
-        if min_value is None:
-            raise ValueError("attempt to get argmin of an empty sequence")
-
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf.drop(NATURAL_ORDER_COLUMN_NAME), seq_col_name
+        )
         # If the minimum is achieved in multiple locations, the first row position is returned.
-        min_value_position = sdf.filter(scol == min_value).head(1)[0][0]
-
-        return min_value_position
+        return sdf.filter(
+            scol_for(sdf, self._internal.data_spark_column_names[0]) == min_value[0]
+        ).head()[0]
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.

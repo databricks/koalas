@@ -2054,6 +2054,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 "Cinnamon Toast Crunch": 120.0,
                 "Cocoa Puff": 110.0,
                 "Expensive Flakes": 120.0,
+                "Tasteless Flakes": None,
                 "Cheap Flakes": 100.0,
             },
             name="Koalas",
@@ -2066,7 +2067,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
             # MultiIndex
             pser.index = pd.MultiIndex.from_tuples(
-                [("a", "u"), ("b", "v"), ("c", "w"), ("d", "x"), ("e", "y"), ("f", "z")]
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u"), ("g", "z")]
             )
             kser = ks.from_pandas(pser)
             self.assert_eq(pser.argmin(), kser.argmin())
@@ -2077,7 +2078,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
             # MultiIndex
             pser.index = pd.MultiIndex.from_tuples(
-                [("a", "u"), ("b", "v"), ("c", "w"), ("d", "x"), ("e", "y"), ("f", "z")]
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u"), ("g", "z")]
             )
             kser = ks.from_pandas(pser)
             self.assert_eq(pser.values.argmin(), kser.argmin())
