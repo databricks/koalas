@@ -30,7 +30,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable, is_list_like
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -2198,15 +2198,12 @@ class GroupBy(object, metaclass=ABCMeta):
             raise TypeError("unhashable type: '{}'".format(type(name).__name__))
         elif len(groupkeys) > 1 and not isinstance(name, tuple):
             raise ValueError("must supply a tuple to get_group with multiple grouping keys")
-        if isinstance(name, str):
+        if not is_list_like(name):
             name = [name]
         cond = F.lit(True)
         for groupkey, item in zip(groupkeys, name):
             scol = groupkey.spark.column
             cond = cond & (scol == item)
-        internal = self._kdf._internal.with_filter(cond)
-        if internal.spark_frame.head() is None:
-            raise KeyError(name)
         if self._agg_columns_selected:
             internal = self._kdf._internal
             spark_frame = internal.spark_frame.select(
@@ -2219,6 +2216,10 @@ class GroupBy(object, metaclass=ABCMeta):
                 column_labels=[s._column_label for s in self._agg_columns],
                 column_label_names=internal.column_label_names,
             )
+        else:
+            internal = self._kdf._internal.with_filter(cond)
+        if internal.spark_frame.head() is None:
+            raise KeyError(name)
 
         return DataFrame(internal)
 
