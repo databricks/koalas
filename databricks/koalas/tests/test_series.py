@@ -2054,7 +2054,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 "Cinnamon Toast Crunch": 120.0,
                 "Cocoa Puff": 110.0,
                 "Expensive Flakes": 120.0,
-                "Tasteless Flakes": None,
                 "Cheap Flakes": 100.0,
             },
             name="Koalas",
@@ -2067,22 +2066,30 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
             # MultiIndex
             pser.index = pd.MultiIndex.from_tuples(
-                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u"), ("g", "z")]
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
             )
             kser = ks.from_pandas(pser)
             self.assert_eq(pser.argmin(), kser.argmin())
             self.assert_eq(pser.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(pd.Series([np.nan]).argmin(), ks.Series([np.nan]).argmin())
+            self.assert_eq(pd.Series([np.nan]).argmax(), ks.Series([np.nan]).argmax())
         else:
             self.assert_eq(pser.values.argmin(), kser.argmin())
             self.assert_eq(pser.values.argmax(), kser.argmax())
 
             # MultiIndex
             pser.index = pd.MultiIndex.from_tuples(
-                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u"), ("g", "z")]
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
             )
             kser = ks.from_pandas(pser)
             self.assert_eq(pser.values.argmin(), kser.argmin())
             self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(pd.Series([np.nan]).argmin(), ks.Series([np.nan]).argmin())
+            self.assert_eq(pd.Series([np.nan]).argmax(), ks.Series([np.nan]).argmax())
 
         with self.assertRaisesRegex(ValueError, "attempt to get argmin of an empty sequence"):
             ks.Series([]).argmin()
