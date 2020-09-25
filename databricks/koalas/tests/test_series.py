@@ -2088,8 +2088,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pser.values.argmax(), kser.argmax())
 
             # Null Series
-            self.assert_eq(pd.Series([np.nan]).argmin(), ks.Series([np.nan]).argmin())
-            self.assert_eq(pd.Series([np.nan]).argmax(), ks.Series([np.nan]).argmax())
+            self.assert_eq(pd.Series([np.nan]).values.argmin(), ks.Series([np.nan]).argmin())
+            self.assert_eq(pd.Series([np.nan]).values.argmax(), ks.Series([np.nan]).argmax())
 
         with self.assertRaisesRegex(ValueError, "attempt to get argmin of an empty sequence"):
             ks.Series([]).argmin()
