@@ -35,12 +35,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.typedef import infer_return_type, DataFrameType, SeriesType
-from databricks.koalas.utils import (
-    name_like_string,
-    scol_for,
-    validate_name_like_tuple,
-    verify_temp_column_name,
-)
+from databricks.koalas.utils import name_like_string, scol_for, verify_temp_column_name
 
 if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
@@ -131,7 +126,10 @@ class KoalasFrameMethods(object):
                 "id_type should be one of 'sequence', 'distributed-sequence' and 'distributed'"
             )
 
-        column = validate_name_like_tuple(column)
+        if isinstance(column, str):
+            column = (column,)
+        else:
+            assert isinstance(column, tuple), type(column)
 
         internal = self._kdf._internal
 

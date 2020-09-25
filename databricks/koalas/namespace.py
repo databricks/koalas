@@ -58,7 +58,6 @@ from databricks.koalas.utils import (
     same_anchor,
     scol_for,
     validate_axis,
-    validate_name_like_tuple,
 )
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import (
@@ -388,7 +387,7 @@ def read_csv(
             spark_frame=sdf,
             index_map=index_map,
             column_labels=[
-                None if label is None else validate_name_like_tuple(label)
+                label if label is None or isinstance(label, tuple) else (label,)
                 for label in column_labels
             ],
             data_spark_columns=[scol_for(sdf, col) for col in column_labels.values()],
@@ -1680,8 +1679,8 @@ def get_dummies(
                 )
             ]
         else:
-            if isinstance(columns, tuple) or not is_list_like(columns):
-                if not isinstance(columns, tuple):
+            if isinstance(columns, (str, tuple)):
+                if isinstance(columns, str):
                     key = (columns,)
                 else:
                     key = columns
@@ -1699,14 +1698,10 @@ def get_dummies(
                         else ""
                         for label in column_labels
                     ]
-            elif any(isinstance(col, tuple) for col in columns) and any(
-                not isinstance(col, tuple) for col in columns
+            elif any(isinstance(col, str) for col in columns) and any(
+                isinstance(col, tuple) for col in columns
             ):
-                raise ValueError(
-                    "Expected tuple, got {}".format(
-                        type(set(col for col in columns if not isinstance(col, tuple)).pop())
-                    )
-                )
+                raise ValueError("Expected tuple, got str")
             else:
                 column_labels = [
                     label

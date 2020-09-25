@@ -45,18 +45,17 @@ if TYPE_CHECKING:
     from databricks.koalas.series import Series
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import (
+    as_spark_type,
     infer_pd_series_spark_type,
     spark_type_to_pandas_dtype,
 )
 from databricks.koalas.utils import (
     column_labels_level,
     default_session,
-    is_name_tuple,
     is_testing,
     lazy_property,
     name_like_string,
     scol_for,
-    validate_name_like_list,
     verify_temp_column_name,
 )
 
@@ -378,7 +377,7 @@ class InternalFrame(object):
         index_map: Optional[Dict[str, Optional[Tuple]]],
         column_labels: Optional[List[Tuple]] = None,
         data_spark_columns: Optional[List[spark.Column]] = None,
-        column_label_names: Optional[List[Optional[Tuple]]] = None,
+        column_label_names: Optional[List[Optional[Tuple[str, ...]]]] = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -470,7 +469,16 @@ class InternalFrame(object):
 
         assert isinstance(index_map, OrderedDict), index_map
         assert all(
-            isinstance(index_field, str) and (index_name is None or is_name_tuple(index_name))
+            isinstance(index_field, str)
+            and (
+                index_name is None
+                or (
+                    isinstance(index_name, tuple)
+                    and all(
+                        name is None or as_spark_type(type(name)) is not None for name in index_name
+                    )
+                )
+            )
             for index_field, index_name in index_map.items()
         ), index_map
         assert data_spark_columns is None or all(
@@ -501,10 +509,23 @@ class InternalFrame(object):
             )
             if len(column_labels) == 1:
                 column_label = column_labels[0]
-                assert column_label is None or is_name_tuple(column_label), column_label
+                assert column_label is None or (
+                    isinstance(column_label, tuple)
+                    and len(column_label) > 0
+                    and all(
+                        label is None or as_spark_type(type(label)) is not None
+                        for label in column_label
+                    )
+                ), column_label
             else:
                 assert all(
-                    is_name_tuple(column_label) for column_label in column_labels
+                    isinstance(column_label, tuple)
+                    and len(column_label) > 0
+                    and all(
+                        label is None or as_spark_type(type(label)) is not None
+                        for label in column_label
+                    )
+                    for column_label in column_labels
                 ), column_labels
                 assert len(set(len(label) for label in column_labels)) <= 1, column_labels
             self._column_labels = column_labels
@@ -522,7 +543,14 @@ class InternalFrame(object):
             else:
                 assert len(column_label_names) > 0, len(column_label_names)
             assert all(
-                column_label_name is None or is_name_tuple(column_label_name)
+                column_label_name is None
+                or (
+                    isinstance(column_label_name, tuple)
+                    and all(
+                        name is None or as_spark_type(type(name)) is not None
+                        for name in column_label_name
+                    )
+                )
                 for column_label_name in column_label_names
             ), column_label_names
             self._column_label_names = column_label_names
@@ -1047,9 +1075,13 @@ class InternalFrame(object):
             column_labels = columns.tolist()
         else:
             column_labels = [(col,) for col in columns]
-        column_label_names = validate_name_like_list(columns.names)
+        column_label_names = [
+            name if name is None or isinstance(name, tuple) else (name,) for name in columns.names
+        ]
 
-        index_names = validate_name_like_list(pdf.index.names)
+        index_names = [
+            name if name is None or isinstance(name, tuple) else (name,) for name in pdf.index.names
+        ]
         index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(index_names))]
 
         pdf = pdf.copy()

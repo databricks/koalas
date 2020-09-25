@@ -1066,6 +1066,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.xs(("mammal", "dog", "walks")), pdf.xs(("mammal", "dog", "walks")))
 
+        msg = "'key' should be string or tuple that contains strings"
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs(1)
+        msg = (
+            "'key' should have index names as only strings "
+            "or a tuple that contain index names as only strings"
+        )
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.xs(("mammal", 1))
         msg = 'axis should be either 0 or "index" currently.'
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.xs("num_wings", axis=1)
@@ -2167,7 +2176,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        with self.assertRaisesRegex(KeyError, "5"):
+        msg = "values should be string or list of one column."
+        with self.assertRaisesRegex(ValueError, msg):
             kdf.pivot_table(index=["c"], columns="a", values=5)
 
         msg = "index should be a None or a list of columns."
@@ -2177,6 +2187,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         msg = "pivot_table doesn't support aggfunc as dict and without index."
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.pivot_table(columns="a", values=["b", "e"], aggfunc={"b": "mean", "e": "sum"})
+
+        msg = "columns should be string."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.pivot_table(columns=["a"], values=["b"], aggfunc={"b": "mean", "e": "sum"})
 
         msg = "Columns in aggfunc must be the same as values."
         with self.assertRaisesRegex(ValueError, msg):

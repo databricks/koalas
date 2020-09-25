@@ -30,7 +30,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -65,8 +65,6 @@ from databricks.koalas.utils import (
     name_like_string,
     same_anchor,
     scol_for,
-    validate_name_like_list,
-    validate_name_like_tuple,
     verify_temp_column_name,
 )
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
@@ -209,7 +207,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or not all(
-                (isinstance(key, tuple) or not is_list_like(key))
+                isinstance(key, (str, tuple))
                 and (
                     isinstance(value, str)
                     or isinstance(value, list)
@@ -218,9 +216,10 @@ class GroupBy(object, metaclass=ABCMeta):
                 for key, value in func_or_funcs.items()
             ):
                 raise ValueError(
-                    "aggs must be a dict mapping from column name "
+                    "aggs must be a dict mapping from column name (string or tuple) "
                     "to aggregate functions (string or list of strings)."
                 )
+
         else:
             agg_cols = [col.name for col in self._agg_columns]
             func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
@@ -252,7 +251,7 @@ class GroupBy(object, metaclass=ABCMeta):
         data_columns = []
         column_labels = []
         for key, value in func.items():
-            label = validate_name_like_tuple(key)
+            label = key if isinstance(key, tuple) else (key,)
             for aggfunc in [value] if isinstance(value, str) else value:
                 name = kdf._internal.spark_column_name_for(label)
                 data_col = "('{0}', '{1}')".format(name, aggfunc) if multi_aggs else name
@@ -2360,21 +2359,18 @@ class DataFrameGroupBy(GroupBy):
         return self.__getitem__(item)
 
     def __getitem__(self, item):
-        if not is_list_like(item) and item in self._kdf.columns and self._as_index:
-            return SeriesGroupBy(
-                self._kdf._kser_for(validate_name_like_tuple(item)), self._groupkeys
-            )
+        if isinstance(item, str) and self._as_index:
+            return SeriesGroupBy(self._kdf[item], self._groupkeys)
         else:
-            if is_list_like(item):
-                item = list(item)
-            item = validate_name_like_list(item)
+            if isinstance(item, str):
+                item = [item]
+            item = [i if isinstance(i, tuple) else (i,) for i in item]
             if not self._as_index:
-                groupkey_names = set(key._column_label for key in self._groupkeys)
-                for name in item:
+                groupkey_names = set(key.name for key in self._groupkeys)
+                for i in item:
+                    name = str(i) if len(i) > 1 else i[0]
                     if name in groupkey_names:
-                        raise ValueError(
-                            "cannot insert {}, already exists".format(name_like_string(name))
-                        )
+                        raise ValueError("cannot insert {}, already exists".format(name))
             return DataFrameGroupBy(
                 self._kdf,
                 self._groupkeys,
