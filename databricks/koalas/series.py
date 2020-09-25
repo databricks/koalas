@@ -5217,22 +5217,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.argmax()  # doctest: +SKIP
         2
         """
-        if self.empty:
-            raise ValueError("attempt to get argmax of an empty sequence")
-
         sdf = self._internal.spark_frame.select(self._internal.data_spark_columns)
 
         # We should remember the natural sequence started from 0
         seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
 
-        col_name = (
-            SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label[0]
-        )
-        max_value = sdf.select(F.max(col_name)).head(1)[0][0]
+        scol = scol_for(sdf, self._internal.data_spark_column_names[0])
+        max_value = sdf.select(F.max(scol)).head(1)[0][0]
+        if max_value is None:
+            raise ValueError("attempt to get argmax of an empty sequence")
 
         # If the maximum is achieved in multiple locations, the first row position is returned.
-        max_value_position = sdf.filter(F.col(col_name) == max_value).head(1)[0][0]
+        max_value_position = sdf.filter(scol == max_value).head(1)[0][0]
 
         return max_value_position
 
@@ -5264,22 +5261,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> s.argmin()  # doctest: +SKIP
         0
         """
-        if self.empty:
-            raise ValueError("attempt to get argmin of an empty sequence")
-
         sdf = self._internal.spark_frame.select(self._internal.data_spark_columns)
 
         # We should remember the natural sequence started from 0
         seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, seq_col_name)
 
-        col_name = (
-            SPARK_DEFAULT_SERIES_NAME if self._column_label is None else self._column_label[0]
-        )
-        min_value = sdf.select(F.min(col_name)).head(1)[0][0]
+        scol = scol_for(sdf, self._internal.data_spark_column_names[0])
+        min_value = sdf.select(F.min(scol)).head(1)[0][0]
+        if min_value is None:
+            raise ValueError("attempt to get argmin of an empty sequence")
 
         # If the minimum is achieved in multiple locations, the first row position is returned.
-        min_value_position = sdf.filter(F.col(col_name) == min_value).head(1)[0][0]
+        min_value_position = sdf.filter(scol == min_value).head(1)[0][0]
 
         return min_value_position
 
