@@ -2068,6 +2068,12 @@ class Index(IndexOpsMixin):
         """
         return self.to_series().item()
 
+    def view(self):
+        """
+        this is defined as a copy with the same identity
+        """
+        return self.copy()
+
     @property
     def inferred_type(self):
         """
