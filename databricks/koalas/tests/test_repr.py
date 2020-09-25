@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
 import numpy as np
+import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option, option_context
@@ -40,6 +43,9 @@ class ReprTest(ReusedSQLTestCase):
 
         kdf = ks.range(ReprTest.max_display_count + 1)
         self.assertTrue("Showing only the first" in repr(kdf))
+        self.assertTrue(
+            repr(kdf).startswith(repr(kdf.to_pandas().head(ReprTest.max_display_count)))
+        )
 
         with option_context("display.max_rows", None):
             kdf = ks.range(ReprTest.max_display_count + 1)
@@ -52,24 +58,86 @@ class ReprTest(ReusedSQLTestCase):
 
         kser = ks.range(ReprTest.max_display_count + 1).id
         self.assertTrue("Showing only the first" in repr(kser))
+        self.assertTrue(
+            repr(kser).startswith(repr(kser.to_pandas().head(ReprTest.max_display_count)))
+        )
 
         with option_context("display.max_rows", None):
             kser = ks.range(ReprTest.max_display_count + 1).id
             self.assert_eq(repr(kser), repr(kser.to_pandas()))
 
+        kser = ks.range(ReprTest.max_display_count).id.rename()
+        self.assertTrue("Showing only the first" not in repr(kser))
+        self.assert_eq(repr(kser), repr(kser.to_pandas()))
+
+        kser = ks.range(ReprTest.max_display_count + 1).id.rename()
+        self.assertTrue("Showing only the first" in repr(kser))
+        self.assertTrue(
+            repr(kser).startswith(repr(kser.to_pandas().head(ReprTest.max_display_count)))
+        )
+
+        with option_context("display.max_rows", None):
+            kser = ks.range(ReprTest.max_display_count + 1).id.rename()
+            self.assert_eq(repr(kser), repr(kser.to_pandas()))
+
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            kser = ks.MultiIndex.from_tuples(
+                [(100 * i, i) for i in range(ReprTest.max_display_count)]
+            ).to_series()
+            self.assertTrue("Showing only the first" not in repr(kser))
+            self.assert_eq(repr(kser), repr(kser.to_pandas()))
+
+            kser = ks.MultiIndex.from_tuples(
+                [(100 * i, i) for i in range(ReprTest.max_display_count + 1)]
+            ).to_series()
+            self.assertTrue("Showing only the first" in repr(kser))
+            self.assertTrue(
+                repr(kser).startswith(repr(kser.to_pandas().head(ReprTest.max_display_count)))
+            )
+
+            with option_context("display.max_rows", None):
+                kser = ks.MultiIndex.from_tuples(
+                    [(100 * i, i) for i in range(ReprTest.max_display_count + 1)]
+                ).to_series()
+                self.assert_eq(repr(kser), repr(kser.to_pandas()))
+
     def test_repr_indexes(self):
-        kdf = ks.range(ReprTest.max_display_count)
-        kidx = kdf.index
+        kidx = ks.range(ReprTest.max_display_count).index
         self.assertTrue("Showing only the first" not in repr(kidx))
         self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
 
-        kdf = ks.range(ReprTest.max_display_count + 1)
-        kidx = kdf.index
+        kidx = ks.range(ReprTest.max_display_count + 1).index
         self.assertTrue("Showing only the first" in repr(kidx))
+        self.assertTrue(
+            repr(kidx).startswith(
+                repr(kidx.to_pandas().to_series().head(ReprTest.max_display_count).index)
+            )
+        )
 
         with option_context("display.max_rows", None):
-            kdf = ks.range(ReprTest.max_display_count + 1)
-            kidx = kdf.index
+            kidx = ks.range(ReprTest.max_display_count + 1).index
+            self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
+
+        kidx = ks.MultiIndex.from_tuples(
+            [(100 * i, i) for i in range(ReprTest.max_display_count)]
+        )
+        self.assertTrue("Showing only the first" not in repr(kidx))
+        self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
+
+        kidx = ks.MultiIndex.from_tuples(
+            [(100 * i, i) for i in range(ReprTest.max_display_count + 1)]
+        )
+        self.assertTrue("Showing only the first" in repr(kidx))
+        self.assertTrue(
+            repr(kidx).startswith(
+                repr(kidx.to_pandas().to_frame().head(ReprTest.max_display_count).index)
+            )
+        )
+
+        with option_context("display.max_rows", None):
+            kidx = ks.MultiIndex.from_tuples(
+                [(100 * i, i) for i in range(ReprTest.max_display_count + 1)]
+            )
             self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
 
     def test_html_repr(self):
