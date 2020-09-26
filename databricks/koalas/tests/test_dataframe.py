@@ -4154,21 +4154,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         err_msg = "'col_labels' doesn't support type 'Series'."
         with self.assertRaisesRegex(TypeError, err_msg):
             kdf.lookup([0], ks.Series(["C"]))
-        err_msg = "'D'"
-        with self.assertRaisesRegex(KeyError, err_msg):
-            kdf.lookup([2, 3], ["A", "D"])
-        err_msg = "DataFrame.lookup requires unique index and columns"
-        with self.assertRaisesRegex(ValueError, err_msg):
-            pdf = pd.DataFrame(
-                {
-                    "A": [3, 4, 5, 6, 7],
-                    "B": [10.0, 20.0, 30.0, 40.0, 50.0],
-                    "C": ["a", "b", "c", "d", "e"],
-                },
-                index=pd.Index([1, 1, 2, 2, 3]),
-            )
-            kdf = ks.from_pandas(pdf)
-            kdf.lookup([1], ["A"])
 
     def test_pad(self):
         pdf = pd.DataFrame(
