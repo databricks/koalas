@@ -30,7 +30,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable, is_list_like
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -2155,6 +2155,79 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return ExpandingGroupby(self, min_periods=min_periods)
 
+    def get_group(self, name):
+        """
+        Construct DataFrame from group with provided name.
+
+        Parameters
+        ----------
+        name : object
+            The name of the group to get as a DataFrame.
+
+        Returns
+        -------
+        group : same type as obj
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                     ('parrot', 'bird', 24.0),
+        ...                     ('lion', 'mammal', 80.5),
+        ...                     ('monkey', 'mammal', np.nan)],
+        ...                    columns=['name', 'class', 'max_speed'],
+        ...                    index=[0, 2, 3, 1])
+        >>> kdf
+             name   class  max_speed
+        0  falcon    bird      389.0
+        2  parrot    bird       24.0
+        3    lion  mammal       80.5
+        1  monkey  mammal        NaN
+
+        >>> kdf.groupby("class").get_group("bird").sort_index()
+             name class  max_speed
+        0  falcon  bird      389.0
+        2  parrot  bird       24.0
+
+        >>> kdf.groupby("class").get_group("mammal").sort_index()
+             name   class  max_speed
+        1  monkey  mammal        NaN
+        3    lion  mammal       80.5
+        """
+        groupkeys = self._groupkeys
+        if not is_hashable(name):
+            raise TypeError("unhashable type: '{}'".format(type(name).__name__))
+        elif len(groupkeys) > 1:
+            if not isinstance(name, tuple):
+                raise ValueError("must supply a tuple to get_group with multiple grouping keys")
+            if len(groupkeys) != len(name):
+                raise ValueError(
+                    "must supply a same-length tuple to get_group with multiple grouping keys"
+                )
+        if not is_list_like(name):
+            name = [name]
+        cond = F.lit(True)
+        for groupkey, item in zip(groupkeys, name):
+            scol = groupkey.spark.column
+            cond = cond & (scol == item)
+        if self._agg_columns_selected:
+            internal = self._kdf._internal
+            spark_frame = internal.spark_frame.select(
+                internal.index_spark_columns + self._agg_columns_scols
+            ).filter(cond)
+
+            internal = InternalFrame(
+                spark_frame=spark_frame,
+                index_map=internal.index_map,
+                column_labels=[s._column_label for s in self._agg_columns],
+                column_label_names=internal.column_label_names,
+            )
+        else:
+            internal = self._kdf._internal.with_filter(cond)
+        if internal.spark_frame.head() is None:
+            raise KeyError(name)
+
+        return DataFrame(internal)
+
     def _reduce_for_stat_function(self, sfun, only_numeric):
         agg_columns = self._agg_columns
         agg_columns_scols = self._agg_columns_scols
@@ -2567,6 +2640,11 @@ class SeriesGroupBy(GroupBy):
         return super().size().rename(self._kser.name)
 
     size.__doc__ = GroupBy.size.__doc__
+
+    def get_group(self, name):
+        return first_series(super().get_group(name))
+
+    get_group.__doc__ = GroupBy.get_group.__doc__
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):
