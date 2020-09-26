@@ -108,8 +108,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.index
         kidx = self.kdf.index
 
-        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
-        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         pidx.name = "a"
         kidx.name = "a"
@@ -127,8 +127,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
-        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
-        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
