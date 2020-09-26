@@ -5388,6 +5388,102 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol_for(sdf, self._internal.data_spark_column_names[0]) == min_value[0]
         ).head()[0]
 
+    def compare(self, other, keep_shape=False, keep_equal=False):
+        """
+        Compare to another Series and show the differences.
+
+        Parameters
+        ----------
+        other : Series
+            Object to compare with.
+        keep_shape : bool, default False
+            If true, all rows and columns are kept.
+            Otherwise, only the ones with different values are kept.
+        keep_equal : bool, default False
+            If true, the result keeps values that are equal.
+            Otherwise, equal values are shown as NaNs.
+
+        Returns
+        -------
+        Series
+
+        Notes
+        -----
+        Matching NaNs will not appear as a difference.
+
+        Examples
+        --------
+        >>> s1 = ks.Series(["a", "b", "c", "d", "e"])
+        >>> s2 = ks.Series(["a", "a", "c", "b", "e"])
+
+        Align the differences on columns
+
+        >>> s1.compare(s2).sort_index()
+          self other
+        1    b     a
+        3    d     b
+
+        Keep all original rows
+
+        >>> s1.compare(s2, keep_shape=True).sort_index()
+          self other
+        0  NaN   NaN
+        1    b     a
+        2  NaN   NaN
+        3    d     b
+        4  NaN   NaN
+
+        Keep all original rows and also all original values
+
+        >>> s1.compare(s2, keep_shape=True, keep_equal=True).sort_index()
+          self other
+        0    a     a
+        1    b     a
+        2    c     c
+        3    d     b
+        4    e     e
+        """
+        with option_context("compute.ops_on_diff_frames", True):
+            if not self.index.equals(other.index):
+                raise ValueError("Can only compare identically-labeled Series objects")
+            combined = combine_frames(self.to_frame(), other.to_frame())
+
+        this_column_label = "self"
+        that_column_label = "other"
+        if keep_equal and keep_shape:
+            combined.columns = pd.Index([this_column_label, that_column_label])
+            return combined
+
+        this_data_scol = combined._internal.data_spark_columns[0]
+        that_data_scol = combined._internal.data_spark_columns[1]
+        index_scols = combined._internal.index_spark_columns
+        sdf = combined._internal.spark_frame
+        if keep_shape:
+            this_scol = (
+                F.when(this_data_scol == that_data_scol, None)
+                .otherwise(this_data_scol)
+                .alias(this_column_label)
+            )
+            that_scol = (
+                F.when(this_data_scol == that_data_scol, None)
+                .otherwise(that_data_scol)
+                .alias(that_column_label)
+            )
+        else:
+            sdf = sdf.filter(~this_data_scol.eqNullSafe(that_data_scol))
+            this_scol = this_data_scol.alias(this_column_label)
+            that_scol = that_data_scol.alias(that_column_label)
+
+        sdf = sdf.select(index_scols + [this_scol, that_scol, NATURAL_ORDER_COLUMN_NAME])
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_map=self._internal.index_map,
+            column_labels=[(this_column_label,), (that_column_label,)],
+            data_spark_columns=[scol_for(sdf, this_column_label), scol_for(sdf, that_column_label)],
+            column_label_names=[None],
+        )
+        return DataFrame(internal)
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
