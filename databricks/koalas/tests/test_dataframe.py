@@ -28,14 +28,15 @@ from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
+from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.frame import CachedDataFrame
+from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.testing.utils import (
     ReusedSQLTestCase,
     SQLTestUtils,
     SPARK_CONF_ARROW_ENABLED,
 )
-from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
-from databricks.koalas.frame import CachedDataFrame
+from databricks.koalas.utils import name_like_string
 
 
 class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
@@ -411,7 +412,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf, pdf)
 
-    def test_head_tail(self):
+    def test_head(self):
         pdf, kdf = self.df_pair
 
         self.assert_eq(kdf.head(2), pdf.head(2))
@@ -581,33 +582,66 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_droplevel(self):
+        pdf = (
+            pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
+            .set_index([0, 1])
+            .rename_axis(["a", "b"])
+        )
+        pdf.columns = pd.MultiIndex.from_tuples(
+            [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
+        self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
+        self.assertRaises(ValueError, lambda: kdf.droplevel([1, 1, 1, 1, 1]))
+        self.assertRaises(IndexError, lambda: kdf.droplevel(-3))
+
         # droplevel is new in pandas 0.24.0
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            pdf = (
-                pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
-                .set_index([0, 1])
-                .rename_axis(["a", "b"])
-            )
-
-            pdf.columns = pd.MultiIndex.from_tuples(
-                [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
-            )
-            kdf = ks.from_pandas(pdf)
-
             self.assert_eq(pdf.droplevel("a"), kdf.droplevel("a"))
             self.assert_eq(pdf.droplevel(0), kdf.droplevel(0))
             self.assert_eq(pdf.droplevel(-1), kdf.droplevel(-1))
             self.assert_eq(pdf.droplevel("level_1", axis=1), kdf.droplevel("level_1", axis=1))
             self.assert_eq(pdf.droplevel(0, axis=1), kdf.droplevel(0, axis=1))
-            self.assertRaises(ValueError, lambda: kdf.droplevel(["a", "b"]))
-            self.assertRaises(ValueError, lambda: kdf.droplevel(["level_1", "level_2"], axis=1))
-            self.assertRaises(ValueError, lambda: kdf.droplevel([1, 1, 1, 1, 1]))
-            self.assertRaises(IndexError, lambda: kdf.droplevel(-3))
 
             # Tupled names
             pdf.index.names = [("a", "b"), ("x", "y")]
             kdf = ks.from_pandas(pdf)
             self.assert_eq(pdf.droplevel([("a", "b")]), kdf.droplevel([("a", "b")]))
+        else:
+            expected = ks.DataFrame(
+                [[3, 4], [7, 8], [11, 12]], index=pd.Index([2, 6, 10], name="b")
+            )
+            columns = pd.MultiIndex.from_tuples(
+                [("c", "e"), ("d", "f")], names=["level_1", "level_2"]
+            )
+            expected.columns = columns
+
+            self.assert_eq(expected, kdf.droplevel("a"))
+            self.assert_eq(expected, kdf.droplevel(0))
+
+            expected = ks.DataFrame([[3, 4], [7, 8], [11, 12]], index=pd.Index([1, 5, 9], name="a"))
+            expected.columns = columns
+
+            self.assert_eq(expected, kdf.droplevel(-1))
+
+            index = pd.MultiIndex.from_tuples([(1, 2), (5, 6), (9, 10)], names=["a", "b"])
+            expected = ks.DataFrame([[3, 4], [7, 8], [11, 12]], index=index)
+            expected.columns = pd.Index(["e", "f"], name="level_2")
+
+            self.assert_eq(expected, kdf.droplevel("level_1", axis=1))
+            self.assert_eq(expected, kdf.droplevel(0, axis=1))
+
+            # Tupled names
+            pdf.index.names = [("a", "b"), ("x", "y")]
+            kdf = ks.from_pandas(pdf)
+            expected = ks.DataFrame(
+                [[3, 4], [7, 8], [11, 12]], index=pd.Index([2, 6, 10], name=("x", "y"))
+            )
+            expected.columns = columns
+
+            self.assert_eq(expected, kdf.droplevel([("a", "b")]))
 
     def test_drop(self):
         pdf = pd.DataFrame({"x": [1, 2], "y": [3, 4], "z": [5, 6]}, index=np.random.rand(2))
@@ -1579,13 +1613,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf2 = pd.DataFrame(
             {"key": ["K0", "K1", "K2"], "B": ["B0", "B1", "B2"]}, columns=["key", "B"]
         )
-        kdf1 = ks.DataFrame(
-            {"key": ["K0", "K1", "K2", "K3"], "A": ["A0", "A1", "A2", "A3"]}, columns=["key", "A"]
-        )
-        kdf2 = ks.DataFrame(
-            {"key": ["K0", "K1", "K2"], "B": ["B0", "B1", "B2"]}, columns=["key", "B"]
-        )
-        ks1 = ks.Series(["A1", "A5"], index=[1, 2], name="A")
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
         join_pdf = pdf1.join(pdf2, lsuffix="_left", rsuffix="_right")
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
@@ -1596,6 +1626,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # join with duplicated columns in Series
         with self.assertRaisesRegex(ValueError, "columns overlap but no suffix specified"):
+            ks1 = ks.Series(["A1", "A5"], index=[1, 2], name="A")
             kdf1.join(ks1, how="outer")
         # join with duplicated columns in DataFrame
         with self.assertRaisesRegex(ValueError, "columns overlap but no suffix specified"):
@@ -1606,6 +1637,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
         join_kdf = kdf1.join(kdf2.set_index("key"), on="key", lsuffix="_left", rsuffix="_right")
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
+        join_pdf = pdf1.set_index("key").join(
+            pdf2.set_index("key"), on="key", lsuffix="_left", rsuffix="_right"
+        )
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.set_index("key").join(
+            kdf2.set_index("key"), on="key", lsuffix="_left", rsuffix="_right"
+        )
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
         self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
 
@@ -1637,6 +1679,43 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
 
         self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
+        join_pdf = pdf1.set_index(("x", "key")).join(
+            pdf2.set_index(("x", "key")), on=[("x", "key")], lsuffix="_left", rsuffix="_right"
+        )
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.set_index(("x", "key")).join(
+            kdf2.set_index(("x", "key")), on=[("x", "key")], lsuffix="_left", rsuffix="_right"
+        )
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf.reset_index(drop=True), join_kdf.reset_index(drop=True))
+
+        # multi-index
+        midx1 = pd.MultiIndex.from_tuples(
+            [("w", "a"), ("x", "b"), ("y", "c"), ("z", "d")], names=["index1", "index2"]
+        )
+        midx2 = pd.MultiIndex.from_tuples(
+            [("w", "a"), ("x", "b"), ("y", "c")], names=["index1", "index2"]
+        )
+        pdf1.index = midx1
+        pdf2.index = midx2
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        join_pdf = pdf1.join(pdf2, on=["index1", "index2"], rsuffix="_right")
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2, on=["index1", "index2"], rsuffix="_right")
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+
+        self.assert_eq(join_pdf, join_kdf)
+
+        with self.assertRaisesRegex(
+            ValueError, r'len\(left_on\) must equal the number of levels in the index of "right"'
+        ):
+            kdf1.join(kdf2, on=["index1"], rsuffix="_right")
 
     def test_replace(self):
         pdf = pd.DataFrame(
@@ -2020,7 +2099,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     @unittest.skipIf(
         LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
-        "stack won't work property with PySpark<2.4",
+        "stack won't work properly with PySpark<2.4",
     )
     def test_stack(self):
         pdf_single_level_cols = pd.DataFrame(
@@ -2172,21 +2251,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf2 = ks.from_pandas(pdf2)
 
-        self.assert_eq(
-            pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
-        )
-        self.assert_eq(
-            pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
-        )
+        self.assert_eq(pdf1.transpose().sort_index(), kdf1.transpose().sort_index())
+        self.assert_eq(pdf2.transpose().sort_index(), kdf2.transpose().sort_index())
 
         with option_context("compute.max_rows", None):
-            self.assert_eq(
-                pdf1.transpose().sort_index().rename(columns=str), kdf1.transpose().sort_index()
-            )
+            self.assert_eq(pdf1.transpose().sort_index(), kdf1.transpose().sort_index())
 
-            self.assert_eq(
-                pdf2.transpose().sort_index().rename(columns=str), kdf2.transpose().sort_index()
-            )
+            self.assert_eq(pdf2.transpose().sort_index(), kdf2.transpose().sort_index())
 
         pdf3 = pd.DataFrame(
             {
@@ -2504,16 +2575,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.melt(id_vars=[("X", "A")])
             .sort_values(["variable_0", "variable_1", "value"])
             .reset_index(drop=True),
-            pdf.melt(id_vars=[("X", "A")]).sort_values(["variable_0", "variable_1", "value"]),
+            pdf.melt(id_vars=[("X", "A")])
+            .sort_values(["variable_0", "variable_1", "value"])
+            .rename(columns=name_like_string),
             almost=True,
         )
         self.assert_eq(
             kdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")])
             .sort_values(["variable_0", "variable_1", "value"])
             .reset_index(drop=True),
-            pdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")]).sort_values(
-                ["variable_0", "variable_1", "value"]
-            ),
+            pdf.melt(id_vars=[("X", "A")], value_vars=[("Y", "C")])
+            .sort_values(["variable_0", "variable_1", "value"])
+            .rename(columns=name_like_string),
             almost=True,
         )
         self.assert_eq(
@@ -2530,7 +2603,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 value_vars=[("X", "B")],
                 var_name=["myV1", "myV2"],
                 value_name="myValname",
-            ).sort_values(["myV1", "myV2", "myValname"]),
+            )
+            .sort_values(["myV1", "myV2", "myValname"])
+            .rename(columns=name_like_string),
             almost=True,
         )
 
@@ -3898,19 +3973,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(p_name, k_name)
             self.assert_eq(p_items, k_items)
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "tail won't work properly with PySpark<3.0",
+    )
     def test_tail(self):
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pdf = pd.DataFrame({"x": range(1000)})
-            kdf = ks.from_pandas(pdf)
+        pdf = pd.DataFrame({"x": range(1000)})
+        kdf = ks.from_pandas(pdf)
 
-            self.assert_eq(pdf.tail(), kdf.tail())
-            self.assert_eq(pdf.tail(10), kdf.tail(10))
-            self.assert_eq(pdf.tail(-990), kdf.tail(-990))
-            self.assert_eq(pdf.tail(0), kdf.tail(0))
-            self.assert_eq(pdf.tail(-1001), kdf.tail(-1001))
-            self.assert_eq(pdf.tail(1001), kdf.tail(1001))
-            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
-                kdf.tail("10")
+        self.assert_eq(pdf.tail(), kdf.tail())
+        self.assert_eq(pdf.tail(10), kdf.tail(10))
+        self.assert_eq(pdf.tail(-990), kdf.tail(-990))
+        self.assert_eq(pdf.tail(0), kdf.tail(0))
+        self.assert_eq(pdf.tail(-1001), kdf.tail(-1001))
+        self.assert_eq(pdf.tail(1001), kdf.tail(1001))
+        with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+            kdf.tail("10")
 
     def test_last_valid_index(self):
         # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
@@ -4076,3 +4154,73 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         err_msg = "'col_labels' doesn't support type 'Series'."
         with self.assertRaisesRegex(TypeError, err_msg):
             kdf.lookup([0], ks.Series(["C"]))
+
+    def test_pad(self):
+        pdf = pd.DataFrame(
+            {
+                "A": [None, 3, None, None],
+                "B": [2, 4, None, 3],
+                "C": [None, None, None, 1],
+                "D": [0, 1, 5, 4],
+            },
+            columns=["A", "B", "C", "D"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pdf.pad(), kdf.pad())
+
+            # Test `inplace=True`
+            pdf.pad(inplace=True)
+            kdf.pad(inplace=True)
+            self.assert_eq(pdf, kdf)
+        else:
+            expected = ks.DataFrame(
+                {
+                    "A": [None, 3, 3, 3],
+                    "B": [2.0, 4.0, 4.0, 3.0],
+                    "C": [None, None, None, 1],
+                    "D": [0, 1, 5, 4],
+                },
+                columns=["A", "B", "C", "D"],
+            )
+            self.assert_eq(expected, kdf.pad())
+
+            # Test `inplace=True`
+            kdf.pad(inplace=True)
+            self.assert_eq(expected, kdf)
+
+    def test_backfill(self):
+        pdf = pd.DataFrame(
+            {
+                "A": [None, 3, None, None],
+                "B": [2, 4, None, 3],
+                "C": [None, None, None, 1],
+                "D": [0, 1, 5, 4],
+            },
+            columns=["A", "B", "C", "D"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pdf.backfill(), kdf.backfill())
+
+            # Test `inplace=True`
+            pdf.backfill(inplace=True)
+            kdf.backfill(inplace=True)
+            self.assert_eq(pdf, kdf)
+        else:
+            expected = ks.DataFrame(
+                {
+                    "A": [3.0, 3.0, None, None],
+                    "B": [2.0, 4.0, 3.0, 3.0],
+                    "C": [1.0, 1.0, 1.0, 1.0],
+                    "D": [0, 1, 5, 4],
+                },
+                columns=["A", "B", "C", "D"],
+            )
+            self.assert_eq(expected, kdf.backfill())
+
+            # Test `inplace=True`
+            kdf.backfill(inplace=True)
+            self.assert_eq(expected, kdf)

@@ -86,7 +86,13 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.ml import corr
-from databricks.koalas.typedef import infer_return_type, as_spark_type, DataFrameType, SeriesType
+from databricks.koalas.typedef import (
+    as_spark_type,
+    infer_return_type,
+    spark_type_to_pandas_dtype,
+    DataFrameType,
+    SeriesType,
+)
 from databricks.koalas.plot import KoalasPlotAccessor
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
@@ -1211,13 +1217,9 @@ class DataFrame(Frame, Generic[T]):
                 )
 
         if not isinstance(func, dict) or not all(
-            isinstance(key, (str, tuple))
-            and (
-                isinstance(value, str)
-                or isinstance(value, list)
-                and all(isinstance(v, str) for v in value)
-            )
-            for key, value in func.items()
+            isinstance(value, str)
+            or (isinstance(value, list) and all(isinstance(v, str) for v in value))
+            for value in func.values()
         ):
             raise ValueError(
                 "aggs must be a dict mapping from column name (string) to aggregate "
@@ -2091,9 +2093,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             [
                 F.to_json(
                     F.struct(
-                        F.array(
-                            [scol.cast("string") for scol in self._internal.index_spark_columns]
-                        ).alias("a")
+                        F.array([scol for scol in self._internal.index_spark_columns]).alias("a")
                     )
                 ).alias("index"),
                 F.col("pairs.*"),
@@ -3194,7 +3194,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2014  10    31
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        if isinstance(keys, (str, tuple)):
+        if isinstance(keys, tuple) or not is_list_like(keys):
             keys = [keys]
         else:
             keys = list(keys)
@@ -5331,14 +5331,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         column_label_names=column_label_names,
                     )
                     kdf = DataFrame(internal)
-                return kdf
             else:
                 index_columns = [self._internal.spark_column_name_for(label) for label in index]
                 index_map = OrderedDict(zip(index_columns, index))
                 internal = InternalFrame(
                     spark_frame=sdf, index_map=index_map, column_label_names=[columns]
                 )
-                return DataFrame(internal)
+                kdf = DataFrame(internal)
         else:
             if isinstance(values, list):
                 index_values = values[-1]
@@ -5352,7 +5351,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = InternalFrame(
                 spark_frame=sdf, index_map=index_map, column_label_names=[columns]
             )
-            return DataFrame(internal)
+            kdf = DataFrame(internal)
+
+        kdf_columns = kdf.columns
+        if isinstance(kdf_columns, pd.MultiIndex):
+            kdf.columns = kdf_columns.set_levels(
+                kdf_columns.levels[-1].astype(
+                    spark_type_to_pandas_dtype(self._kser_for(columns).spark.data_type)
+                ),
+                level=-1,
+            )
+        else:
+            kdf.columns = kdf_columns.astype(
+                spark_type_to_pandas_dtype(self._kser_for(columns).spark.data_type)
+            )
+
+        return kdf
 
     def pivot(self, index=None, columns=None, values=None):
         """
@@ -6941,16 +6955,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError(
                 "columns overlap but no suffix specified: " "{rename}".format(rename=common)
             )
+
+        need_set_index = False
         if on:
+            if not is_list_like(on):
+                on = [on]  # type: ignore
+            if len(on) != right.index.nlevels:
+                raise ValueError(
+                    'len(left_on) must equal the number of levels in the index of "right"'
+                )
+
+            need_set_index = len(set(on) & set(self.index.names)) == 0
+        if need_set_index:
             self = self.set_index(on)
-            join_kdf = self.merge(
-                right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
-            ).reset_index()
-        else:
-            join_kdf = self.merge(
-                right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
-            )
-        return join_kdf
+
+        join_kdf = self.merge(
+            right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
+        )
+        return join_kdf.reset_index() if need_set_index else join_kdf
 
     def append(
         self,

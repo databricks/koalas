@@ -15,6 +15,7 @@
 #
 
 import inspect
+import unittest
 from distutils.version import LooseVersion
 from datetime import datetime
 
@@ -107,8 +108,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.index
         kidx = self.kdf.index
 
-        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
-        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         pidx.name = "a"
         kidx.name = "a"
@@ -126,8 +127,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
-        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
-        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
@@ -1449,6 +1450,45 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
 
+    @unittest.skipIf(
+        LooseVersion(pd.__version__) < LooseVersion("0.24"),
+        "MultiIndex.from_frame is new in pandas 0.24",
+    )
+    def test_multiindex_from_frame(self):
+        pdf = pd.DataFrame(
+            [["HI", "Temp"], ["HI", "Precip"], ["NJ", "Temp"], ["NJ", "Precip"]], columns=["a", "b"]
+        )
+        kdf = ks.from_pandas(pdf)
+        pidx = pd.MultiIndex.from_frame(pdf)
+        kidx = ks.MultiIndex.from_frame(kdf)
+
+        self.assert_eq(pidx, kidx)
+
+        # Specify `names`
+        pidx = pd.MultiIndex.from_frame(pdf, names=["state", "observation"])
+        kidx = ks.MultiIndex.from_frame(kdf, names=["state", "observation"])
+        self.assert_eq(pidx, kidx)
+
+        # MultiIndex columns
+        pidx = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x")])
+        pdf.columns = pidx
+        kdf = ks.from_pandas(pdf)
+
+        pidx = pd.MultiIndex.from_frame(pdf)
+        kidx = ks.MultiIndex.from_frame(kdf)
+
+        self.assert_eq(pidx, kidx)
+
+        # tuples for names
+        pidx = pd.MultiIndex.from_frame(pdf, names=[("a", "w"), ("b", "x")])
+        kidx = ks.MultiIndex.from_frame(kdf, names=[("a", "w"), ("b", "x")])
+
+        self.assert_eq(pidx, kidx)
+
+        err_msg = "Input must be a DataFrame"
+        with self.assertRaisesRegex(TypeError, err_msg):
+            ks.MultiIndex.from_frame({"a": [1, 2, 3], "b": [4, 5, 6]})
+
     def test_is_type_compatible(self):
         data_types = ["integer", "floating", "string", "boolean"]
         # Integer
@@ -1545,3 +1585,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kdf = ks.from_pandas(pdf)
 
             self.assertEqual(kdf.index.is_unique, expected)
+
+    def test_view(self):
+        pidx = pd.Index([1, 2, 3, 4], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.view(), kidx.view())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.view(), kmidx.view())

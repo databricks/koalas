@@ -64,10 +64,10 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SPARK_DEFAULT_SERIES_NAME,
 )
 
 
@@ -816,7 +816,7 @@ class Index(IndexOpsMixin):
         """
         if name is None:
             if self._internal.index_names[0] is None:
-                name = (SPARK_DEFAULT_SERIES_NAME,)
+                name = (DEFAULT_SERIES_NAME,)
             else:
                 name = self._internal.index_names[0]
         elif isinstance(name, str):
@@ -2068,6 +2068,12 @@ class Index(IndexOpsMixin):
         """
         return self.to_series().item()
 
+    def view(self):
+        """
+        this is defined as a copy with the same identity
+        """
+        return self.copy()
+
     @property
     def inferred_type(self):
         """
@@ -2297,6 +2303,70 @@ class MultiIndex(Index):
         return DataFrame(
             index=pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
         ).index
+
+    @staticmethod
+    def from_frame(df, names=None):
+        """
+        Make a MultiIndex from a DataFrame.
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted to MultiIndex.
+        names : list-like, optional
+            If no names are provided, use the column names, or tuple of column
+            names if the columns is a MultiIndex. If a sequence, overwrite
+            names with the given sequence.
+
+        Returns
+        -------
+        MultiIndex
+            The MultiIndex representation of the given DataFrame.
+
+        See Also
+        --------
+        MultiIndex.from_arrays : Convert list of arrays to MultiIndex.
+        MultiIndex.from_tuples : Convert list of tuples to MultiIndex.
+        MultiIndex.from_product : Make a MultiIndex from cartesian product
+                                  of iterables.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([['HI', 'Temp'], ['HI', 'Precip'],
+        ...                    ['NJ', 'Temp'], ['NJ', 'Precip']],
+        ...                   columns=['a', 'b'])
+        >>> df  # doctest: +SKIP
+              a       b
+        0    HI    Temp
+        1    HI  Precip
+        2    NJ    Temp
+        3    NJ  Precip
+
+        >>> ks.MultiIndex.from_frame(df)  # doctest: +SKIP
+        MultiIndex([('HI',   'Temp'),
+                    ('HI', 'Precip'),
+                    ('NJ',   'Temp'),
+                    ('NJ', 'Precip')],
+                   names=['a', 'b'])
+
+        Using explicit names, instead of the column names
+
+        >>> ks.MultiIndex.from_frame(df, names=['state', 'observation'])  # doctest: +SKIP
+        MultiIndex([('HI',   'Temp'),
+                    ('HI', 'Precip'),
+                    ('NJ',   'Temp'),
+                    ('NJ', 'Precip')],
+                   names=['state', 'observation'])
+        """
+        if not isinstance(df, DataFrame):
+            raise TypeError("Input must be a DataFrame")
+        sdf = df.to_spark()
+        if names is None:
+            names = df._internal.column_labels
+        names = [(name,) if not isinstance(name, tuple) else name for name in names]
+        index_map = OrderedDict(zip(sdf.columns, names))
+        internal = InternalFrame(spark_frame=sdf, index_map=index_map)
+        return DataFrame(internal).index
 
     @property
     def name(self) -> str:
@@ -2531,7 +2601,7 @@ class MultiIndex(Index):
         """
         if name is None:
             name = [
-                name if name is not None else (str(i),)
+                name if name is not None else (i,)
                 for i, name in enumerate(self._internal.index_names)
             ]
         elif is_list_like(name):

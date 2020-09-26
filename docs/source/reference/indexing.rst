@@ -103,6 +103,7 @@ Conversion
    Index.item
    Index.to_series
    Index.to_frame
+   Index.view
    Index.to_numpy
 
 Spark-related
@@ -166,6 +167,7 @@ MultiIndex Constructors
    MultiIndex.from_arrays
    MultiIndex.from_tuples
    MultiIndex.from_product
+   MultiIndex.from_frame
 
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
@@ -245,6 +247,7 @@ MultiIndex Conversion
    MultiIndex.item
    MultiIndex.to_series
    MultiIndex.to_frame
+   MultiIndex.view
    MultiIndex.to_numpy
 
 MultiIndex Spark-related
