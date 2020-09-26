@@ -263,8 +263,9 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             else:
                 self.assertPandasEqual(lobj, robj, check_exact=check_exact)
         elif is_list_like(lobj) and is_list_like(robj):
+            self.assertTrue(len(left) == len(right))
             for litem, ritem in zip(left, right):
-                self.assert_eq(litem, ritem)
+                self.assert_eq(litem, ritem, check_exact=check_exact, almost=almost)
         else:
             if almost:
                 self.assertAlmostEqual(lobj, robj)
@@ -274,7 +275,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     @staticmethod
     def _to_pandas(obj):
         if isinstance(obj, (DataFrame, Series, Index)):
-            return obj.toPandas()
+            return obj.to_pandas()
         else:
             return obj
 
@@ -301,7 +302,7 @@ class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
     def pdf(self):
-        return self.kdf.toPandas()
+        return self.kdf.to_andas()
 
 
 def compare_both(f=None, almost=True):
@@ -319,7 +320,7 @@ def compare_both(f=None, almost=True):
             compare = self.assertPandasEqual
 
         for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.kdf)):
-            compare(result_pandas, result_spark.toPandas())
+            compare(result_pandas, result_spark.to_pandas())
 
     return wrapped
 
