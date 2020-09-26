@@ -2465,6 +2465,8 @@ class Frame(object, metaclass=ABCMeta):
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
 
+    pad = ffill
+
     @property
     def at(self):
         return AtIndexer(self)

@@ -815,6 +815,7 @@ class IndexingTest(ReusedSQLTestCase):
             slice(1, 2),
             slice(-3, None),
             slice(None, -3),
+            slice(None, 0),
             slice(None, None, 3),
             slice(3, 8, 2),
             slice(None, None, -2),

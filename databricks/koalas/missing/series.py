@@ -127,8 +127,6 @@ class MissingPandasLikeSeries(object):
         compound = _unsupported_function("compound", deprecated=True)
         put = _unsupported_function("put", deprecated=True)
         ptp = _unsupported_function("ptp", deprecated=True)
-        argmax = _unsupported_function("argmax", deprecated=True)
-        argmin = _unsupported_function("argmin", deprecated=True)
 
         # Functions we won't support.
         real = _unsupported_property(

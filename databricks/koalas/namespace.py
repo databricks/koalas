@@ -62,8 +62,8 @@ from databricks.koalas.utils import (
 from databricks.koalas.frame import DataFrame, _reduce_spark_multi
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.indexes import Index
@@ -275,6 +275,7 @@ def read_csv(
 
     if usecols is not None and not callable(usecols):
         usecols = list(usecols)
+
     if usecols is None or callable(usecols) or len(usecols) > 0:
         reader = default_session().read
         reader.option("inferSchema", True)
@@ -303,40 +304,50 @@ def read_csv(
 
         if isinstance(names, str):
             sdf = reader.schema(names).csv(path)
+            column_labels = OrderedDict((col, col) for col in sdf.columns)
         else:
             sdf = reader.csv(path)
-            if header is None:
-                sdf = sdf.selectExpr(
-                    *["`%s` as `%s`" % (field.name, i) for i, field in enumerate(sdf.schema)]
-                )
-        if isinstance(names, list):
-            names = list(names)
-            if len(set(names)) != len(names):
-                raise ValueError("Found non-unique column index")
-            if len(names) != len(sdf.schema):
-                raise ValueError(
-                    "The number of names [%s] does not match the number "
-                    "of columns [%d]. Try names by a Spark SQL DDL-formatted "
-                    "string." % (len(sdf.schema), len(names))
-                )
-            sdf = sdf.selectExpr(
-                *["`%s` as `%s`" % (field.name, name) for field, name in zip(sdf.schema, names)]
-            )
+            if isinstance(names, list):
+                names = list(names)
+                if len(set(names)) != len(names):
+                    raise ValueError("Found non-unique column index")
+                if len(names) != len(sdf.schema):
+                    raise ValueError(
+                        "The number of names [%s] does not match the number "
+                        "of columns [%d]. Try names by a Spark SQL DDL-formatted "
+                        "string." % (len(sdf.schema), len(names))
+                    )
+                column_labels = OrderedDict(zip(names, sdf.columns))
+            elif header is None:
+                column_labels = OrderedDict(enumerate(sdf.columns))
+            else:
+                column_labels = OrderedDict((col, col) for col in sdf.columns)
 
         if usecols is not None:
             if callable(usecols):
-                cols = [field.name for field in sdf.schema if usecols(field.name)]
+                column_labels = OrderedDict(
+                    (label, col) for label, col in column_labels.items() if usecols(label)
+                )
                 missing = []
             elif all(isinstance(col, int) for col in usecols):
-                cols = [field.name for i, field in enumerate(sdf.schema) if i in usecols]
+                new_column_labels = OrderedDict(
+                    (label, col)
+                    for i, (label, col) in enumerate(column_labels.items())
+                    if i in usecols
+                )
                 missing = [
                     col
                     for col in usecols
-                    if col >= len(sdf.schema) or sdf.schema[col].name not in cols
+                    if col >= len(column_labels)
+                    or list(column_labels)[col] not in new_column_labels
                 ]
+                column_labels = new_column_labels
             elif all(isinstance(col, str) for col in usecols):
-                cols = [field.name for field in sdf.schema if field.name in usecols]
-                missing = [col for col in usecols if col not in cols]
+                new_column_labels = OrderedDict(
+                    (label, col) for label, col in column_labels.items() if label in usecols
+                )
+                missing = [col for col in usecols if col not in new_column_labels]
+                column_labels = new_column_labels
             else:
                 raise ValueError(
                     "'usecols' must either be list-like of all strings, "
@@ -347,18 +358,41 @@ def read_csv(
                     "Usecols do not match columns, columns expected but not " "found: %s" % missing
                 )
 
-            if len(cols) > 0:
-                sdf = sdf.select(cols)
+            if len(column_labels) > 0:
+                sdf = sdf.select([scol_for(sdf, col) for col in column_labels.values()])
             else:
                 sdf = default_session().createDataFrame([], schema=StructType())
     else:
         sdf = default_session().createDataFrame([], schema=StructType())
+        column_labels = OrderedDict()
 
     if nrows is not None:
         sdf = sdf.limit(nrows)
 
-    index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+    if index_col is not None:
+        if isinstance(index_col, (str, int)):
+            index_col = [index_col]
+        for col in index_col:
+            if col not in column_labels:
+                raise KeyError(col)
+        index_map = OrderedDict((column_labels[col], (col,)) for col in index_col)
+        column_labels = OrderedDict(
+            (label, col) for label, col in column_labels.items() if label not in index_col
+        )
+    else:
+        index_map = None
+
+    kdf = DataFrame(
+        InternalFrame(
+            spark_frame=sdf,
+            index_map=index_map,
+            column_labels=[
+                label if label is None or isinstance(label, tuple) else (label,)
+                for label in column_labels
+            ],
+            data_spark_columns=[scol_for(sdf, col) for col in column_labels.values()],
+        )
+    )
 
     if dtype is not None:
         if isinstance(dtype, dict):
@@ -369,7 +403,7 @@ def read_csv(
                 kdf[col] = kdf[col].astype(dtype)
 
     if squeeze and len(kdf.columns) == 1:
-        return kdf[kdf.columns[0]]
+        return first_series(kdf)
     return kdf
 
 
@@ -1719,7 +1753,7 @@ def get_dummies(
 
         def column_name(value):
             if prefix is None or prefix[i] == "":
-                return str(value)
+                return value
             else:
                 return "{}{}{}".format(prefix[i], prefix_sep, value)
 
@@ -1730,7 +1764,7 @@ def get_dummies(
                 .rename(column_name(value))
             )
         if dummy_na:
-            remaining_columns.append(kdf[label].isnull().astype(dtype).rename(column_name("nan")))
+            remaining_columns.append(kdf[label].isnull().astype(dtype).rename(column_name(np.nan)))
 
     return kdf[remaining_columns]
 
@@ -1976,7 +2010,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
         if isinstance(obj, Series):
             num_series += 1
             series_names.add(obj.name)
-            obj = obj.to_frame(SPARK_DEFAULT_SERIES_NAME)
+            obj = obj.to_frame(DEFAULT_SERIES_NAME)
         new_objs.append(obj)
     objs = new_objs
 
@@ -2021,7 +2055,8 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
             # When multi-index column, although pandas is flaky if `join="inner" and sort=False`,
             # always sort to follow the `join="outer"` case behavior.
             if (len(merged_columns) > 0 and len(merged_columns[0]) > 1) or sort:
-                merged_columns = sorted(merged_columns)
+                # FIXME: better ordering
+                merged_columns = sorted(merged_columns, key=name_like_string)
 
             kdfs = [kdf[merged_columns] for kdf in objs]
         elif join == "outer":
@@ -2040,7 +2075,8 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
                 sort = len(merged_columns[0]) > 1 or num_series > 1 or (num_series != 1 and sort)
 
             if sort:
-                merged_columns = sorted(merged_columns)
+                # FIXME: better ordering
+                merged_columns = sorted(merged_columns, key=name_like_string)
 
             kdfs = []
             for kdf in objs:

@@ -2000,6 +2000,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
 
+    def test_pad(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pser.pad(), kser.pad())
+
+            # Test `inplace=True`
+            pser.pad(inplace=True)
+            kser.pad(inplace=True)
+            self.assert_eq(pser, kser)
+        else:
+            expected = ks.Series([np.nan, 2, 3, 4, 4, 6], name="x")
+            self.assert_eq(expected, kser.pad())
+
+            # Test `inplace=True`
+            kser.pad(inplace=True)
+            self.assert_eq(expected, kser)
+
     def test_explode(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
             pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
@@ -2045,3 +2064,53 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser = ks.from_pandas(pser)
             expected = pser
             self.assert_eq(kser.explode(), expected)
+
+    def test_argmin_argmax(self):
+        pser = pd.Series(
+            {
+                "Corn Flakes": 100.0,
+                "Almond Delight": 110.0,
+                "Cinnamon Toast Crunch": 120.0,
+                "Cocoa Puff": 110.0,
+                "Expensive Flakes": 120.0,
+                "Cheap Flakes": 100.0,
+            },
+            name="Koalas",
+        )
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(pd.Series([np.nan]).argmin(), ks.Series([np.nan]).argmin())
+            self.assert_eq(pd.Series([np.nan]).argmax(), ks.Series([np.nan]).argmax())
+        else:
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(-1, ks.Series([np.nan]).argmin())
+            self.assert_eq(-1, ks.Series([np.nan]).argmax())
+
+        with self.assertRaisesRegex(ValueError, "attempt to get argmin of an empty sequence"):
+            ks.Series([]).argmin()
+        with self.assertRaisesRegex(ValueError, "attempt to get argmax of an empty sequence"):
+            ks.Series([]).argmax()
