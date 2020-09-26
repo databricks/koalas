@@ -39,7 +39,6 @@ class MissingPandasLikeSeries(object):
     asfreq = _unsupported_function("asfreq")
     at_time = _unsupported_function("at_time")
     autocorr = _unsupported_function("autocorr")
-    backfill = _unsupported_function("backfill")
     between_time = _unsupported_function("between_time")
     combine = _unsupported_function("combine")
     compare = _unsupported_function("compare")
