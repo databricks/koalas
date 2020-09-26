@@ -185,6 +185,7 @@ Missing data handling
    :toctree: api/
 
    Series.backfill
+   Series.bfill
    Series.isna
    Series.isnull
    Series.notna
