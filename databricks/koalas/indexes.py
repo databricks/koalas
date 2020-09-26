@@ -1989,7 +1989,7 @@ class Index(IndexOpsMixin):
             raise ValueError("Index data must be 1-dimensional")
         elif isinstance(other, MultiIndex):
             # Always returns an empty MultiIndex if `other` is MultiIndex.
-            return other.take([])
+            return other.to_frame().head(0).index
         elif isinstance(other, Index):
             spark_frame_other = other.to_frame().to_spark()
             keep_name = self.name == other.name
@@ -1998,6 +1998,8 @@ class Index(IndexOpsMixin):
             keep_name = self.name == other.name
         elif is_list_like(other):
             other = Index(other)
+            if isinstance(other, MultiIndex):
+                return other.to_frame().head(0).index
             spark_frame_other = other.to_frame().to_spark()
             keep_name = False
         else:
@@ -2911,7 +2913,7 @@ class MultiIndex(Index):
             keep_name = self.names == other.names
         elif isinstance(other, Index):
             # Always returns an empty MultiIndex if `other` is Index.
-            return self.take([])
+            return self.to_frame().head(0).index
         elif not all(isinstance(item, tuple) for item in other):
             raise TypeError("other must be a MultiIndex or a list of tuples")
         else:
