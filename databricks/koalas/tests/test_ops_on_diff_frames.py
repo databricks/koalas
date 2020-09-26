@@ -911,17 +911,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kser1.repeat(kser2).sort_index(), pser1.repeat(pser2).sort_index())
 
-    def test_multiindex_equal_levels(self):
-        pmidx1 = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        pmidx2 = pd.MultiIndex.from_tuples([("b", "y"), ("a", "x"), ("c", "z")])
-        kmidx1 = ks.from_pandas(pmidx1)
-        kmidx2 = ks.from_pandas(pmidx2)
-        self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
-
-        pmidx2 = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "j")])
-        kmidx2 = ks.from_pandas(pmidx2)
-        self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
-
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
@@ -1063,16 +1052,3 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.mask(kdf2 > -250)
-
-    def test_multiindex_equal_levels(self):
-        pmidx1 = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-        pmidx2 = pd.MultiIndex.from_tuples([("b", "y"), ("a", "x"), ("c", "z")])
-        kmidx1 = ks.from_pandas(pmidx1)
-        kmidx2 = ks.from_pandas(pmidx2)
-        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))
-
-        pmidx2 = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "j")])
-        kmidx2 = ks.from_pandas(pmidx2)
-        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            self.assert_eq(pmidx1.equal_levels(pmidx2), kmidx1.equal_levels(kmidx2))

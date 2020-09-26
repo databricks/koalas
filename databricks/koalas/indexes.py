@@ -3003,14 +3003,15 @@ class MultiIndex(Index):
         >>> reset_option("compute.ops_on_diff_frames")
         """
         nlevels = self.nlevels
-        if (nlevels != other.nlevels) or (len(self) != len(other)):
+        if nlevels != other.nlevels:
             return False
         self_frame = self.sort_values().to_frame()
         other_frame = other.sort_values().to_frame()
-        combined = combine_frames(self_frame, other_frame)
+        with option_context("compute.ops_on_diff_frames", True):
+            combined = combine_frames(self_frame, other_frame)
 
         sdf = combined._internal.spark_frame
-        that_index_name = "__that_{}".format(other._internal.index_spark_column_names[0])
+        that_index_name = combined["that"]._internal.data_spark_column_names[0]
         that_index_scol = scol_for(sdf, that_index_name)
 
         return len(sdf.filter(that_index_scol.isNull()).head(1)) == 0
