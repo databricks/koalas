@@ -1141,7 +1141,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf = ks.from_pandas(pdf)
 
-        np.testing.assert_eq(kdf.to_numpy(), pdf.values)
+        self.assert_eq(kdf.to_numpy(), pdf.values)
 
     def test_to_pandas(self):
         pdf, kdf = self.df_pair
