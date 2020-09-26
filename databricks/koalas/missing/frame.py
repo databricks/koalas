@@ -39,7 +39,6 @@ class _MissingPandasLikeDataFrame(object):
     asfreq = _unsupported_function("asfreq")
     asof = _unsupported_function("asof")
     at_time = _unsupported_function("at_time")
-    backfill = _unsupported_function("_backfill")
     between_time = _unsupported_function("between_time")
     boxplot = _unsupported_function("boxplot")
     combine = _unsupported_function("combine")

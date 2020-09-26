@@ -2393,6 +2393,8 @@ class Frame(object, metaclass=ABCMeta):
         """
         return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
 
+    backfill = bfill
+
     # TODO: add 'downcast' when value parameter exists
     def ffill(self, axis=None, inplace=False, limit=None):
         """
