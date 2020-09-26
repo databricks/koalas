@@ -198,7 +198,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
 
         kser = ks.from_pandas(pser)
-        np.testing.assert_eq(kser.to_numpy(), pser.values)
+        self.assert_eq(kser.to_numpy(), pser.values)
 
     def test_isin(self):
         pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
