@@ -182,6 +182,7 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   DataFrame.backfill
    DataFrame.dropna
    DataFrame.fillna
    DataFrame.replace

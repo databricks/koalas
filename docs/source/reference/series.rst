@@ -184,6 +184,7 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   Series.backfill
    Series.isna
    Series.isnull
    Series.notna

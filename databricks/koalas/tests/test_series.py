@@ -2114,3 +2114,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             ks.Series([]).argmin()
         with self.assertRaisesRegex(ValueError, "attempt to get argmax of an empty sequence"):
             ks.Series([]).argmax()
+
+    def test_backfill(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pser.backfill(), kser.backfill())
+
+            # Test `inplace=True`
+            pser.backfill(inplace=True)
+            kser.backfill(inplace=True)
+            self.assert_eq(pser, kser)
+        else:
+            expected = ks.Series([2.0, 2.0, 3.0, 4.0, 4.0, 6.0], name="x")
+            self.assert_eq(expected, kser.backfill())
+
+            # Test `inplace=True`
+            kser.backfill(inplace=True)
+            self.assert_eq(expected, kser)
