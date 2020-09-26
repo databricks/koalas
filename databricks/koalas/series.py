@@ -5190,6 +5190,110 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
         return first_series(DataFrame(internal))
 
+    def argsort(self) -> "Series":
+        """
+        Return the integer indices that would sort the Series values.
+        Unlike pandas, the index order is not preserved in the result.
+
+        Returns
+        -------
+        Series
+            Positions of values within the sort order with -1 indicating
+            nan values.
+
+        Examples
+        --------
+        >>> kser = ks.Series([3, 3, 4, 1, 6, 2, 3, 7, 8, 7, 10])
+        >>> kser
+        0      3
+        1      3
+        2      4
+        3      1
+        4      6
+        5      2
+        6      3
+        7      7
+        8      8
+        9      7
+        10    10
+        dtype: int64
+
+        >>> kser.argsort().sort_index()
+        0      3
+        1      5
+        2      0
+        3      1
+        4      6
+        5      2
+        6      4
+        7      7
+        8      9
+        9      8
+        10    10
+        dtype: int64
+        """
+        notnull = self.loc[self.notnull()]
+
+        sdf_for_index = notnull._internal.spark_frame.select(notnull._internal.index_spark_columns)
+
+        tmp_join_key = verify_temp_column_name(sdf_for_index, "__tmp_join_key__")
+        sdf_for_index = InternalFrame.attach_distributed_sequence_column(
+            sdf_for_index, tmp_join_key
+        )
+        # sdf_for_index:
+        # +----------------+-----------------+
+        # |__tmp_join_key__|__index_level_0__|
+        # +----------------+-----------------+
+        # |               0|                0|
+        # |               1|                1|
+        # |               2|                2|
+        # |               3|                3|
+        # |               4|                4|
+        # +----------------+-----------------+
+
+        sdf_for_data = notnull._internal.spark_frame.select(
+            notnull.spark.column.alias("values"), NATURAL_ORDER_COLUMN_NAME
+        )
+        sdf_for_data = InternalFrame.attach_distributed_sequence_column(
+            sdf_for_data, SPARK_DEFAULT_SERIES_NAME
+        )
+        # sdf_for_data:
+        # +---+------+-----------------+
+        # |  0|values|__natural_order__|
+        # +---+------+-----------------+
+        # |  0|     3|      25769803776|
+        # |  1|     3|      51539607552|
+        # |  2|     4|      77309411328|
+        # |  3|     1|     103079215104|
+        # |  4|     2|     128849018880|
+        # +---+------+-----------------+
+
+        sdf_for_data = sdf_for_data.sort(
+            scol_for(sdf_for_data, "values"), NATURAL_ORDER_COLUMN_NAME
+        ).drop("values", NATURAL_ORDER_COLUMN_NAME)
+
+        tmp_join_key = verify_temp_column_name(sdf_for_data, "__tmp_join_key__")
+        sdf_for_data = InternalFrame.attach_distributed_sequence_column(sdf_for_data, tmp_join_key)
+        # sdf_for_index:                         sdf_for_data:
+        # +----------------+-----------------+   +----------------+---+
+        # |__tmp_join_key__|__index_level_0__|   |__tmp_join_key__|  0|
+        # +----------------+-----------------+   +----------------+---+
+        # |               0|                0|   |               0|  3|
+        # |               1|                1|   |               1|  4|
+        # |               2|                2|   |               2|  0|
+        # |               3|                3|   |               3|  1|
+        # |               4|                4|   |               4|  2|
+        # +----------------+-----------------+   +----------------+---+
+
+        sdf = sdf_for_index.join(sdf_for_data, on=tmp_join_key).drop(tmp_join_key)
+
+        internal = self._internal.with_new_sdf(
+            spark_frame=sdf, data_columns=[SPARK_DEFAULT_SERIES_NAME]
+        )
+        kser = first_series(DataFrame(internal))
+
+        return ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
+
     def argmax(self):
         """
         Return int position of the largest value in the Series.
