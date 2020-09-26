@@ -117,7 +117,7 @@ class Index(IndexOpsMixin):
             assert name is None
         else:
             if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
-                instance = MultiIndex.from_tuples(data, names=names)
+                return MultiIndex.from_tuples(data, names=names)
             if isinstance(instance, MultiIndex):
                 index = pd.Index(data=data, dtype=dtype, name=name, names=names)
             else:
