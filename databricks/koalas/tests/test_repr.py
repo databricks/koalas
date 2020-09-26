@@ -118,9 +118,7 @@ class ReprTest(ReusedSQLTestCase):
             kidx = ks.range(ReprTest.max_display_count + 1).index
             self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
 
-        kidx = ks.MultiIndex.from_tuples(
-            [(100 * i, i) for i in range(ReprTest.max_display_count)]
-        )
+        kidx = ks.MultiIndex.from_tuples([(100 * i, i) for i in range(ReprTest.max_display_count)])
         self.assertTrue("Showing only the first" not in repr(kidx))
         self.assert_eq(repr(kidx), repr(kidx.to_pandas()))
 
