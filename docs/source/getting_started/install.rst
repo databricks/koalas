@@ -118,21 +118,22 @@ Likewise, make sure you set ``SPARK_HOME`` environment variable to the git-clone
 Dependencies
 ------------
 
-============= =========================
-Package       Minimum supported version
-============= =========================
-`pandas`      0.23
-`PySpark`     2.4
-`pyarrow`     0.10
-`matplotlib`  3.0.0
-============= =========================
+============= ================
+Package       Required version
+============= ================
+`pandas`      >=0.23.2
+`pyspark`     >=2.4.0
+`pyarrow`     >=0.10
+`matplotlib`  >=3.0.0,<3.3.0
+`numpy`       >=1.14,<1.19.0
+============= ================
 
 
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
-============= =========================
-Package       Minimum supported version
-============= =========================
-`mlflow`      1.0
-============= =========================
+============= ================
+Package       Required version
+============= ================
+`mlflow`      >=1.0
+============= ================

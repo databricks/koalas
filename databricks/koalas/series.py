@@ -58,6 +58,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_DEFAULT_SERIES_NAME,
@@ -1050,7 +1051,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
     # taking dictionary and function to change index are not supported.
-    def rename(self, index: Union[str, Tuple[str, ...]] = None, **kwargs):
+    def rename(self, index=None, **kwargs):
         """
         Alter Series name.
 
@@ -1233,7 +1234,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[str, Tuple[str, ...]] = None) -> spark.DataFrame:
+    def to_frame(self, name: Union[str, Tuple] = None) -> spark.DataFrame:
         """
         Convert Series to DataFrame.
 
@@ -1267,7 +1268,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if name is not None:
             renamed = self.rename(name)
         elif self._column_label is None:
-            renamed = self.rename(SPARK_DEFAULT_SERIES_NAME)
+            renamed = self.rename(DEFAULT_SERIES_NAME)
         else:
             renamed = self
         return DataFrame(renamed._internal)
@@ -5292,6 +5293,100 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kser = first_series(DataFrame(internal))
 
         return ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
+
+    def argmax(self):
+        """
+        Return int position of the largest value in the Series.
+
+        If the maximum is achieved in multiple locations,
+        the first row position is returned.
+
+        Returns
+        -------
+        int
+            Row position of the maximum value.
+
+        Examples
+        --------
+        Consider dataset containing cereal calories
+
+        >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
+        ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
+        >>> s  # doctest: +SKIP
+        Corn Flakes              100.0
+        Almond Delight           110.0
+        Cinnamon Toast Crunch    120.0
+        Cocoa Puff               110.0
+        dtype: float64
+
+        >>> s.argmax()  # doctest: +SKIP
+        2
+        """
+        sdf = self._internal.spark_frame.select(self.spark.column, NATURAL_ORDER_COLUMN_NAME)
+        max_value = sdf.select(
+            F.max(scol_for(sdf, self._internal.data_spark_column_names[0])),
+            F.first(NATURAL_ORDER_COLUMN_NAME),
+        ).head()
+        if max_value[1] is None:
+            raise ValueError("attempt to get argmax of an empty sequence")
+        elif max_value[0] is None:
+            return -1
+        # We should remember the natural sequence started from 0
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf.drop(NATURAL_ORDER_COLUMN_NAME), seq_col_name
+        )
+        # If the maximum is achieved in multiple locations, the first row position is returned.
+        return sdf.filter(
+            scol_for(sdf, self._internal.data_spark_column_names[0]) == max_value[0]
+        ).head()[0]
+
+    def argmin(self):
+        """
+        Return int position of the smallest value in the Series.
+
+        If the minimum is achieved in multiple locations,
+        the first row position is returned.
+
+        Returns
+        -------
+        int
+            Row position of the minimum value.
+
+        Examples
+        --------
+        Consider dataset containing cereal calories
+
+        >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
+        ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
+        >>> s  # doctest: +SKIP
+        Corn Flakes              100.0
+        Almond Delight           110.0
+        Cinnamon Toast Crunch    120.0
+        Cocoa Puff               110.0
+        dtype: float64
+
+        >>> s.argmin()  # doctest: +SKIP
+        0
+        """
+        sdf = self._internal.spark_frame.select(self.spark.column, NATURAL_ORDER_COLUMN_NAME)
+        min_value = sdf.select(
+            F.min(scol_for(sdf, self._internal.data_spark_column_names[0])),
+            F.first(NATURAL_ORDER_COLUMN_NAME),
+        ).head()
+        if min_value[1] is None:
+            raise ValueError("attempt to get argmin of an empty sequence")
+        elif min_value[0] is None:
+            return -1
+        # We should remember the natural sequence started from 0
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf.drop(NATURAL_ORDER_COLUMN_NAME), seq_col_name
+        )
+        # If the minimum is achieved in multiple locations, the first row position is returned.
+        return sdf.filter(
+            scol_for(sdf, self._internal.data_spark_column_names[0]) == min_value[0]
+        ).head()[0]
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.

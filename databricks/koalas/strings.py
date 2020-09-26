@@ -2000,7 +2000,7 @@ class StringMethods(object):
             kdf = kser.to_frame()
             scol = kdf._internal.data_spark_columns[0]
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
-            column_labels = [(str(i),) for i in range(n + 1)]
+            column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(spark_columns, column_labels)
             return DataFrame(internal)
         else:
@@ -2134,7 +2134,7 @@ class StringMethods(object):
             kdf = kser.to_frame()
             scol = kdf._internal.data_spark_columns[0]
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
-            column_labels = [(str(i),) for i in range(n + 1)]
+            column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(spark_columns, column_labels)
             return DataFrame(internal)
         else:

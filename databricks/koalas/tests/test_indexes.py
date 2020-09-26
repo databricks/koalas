@@ -108,8 +108,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.index
         kidx = self.kdf.index
 
-        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
-        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         pidx.name = "a"
         kidx.name = "a"
@@ -127,8 +127,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
-        self.assert_eq(kidx.to_frame(), pidx.to_frame().rename(columns=str))
-        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False).rename(columns=str))
+        self.assert_eq(kidx.to_frame(), pidx.to_frame())
+        self.assert_eq(kidx.to_frame(index=False), pidx.to_frame(index=False))
 
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
@@ -1585,3 +1585,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kdf = ks.from_pandas(pdf)
 
             self.assertEqual(kdf.index.is_unique, expected)
+
+    def test_view(self):
+        pidx = pd.Index([1, 2, 3, 4], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.view(), kidx.view())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.view(), kmidx.view())

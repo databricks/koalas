@@ -19,6 +19,7 @@ Utilities to deal with types. This is mostly focused on python3.
 """
 import typing
 import datetime
+import decimal
 from inspect import getfullargspec, isclass
 
 import numpy as np
@@ -112,6 +113,8 @@ def as_spark_type(tpe) -> types.DataType:
         return types.FloatType()
     elif tpe in (np.float64, "float64", "double"):
         return types.DoubleType()
+    elif tpe in (decimal.Decimal,):
+        return types.DecimalType(38, 18)
     elif tpe in (datetime.datetime, np.datetime64):
         return types.TimestampType()
     elif tpe in (datetime.date,):
