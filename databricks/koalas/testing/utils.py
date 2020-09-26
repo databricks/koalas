@@ -302,7 +302,7 @@ class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
     def pdf(self):
-        return self.kdf.to_andas()
+        return self.kdf.to_pandas()
 
 
 def compare_both(f=None, almost=True):
