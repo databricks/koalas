@@ -10288,7 +10288,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         array([ 5., 40.])
         """
         from databricks.koalas.series import Series
-        from databricks.koalas.indexes import Index
+        from databricks.koalas.indexes import Index, MultiIndex
 
         if isinstance(row_labels, (Series, Index)):
             raise TypeError(
@@ -10298,12 +10298,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise TypeError(
                 "'col_labels' doesn't support type '{}'.".format(type(col_labels).__name__)
             )
-        if len(row_labels) != len(col_labels):
-            raise ValueError("Row labels must have same size as column labels")
-        lookups = [
-            self.loc[row_label, col_label] for row_label, col_label in zip(row_labels, col_labels)
-        ]
-        return np.asarray(pd.Series(lookups))
+
+        if not isinstance(self.index, MultiIndex):
+            return (
+                self.loc[list(set(row_labels)), list(set(col_labels))]
+                .to_pandas()
+                .lookup(row_labels, col_labels)
+            )
+        else:
+            if len(row_labels) != len(col_labels):
+                raise ValueError("Row labels must have same size as column labels")
+            lookups = [
+                self.loc[row_label, col_label]
+                for row_label, col_label in zip(row_labels, col_labels)
+            ]
+            return np.asarray(pd.Series(lookups))
 
     def _to_internal_pandas(self):
         """
