@@ -2196,8 +2196,13 @@ class GroupBy(object, metaclass=ABCMeta):
         groupkeys = self._groupkeys
         if not is_hashable(name):
             raise TypeError("unhashable type: '{}'".format(type(name).__name__))
-        elif len(groupkeys) > 1 and not isinstance(name, tuple):
-            raise ValueError("must supply a tuple to get_group with multiple grouping keys")
+        elif len(groupkeys) > 1:
+            if not isinstance(name, tuple):
+                raise ValueError("must supply a tuple to get_group with multiple grouping keys")
+            if len(groupkeys) != len(name):
+                raise ValueError(
+                    "must supply a same-length tuple to get_group with multiple grouping keys"
+                )
         if not is_list_like(name):
             name = [name]
         cond = F.lit(True)

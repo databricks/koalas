@@ -2300,8 +2300,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(
             KeyError, lambda: kdf.groupby(["class", "name"]).get_group(("lion", "mammal"))
         )
-        self.assertRaises(KeyError, lambda: kdf.groupby(["class", "name"]).get_group(("lion",)))
-        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("lion"))
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group(("lion",)))
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group(("mammal",)))
         self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("mammal"))
 
         # MultiIndex columns
@@ -2353,10 +2353,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("lion", "mammal")),
         )
         self.assertRaises(
-            KeyError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("lion",)),
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("lion",)),
         )
         self.assertRaises(
-            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("lion")
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("mammal",))
         )
         self.assertRaises(
             ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("mammal")
