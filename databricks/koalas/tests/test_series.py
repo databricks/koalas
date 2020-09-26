@@ -2220,7 +2220,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.backfill(inplace=True)
             self.assert_eq(pser, kser)
         else:
-            expected = ks.Series([2.0, 2.0, 3.0, 4.0, 4.0, 6.0], name="x")
+            expected = ks.Series([2.0, 2.0, 3.0, 4.0, 6.0, 6.0], name="x")
             self.assert_eq(expected, kser.backfill())
 
             # Test `inplace=True`
