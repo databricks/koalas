@@ -30,7 +30,7 @@ from typing import Any, List, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable, is_list_like
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -68,6 +68,7 @@ from databricks.koalas.utils import (
     verify_temp_column_name,
 )
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
+from databricks.koalas.exceptions import DataError
 
 # to keep it the same as pandas
 NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
@@ -90,7 +91,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return [s.spark.column for s in self._agg_columns]
 
     @abstractmethod
-    def _apply_series_op(self, op, should_resolve: bool = False):
+    def _apply_series_op(self, op, should_resolve: bool = False, numeric_only: bool = False):
         pass
 
     # TODO: Series support is not implemented yet.
@@ -743,6 +744,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._apply_series_op(
             lambda sg: sg._kser._cum(F.max, True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
+            numeric_only=True,
         )
 
     def cummin(self):
@@ -791,6 +793,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._apply_series_op(
             lambda sg: sg._kser._cum(F.min, True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
+            numeric_only=True,
         )
 
     def cumprod(self):
@@ -821,11 +824,11 @@ class GroupBy(object, metaclass=ABCMeta):
         By default, iterates over rows and finds the sum in each column.
 
         >>> df.groupby("A").cumprod().sort_index()
-              B     C
-        0   NaN   4.0
-        1   0.1  12.0
-        2   2.0  24.0
-        3  10.0   1.0
+              B   C
+        0   NaN   4
+        1   0.1  12
+        2   2.0  24
+        3  10.0   1
 
         It works as below in Series.
 
@@ -837,7 +840,9 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols), should_resolve=True
+            lambda sg: sg._kser._cumprod(True, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
+            numeric_only=True,
         )
 
     def cumsum(self):
@@ -886,6 +891,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._apply_series_op(
             lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
+            numeric_only=True,
         )
 
     def apply(self, func, *args, **kwargs):
@@ -2076,12 +2082,12 @@ class GroupBy(object, metaclass=ABCMeta):
         4   ham       5      x
         5   ham       5      y
 
-        >>> df.groupby('id').nunique().sort_index() # doctest: +NORMALIZE_WHITESPACE
-              id  value1  value2
+        >>> df.groupby('id').nunique().sort_index() # doctest: +SKIP
+              value1  value2
         id
-        egg    1       1       1
-        ham    1       1       2
-        spam   1       2       1
+        egg        1       1
+        ham        1       2
+        spam       2       1
 
         >>> df.groupby('id')['value1'].nunique().sort_index() # doctest: +NORMALIZE_WHITESPACE
         id
@@ -2098,10 +2104,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 + F.when(F.count(F.when(col.isNull(), 1).otherwise(None)) >= 1, 1).otherwise(0)
             )
 
-        should_include_groupkeys = isinstance(self, DataFrameGroupBy)
-        return self._reduce_for_stat_function(
-            stat_function, only_numeric=False, should_include_groupkeys=should_include_groupkeys
-        )
+        return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
     def rolling(self, window, min_periods=None):
         """
@@ -2152,13 +2155,82 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return ExpandingGroupby(self, min_periods=min_periods)
 
-    def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
-        if should_include_groupkeys:
-            agg_columns = self._groupkeys + self._agg_columns
-            agg_columns_scols = self._groupkeys_scols + self._agg_columns_scols
+    def get_group(self, name):
+        """
+        Construct DataFrame from group with provided name.
+
+        Parameters
+        ----------
+        name : object
+            The name of the group to get as a DataFrame.
+
+        Returns
+        -------
+        group : same type as obj
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame([('falcon', 'bird', 389.0),
+        ...                     ('parrot', 'bird', 24.0),
+        ...                     ('lion', 'mammal', 80.5),
+        ...                     ('monkey', 'mammal', np.nan)],
+        ...                    columns=['name', 'class', 'max_speed'],
+        ...                    index=[0, 2, 3, 1])
+        >>> kdf
+             name   class  max_speed
+        0  falcon    bird      389.0
+        2  parrot    bird       24.0
+        3    lion  mammal       80.5
+        1  monkey  mammal        NaN
+
+        >>> kdf.groupby("class").get_group("bird").sort_index()
+             name class  max_speed
+        0  falcon  bird      389.0
+        2  parrot  bird       24.0
+
+        >>> kdf.groupby("class").get_group("mammal").sort_index()
+             name   class  max_speed
+        1  monkey  mammal        NaN
+        3    lion  mammal       80.5
+        """
+        groupkeys = self._groupkeys
+        if not is_hashable(name):
+            raise TypeError("unhashable type: '{}'".format(type(name).__name__))
+        elif len(groupkeys) > 1:
+            if not isinstance(name, tuple):
+                raise ValueError("must supply a tuple to get_group with multiple grouping keys")
+            if len(groupkeys) != len(name):
+                raise ValueError(
+                    "must supply a same-length tuple to get_group with multiple grouping keys"
+                )
+        if not is_list_like(name):
+            name = [name]
+        cond = F.lit(True)
+        for groupkey, item in zip(groupkeys, name):
+            scol = groupkey.spark.column
+            cond = cond & (scol == item)
+        if self._agg_columns_selected:
+            internal = self._kdf._internal
+            spark_frame = internal.spark_frame.select(
+                internal.index_spark_columns + self._agg_columns_scols
+            ).filter(cond)
+
+            internal = InternalFrame(
+                spark_frame=spark_frame,
+                index_map=internal.index_map,
+                column_labels=[s._column_label for s in self._agg_columns],
+                column_label_names=internal.column_label_names,
+            )
         else:
-            agg_columns = self._agg_columns
-            agg_columns_scols = self._agg_columns_scols
+            internal = self._kdf._internal.with_filter(cond)
+        if internal.spark_frame.head() is None:
+            raise KeyError(name)
+
+        return DataFrame(internal)
+
+    def _reduce_for_stat_function(self, sfun, only_numeric):
+        agg_columns = self._agg_columns
+        agg_columns_scols = self._agg_columns_scols
 
         groupkey_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
         groupkey_scols = [s.alias(name) for s, name in zip(self._groupkeys_scols, groupkey_names)]
@@ -2380,10 +2452,14 @@ class DataFrameGroupBy(GroupBy):
                 agg_columns=item,
             )
 
-    def _apply_series_op(self, op, should_resolve: bool = False):
+    def _apply_series_op(self, op, should_resolve: bool = False, numeric_only: bool = False):
         applied = []
         for column in self._agg_columns:
             applied.append(op(column.groupby(self._groupkeys)))
+        if numeric_only:
+            applied = [col for col in applied if isinstance(col.spark.data_type, NumericType)]
+            if not applied:
+                raise DataError("No numeric types to aggregate")
         internal = self._kdf._internal.with_new_columns(applied, keep_order=False)
         if should_resolve:
             internal = internal.resolved_copy
@@ -2513,7 +2589,9 @@ class SeriesGroupBy(GroupBy):
                 return partial(property_or_func, self)
         raise AttributeError(item)
 
-    def _apply_series_op(self, op, should_resolve: bool = False):
+    def _apply_series_op(self, op, should_resolve: bool = False, numeric_only: bool = False):
+        if numeric_only and not isinstance(self._agg_columns[0].spark.data_type, NumericType):
+            raise DataError("No numeric types to aggregate")
         kser = op(self)
         if should_resolve:
             internal = kser._internal.resolved_copy
@@ -2529,11 +2607,8 @@ class SeriesGroupBy(GroupBy):
     def _agg_columns(self):
         return [self._kser]
 
-    def _reduce_for_stat_function(self, sfun, only_numeric, should_include_groupkeys=False):
-        assert not should_include_groupkeys, should_include_groupkeys
-        return first_series(
-            super()._reduce_for_stat_function(sfun, only_numeric, should_include_groupkeys)
-        )
+    def _reduce_for_stat_function(self, sfun, only_numeric):
+        return first_series(super()._reduce_for_stat_function(sfun, only_numeric))
 
     def agg(self, *args, **kwargs):
         return MissingPandasLikeSeriesGroupBy.agg(self, *args, **kwargs)
@@ -2565,6 +2640,11 @@ class SeriesGroupBy(GroupBy):
         return super().size().rename(self._kser.name)
 
     size.__doc__ = GroupBy.size.__doc__
+
+    def get_group(self, name):
+        return first_series(super().get_group(name))
+
+    get_group.__doc__ = GroupBy.get_group.__doc__
 
     # TODO: add keep parameter
     def nsmallest(self, n=5):

@@ -1,8 +1,8 @@
 .. _api.indexing:
 
-========
-Indexing
-========
+=============
+Index objects
+=============
 
 Index
 -----
@@ -21,6 +21,7 @@ Properties
    Index.is_monotonic
    Index.is_monotonic_increasing
    Index.is_monotonic_decreasing
+   Index.is_unique
    Index.has_duplicates
    Index.hasnans
    Index.dtype
@@ -102,6 +103,7 @@ Conversion
    Index.item
    Index.to_series
    Index.to_frame
+   Index.view
    Index.to_numpy
 
 Spark-related
@@ -166,6 +168,7 @@ MultiIndex Constructors
    MultiIndex.from_arrays
    MultiIndex.from_tuples
    MultiIndex.from_product
+   MultiIndex.from_frame
 
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
@@ -246,6 +249,7 @@ MultiIndex Conversion
    MultiIndex.item
    MultiIndex.to_series
    MultiIndex.to_frame
+   MultiIndex.view
    MultiIndex.to_numpy
 
 MultiIndex Spark-related
