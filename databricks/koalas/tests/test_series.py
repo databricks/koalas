@@ -16,6 +16,7 @@
 
 import base64
 import unittest
+import sys
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -2227,6 +2228,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
 
+    # TODO: Remove skip after dropping Python 3.5
+    @unittest.skipIf(
+        sys.version_info <= LooseVersion("3.5"),
+        "The columns order is not preserved in the result in Python<=3.5",
+    )
     def test_compare(self):
         if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
             pser1 = pd.Series(["b", "c", np.nan, "g", np.nan])
