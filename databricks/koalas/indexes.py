@@ -2117,13 +2117,13 @@ class Index(IndexOpsMixin):
         if loc < 0:
             loc = loc + length
             loc = 0 if loc < 0 else loc
-        elif loc >= 0:
-            loc = length if loc >= length else loc
+        else:
+            loc = length if loc > length else loc
 
         index_name = self._internal.index_spark_column_names[0]
         sdf = self._internal.spark_frame
         sdf_before = self.to_frame(name=index_name)[:loc].to_spark()
-        sdf_middle = Index([item], name=index_name).to_frame().to_spark()
+        sdf_middle = Index([item]).to_frame(name=index_name).to_spark()
         sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
         sdf = sdf_before.union(sdf_middle).union(sdf_after)
 
@@ -3020,6 +3020,65 @@ class MultiIndex(Index):
             spark_frame=sdf.select(scol), index_map=OrderedDict({index_scol_name: index_name})
         )
         return ks.DataFrame(internal).index
+
+    def insert(self, loc: int, item):
+        """
+        Make new MultiIndex inserting new item at location.
+
+        Follows Python list.append semantics for negative values.
+
+        Parameters
+        ----------
+        loc : int
+        item : object
+
+        Returns
+        -------
+        new_index : MultiIndex
+
+        Examples
+        --------
+        >>> kmidx = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        >>> kmidx.insert(3, ("h", "j"))  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('b', 'y'),
+                    ('c', 'z'),
+                    ('h', 'j')],
+                   )
+
+        For negative values
+
+        >>> kmidx.insert(-2, ("h", "j"))  # doctest: +SKIP
+        MultiIndex([('a', 'x'),
+                    ('h', 'j'),
+                    ('b', 'y'),
+                    ('c', 'z')],
+                   )
+        """
+        length = len(self)
+        if loc < 0:
+            loc = loc + length
+            if loc < 0:
+                raise IndexError(
+                    "index {} is out of bounds for axis 0 with size {}".format(
+                        (loc - length), length
+                    )
+                )
+        else:
+            if loc > length:
+                raise IndexError(
+                    "index {} is out of bounds for axis 0 with size {}".format(loc, length)
+                )
+
+        index_name = self._internal.index_spark_column_names
+        sdf = self._internal.spark_frame
+        sdf_before = self.to_frame(name=index_name)[:loc].to_spark()
+        sdf_middle = Index([item]).to_frame(name=index_name).to_spark()
+        sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
+        sdf = sdf_before.union(sdf_middle).union(sdf_after)
+
+        internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map,)
+        return DataFrame(internal).index
 
     def item(self):
         """

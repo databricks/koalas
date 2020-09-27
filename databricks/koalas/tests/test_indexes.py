@@ -1613,3 +1613,47 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pmidx.view(), kmidx.view())
 
+    def test_insert(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, 100), kidx.insert(1, 100))
+        self.assert_eq(pidx.insert(-1, 100), kidx.insert(-1, 100))
+        self.assert_eq(pidx.insert(100, 100), kidx.insert(100, 100))
+        self.assert_eq(pidx.insert(-100, 100), kidx.insert(-100, 100))
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, 100.0), kidx.insert(1, 100.0))
+        self.assert_eq(pidx.insert(-1, 100.0), kidx.insert(-1, 100.0))
+        self.assert_eq(pidx.insert(100, 100.0), kidx.insert(100, 100.0))
+        self.assert_eq(pidx.insert(-100, 100.0), kidx.insert(-100, 100.0))
+
+        # String
+        pidx = pd.Index(["a", "b", "c"], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, "x"), kidx.insert(1, "x"))
+        self.assert_eq(pidx.insert(-1, "x"), kidx.insert(-1, "x"))
+        self.assert_eq(pidx.insert(100, "x"), kidx.insert(100, "x"))
+        self.assert_eq(pidx.insert(-100, "x"), kidx.insert(-100, "x"))
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, True), kidx.insert(1, True))
+        self.assert_eq(pidx.insert(-1, True), kidx.insert(-1, True))
+        self.assert_eq(pidx.insert(100, True), kidx.insert(100, True))
+        self.assert_eq(pidx.insert(-100, True), kidx.insert(-100, True))
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "x"), ("b", "y"), ("c", "z")], names=["Hello", "Koalas"]
+        )
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.insert(2, ("h", "j")), kmidx.insert(2, ("h", "j")))
+        self.assert_eq(pmidx.insert(-1, ("h", "j")), kmidx.insert(-1, ("h", "j")))
+
+        err_msg = "index 4 is out of bounds for axis 0 with size 3"
+        with self.assertRaisesRegex(IndexError, err_msg):
+            kmidx.insert(4, ("b", "y"))
