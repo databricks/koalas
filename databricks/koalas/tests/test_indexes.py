@@ -1450,6 +1450,21 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
 
+    def test_multi_index_from_index(self):
+        tuples = [(1, "red"), (1, "blue"), (2, "red"), (2, "blue")]
+        pmidx = pd.Index(tuples)
+        kmidx = ks.Index(tuples)
+
+        self.assertTrue(isinstance(kmidx, ks.MultiIndex))
+        self.assert_eq(pmidx, kmidx)
+
+        # Specify the `names`
+        pmidx = pd.Index(tuples, names=["Hello", "Koalas"])
+        kmidx = ks.Index(tuples, names=["Hello", "Koalas"])
+
+        self.assertTrue(isinstance(kmidx, ks.MultiIndex))
+        self.assert_eq(pmidx, kmidx)
+
     @unittest.skipIf(
         LooseVersion(pd.__version__) < LooseVersion("0.24"),
         "MultiIndex.from_frame is new in pandas 0.24",

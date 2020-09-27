@@ -108,14 +108,32 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None) -> None:
+    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
+        assert data is not None
+        instance = None
+
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
         else:
-            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
+            if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
+                return MultiIndex.from_tuples(data, names=names)
+            if isinstance(instance, MultiIndex):
+                index = pd.Index(data=data, dtype=dtype, name=name, names=names)
+            else:
+                index = pd.Index(data=data, dtype=dtype, name=name)
+            data = DataFrame(index=index)
 
-        super().__init__(data)
+        if instance is None:
+            instance = object.__new__(cls)
+
+        instance._anchor = data
+
+        return instance
+
+    @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
 
     @property
     def _internal(self) -> InternalFrame:
@@ -2165,10 +2183,10 @@ class MultiIndex(Index):
                )
     """
 
-    def __init__(self, kdf: DataFrame):
+    def __new__(cls, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
 
-        super().__init__(kdf)
+        return super().__new__(cls, data=kdf)
 
     @property
     def _internal(self):
