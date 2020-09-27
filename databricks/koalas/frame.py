@@ -7848,27 +7848,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     )
                 ).reindex(columns=self._internal.data_spark_column_names, fill_value=fill_value)
 
-            obj = index
-            index_map = OrderedDict(
-                [(SPARK_INDEX_NAME_FORMAT(i), (name,)) for i, name in enumerate(index.names)]
-            )
-            labels = obj._internal.spark_frame.select(index_columns)
-        else:
-            obj = ks.Series(list(index))
-            index_map = self._internal._index_map
-            scols = obj._internal.data_spark_columns
-            labels = obj._internal.spark_frame.select(
+            index_map = OrderedDict(list(zip(index_columns, index._internal.index_names)))
+            scols = index._internal.index_spark_columns
+            labels = index._internal.spark_frame.select(
                 [scols[i].alias(index_columns[i]) for i in range(len(scols))]
             )
+        else:
+            kser = ks.Series(list(index))
+            labels = kser._internal.spark_frame.select(kser.spark.column.alias(index_columns[0]))
+            index_map = self._internal._index_map
 
         if fill_value is not None:
             frame_index_columns = [
                 verify_temp_column_name(frame, "__frame_index_column_{}__".format(i))
                 for i in range(nlevels)
             ]
-            cols = [F.col(t[0]).alias(t[1]) for t in zip(index_columns, frame_index_columns)]
+            index_scols = [
+                scol_for(frame, index_col).alias(frame_index_col)
+                for index_col, frame_index_col in zip(index_columns, frame_index_columns)
+            ]
             scols = self._internal.resolved_copy.data_spark_columns
-            frame = frame.select(cols + scols)
+            frame = frame.select(index_scols + scols)
 
             temp_fill_value = verify_temp_column_name(frame, "__fill_value__")
             labels = labels.withColumn(temp_fill_value, F.lit(fill_value))
@@ -7878,7 +7878,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             joined_df = frame.join(
                 labels,
-                on=[fcol == lcol for (fcol, lcol) in zip(frame_index_scols, labels_index_scols)],
+                on=[fcol == lcol for fcol, lcol in zip(frame_index_scols, labels_index_scols)],
                 how="right",
             )
 
@@ -7890,7 +7890,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                             lambda c1, c2: c1 & c2,
                             [
                                 fcol.isNull() & lcol.isNotNull()
-                                for (fcol, lcol) in zip(frame_index_scols, labels_index_scols)
+                                for fcol, lcol in zip(frame_index_scols, labels_index_scols)
                             ],
                         ),
                         scol_for(joined_df, temp_fill_value),

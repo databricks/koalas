@@ -2414,14 +2414,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pindex2 = pd.Index(["A", "C", "D", "E", "0"], name="index2")
         kindex2 = ks.from_pandas(pindex2)
 
-        self.assert_eq(
-            pdf.reindex(index=pindex2).sort_index(), kdf.reindex(index=kindex2).sort_index(),
-        )
+        for fill_value in [None, 0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
 
-        self.assert_eq(
-            pdf.reindex(index=pindex2, fill_value=0.0).sort_index(),
-            kdf.reindex(index=kindex2, fill_value=0.0).sort_index(),
-        )
+        pindex2 = pd.DataFrame({"index2": ["A", "C", "D", "E", "0"]}).set_index("index2").index
+        kindex2 = ks.from_pandas(pindex2)
+
+        for fill_value in [None, 0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
 
         # Reindexing MultiIndex on single Index
         pindex = pd.MultiIndex.from_tuples(
@@ -2444,6 +2450,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         pindex2 = pd.MultiIndex.from_tuples(
             [("A", "G"), ("C", "D"), ("I", "J")], names=["name1", "name2"]
+        )
+        kindex2 = ks.from_pandas(pindex2)
+
+        for fill_value in [None, 0.0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
+
+        pindex2 = (
+            pd.DataFrame({"index_level_1": ["A", "C", "I"], "index_level_2": ["G", "D", "J"]})
+            .set_index(["index_level_1", "index_level_2"])
+            .index
         )
         kindex2 = ks.from_pandas(pindex2)
 
