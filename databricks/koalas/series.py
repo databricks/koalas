@@ -5418,7 +5418,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Align the differences on columns
 
-        >>> s1.compare(s2).sort_index()
+        >>> s1.compare(s2).sort_index().sort_index()
           self other
         1    b     a
         3    d     b
@@ -5426,12 +5426,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Keep all original rows
 
         >>> s1.compare(s2, keep_shape=True).sort_index()
-          self other
-        0  NaN   NaN
-        1    b     a
-        2  NaN   NaN
-        3    d     b
-        4  NaN   NaN
+           self other
+        0  None  None
+        1     b     a
+        2  None  None
+        3     d     b
+        4  None  None
 
         Keep all original rows and also all original values
 
