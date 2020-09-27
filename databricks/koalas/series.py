@@ -5388,6 +5388,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol_for(sdf, self._internal.data_spark_column_names[0]) == min_value[0]
         ).head()[0]
 
+    # TODO: Remove skip after dropping Python 3.5
     def compare(self, other, keep_shape=False, keep_equal=False):
         """
         Compare to another Series and show the differences.
@@ -5418,14 +5419,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Align the differences on columns
 
-        >>> s1.compare(s2).sort_index().sort_index()
+        >>> s1.compare(s2).sort_index().sort_index()  # doctest: +SKIP
           self other
         1    b     a
         3    d     b
 
         Keep all original rows
 
-        >>> s1.compare(s2, keep_shape=True).sort_index()
+        >>> s1.compare(s2, keep_shape=True).sort_index()  # doctest: +SKIP
            self other
         0  None  None
         1     b     a
@@ -5435,7 +5436,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Keep all original rows and also all original values
 
-        >>> s1.compare(s2, keep_shape=True, keep_equal=True).sort_index()
+        >>> s1.compare(s2, keep_shape=True, keep_equal=True).sort_index()  # doctest: +SKIP
           self other
         0    a     a
         1    b     a
