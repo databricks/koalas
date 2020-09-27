@@ -1445,3 +1445,44 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples([("a", "x")])
         kmidx = ks.from_pandas(pmidx)
         self.assert_eq(pmidx.inferred_type, kmidx.inferred_type)
+
+    def test_insert(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, 100), kidx.insert(1, 100))
+        self.assert_eq(pidx.insert(-1, 100), kidx.insert(-1, 100))
+        self.assert_eq(pidx.insert(100, 100), kidx.insert(100, 100))
+        self.assert_eq(pidx.insert(-100, 100), kidx.insert(-100, 100))
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, 100.0), kidx.insert(1, 100.0))
+        self.assert_eq(pidx.insert(-1, 100.0), kidx.insert(-1, 100.0))
+        self.assert_eq(pidx.insert(100, 100.0), kidx.insert(100, 100.0))
+        self.assert_eq(pidx.insert(-100, 100.0), kidx.insert(-100, 100.0))
+
+        # String
+        pidx = pd.Index(["a", "b", "c"])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, "x"), kidx.insert(1, "x"))
+        self.assert_eq(pidx.insert(-1, "x"), kidx.insert(-1, "x"))
+        self.assert_eq(pidx.insert(100, "x"), kidx.insert(100, "x"))
+        self.assert_eq(pidx.insert(-100, "x"), kidx.insert(-100, "x"))
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, True), kidx.insert(1, True))
+        self.assert_eq(pidx.insert(-1, True), kidx.insert(-1, True))
+        self.assert_eq(pidx.insert(100, True), kidx.insert(100, True))
+        self.assert_eq(pidx.insert(-100, True), kidx.insert(-100, True))
+
+        # MultiIndex
+        # pmidx = pd.MultiIndex.from_tuples([("a", "x")])
+        # kmidx = ks.from_pandas(pmidx)
+        # self.assert_eq(pidx.insert(1, 100), kidx.insert(1, 100))
+        # self.assert_eq(pidx.insert(-1, 100), kidx.insert(-1, 100))
+        # self.assert_eq(pidx.insert(100, "x"), kidx.insert(100, "x"))
+        # self.assert_eq(pidx.insert(-100, "x"), kidx.insert(-100, "x"))

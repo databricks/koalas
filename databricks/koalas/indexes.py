@@ -1984,6 +1984,50 @@ class Index(IndexOpsMixin):
         """
         return self.to_series().item()
 
+    def insert(self, loc: int, item):
+        """
+        Make new Index inserting new item at location.
+
+        Follows Python list.append semantics for negative values.
+
+        Parameters
+        ----------
+        loc : int
+        item : object
+
+        Returns
+        -------
+        new_index : Index
+
+        Examples
+        --------
+        >>> kidx = ks.Index([1, 2, 3, 4, 5])
+        >>> kidx.insert(3, 100)
+        Int64Index([1, 2, 3, 100, 4, 5], dtype='int64')
+
+        For negative values
+
+        >>> kidx = ks.Index([1, 2, 3, 4, 5])
+        >>> kidx.insert(-3, 100)
+        Int64Index([1, 2, 100, 3, 4, 5], dtype='int64')
+        """
+        length = len(self)
+        if loc < 0:
+            loc = loc + length
+            loc = 0 if loc < 0 else loc
+        elif loc >= 0:
+            loc = length if loc >= length else loc
+
+        index_name = self._internal.index_spark_column_names[0]
+        sdf = self._internal.spark_frame
+        sdf_before = self.to_frame(name=index_name)[:loc].to_spark()
+        sdf_middle = Index([item], name=index_name).to_frame().to_spark()
+        sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
+        sdf = sdf_before.union(sdf_middle).union(sdf_after)
+
+        internal = self._internal.with_new_sdf(sdf)
+        return DataFrame(internal).index
+
     @property
     def inferred_type(self):
         """
