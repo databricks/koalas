@@ -2230,7 +2230,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     # TODO: Remove skip after dropping Python 3.5
     @unittest.skipIf(
-        sys.version_info <= (3, 5),
+        sys.version_info.minor <= 5,
         "The columns order is not preserved in the result in Python<=3.5",
     )
     def test_compare(self):
