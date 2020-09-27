@@ -462,7 +462,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             none_column = 0
             for i, label in enumerate(column_labels):
                 if label is None:
-                    label = (str(none_column),)
+                    label = (none_column,)
                     none_column += 1
                 if len(label) < column_labels_level:
                     label = tuple(list(label) + ([""]) * (column_labels_level - len(label)))
@@ -471,13 +471,9 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             if i == 0 and none_column == 1:
                 column_labels = [None]
 
-            if self._internal.column_label_names is None:
-                column_label_names = None
-            else:
-                # Manage column index names
-                column_label_names = self._internal.column_label_names[-column_labels_level:]
+            column_label_names = self._internal.column_label_names[-column_labels_level:]
         else:
-            column_label_names = None
+            column_label_names = self._internal.column_label_names
 
         try:
             sdf = self._internal.spark_frame
@@ -1420,9 +1416,7 @@ class iLocIndexer(LocIndexerLike):
         stop = rows_sel.stop
         if stop is not None:
             verify_type(stop)
-            if stop == 0:
-                stop = None
-            elif stop < 0:
+            if stop < 0:
                 has_negative = True
 
         step = rows_sel.step

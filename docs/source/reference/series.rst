@@ -184,10 +184,13 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   Series.backfill
+   Series.bfill
    Series.isna
    Series.isnull
    Series.notna
    Series.notnull
+   Series.pad
    Series.dropna
    Series.fillna
 
@@ -196,9 +199,13 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   Series.argsort
+   Series.argmin
+   Series.argmax
    Series.sort_index
    Series.sort_values
    Series.unstack
+   Series.explode
    Series.repeat
    Series.squeeze
 

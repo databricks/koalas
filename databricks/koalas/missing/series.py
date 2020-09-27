@@ -36,12 +36,13 @@ class MissingPandasLikeSeries(object):
 
     # Functions
     align = _unsupported_function("align")
-    argsort = _unsupported_function("argsort")
     asfreq = _unsupported_function("asfreq")
     at_time = _unsupported_function("at_time")
     autocorr = _unsupported_function("autocorr")
     between_time = _unsupported_function("between_time")
     combine = _unsupported_function("combine")
+    compare = _unsupported_function("compare")
+    convert_dtypes = _unsupported_function("convert_dtypes")
     cov = _unsupported_function("cov")
     ewm = _unsupported_function("ewm")
     factorize = _unsupported_function("factorize")
@@ -127,8 +128,6 @@ class MissingPandasLikeSeries(object):
         compound = _unsupported_function("compound", deprecated=True)
         put = _unsupported_function("put", deprecated=True)
         ptp = _unsupported_function("ptp", deprecated=True)
-        argmax = _unsupported_function("argmax", deprecated=True)
-        argmin = _unsupported_function("argmin", deprecated=True)
 
         # Functions we won't support.
         real = _unsupported_property(

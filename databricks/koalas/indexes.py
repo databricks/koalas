@@ -64,10 +64,10 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SPARK_DEFAULT_SERIES_NAME,
 )
 
 
@@ -108,14 +108,32 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None) -> None:
+    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
+        assert data is not None
+        instance = None
+
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
         else:
-            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
+            if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
+                return MultiIndex.from_tuples(data, names=names)
+            if isinstance(instance, MultiIndex):
+                index = pd.Index(data=data, dtype=dtype, name=name, names=names)
+            else:
+                index = pd.Index(data=data, dtype=dtype, name=name)
+            data = DataFrame(index=index)
 
-        super().__init__(data)
+        if instance is None:
+            instance = object.__new__(cls)
+
+        instance._anchor = data
+
+        return instance
+
+    @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
 
     @property
     def _internal(self) -> InternalFrame:
@@ -440,6 +458,39 @@ class Index(IndexOpsMixin):
         return self.to_numpy()
 
     @property
+    def asi8(self):
+        """
+        Integer representation of the values.
+
+        .. warning:: We recommend using `Index.to_numpy()` instead.
+
+        .. note:: This method should only be used if the resulting NumPy ndarray is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Returns
+        -------
+        numpy.ndarray
+            An ndarray with int64 dtype.
+
+        Examples
+        --------
+        >>> ks.Index([1, 2, 3]).asi8
+        array([1, 2, 3])
+
+        Returns None for non-int64 dtype
+
+        >>> ks.Index(['a', 'b', 'c']).asi8 is None
+        True
+        """
+        warnings.warn("We recommend using `{}.to_numpy()` instead.".format(type(self).__name__))
+        if isinstance(self.spark.data_type, IntegralType):
+            return self.to_numpy()
+        elif isinstance(self.spark.data_type, TimestampType):
+            return np.array(list(map(lambda x: x.astype(np.int64), self.to_numpy())))
+        else:
+            return None
+
+    @property
     def spark_type(self):
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         warnings.warn(
@@ -456,22 +507,55 @@ class Index(IndexOpsMixin):
 
         Examples
         --------
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=list('aac'))
-        >>> kdf.index.has_duplicates
+        >>> idx = ks.Index([1, 5, 7, 7])
+        >>> idx.has_duplicates
         True
 
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('abc'), list('def')])
-        >>> kdf.index.has_duplicates
+        >>> idx = ks.Index([1, 5, 7])
+        >>> idx.has_duplicates
         False
 
-        >>> kdf = ks.DataFrame({'a': [1, 2, 3]}, index=[list('aac'), list('eef')])
-        >>> kdf.index.has_duplicates
+        >>> idx = ks.Index(["Watermelon", "Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.has_duplicates
         True
+
+        >>> idx = ks.Index(["Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.has_duplicates
+        False
         """
         sdf = self._internal.spark_frame.select(self.spark.column)
         scol = scol_for(sdf, sdf.columns[0])
 
         return sdf.select(F.count(scol) != F.countDistinct(scol)).first()[0]
+
+    @property
+    def is_unique(self) -> bool:
+        """
+        Return if the index has unique values.
+
+        Examples
+        --------
+        >>> idx = ks.Index([1, 5, 7, 7])
+        >>> idx.is_unique
+        False
+
+        >>> idx = ks.Index([1, 5, 7])
+        >>> idx.is_unique
+        True
+
+        >>> idx = ks.Index(["Watermelon", "Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.is_unique
+        False
+
+        >>> idx = ks.Index(["Orange", "Apple",
+        ...                 "Watermelon"])
+        >>> idx.is_unique
+        True
+        """
+        return not self.has_duplicates
 
     @property
     def name(self) -> Union[str, Tuple[str, ...]]:
@@ -750,7 +834,7 @@ class Index(IndexOpsMixin):
         """
         if name is None:
             if self._internal.index_names[0] is None:
-                name = (SPARK_DEFAULT_SERIES_NAME,)
+                name = (DEFAULT_SERIES_NAME,)
             else:
                 name = self._internal.index_names[0]
         elif isinstance(name, str):
@@ -860,6 +944,24 @@ class Index(IndexOpsMixin):
         True
         """
         return is_object_dtype(self.dtype)
+
+    def is_type_compatible(self, kind):
+        """
+        Whether the index type is compatible with the provided type.
+
+        Examples
+        --------
+        >>> kidx = ks.Index([1, 2, 3])
+        >>> kidx.is_type_compatible('integer')
+        True
+
+        >>> kidx = ks.Index([1.0, 2.0, 3.0])
+        >>> kidx.is_type_compatible('integer')
+        False
+        >>> kidx.is_type_compatible('floating')
+        True
+        """
+        return kind == self.inferred_type
 
     def dropna(self):
         """
@@ -2028,6 +2130,12 @@ class Index(IndexOpsMixin):
         internal = self._internal.with_new_sdf(sdf)
         return DataFrame(internal).index
 
+    def view(self):
+        """
+        this is defined as a copy with the same identity
+        """
+        return self.copy()
+
     @property
     def inferred_type(self):
         """
@@ -2119,10 +2227,10 @@ class MultiIndex(Index):
                )
     """
 
-    def __init__(self, kdf: DataFrame):
+    def __new__(cls, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
 
-        super().__init__(kdf)
+        return super().__new__(cls, data=kdf)
 
     @property
     def _internal(self):
@@ -2257,6 +2365,70 @@ class MultiIndex(Index):
         return DataFrame(
             index=pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
         ).index
+
+    @staticmethod
+    def from_frame(df, names=None):
+        """
+        Make a MultiIndex from a DataFrame.
+
+        Parameters
+        ----------
+        df : DataFrame
+            DataFrame to be converted to MultiIndex.
+        names : list-like, optional
+            If no names are provided, use the column names, or tuple of column
+            names if the columns is a MultiIndex. If a sequence, overwrite
+            names with the given sequence.
+
+        Returns
+        -------
+        MultiIndex
+            The MultiIndex representation of the given DataFrame.
+
+        See Also
+        --------
+        MultiIndex.from_arrays : Convert list of arrays to MultiIndex.
+        MultiIndex.from_tuples : Convert list of tuples to MultiIndex.
+        MultiIndex.from_product : Make a MultiIndex from cartesian product
+                                  of iterables.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame([['HI', 'Temp'], ['HI', 'Precip'],
+        ...                    ['NJ', 'Temp'], ['NJ', 'Precip']],
+        ...                   columns=['a', 'b'])
+        >>> df  # doctest: +SKIP
+              a       b
+        0    HI    Temp
+        1    HI  Precip
+        2    NJ    Temp
+        3    NJ  Precip
+
+        >>> ks.MultiIndex.from_frame(df)  # doctest: +SKIP
+        MultiIndex([('HI',   'Temp'),
+                    ('HI', 'Precip'),
+                    ('NJ',   'Temp'),
+                    ('NJ', 'Precip')],
+                   names=['a', 'b'])
+
+        Using explicit names, instead of the column names
+
+        >>> ks.MultiIndex.from_frame(df, names=['state', 'observation'])  # doctest: +SKIP
+        MultiIndex([('HI',   'Temp'),
+                    ('HI', 'Precip'),
+                    ('NJ',   'Temp'),
+                    ('NJ', 'Precip')],
+                   names=['state', 'observation'])
+        """
+        if not isinstance(df, DataFrame):
+            raise TypeError("Input must be a DataFrame")
+        sdf = df.to_spark()
+        if names is None:
+            names = df._internal.column_labels
+        names = [(name,) if not isinstance(name, tuple) else name for name in names]
+        index_map = OrderedDict(zip(sdf.columns, names))
+        internal = InternalFrame(spark_frame=sdf, index_map=index_map)
+        return DataFrame(internal).index
 
     @property
     def name(self) -> str:
@@ -2491,7 +2663,7 @@ class MultiIndex(Index):
         """
         if name is None:
             name = [
-                name if name is not None else (str(i),)
+                name if name is not None else (i,)
                 for i, name in enumerate(self._internal.index_names)
             ]
         elif is_list_like(name):
@@ -2876,8 +3048,16 @@ class MultiIndex(Index):
         """
         Return a string of the type inferred from the values.
         """
-        # It's always 'mixed' for MultiIndex
+        # Always returns "mixed" for MultiIndex
         return "mixed"
+
+    @property
+    def asi8(self):
+        """
+        Integer representation of the values.
+        """
+        # Always returns None for MultiIndex
+        return None
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)

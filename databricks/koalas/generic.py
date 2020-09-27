@@ -2246,10 +2246,16 @@ class Frame(object, metaclass=ABCMeta):
             raise ValueError("Truncate: %s must be after %s" % (after, before))
 
         if isinstance(self, ks.Series):
-            result = first_series(self.to_frame().loc[before:after]).rename(self.name)
+            if indexes_increasing:
+                result = first_series(self.to_frame().loc[before:after]).rename(self.name)
+            else:
+                result = first_series(self.to_frame().loc[after:before]).rename(self.name)
         elif isinstance(self, ks.DataFrame):
             if axis == 0:
-                result = self.loc[before:after]
+                if indexes_increasing:
+                    result = self.loc[before:after]
+                else:
+                    result = self.loc[after:before]
             elif axis == 1:
                 result = self.loc[:, before:after]
 
@@ -2387,6 +2393,8 @@ class Frame(object, metaclass=ABCMeta):
         """
         return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
 
+    backfill = bfill
+
     # TODO: add 'downcast' when value parameter exists
     def ffill(self, axis=None, inplace=False, limit=None):
         """
@@ -2458,6 +2466,8 @@ class Frame(object, metaclass=ABCMeta):
         dtype: float64
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
+
+    pad = ffill
 
     @property
     def at(self):

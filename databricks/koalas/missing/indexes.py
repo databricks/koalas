@@ -53,7 +53,6 @@ class MissingPandasLikeIndex(object):
     intersection = _unsupported_function("intersection")
     is_ = _unsupported_function("is_")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
-    is_type_compatible = _unsupported_function("is_type_compatible")
     join = _unsupported_function("join")
     map = _unsupported_function("map")
     putmask = _unsupported_function("putmask")
@@ -65,7 +64,6 @@ class MissingPandasLikeIndex(object):
     sortlevel = _unsupported_function("sortlevel")
     to_flat_index = _unsupported_function("to_flat_index")
     to_native_types = _unsupported_function("to_native_types")
-    view = _unsupported_function("view")
     where = _unsupported_function("where")
 
     # Deprecated functions
@@ -124,7 +122,6 @@ class MissingPandasLikeMultiIndex(object):
     is_ = _unsupported_function("is_")
     is_lexsorted = _unsupported_function("is_lexsorted")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
-    is_type_compatible = _unsupported_function("is_type_compatible")
     join = _unsupported_function("join")
     map = _unsupported_function("map")
     putmask = _unsupported_function("putmask")
@@ -141,7 +138,6 @@ class MissingPandasLikeMultiIndex(object):
     to_flat_index = _unsupported_function("to_flat_index")
     to_native_types = _unsupported_function("to_native_types")
     truncate = _unsupported_function("truncate")
-    view = _unsupported_function("view")
     where = _unsupported_function("where")
 
     # Deprecated functions

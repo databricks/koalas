@@ -20,6 +20,7 @@ Commonly used utils in Koalas.
 import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
+import os
 from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
@@ -185,13 +186,8 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             tuple(["this"] + fill_label(label)) for label in this._internal.column_labels
         ] + [tuple(["that"] + fill_label(label)) for label in that._internal.column_labels]
         column_label_names = (
-            (
-                ([None] * (1 + level - len(this._internal.column_labels_level)))
-                + this._internal.column_label_names
-            )
-            if this._internal.column_label_names is not None
-            else None
-        )
+            [None] * (1 + level - this._internal.column_labels_level)
+        ) + this._internal.column_label_names
         return DataFrame(
             InternalFrame(
                 spark_frame=joined_df,
@@ -322,7 +318,9 @@ def align_diff_frames(
         column_labels_applied = []
 
     applied = combined[columns_applied + columns_to_keep]
-    applied.columns = pd.MultiIndex.from_tuples(column_labels_applied + column_labels_to_keep)
+    applied.columns = pd.MultiIndex.from_tuples(
+        column_labels_applied + column_labels_to_keep, names=combined.columns.names
+    )
 
     # 3. Restore the names back and deduplicate columns.
     this_labels = OrderedDict()
@@ -359,8 +357,14 @@ def align_diff_series(func, this_series, *args, how="full"):
     internal = combined._internal.copy(
         column_labels=this_series._internal.column_labels,
         data_spark_columns=[scol.alias(name_like_string(this_series.name))],
+        column_label_names=this_series._internal.column_label_names,
     )
     return first_series(DataFrame(internal))
+
+
+def is_testing():
+    """ Indicates whether Koalas is currently running tests. """
+    return "KOALAS_TESTING" in os.environ
 
 
 def default_session(conf=None):
@@ -382,6 +386,10 @@ def default_session(conf=None):
     # Currently, Koalas is dependent on such join due to 'compute.ops_on_diff_frames'
     # configuration. This is needed with Spark 3.0+.
     builder.config("spark.sql.analyzer.failAmbiguousSelfJoin", False)
+
+    if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.1") and is_testing():
+        builder.config("spark.executor.allowSparkContext", False)
+
     session = builder.getOrCreate()
 
     if not should_use_legacy_ipc:
@@ -496,9 +504,9 @@ def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
 def column_labels_level(column_labels: List[Tuple[str, ...]]) -> int:
     """ Return the level of the column index. """
     if len(column_labels) == 0:
-        return 0
+        return 1
     else:
-        levels = set(0 if label is None else len(label) for label in column_labels)
+        levels = set(1 if label is None else len(label) for label in column_labels)
         assert len(levels) == 1, levels
         return list(levels)[0]
 

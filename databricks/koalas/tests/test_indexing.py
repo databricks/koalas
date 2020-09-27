@@ -183,10 +183,17 @@ class IndexingTest(ReusedSQLTestCase):
         pdf = self.pdf.set_index("b", append=True)
         kdf = self.kdf.set_index("b", append=True)
 
-        self.assert_eq(kdf.at[(3, 6), "a"], pdf.at[(3, 6), "a"])
-        self.assert_eq(kdf.at[(3,), "a"], pdf.at[(3,), "a"])
-        self.assert_eq(list(kdf.at[(9, 0), "a"]), list(pdf.at[(9, 0), "a"]))
-        self.assert_eq(list(kdf.at[(9,), "a"]), list(pdf.at[(9,), "a"]))
+        # TODO: seems like a pandas' bug in pandas>=1.1.0
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            self.assert_eq(kdf.at[(3, 6), "a"], pdf.at[(3, 6), "a"])
+            self.assert_eq(kdf.at[(3,), "a"], pdf.at[(3,), "a"])
+            self.assert_eq(list(kdf.at[(9, 0), "a"]), list(pdf.at[(9, 0), "a"]))
+            self.assert_eq(list(kdf.at[(9,), "a"]), list(pdf.at[(9,), "a"]))
+        else:
+            self.assert_eq(kdf.at[(3, 6), "a"], 3)
+            self.assert_eq(kdf.at[(3,), "a"], np.array([3]))
+            self.assert_eq(list(kdf.at[(9, 0), "a"]), [7, 8, 9])
+            self.assert_eq(list(kdf.at[(9,), "a"]), [7, 8, 9])
 
         with self.assertRaises(ValueError):
             kdf.at[3, "a"]
@@ -808,6 +815,7 @@ class IndexingTest(ReusedSQLTestCase):
             slice(1, 2),
             slice(-3, None),
             slice(None, -3),
+            slice(None, 0),
             slice(None, None, 3),
             slice(3, 8, 2),
             slice(None, None, -2),
@@ -1127,38 +1135,38 @@ class IndexingTest(ReusedSQLTestCase):
         kdf = ks.from_pandas(pdf)
 
         # Positional iloc search
-        self.assert_eq(kdf[:4], pdf[:4])
-        self.assert_eq(kdf[:3], pdf[:3])
-        self.assert_eq(kdf[3:], pdf[3:])
-        self.assert_eq(kdf[2:], pdf[2:])
-        self.assert_eq(kdf[2:3], pdf[2:3])
-        self.assert_eq(kdf[2:-1], pdf[2:-1])
-        self.assert_eq(kdf[10:3], pdf[10:3])
+        self.assert_eq(kdf[:4], pdf[:4], almost=True)
+        self.assert_eq(kdf[:3], pdf[:3], almost=True)
+        self.assert_eq(kdf[3:], pdf[3:], almost=True)
+        self.assert_eq(kdf[2:], pdf[2:], almost=True)
+        self.assert_eq(kdf[2:3], pdf[2:3], almost=True)
+        self.assert_eq(kdf[2:-1], pdf[2:-1], almost=True)
+        self.assert_eq(kdf[10:3], pdf[10:3], almost=True)
 
         # Index loc search
         self.assert_eq(kdf.A[4], pdf.A[4])
         self.assert_eq(kdf.A[3], pdf.A[3])
 
         # Positional iloc search
-        self.assert_eq(kdf.A[:4], pdf.A[:4])
-        self.assert_eq(kdf.A[:3], pdf.A[:3])
-        self.assert_eq(kdf.A[3:], pdf.A[3:])
-        self.assert_eq(kdf.A[2:], pdf.A[2:])
-        self.assert_eq(kdf.A[2:3], pdf.A[2:3])
-        self.assert_eq(kdf.A[2:-1], pdf.A[2:-1])
-        self.assert_eq(kdf.A[10:3], pdf.A[10:3])
+        self.assert_eq(kdf.A[:4], pdf.A[:4], almost=True)
+        self.assert_eq(kdf.A[:3], pdf.A[:3], almost=True)
+        self.assert_eq(kdf.A[3:], pdf.A[3:], almost=True)
+        self.assert_eq(kdf.A[2:], pdf.A[2:], almost=True)
+        self.assert_eq(kdf.A[2:3], pdf.A[2:3], almost=True)
+        self.assert_eq(kdf.A[2:-1], pdf.A[2:-1], almost=True)
+        self.assert_eq(kdf.A[10:3], pdf.A[10:3], almost=True)
 
         dt1 = datetime.datetime.strptime("2013-01-02", "%Y-%m-%d")
         dt2 = datetime.datetime.strptime("2013-01-04", "%Y-%m-%d")
 
         # Index loc search
-        self.assert_eq(kdf[:dt2], pdf[:dt2])
-        self.assert_eq(kdf[dt1:], pdf[dt1:])
-        self.assert_eq(kdf[dt1:dt2], pdf[dt1:dt2])
-        self.assert_eq(kdf.A[dt2], pdf.A[dt2])
-        self.assert_eq(kdf.A[:dt2], pdf.A[:dt2])
-        self.assert_eq(kdf.A[dt1:], pdf.A[dt1:])
-        self.assert_eq(kdf.A[dt1:dt2], pdf.A[dt1:dt2])
+        self.assert_eq(kdf[:dt2], pdf[:dt2], almost=True)
+        self.assert_eq(kdf[dt1:], pdf[dt1:], almost=True)
+        self.assert_eq(kdf[dt1:dt2], pdf[dt1:dt2], almost=True)
+        self.assert_eq(kdf.A[dt2], pdf.A[dt2], almost=True)
+        self.assert_eq(kdf.A[:dt2], pdf.A[:dt2], almost=True)
+        self.assert_eq(kdf.A[dt1:], pdf.A[dt1:], almost=True)
+        self.assert_eq(kdf.A[dt1:dt2], pdf.A[dt1:dt2], almost=True)
 
     def test_index_operator_int(self):
         pdf = pd.DataFrame(np.random.randn(6, 4), index=[1, 3, 5, 7, 9, 11], columns=list("ABCD"))

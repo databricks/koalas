@@ -24,7 +24,7 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
-from databricks.koalas.exceptions import PandasNotImplementedError
+from databricks.koalas.exceptions import PandasNotImplementedError, DataError
 from databricks.koalas.missing.groupby import (
     MissingPandasLikeDataFrameGroupBy,
     MissingPandasLikeSeriesGroupBy,
@@ -674,13 +674,20 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby("a").agg({"b": "nunique"}).sort_index(),
             pdf.groupby("a").agg({"b": "nunique"}).sort_index(),
         )
-        self.assert_eq(
-            kdf.groupby("a").nunique().sort_index(), pdf.groupby("a").nunique().sort_index()
-        )
-        self.assert_eq(
-            kdf.groupby("a").nunique(dropna=False).sort_index(),
-            pdf.groupby("a").nunique(dropna=False).sort_index(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            expected = ks.DataFrame({"b": [2, 2]}, index=pd.Index([0, 1], name="a"))
+            self.assert_eq(kdf.groupby("a").nunique().sort_index(), expected)
+            self.assert_eq(
+                kdf.groupby("a").nunique(dropna=False).sort_index(), expected,
+            )
+        else:
+            self.assert_eq(
+                kdf.groupby("a").nunique().sort_index(), pdf.groupby("a").nunique().sort_index()
+            )
+            self.assert_eq(
+                kdf.groupby("a").nunique(dropna=False).sort_index(),
+                pdf.groupby("a").nunique(dropna=False).sort_index(),
+            )
         self.assert_eq(
             kdf.groupby("a")["b"].nunique().sort_index(),
             pdf.groupby("a")["b"].nunique().sort_index(),
@@ -702,14 +709,23 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(
-            kdf.groupby(("x", "a")).nunique().sort_index(),
-            pdf.groupby(("x", "a")).nunique().sort_index(),
-        )
-        self.assert_eq(
-            kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
-            pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            expected = ks.DataFrame({("y", "b"): [2, 2]}, index=pd.Index([0, 1], name=("x", "a")))
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique().sort_index(), expected,
+            )
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(), expected,
+            )
+        else:
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique().sort_index(),
+                pdf.groupby(("x", "a")).nunique().sort_index(),
+            )
+            self.assert_eq(
+                kdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+                pdf.groupby(("x", "a")).nunique(dropna=False).sort_index(),
+            )
 
     def test_unique(self):
         for pdf in [
@@ -1005,6 +1021,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).cummin().sort_index(),
         )
 
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cummin())
+        kdf = ks.DataFrame([[1, "a"], [2, "b"], [3, "c"]], columns=["A", "B"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"])["B"].cummin())
+
     def test_cummax(self):
         pdf = pd.DataFrame(
             {
@@ -1070,6 +1091,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).cummax().sort_index(),
         )
 
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cummax())
+        kdf = ks.DataFrame([[1, "a"], [2, "b"], [3, "c"]], columns=["A", "B"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"])["B"].cummax())
+
     def test_cumsum(self):
         pdf = pd.DataFrame(
             {
@@ -1134,6 +1160,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby([("x", "a"), ("x", "b")]).cumsum().sort_index(),
             pdf.groupby([("x", "a"), ("x", "b")]).cumsum().sort_index(),
         )
+
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cumsum())
+        kdf = ks.DataFrame([[1, "a"], [2, "b"], [3, "c"]], columns=["A", "B"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"])["B"].cumsum())
 
     def test_cumprod(self):
         pdf = pd.DataFrame(
@@ -1212,6 +1243,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby([("x", "a"), ("x", "b")]).cumprod().sort_index(),
             almost=True,
         )
+
+        kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"]).cumprod())
+        kdf = ks.DataFrame([[1, "a"], [2, "b"], [3, "c"]], columns=["A", "B"])
+        self.assertRaises(DataError, lambda: kdf.groupby(["A"])["B"].cumprod())
 
     def test_nsmallest(self):
         pdf = pd.DataFrame(
@@ -2209,3 +2245,119 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
         assert is_multi_agg_with_relabel(a="max") is False
         assert is_multi_agg_with_relabel(a_min=("a", "max"), a_max=("a", "min")) is True
+
+    def test_get_group(self):
+        pdf = pd.DataFrame(
+            [
+                ("falcon", "bird", 389.0),
+                ("parrot", "bird", 24.0),
+                ("lion", "mammal", 80.5),
+                ("monkey", "mammal", np.nan),
+            ],
+            columns=["name", "class", "max_speed"],
+            index=[0, 2, 3, 1],
+        )
+        pdf.columns.name = "Koalas"
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.groupby("class").get_group("bird"), pdf.groupby("class").get_group("bird"),
+        )
+        self.assert_eq(
+            kdf.groupby("class")["name"].get_group("mammal"),
+            pdf.groupby("class")["name"].get_group("mammal"),
+        )
+        self.assert_eq(
+            kdf.groupby("class")[["name"]].get_group("mammal"),
+            pdf.groupby("class")[["name"]].get_group("mammal"),
+        )
+        self.assert_eq(
+            kdf.groupby(["class", "name"]).get_group(("mammal", "lion")),
+            pdf.groupby(["class", "name"]).get_group(("mammal", "lion")),
+        )
+        self.assert_eq(
+            kdf.groupby(["class", "name"])["max_speed"].get_group(("mammal", "lion")),
+            pdf.groupby(["class", "name"])["max_speed"].get_group(("mammal", "lion")),
+        )
+        self.assert_eq(
+            kdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
+            pdf.groupby(["class", "name"])[["max_speed"]].get_group(("mammal", "lion")),
+        )
+        self.assert_eq(
+            (kdf.max_speed + 1).groupby(kdf["class"]).get_group("mammal"),
+            (pdf.max_speed + 1).groupby(pdf["class"]).get_group("mammal"),
+        )
+        self.assert_eq(
+            kdf.groupby("max_speed").get_group(80.5), pdf.groupby("max_speed").get_group(80.5),
+        )
+
+        self.assertRaises(KeyError, lambda: kdf.groupby("class").get_group("fish"))
+        self.assertRaises(TypeError, lambda: kdf.groupby("class").get_group(["bird", "mammal"]))
+        self.assertRaises(KeyError, lambda: kdf.groupby("class")["name"].get_group("fish"))
+        self.assertRaises(
+            TypeError, lambda: kdf.groupby("class")["name"].get_group(["bird", "mammal"])
+        )
+        self.assertRaises(
+            KeyError, lambda: kdf.groupby(["class", "name"]).get_group(("lion", "mammal"))
+        )
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group(("lion",)))
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group(("mammal",)))
+        self.assertRaises(ValueError, lambda: kdf.groupby(["class", "name"]).get_group("mammal"))
+
+        # MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("A", "name"), ("B", "class"), ("C", "max_speed")])
+        pdf.columns.names = ["Hello", "Koalas"]
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            kdf.groupby(("B", "class")).get_group("bird"),
+            pdf.groupby(("B", "class")).get_group("bird"),
+        )
+        self.assert_eq(
+            kdf.groupby(("B", "class"))[[("A", "name")]].get_group("mammal"),
+            pdf.groupby(("B", "class"))[[("A", "name")]].get_group("mammal"),
+        )
+        self.assert_eq(
+            kdf.groupby([("B", "class"), ("A", "name")]).get_group(("mammal", "lion")),
+            pdf.groupby([("B", "class"), ("A", "name")]).get_group(("mammal", "lion")),
+        )
+        self.assert_eq(
+            kdf.groupby([("B", "class"), ("A", "name")])[[("C", "max_speed")]].get_group(
+                ("mammal", "lion")
+            ),
+            pdf.groupby([("B", "class"), ("A", "name")])[[("C", "max_speed")]].get_group(
+                ("mammal", "lion")
+            ),
+        )
+        self.assert_eq(
+            (kdf[("C", "max_speed")] + 1).groupby(kdf[("B", "class")]).get_group("mammal"),
+            (pdf[("C", "max_speed")] + 1).groupby(pdf[("B", "class")]).get_group("mammal"),
+        )
+        self.assert_eq(
+            kdf.groupby(("C", "max_speed")).get_group(80.5),
+            pdf.groupby(("C", "max_speed")).get_group(80.5),
+        )
+
+        self.assertRaises(KeyError, lambda: kdf.groupby(("B", "class")).get_group("fish"))
+        self.assertRaises(
+            TypeError, lambda: kdf.groupby(("B", "class")).get_group(["bird", "mammal"])
+        )
+        self.assertRaises(
+            KeyError, lambda: kdf.groupby(("B", "class"))[("A", "name")].get_group("fish")
+        )
+        self.assertRaises(
+            KeyError,
+            lambda: kdf.groupby(("B", "class"))[("A", "name")].get_group(["bird", "mammal"]),
+        )
+        self.assertRaises(
+            KeyError,
+            lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("lion", "mammal")),
+        )
+        self.assertRaises(
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("lion",)),
+        )
+        self.assertRaises(
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group(("mammal",))
+        )
+        self.assertRaises(
+            ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("mammal")
+        )

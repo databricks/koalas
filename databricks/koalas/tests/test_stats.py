@@ -19,7 +19,11 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import (
+    ReusedSQLTestCase,
+    SQLTestUtils,
+    SPARK_CONF_ARROW_ENABLED,
+)
 
 
 class StatsTest(ReusedSQLTestCase, SQLTestUtils):
@@ -96,7 +100,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             # DataFrame
             # we do not handle NaNs for now
             pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
@@ -130,7 +134,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_cov_corr_meta(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             pdf = pd.DataFrame(
                 {
                     "a": np.array([1, 2, 3], dtype="i1"),

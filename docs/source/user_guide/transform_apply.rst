@@ -41,7 +41,7 @@ In this case, each function takes a pandas Series, and Koalas computes the funct
   :align: center
   :width: 550
 
-In case of 'column' axis, the function takes each row as a pandas Seires.
+In case of 'column' axis, the function takes each row as a pandas Series.
 
 .. code-block:: python
 
@@ -58,7 +58,7 @@ The example above calculates the summation of each row as a pandas Series. See b
   :align: center
   :width: 600
 
-In the examples above, the type hints were not used for simplicity but it is encouraged to use to avoid performance panality.
+In the examples above, the type hints were not used for simplicity but it is encouraged to use to avoid performance penalty.
 Please refer the API documentations.
 
 
@@ -88,7 +88,7 @@ then applies the given function with pandas DataFrame or Series as input and out
 The functions in both examples take a pandas DataFrame as a chunk of Koalas DataFrame, and output a pandas DataFrame.
 Koalas combines the pandas DataFrames as a Koalas DataFrame.
 
-Note that :func:`DataFrame.koalas.transform_batch` has the length resctriction - the length of input and output should be
+Note that :func:`DataFrame.koalas.transform_batch` has the length restriction - the length of input and output should be
 the same whereas :func:`DataFrame.koalas.apply_batch` does not.  However, it is important to know that
 the output belongs to the same DataFrame when :func:`DataFrame.koalas.transform_batch` can a Series, and
 you can avoid a shuffle by the operations between different DataFrames. In case of :func:`DataFrame.koalas.apply_batch`, its output is always
@@ -118,4 +118,4 @@ Under the hood, each batch of Koalas Series is split to multiple pandas Series, 
   :width: 350
   :align: center
 
-There are more details such as the type inference and preventing its performance panality. Please refer the API documentations.
+There are more details such as the type inference and preventing its performance penalty. Please refer the API documentations.
