@@ -5605,10 +5605,18 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             match = REPR_PATTERN.search(prev_footer)
             if match is not None:
                 length = match.group("length")
-                name = str(self.dtype.name)
-                footer = "\nName: {name}, dtype: {dtype}\nShowing only the first {length}".format(
-                    length=length, name=self.name, dtype=pprint_thing(name)
-                )
+                dtype_name = str(self.dtype.name)
+                if self.name is None:
+                    footer = "\ndtype: {dtype}\nShowing only the first {length}".format(
+                        length=length, dtype=pprint_thing(dtype_name)
+                    )
+                else:
+                    footer = (
+                        "\nName: {name}, dtype: {dtype}"
+                        "\nShowing only the first {length}".format(
+                            length=length, name=self.name, dtype=pprint_thing(dtype_name)
+                        )
+                    )
                 return rest + footer
         return pser.to_string(name=self.name, dtype=self.dtype)
 
