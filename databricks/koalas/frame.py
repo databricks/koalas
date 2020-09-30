@@ -7833,25 +7833,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         nlevels = len(self._internal.index_spark_column_names)
         assert nlevels <= 1 or (
             isinstance(index, ks.MultiIndex) and nlevels == index.nlevels
-        ), "MultiIndex DataFrame can only be reindexed with a similar koalas MultiIndex ."
+        ), "MultiIndex DataFrame can only be reindexed with a similar Koalas MultiIndex."
 
         index_columns = self._internal.index_spark_column_names
         frame = self._internal.resolved_copy.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
 
         if isinstance(index, ks.Index):
             if nlevels != index.nlevels:
-                # Use temporary column so we can call reindex in order to fill columns on new index
-                return DataFrame(
-                    index._internal.with_new_columns(
-                        [F.lit(0)],
-                        column_labels=[(verify_temp_column_name(frame, "__temp_spark_column__"),)],
-                    )
-                ).reindex(columns=self._internal.data_spark_column_names, fill_value=fill_value)
+                return DataFrame(index._internal.with_new_columns([], column_labels=[])).reindex(
+                    columns=self.columns, fill_value=fill_value
+                )
 
-            index_map = OrderedDict(list(zip(index_columns, index._internal.index_names)))
+            index_map = OrderedDict(zip(index_columns, index._internal.index_names))
             scols = index._internal.index_spark_columns
             labels = index._internal.spark_frame.select(
-                [scols[i].alias(index_columns[i]) for i in range(len(scols))]
+                [scol.alias(index_column) for scol, index_column in zip(scols, index_columns)]
             )
         else:
             kser = ks.Series(list(index))
@@ -7907,11 +7903,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = InternalFrame(
             sdf,
             index_map=index_map,
-            column_labels=self._internal._column_labels,
+            column_labels=self._internal.column_labels,
             data_spark_columns=[
                 scol_for(sdf, col) for col in self._internal.data_spark_column_names
             ],
-            column_label_names=self._internal._column_label_names,
+            column_label_names=self._internal.column_label_names,
         )
         return DataFrame(internal)
 
