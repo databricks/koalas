@@ -54,6 +54,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import (
     align_diff_frames,
     default_session,
+    is_name_like_tuple,
     name_like_string,
     same_anchor,
     scol_for,
@@ -307,11 +308,11 @@ def read_csv(
             column_labels = OrderedDict((col, col) for col in sdf.columns)
         else:
             sdf = reader.csv(path)
-            if isinstance(names, list):
+            if is_list_like(names):
                 names = list(names)
                 if len(set(names)) != len(names):
                     raise ValueError("Found non-unique column index")
-                if len(names) != len(sdf.schema):
+                if len(names) != len(sdf.columns):
                     raise ValueError(
                         "The number of names [%s] does not match the number "
                         "of columns [%d]. Try names by a Spark SQL DDL-formatted "
@@ -387,8 +388,7 @@ def read_csv(
             spark_frame=sdf,
             index_map=index_map,
             column_labels=[
-                label if label is None or isinstance(label, tuple) else (label,)
-                for label in column_labels
+                label if is_name_like_tuple(label) else (label,) for label in column_labels
             ],
             data_spark_columns=[scol_for(sdf, col) for col in column_labels.values()],
         )
@@ -1679,29 +1679,31 @@ def get_dummies(
                 )
             ]
         else:
-            if isinstance(columns, (str, tuple)):
-                if isinstance(columns, str):
-                    key = (columns,)
-                else:
-                    key = columns
+            if is_name_like_tuple(columns):
                 column_labels = [
-                    label for label in kdf._internal.column_labels if label[: len(key)] == key
+                    label
+                    for label in kdf._internal.column_labels
+                    if label[: len(columns)] == columns
                 ]
                 if len(column_labels) == 0:
-                    raise KeyError(column_labels)
+                    raise KeyError(name_like_string(columns))
                 if prefix is None:
                     prefix = [
-                        str(label[len(key) :])
-                        if len(label) > len(key) + 1
-                        else label[len(key)]
-                        if len(label) == len(key) + 1
+                        str(label[len(columns) :])
+                        if len(label) > len(columns) + 1
+                        else label[len(columns)]
+                        if len(label) == len(columns) + 1
                         else ""
                         for label in column_labels
                     ]
-            elif any(isinstance(col, str) for col in columns) and any(
-                isinstance(col, tuple) for col in columns
+            elif any(isinstance(col, tuple) for col in columns) and any(
+                not is_name_like_tuple(col) for col in columns
             ):
-                raise ValueError("Expected tuple, got str")
+                raise ValueError(
+                    "Expected tuple, got {}".format(
+                        type(set(col for col in columns if not is_name_like_tuple(col)).pop())
+                    )
+                )
             else:
                 column_labels = [
                     label
@@ -1719,7 +1721,11 @@ def get_dummies(
 
         column_labels_set = set(column_labels)
         remaining_columns = [
-            kdf[label].rename(name_like_string(label))
+            (
+                kdf[label]
+                if kdf._internal.column_labels_level == 1
+                else kdf[label].rename(name_like_string(label))
+            )
             for label in kdf._internal.column_labels
             if label not in column_labels_set
         ]
