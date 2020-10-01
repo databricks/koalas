@@ -38,7 +38,6 @@ from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.utils import (
     is_name_like_tuple,
-    is_name_like_value,
     name_like_string,
     scol_for,
     validate_arguments_and_invoke_function,
