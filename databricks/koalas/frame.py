@@ -4142,7 +4142,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             format="delta",
             partition_cols=partition_cols,
             index_col=index_col,
-            **options
+            **options,
         )
 
     def to_parquet(
@@ -7852,43 +7852,85 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _reindex_index(self, index, fill_value):
         # When axis is index, we can mimic pandas' by a right outer join.
-        assert (
-            len(self._internal.index_spark_column_names) <= 1
-        ), "Index should be single column or not set."
+        nlevels = len(self._internal.index_spark_column_names)
+        assert nlevels <= 1 or (
+            isinstance(index, ks.MultiIndex) and nlevels == index.nlevels
+        ), "MultiIndex DataFrame can only be reindexed with a similar Koalas MultiIndex."
 
-        index_column = self._internal.index_spark_column_names[0]
-
-        kser = ks.Series(list(index))
-        labels = kser._internal.spark_frame.select(kser.spark.column.alias(index_column))
+        index_columns = self._internal.index_spark_column_names
         frame = self._internal.resolved_copy.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
 
+        if isinstance(index, ks.Index):
+            if nlevels != index.nlevels:
+                return DataFrame(index._internal.with_new_columns([], column_labels=[])).reindex(
+                    columns=self.columns, fill_value=fill_value
+                )
+
+            index_map = OrderedDict(zip(index_columns, index._internal.index_names))
+            scols = index._internal.index_spark_columns
+            labels = index._internal.spark_frame.select(
+                [scol.alias(index_column) for scol, index_column in zip(scols, index_columns)]
+            )
+        else:
+            kser = ks.Series(list(index))
+            labels = kser._internal.spark_frame.select(kser.spark.column.alias(index_columns[0]))
+            index_map = self._internal._index_map
+
         if fill_value is not None:
-            frame_index_column = verify_temp_column_name(frame, "__frame_index_column__")
-            frame = frame.withColumnRenamed(index_column, frame_index_column)
+            frame_index_columns = [
+                verify_temp_column_name(frame, "__frame_index_column_{}__".format(i))
+                for i in range(nlevels)
+            ]
+            index_scols = [
+                scol_for(frame, index_col).alias(frame_index_col)
+                for index_col, frame_index_col in zip(index_columns, frame_index_columns)
+            ]
+            scols = self._internal.resolved_copy.data_spark_columns
+            frame = frame.select(index_scols + scols)
 
             temp_fill_value = verify_temp_column_name(frame, "__fill_value__")
             labels = labels.withColumn(temp_fill_value, F.lit(fill_value))
 
-            frame_index_scol = scol_for(frame, frame_index_column)
-            labels_index_scol = scol_for(labels, index_column)
+            frame_index_scols = [scol_for(frame, col) for col in frame_index_columns]
+            labels_index_scols = [scol_for(labels, col) for col in index_columns]
 
-            joined_df = frame.join(labels, on=[frame_index_scol == labels_index_scol], how="right")
+            joined_df = frame.join(
+                labels,
+                on=[fcol == lcol for fcol, lcol in zip(frame_index_scols, labels_index_scols)],
+                how="right",
+            )
+
             joined_df = joined_df.select(
-                labels_index_scol,
+                *labels_index_scols,
                 *[
                     F.when(
-                        frame_index_scol.isNull() & labels_index_scol.isNotNull(),
+                        reduce(
+                            lambda c1, c2: c1 & c2,
+                            [
+                                fcol.isNull() & lcol.isNotNull()
+                                for fcol, lcol in zip(frame_index_scols, labels_index_scols)
+                            ],
+                        ),
                         scol_for(joined_df, temp_fill_value),
                     )
                     .otherwise(scol_for(joined_df, col))
                     .alias(col)
                     for col in self._internal.data_spark_column_names
-                ]
+                ],
             )
         else:
-            joined_df = frame.join(labels, on=index_column, how="right")
+            joined_df = frame.join(labels, on=index_columns, how="right")
 
-        internal = self._internal.with_new_sdf(joined_df)
+        sdf = joined_df.drop(NATURAL_ORDER_COLUMN_NAME)
+        internal = InternalFrame(
+            sdf,
+            index_map=index_map,
+            column_labels=self._internal.column_labels,
+            data_spark_columns=[
+                scol_for(sdf, col) for col in self._internal.data_spark_column_names
+            ],
+            column_label_names=self._internal.column_label_names,
+        )
         return DataFrame(internal)
 
     def _reindex_columns(self, columns, fill_value):
