@@ -37,6 +37,8 @@ from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIn
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.utils import (
+    is_name_like_tuple,
+    is_name_like_value,
     name_like_string,
     scol_for,
     validate_arguments_and_invoke_function,
@@ -738,14 +740,14 @@ class Frame(object, metaclass=ABCMeta):
 
         if columns is None:
             column_labels = kdf._internal.column_labels
-        elif isinstance(columns, str):
-            column_labels = [(columns,)]
-        elif isinstance(columns, tuple):
-            column_labels = [columns]
         else:
-            column_labels = [
-                lb if isinstance(lb, tuple) else (lb,) for lb in columns  # type: ignore
-            ]
+            column_labels = []
+            for label in columns:
+                if not is_name_like_tuple(label):
+                    label = (label,)
+                if label not in kdf._internal.column_labels:
+                    raise KeyError(name_like_string(label))
+                column_labels.append(label)
 
         if isinstance(index_col, str):
             index_cols = [index_col]
