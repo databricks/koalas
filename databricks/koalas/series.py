@@ -2027,7 +2027,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             if level >= len(internal.index_spark_columns):
                 raise ValueError("'level' should be less than the number of indexes")
 
-            if is_name_like_tuple(index):
+            if is_name_like_tuple(index):  # type: ignore
                 index = [index]
             elif is_name_like_value(index):
                 index = [(index,)]
