@@ -387,13 +387,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf, pdf)
 
+        kdf[1] = 1.0
+        pdf[1] = 1.0
+
+        self.assert_eq(kdf, pdf)
+
         kdf = kdf.assign(a=kdf["a"] * 2)
         pdf = pdf.assign(a=pdf["a"] * 2)
 
         self.assert_eq(kdf, pdf)
 
         # multi-index columns
-        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "w")])
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "w"), ("y", "v")])
         pdf.columns = columns
         kdf.columns = columns
 
