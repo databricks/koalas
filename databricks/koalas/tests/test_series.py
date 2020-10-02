@@ -1131,37 +1131,51 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_drop(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
+
+        self.assert_eq(kser.drop(1), pser.drop(1))
+        self.assert_eq(kser.drop([1, 4]), pser.drop([1, 4]))
+
         msg = "Need to specify at least one of 'labels' or 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop()
+        self.assertRaises(KeyError, lambda: kser.drop((0, 1)))
 
         # For MultiIndex
         midx = pd.MultiIndex(
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.drop("lama"), pser.drop("lama"))
+        self.assert_eq(kser.drop(labels="weight", level=1), pser.drop(labels="weight", level=1))
+        self.assert_eq(kser.drop(("lama", "weight")), pser.drop(("lama", "weight")))
+        self.assert_eq(
+            kser.drop([("lama", "speed"), ("falcon", "weight")]),
+            pser.drop([("lama", "speed"), ("falcon", "weight")]),
+        )
+        self.assert_eq(kser.drop({"lama": "speed"}), pser.drop({"lama": "speed"}))
+
         msg = "'level' should be less than the number of indexes"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(labels="weight", level=2)
+
         msg = (
             "If the given index is a list, it "
-            "should only contains names as strings, "
-            "or a list of tuples that contain "
-            "index names as strings"
+            "should only contains names as all tuples or all non tuples "
+            "that contain index names"
         )
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(["lama", ["cow", "falcon"]])
-        msg = "'index' type should be one of str, list, tuple"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.drop({"lama": "speed"})
+
         msg = "Cannot specify both 'labels' and 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop("lama", index="cow")
+
         msg = r"'Key length \(2\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.drop(("lama", "speed", "x"))
-        self.assert_eq(kser.drop(("lama", "speed", "x"), level=1), kser)
 
     def test_pop(self):
         midx = pd.MultiIndex(
@@ -1178,15 +1192,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
-        msg = "'key' should be string or tuple that contains strings"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(0)
-        msg = (
-            "'key' should have index names as only strings "
-            "or a tuple that contain index names as only strings"
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(("lama", 0))
         msg = r"'Key length \(3\) exceeds index depth \(2\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.pop(("lama", "speed", "x"))
