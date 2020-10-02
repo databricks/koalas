@@ -64,16 +64,17 @@ from databricks.koalas.config import option_context, get_option
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFrameMethods
 from databricks.koalas.utils import (
-    validate_arguments_and_invoke_function,
     align_diff_frames,
-    validate_bool_kwarg,
     column_labels_level,
+    default_session,
+    is_name_like_value,
     name_like_string,
     same_anchor,
     scol_for,
+    validate_arguments_and_invoke_function,
     validate_axis,
+    validate_bool_kwarg,
     verify_temp_column_name,
-    default_session,
 )
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
@@ -10351,18 +10352,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if key is None:
             raise KeyError("none key")
-        if isinstance(key, Series):
+        elif isinstance(key, Series):
             return self.loc[key.astype(bool)]
-        elif isinstance(key, (str, tuple)):
-            return self.loc[:, key]
-        elif is_list_like(key):
-            return self.loc[:, list(key)]
         elif isinstance(key, slice):
             if any(type(n) == int or None for n in [key.start, key.stop]):
                 # Seems like pandas Frame always uses int as positional search when slicing
                 # with ints.
                 return self.iloc[key]
             return self.loc[key]
+        elif is_name_like_value(key):
+            return self.loc[:, key]
+        elif is_list_like(key):
+            return self.loc[:, list(key)]
         raise NotImplementedError(key)
 
     def __setitem__(self, key, value):
