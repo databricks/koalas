@@ -290,6 +290,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.fillna(method="ffill"), pser.fillna(method="ffill"))
         self.assert_eq(kser.fillna(method="bfill"), pser.fillna(method="bfill"))
 
+        # inplace fillna on non-nullable column
+        pdf = pd.DataFrame({"a": [1, 2, None], "b": [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.b
+        kser = kdf.b
+
+        self.assert_eq(kser.fillna(0), pser.fillna(0))
+        self.assert_eq(kser.fillna(np.nan).fillna(0), pser.fillna(np.nan).fillna(0))
+
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
+
     def test_dropna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)
