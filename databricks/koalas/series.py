@@ -3826,7 +3826,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         b    2
         dtype: int64
         """
-        return first_series(DataFrame(self._internal))
+        return self._kdf.copy()._kser_for(self._column_label)
 
     def mode(self, dropna=True) -> "Series":
         """
