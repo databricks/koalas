@@ -2450,7 +2450,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.sort_index(), pser.sort_index())
 
     def test_reindex(self):
-        index = ["A", "B", "C", "D", "E"]
+        index = pd.Index(["A", "B", "C", "D", "E"])
+
         pdf = pd.DataFrame({"numbers": [1.0, 2.0, 3.0, 4.0, None]}, index=index)
         kdf = ks.from_pandas(pdf)
 
@@ -2489,29 +2490,101 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
         )
 
+        # Reindexing single Index on single Index
+        pindex2 = pd.Index(["A", "C", "D", "E", "0"], name="index2")
+        kindex2 = ks.from_pandas(pindex2)
+
+        for fill_value in [None, 0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
+
+        pindex2 = pd.DataFrame({"index2": ["A", "C", "D", "E", "0"]}).set_index("index2").index
+        kindex2 = ks.from_pandas(pindex2)
+
+        for fill_value in [None, 0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
+
+        # Reindexing MultiIndex on single Index
+        pindex = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("F", "G")], names=["name1", "name2"]
+        )
+        kindex = ks.from_pandas(pindex)
+
+        self.assert_eq(
+            pdf.reindex(index=pindex, fill_value=0.0).sort_index(),
+            kdf.reindex(index=kindex, fill_value=0.0).sort_index(),
+        )
+
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["numbers", "2", "3"], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["numbers", "2", "3"], axis=2))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=["A", "B", "C"], axis=1))
         self.assertRaises(TypeError, lambda: kdf.reindex(index=123))
 
+        # Reindexing MultiIndex on MultiIndex
+        pdf = pd.DataFrame({"numbers": [1.0, 2.0, None]}, index=pindex)
+        kdf = ks.from_pandas(pdf)
+        pindex2 = pd.MultiIndex.from_tuples(
+            [("A", "G"), ("C", "D"), ("I", "J")], names=["name1", "name2"]
+        )
+        kindex2 = ks.from_pandas(pindex2)
+
+        for fill_value in [None, 0.0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
+
+        pindex2 = (
+            pd.DataFrame({"index_level_1": ["A", "C", "I"], "index_level_2": ["G", "D", "J"]})
+            .set_index(["index_level_1", "index_level_2"])
+            .index
+        )
+        kindex2 = ks.from_pandas(pindex2)
+
+        for fill_value in [None, 0.0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
+
         columns = pd.MultiIndex.from_tuples([("X", "numbers")])
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(
-            pdf.reindex(columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")]).sort_index(),
-            kdf.reindex(columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")]).sort_index(),
-        )
+        # Reindexing MultiIndex index on MultiIndex columns and MultiIndex index
+        for fill_value in [None, 0.0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
 
-        # Using float as fill_value to avoid int64/32 clash
-        self.assert_eq(
-            pdf.reindex(
-                columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")], fill_value=0.0
-            ).sort_index(),
-            kdf.reindex(
-                columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")], fill_value=0.0
-            ).sort_index(),
-        )
+        index = pd.Index(["A", "B", "C", "D", "E"])
+        pdf = pd.DataFrame(data=[1.0, 2.0, 3.0, 4.0, None], index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+        pindex2 = pd.Index(["A", "C", "D", "E", "0"], name="index2")
+        kindex2 = ks.from_pandas(pindex2)
+
+        # Reindexing single Index on MultiIndex columns and single Index
+        for fill_value in [None, 0.0]:
+            self.assert_eq(
+                pdf.reindex(index=pindex2, fill_value=fill_value).sort_index(),
+                kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
+            )
+
+        for fill_value in [None, 0.0]:
+            self.assert_eq(
+                pdf.reindex(
+                    columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")], fill_value=fill_value
+                ).sort_index(),
+                kdf.reindex(
+                    columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")], fill_value=fill_value
+                ).sort_index(),
+            )
 
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["X"]))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[("X",)]))
