@@ -8843,7 +8843,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     # for multi-index
                     col = None
                     for item in items:
-                        if not is_name_like_tuple(item):
+                        if not isinstance(item, tuple):
                             raise TypeError("Unsupported type {}".format(type(item)))
                         if not item:
                             raise ValueError("The item should not be empty.")
