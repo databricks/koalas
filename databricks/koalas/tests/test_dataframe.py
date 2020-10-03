@@ -587,7 +587,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.agg(["sum", "min"]).sort_index(), pdf.agg(["sum", "min"]).sort_index())
+        self.assert_eq(
+            kdf.agg(["sum", "min"])[["A", "B", "C"]].sort_index(),  # TODO?: fix column order
+            pdf.agg(["sum", "min"])[["A", "B", "C"]].sort_index(),
+        )
         self.assert_eq(
             kdf.agg({"A": ["sum", "min"], "B": ["min", "max"]})[["A", "B"]].sort_index(),
             pdf.agg({"A": ["sum", "min"], "B": ["min", "max"]})[["A", "B"]].sort_index(),
@@ -600,7 +603,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(kdf.agg(["sum", "min"]).sort_index(), pdf.agg(["sum", "min"]).sort_index())
+        self.assert_eq(
+            kdf.agg(["sum", "min"])[[("X", "A"), ("X", "B"), ("Y", "C")]].sort_index(),
+            pdf.agg(["sum", "min"])[[("X", "A"), ("X", "B"), ("Y", "C")]].sort_index(),
+        )
         self.assert_eq(
             kdf.agg({("X", "A"): ["sum", "min"], ("X", "B"): ["min", "max"]})[
                 [("X", "A"), ("X", "B")]
@@ -618,7 +624,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.agg(["sum", "min"]).sort_index(), pdf.agg(["sum", "min"]).sort_index())
+        self.assert_eq(
+            kdf.agg(["sum", "min"])[[10, 20, 30]].sort_index(),
+            pdf.agg(["sum", "min"])[[10, 20, 30]].sort_index(),
+        )
         self.assert_eq(
             kdf.agg({10: ["sum", "min"], 20: ["min", "max"]})[[10, 20]].sort_index(),
             pdf.agg({10: ["sum", "min"], 20: ["min", "max"]})[[10, 20]].sort_index(),
@@ -628,7 +637,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
 
-        self.assert_eq(kdf.agg(["sum", "min"]).sort_index(), pdf.agg(["sum", "min"]).sort_index())
+        self.assert_eq(
+            kdf.agg(["sum", "min"])[[("X", 10), ("X", 20), ("Y", 30)]].sort_index(),
+            pdf.agg(["sum", "min"])[[("X", 10), ("X", 20), ("Y", 30)]].sort_index(),
+        )
         self.assert_eq(
             kdf.agg({("X", 10): ["sum", "min"], ("X", 20): ["min", "max"]})[
                 [("X", 10), ("X", 20)]
@@ -2814,7 +2826,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf.melt(value_vars="Z"))
 
         # multi-index columns
-        columns = pd.MultiIndex.from_tuples([(10.0, "A"), (10.0, "B"), (20.0, "C")])
+        if LooseVersion("0.24") <= LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+            # pandas >=0.24,<1.0 doesn't support mixed int/str columns in melt.
+            # see: https://github.com/pandas-dev/pandas/pull/29792
+            TEN = "10"
+            TWELVE = "20"
+        else:
+            TEN = 10.0
+            TWELVE = 20.0
+
+        columns = pd.MultiIndex.from_tuples([(TEN, "A"), (TEN, "B"), (TWELVE, "C")])
         pdf.columns = columns
         kdf.columns = columns
 
@@ -2823,33 +2844,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.melt().sort_values(["variable_0", "variable_1", "value"]),
         )
         self.assert_eq(
-            kdf.melt(id_vars=[(10.0, "A")])
+            kdf.melt(id_vars=[(TEN, "A")])
             .sort_values(["variable_0", "variable_1", "value"])
             .reset_index(drop=True),
-            pdf.melt(id_vars=[(10.0, "A")])
+            pdf.melt(id_vars=[(TEN, "A")])
             .sort_values(["variable_0", "variable_1", "value"])
             .rename(columns=name_like_string),
         )
         self.assert_eq(
-            kdf.melt(id_vars=[(10.0, "A")], value_vars=[(20.0, "C")])
+            kdf.melt(id_vars=[(TEN, "A")], value_vars=[(TWELVE, "C")])
             .sort_values(["variable_0", "variable_1", "value"])
             .reset_index(drop=True),
-            pdf.melt(id_vars=[(10.0, "A")], value_vars=[(20.0, "C")])
+            pdf.melt(id_vars=[(TEN, "A")], value_vars=[(TWELVE, "C")])
             .sort_values(["variable_0", "variable_1", "value"])
             .rename(columns=name_like_string),
         )
         self.assert_eq(
             kdf.melt(
-                id_vars=[(10.0, "A")],
-                value_vars=[(10.0, "B")],
+                id_vars=[(TEN, "A")],
+                value_vars=[(TEN, "B")],
                 var_name=["myV1", "myV2"],
                 value_name="myValname",
             )
             .sort_values(["myV1", "myV2", "myValname"])
             .reset_index(drop=True),
             pdf.melt(
-                id_vars=[(10.0, "A")],
-                value_vars=[(10.0, "B")],
+                id_vars=[(TEN, "A")],
+                value_vars=[(TEN, "B")],
                 var_name=["myV1", "myV2"],
                 value_name="myValname",
             )
@@ -2866,10 +2887,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.melt().sort_values(["v0", "v1", "value"]),
         )
 
-        self.assertRaises(ValueError, lambda: kdf.melt(id_vars=(10.0, "A")))
-        self.assertRaises(ValueError, lambda: kdf.melt(value_vars=(10.0, "A")))
-        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[(20.0, "A")]))
-        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[(20.0, "A")]))
+        self.assertRaises(ValueError, lambda: kdf.melt(id_vars=(TEN, "A")))
+        self.assertRaises(ValueError, lambda: kdf.melt(value_vars=(TEN, "A")))
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[TEN]))
+        self.assertRaises(KeyError, lambda: kdf.melt(id_vars=[(TWELVE, "A")]))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[TWELVE]))
+        self.assertRaises(KeyError, lambda: kdf.melt(value_vars=[(TWELVE, "A")]))
 
         # non-string names
         pdf.columns = [10.0, 20.0, 30.0]
