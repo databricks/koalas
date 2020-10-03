@@ -539,9 +539,7 @@ def name_like_string(name: Optional[Union[str, Tuple]]) -> str:
     return ("(%s)" % ", ".join(name)) if len(name) > 1 else name[0]
 
 
-def is_name_like_tuple(
-    value: Optional[Tuple], allow_none: bool = True, check_type: bool = False
-) -> bool:
+def is_name_like_tuple(value: Any, allow_none: bool = True, check_type: bool = False) -> bool:
     """
     Check the given tuple is be able to be used as a name.
 

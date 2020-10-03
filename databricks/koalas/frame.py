@@ -67,6 +67,7 @@ from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
     default_session,
+    is_name_like_tuple,
     is_name_like_value,
     name_like_string,
     same_anchor,
@@ -1133,7 +1134,7 @@ class DataFrame(Frame, Generic[T]):
         return self._apply_series_op(lambda kser: kser.apply(func))
 
     # TODO: not all arguments are implemented comparing to pandas' for now.
-    def aggregate(self, func: Union[List[str], Dict[str, List[str]]]):
+    def aggregate(self, func: Union[List[str], Dict[Any, List[str]]]):
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -1218,13 +1219,16 @@ class DataFrame(Frame, Generic[T]):
                 )
 
         if not isinstance(func, dict) or not all(
-            isinstance(value, str)
-            or (isinstance(value, list) and all(isinstance(v, str) for v in value))
-            for value in func.values()
+            is_name_like_value(key)
+            and (
+                isinstance(value, str)
+                or (isinstance(value, list) and all(isinstance(v, str) for v in value))
+            )
+            for key, value in func.items()
         ):
             raise ValueError(
-                "aggs must be a dict mapping from column name (string) to aggregate "
-                "functions (list of strings)."
+                "aggs must be a dict mapping from column name to aggregate "
+                "functions (string or list of strings)."
             )
 
         with option_context("compute.default_index_type", "distributed"):
@@ -2759,18 +2763,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import first_series
 
-        if not isinstance(key, (str, tuple)):
-            raise ValueError("'key' should be string or tuple that contains strings")
-        if not all(isinstance(index, str) for index in key):
-            raise ValueError(
-                "'key' should have index names as only strings "
-                "or a tuple that contain index names as only strings"
-            )
+        if not is_name_like_value(key):
+            raise ValueError("'key' should be a scalar value or tuple that contains scalar values")
+
+        if level is not None and is_name_like_tuple(key):
+            raise KeyError(key)
 
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        if isinstance(key, str):
+
+        if not is_name_like_tuple(key):
             key = (key,)
         if len(key) > len(self._internal.index_spark_columns):
             raise KeyError(
@@ -3195,15 +3198,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2014  10    31
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        if isinstance(keys, tuple) or not is_list_like(keys):
+        if is_name_like_tuple(keys):
             keys = [keys]
+        elif is_name_like_value(keys):
+            keys = [(keys,)]
         else:
-            keys = list(keys)
-        columns = set(self.columns)
+            keys = [key if is_name_like_tuple(key) else (key,) for key in keys]
+        columns = set(self._internal.column_labels)
         for key in keys:
             if key not in columns:
-                raise KeyError(key)
-        keys = [key if isinstance(key, tuple) else (key,) for key in keys]
+                raise KeyError(name_like_string(key))
 
         if drop:
             column_labels = [label for label in self._internal.column_labels if label not in keys]
@@ -3393,9 +3397,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ]
             index_map = []
         else:
-            if isinstance(level, (int, str)):
+            if is_list_like(level):
+                level = list(level)
+            if isinstance(level, int) or is_name_like_tuple(level):
                 level = [level]
-            level = list(level)
+            elif is_name_like_value(level):
+                level = [(level,)]
+            else:
+                level = [
+                    lvl if isinstance(lvl, int) or is_name_like_tuple(lvl) else (lvl,)
+                    for lvl in level
+                ]
 
             if all(isinstance(l, int) for l in level):
                 for lev in level:
@@ -3406,11 +3418,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                             )
                         )
                 idx = level
-            elif all(isinstance(lev, str) for lev in level):
+            elif all(is_name_like_tuple(lev) for lev in level):
                 idx = []
                 for l in level:
                     try:
-                        i = self._internal.index_names.index((l,))
+                        i = self._internal.index_names.index(l)
                         idx.append(i)
                     except ValueError:
                         if multi_index:
@@ -3832,7 +3844,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for k, v in decimals._to_internal_pandas().items()
             }
         elif isinstance(decimals, dict):
-            decimals = {k if isinstance(k, tuple) else (k,): v for k, v in decimals.items()}
+            decimals = {k if is_name_like_tuple(k) else (k,): v for k, v in decimals.items()}
         elif isinstance(decimals, int):
             decimals = {k: decimals for k in self._internal.column_labels}
         else:
@@ -3853,15 +3865,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if subset is None:
             subset = self._internal.column_labels
         else:
-            if isinstance(subset, str):
-                subset = [(subset,)]
-            elif isinstance(subset, tuple):
+            if is_name_like_tuple(subset):
                 subset = [subset]
+            elif is_name_like_value(subset):
+                subset = [(subset,)]
             else:
-                subset = [sub if isinstance(sub, tuple) else (sub,) for sub in subset]
+                subset = [sub if is_name_like_tuple(sub) else (sub,) for sub in subset]
             diff = set(subset).difference(set(self._internal.column_labels))
             if len(diff) > 0:
-                raise KeyError(", ".join([str(d) if len(d) > 1 else d[0] for d in diff]))
+                raise KeyError(", ".join([name_like_string(d) for d in diff]))
         group_cols = [self._internal.spark_column_name_for(label) for label in subset]
 
         sdf = self._internal.resolved_copy.spark_frame
@@ -4343,7 +4355,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kwargs[k] = v(self)
 
         pairs = {
-            (k if isinstance(k, tuple) else (k,)): (
+            (k if is_name_like_tuple(k) else (k,)): (
                 v.spark.column
                 if isinstance(v, IndexOpsMixin) and not isinstance(v, MultiIndex)
                 else v
@@ -4844,7 +4856,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for v in value.values():
                     if not isinstance(v, (float, int, str, bool)):
                         raise TypeError("Unsupported type %s" % type(v))
-                value = {k if isinstance(k, tuple) else (k,): v for k, v in value.items()}
+                value = {k if is_name_like_tuple(k) else (k,): v for k, v in value.items()}
 
                 def op(kser):
                     label = kser._column_label
@@ -5191,21 +5203,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         large  5.5  2.000000  15   9
         small  5.5  2.333333  17  13
         """
-        if not isinstance(columns, (str, tuple)):
-            raise ValueError("columns should be string or tuple.")
+        if not is_name_like_value(columns):
+            raise ValueError("columns should be one column name.")
 
-        if not isinstance(values, (str, tuple)) and not isinstance(values, list):
-            raise ValueError("values should be string or list of one column.")
+        if not is_name_like_value(values) and not (
+            isinstance(values, list) and all(is_name_like_value(v) for v in values)
+        ):
+            raise ValueError("values should be one column or list of columns.")
 
         if not isinstance(aggfunc, str) and (
             not isinstance(aggfunc, dict)
             or not all(
-                isinstance(key, (str, tuple)) and isinstance(value, str)
-                for key, value in aggfunc.items()
+                is_name_like_value(key) and isinstance(value, str) for key, value in aggfunc.items()
             )
         ):
             raise ValueError(
-                "aggfunc must be a dict mapping from column name (string or tuple) "
+                "aggfunc must be a dict mapping from column name "
                 "to aggregate functions (string)."
             )
 
@@ -5217,18 +5230,18 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("values can't be a list without index.")
 
         if columns not in self.columns:
-            raise ValueError("Wrong columns {}.".format(columns))
-        if isinstance(columns, str):
+            raise ValueError("Wrong columns {}.".format(name_like_string(columns)))
+        if not is_name_like_tuple(columns):
             columns = (columns,)
 
         if isinstance(values, list):
-            values = [col if isinstance(col, tuple) else (col,) for col in values]
+            values = [col if is_name_like_tuple(col) else (col,) for col in values]
             if not all(
                 isinstance(self._internal.spark_type_for(col), NumericType) for col in values
             ):
                 raise TypeError("values should be a numeric type.")
         else:
-            values = values if isinstance(values, tuple) else (values,)
+            values = values if is_name_like_tuple(values) else (values,)
             if not isinstance(self._internal.spark_type_for(values), NumericType):
                 raise TypeError("values should be a numeric type.")
 
@@ -5252,7 +5265,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ]
         elif isinstance(aggfunc, dict):
             aggfunc = {
-                key if isinstance(key, tuple) else (key,): value for key, value in aggfunc.items()
+                key if is_name_like_tuple(key) else (key,): value for key, value in aggfunc.items()
             }
             agg_cols = [
                 F.expr(
@@ -5274,7 +5287,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
 
         elif isinstance(index, list):
-            index = [label if isinstance(label, tuple) else (label,) for label in index]
+            index = [label if is_name_like_tuple(label) else (label,) for label in index]
             sdf = (
                 sdf.groupBy([self._internal.spark_column_name_for(label) for label in index])
                 .pivot(pivot_col=self._internal.spark_column_name_for(columns))
@@ -5525,18 +5538,21 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(columns, pd.MultiIndex):
             column_labels = columns.tolist()
         else:
-            column_labels = [col if isinstance(col, tuple) else (col,) for col in columns]
+            column_labels = [
+                col if is_name_like_tuple(col, allow_none=False) else (col,) for col in columns
+            ]
 
         if len(self._internal.column_labels) != len(column_labels):
             raise ValueError(
-                "Length mismatch: Expected axis has %d elements, new values have %d elements"
-                % (len(self._internal.column_labels), len(column_labels))
+                "Length mismatch: Expected axis has {} elements, "
+                "new values have {} elements".format(
+                    len(self._internal.column_labels), len(column_labels)
+                )
             )
 
         if isinstance(columns, pd.Index):
             column_label_names = [
-                name if name is None or isinstance(name, tuple) else (name,)
-                for name in columns.names
+                name if is_name_like_tuple(name) else (name,) for name in columns.names
             ]
         else:
             column_label_names = None
@@ -5890,11 +5906,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         9 10    11  12
         """
         axis = validate_axis(axis)
-        kdf = self.copy()
         if axis == 0:
-            if not isinstance(level, (tuple, list)):
-                if not isinstance(level, (str, int)):
-                    raise KeyError("Level {} not found".format(level))
+            if not isinstance(level, (tuple, list)):  # huh?
                 level = [level]
 
             spark_frame = self._internal.spark_frame
@@ -5903,11 +5916,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             nlevels = self.index.nlevels
             int_levels = list()
             for n in level:
-                if isinstance(n, (str, tuple)):
-                    if n not in index_names:
-                        raise KeyError("Level {} not found".format(n))
-                    n = index_names.index(n)
-                elif isinstance(n, int):
+                if isinstance(n, int):
                     if n < 0:
                         n = n + nlevels
                         if n < 0:
@@ -5921,6 +5930,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                                 nlevels, (n + 1)
                             )
                         )
+                else:
+                    if n not in index_names:
+                        raise KeyError("Level {} not found".format(n))
+                    n = index_names.index(n)
                 int_levels.append(n)
 
             if len(int_levels) >= nlevels:
@@ -5934,36 +5947,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 spark_frame = spark_frame.drop(index_spark_column)
                 index_map.pop(index_spark_column)
             internal = self._internal.copy(spark_frame=spark_frame, index_map=index_map)
-            kdf = DataFrame(internal)
-        elif axis == 1:
-            names = self.columns.names
-            nlevels = self.columns.nlevels
-            if not isinstance(level, (tuple, list)):
-                level = [level]
-
-            for n in level:
-                if isinstance(n, int) and (n > nlevels - 1):
-                    raise IndexError(
-                        "Too many levels: Column has only {} levels, not {}".format(nlevels, n + 1)
-                    )
-                if isinstance(n, (str, tuple)) and (n not in names):
-                    raise KeyError("Level {} not found".format(n))
-
-            if len(level) >= nlevels:
-                raise ValueError(
-                    "Cannot remove {} levels from an index with {} "
-                    "levels: at least one level must be "
-                    "left.".format(len(level), nlevels)
-                )
+            return DataFrame(internal)
+        else:
+            kdf = self.copy()
             kdf.columns = kdf.columns.droplevel(level)
-        return kdf
+            return kdf
 
-    def drop(
-        self,
-        labels=None,
-        axis=1,
-        columns: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None,
-    ):
+    def drop(self, labels=None, axis=1, columns: Union[Any, Tuple, List[Any], List[Tuple]] = None):
         """
         Drop specified labels from columns.
 
@@ -6042,14 +6032,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return self.drop(columns=labels)
             raise NotImplementedError("Drop currently only works for axis=1")
         elif columns is not None:
-            if isinstance(columns, str):
-                columns = [(columns,)]  # type: ignore
-            elif isinstance(columns, tuple):
+            if is_name_like_tuple(columns):
                 columns = [columns]
+            elif is_name_like_value(columns):
+                columns = [(columns,)]
             else:
-                columns = [  # type: ignore
-                    col if isinstance(col, tuple) else (col,) for col in columns  # type: ignore
-                ]
+                columns = [col if is_name_like_tuple(col) else (col,) for col in columns]
             drop_column_labels = set(
                 label
                 for label in self._internal.column_labels
@@ -6106,7 +6094,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def sort_values(
         self,
-        by: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]],
+        by: Union[Any, List[Any], Tuple, List[Tuple]],
         ascending: Union[bool, List[bool]] = True,
         inplace: bool = False,
         na_position: str = "last",
@@ -6184,10 +6172,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         3  None     8     4
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        if isinstance(by, (str, tuple)):
-            by = [by]  # type: ignore
+        if is_name_like_value(by):
+            by = [by]
         else:
-            by = [b if isinstance(b, tuple) else (b,) for b in by]  # type: ignore
+            assert is_list_like(by), type(by)
 
         new_by = []
         for colname in by:
@@ -6541,9 +6529,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         self,
         right: "DataFrame",
         how: str = "inner",
-        on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
-        left_on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
-        right_on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
+        on: Optional[Union[Any, List[Any], Tuple, List[Tuple]]] = None,
+        left_on: Optional[Union[Any, List[Any], Tuple, List[Tuple]]] = None,
+        right_on: Optional[Union[Any, List[Any], Tuple, List[Tuple]]] = None,
         left_index: bool = False,
         right_index: bool = False,
         suffixes: Tuple[str, str] = ("_x", "_y"),
@@ -6665,17 +6653,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             instead of NaN.
         """
 
-        def to_list(
-            os: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]]
-        ) -> List[Tuple[str, ...]]:
+        def to_list(os: Optional[Union[Any, List[Any], Tuple, List[Tuple]]]) -> List[Tuple]:
             if os is None:
                 return []
-            elif isinstance(os, tuple):
-                return [os]
-            elif isinstance(os, str):
+            elif is_name_like_tuple(os):
+                return [os]  # type: ignore
+            elif is_name_like_value(os):
                 return [(os,)]
             else:
-                return [o if isinstance(o, tuple) else (o,) for o in os]  # type: ignore
+                return [o if is_name_like_tuple(o) else (o,) for o in os]  # type: ignore
 
         if isinstance(right, ks.Series):
             right = right.to_frame()
@@ -6785,7 +6771,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     col = col + left_suffix
                     scol = scol.alias(col)
-                    label = tuple([label[0] + left_suffix] + list(label[1:]))
+                    label = tuple([str(label[0]) + left_suffix] + list(label[1:]))
             exprs.append(scol)
             data_columns.append(col)
             column_labels.append(label)
@@ -6801,7 +6787,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     col = col + right_suffix
                     scol = scol.alias(col)
-                    label = tuple([label[0] + right_suffix] + list(label[1:]))
+                    label = tuple([str(label[0]) + right_suffix] + list(label[1:]))
             exprs.append(scol)
             data_columns.append(col)
             column_labels.append(label)
@@ -6848,7 +6834,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     def join(
         self,
         right: "DataFrame",
-        on: Optional[Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]]] = None,
+        on: Optional[Union[Any, List[Any], Tuple, List[Tuple]]] = None,
         how: str = "left",
         lsuffix: str = "",
         rsuffix: str = "",
@@ -8054,17 +8040,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if id_vars is None:
             id_vars = []
         else:
-            if isinstance(id_vars, str):
-                id_vars = [(id_vars,)]
-            elif isinstance(id_vars, tuple):
+            if isinstance(id_vars, tuple):
                 if self._internal.column_labels_level == 1:
-                    id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
+                    id_vars = [idv if is_name_like_tuple(idv) else (idv,) for idv in id_vars]
                 else:
                     raise ValueError(
                         "id_vars must be a list of tuples" " when columns are a MultiIndex"
                     )
+            elif is_name_like_value(id_vars):
+                id_vars = [(id_vars,)]
             else:
-                id_vars = [idv if isinstance(idv, tuple) else (idv,) for idv in id_vars]
+                id_vars = [idv if is_name_like_tuple(idv) else (idv,) for idv in id_vars]
 
             non_existence_col = [idv for idv in id_vars if idv not in column_labels]
             if len(non_existence_col) != 0:
@@ -8085,19 +8071,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if value_vars is None:
             value_vars = []
         else:
-            if isinstance(value_vars, str):
-                value_vars = [(value_vars,)]
-            elif isinstance(value_vars, tuple):
+            if isinstance(value_vars, tuple):
                 if self._internal.column_labels_level == 1:
                     value_vars = [
-                        valv if isinstance(valv, tuple) else (valv,) for valv in value_vars
+                        valv if is_name_like_tuple(valv) else (valv,) for valv in value_vars
                     ]
                 else:
                     raise ValueError(
                         "value_vars must be a list of tuples" " when columns are a MultiIndex"
                     )
+            elif is_name_like_value(value_vars):
+                value_vars = [(value_vars,)]
             else:
-                value_vars = [valv if isinstance(valv, tuple) else (valv,) for valv in value_vars]
+                value_vars = [valv if is_name_like_tuple(valv) else (valv,) for valv in value_vars]
 
             non_existence_col = [valv for valv in value_vars if valv not in column_labels]
             if len(non_existence_col) != 0:
@@ -8131,9 +8117,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 var_name = [
                     name_like_string(name) if name is not None else "variable_{}".format(i)
-                    for name, i in zip(
-                        self._internal.column_label_names, range(self._internal.column_labels_level)
-                    )
+                    for i, name in enumerate(self._internal.column_label_names)
                 ]
         elif isinstance(var_name, str):
             var_name = [var_name]
@@ -8158,15 +8142,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.spark_column_for(label).alias(name_like_string(label))
                 for label in id_vars
             ]
-            + [
-                F.col("pairs.`%s`" % name)
-                for name in var_name[: self._internal.column_labels_level]
-            ]
+            + [F.col("pairs.`%s`" % name) for name in var_name]
             + [F.col("pairs.`%s`" % value_name)]
         )
         exploded_df = sdf.withColumn("pairs", pairs).select(columns)
 
-        return DataFrame(exploded_df)
+        return DataFrame(
+            InternalFrame(
+                spark_frame=exploded_df,
+                index_map=None,
+                column_labels=(
+                    [label if len(label) == 1 else (name_like_string(label),) for label in id_vars]
+                    + [(name,) for name in var_name]
+                    + [(value_name,)]
+                ),
+            )
+        )
 
     def stack(self):
         """
@@ -8852,7 +8843,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     # for multi-index
                     col = None
                     for item in items:
-                        if not isinstance(item, (tuple)):
+                        if not is_name_like_tuple(item):
                             raise TypeError("Unsupported type {}".format(type(item)))
                         if not item:
                             raise ValueError("The item should not be empty.")
@@ -9949,7 +9940,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import Series
 
-        if not isinstance(column, (tuple, str)):
+        if not is_name_like_value(column):
             raise ValueError("column must be a scalar")
 
         kdf = DataFrame(self._internal.resolved_copy)
@@ -10421,12 +10412,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         For example, the key "abc" can be ("abc", "", "") if the current Frame has
         a multi-index for its column
         """
-        if isinstance(labels, str):
-            labels = [(labels,)]
-        elif isinstance(labels, tuple):
+        if is_name_like_tuple(labels):
             labels = [labels]
+        elif is_name_like_value(labels):
+            labels = [(labels,)]
         else:
-            labels = [k if isinstance(k, tuple) else (k,) for k in labels]
+            labels = [k if is_name_like_tuple(k) else (k,) for k in labels]
 
         if any(len(label) > level for label in labels):
             raise KeyError(

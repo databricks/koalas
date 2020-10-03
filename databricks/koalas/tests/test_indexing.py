@@ -102,6 +102,37 @@ class BasicIndexingTest(ComparisonTestBase):
         yield s
         yield df1
 
+        # multi-index columns
+        df4 = df.copy()
+        df4.columns = pd.MultiIndex.from_tuples(
+            [("cal", "month"), ("cal", "year"), ("num", "sale")]
+        )
+        df5 = df4.set_index(("cal", "month"))
+        yield df5
+        yield df4.set_index([("cal", "month"), ("num", "sale")])
+
+        self.assertRaises(KeyError, lambda: df5.reset_index(level=("cal", "month")))
+
+        yield df5.reset_index(level=[("cal", "month")])
+
+        # non-string names
+        df6 = df.copy()
+        df6.columns = [10.0, 20.0, 30.0]
+        df7 = df6.set_index(10.0)
+        yield df7
+        yield df6.set_index([10.0, 30.0])
+
+        yield df7.reset_index(level=10.0)
+        yield df7.reset_index(level=[10.0])
+
+        df8 = df.copy()
+        df8.columns = pd.MultiIndex.from_tuples([(10, "month"), (10, "year"), (20, "sale")])
+        df9 = df8.set_index((10, "month"))
+        yield df9
+        yield df8.set_index([(10, "month"), (20, "sale")])
+
+        yield df9.reset_index(level=[(10, "month")])
+
     def test_from_pandas_with_explicit_index(self):
         pdf = self.pdf
 
