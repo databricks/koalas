@@ -231,7 +231,7 @@ class GroupBy(object, metaclass=ABCMeta):
         if self._dropna:
             kdf = DataFrame(
                 kdf._internal.with_new_sdf(
-                    kdf._internal.spark_frame.na.drop(subset=kdf._internal.index_spark_column_names)
+                    kdf._internal.spark_frame.dropna(subset=kdf._internal.index_spark_column_names)
                 )
             )
 
@@ -2286,7 +2286,7 @@ class GroupBy(object, metaclass=ABCMeta):
         if self._dropna:
             kdf = DataFrame(
                 kdf._internal.with_new_sdf(
-                    kdf._internal.spark_frame.na.drop(subset=kdf._internal.index_spark_column_names)
+                    kdf._internal.spark_frame.dropna(subset=kdf._internal.index_spark_column_names)
                 )
             )
 
