@@ -1121,6 +1121,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype(str).tolist(), pser.astype(str).tolist())
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
         pser = pd.Series([True, False, None], name="x")
