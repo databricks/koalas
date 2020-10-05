@@ -168,7 +168,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
             pdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
         )
-
+        # TODO: should work?
+        # self.assert_eq(
+        #     kdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
+        #     pdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
+        # )
         self.assert_eq(
             kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(),
             pdf[("x", "a")].groupby(pdf[("x", "b")]).sum().sort_index(),
