@@ -51,6 +51,7 @@ Modifying and computations
    Index.delete
    Index.equals
    Index.identical
+   Index.insert
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -217,6 +218,7 @@ MultiIndex Modifying and computations
 
    MultiIndex.equals
    MultiIndex.identical
+   MultiIndex.insert
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.delete
