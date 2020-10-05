@@ -198,7 +198,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
 
         kser = ks.from_pandas(pser)
-        np.testing.assert_equal(kser.to_numpy(), pser.values)
+        self.assert_eq(kser.to_numpy(), pser.values)
 
     def test_isin(self):
         pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
@@ -289,6 +289,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.fillna(0), pser.fillna(0))
         self.assert_eq(kser.fillna(method="ffill"), pser.fillna(method="ffill"))
         self.assert_eq(kser.fillna(method="bfill"), pser.fillna(method="bfill"))
+
+        # inplace fillna on non-nullable column
+        pdf = pd.DataFrame({"a": [1, 2, None], "b": [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.b
+        kser = kdf.b
+
+        self.assert_eq(kser.fillna(0), pser.fillna(0))
+        self.assert_eq(kser.fillna(np.nan).fillna(0), pser.fillna(np.nan).fillna(0))
+
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
 
     def test_dropna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
@@ -1362,7 +1377,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_axes(self):
         pser = pd.Series([90, 91, 85], index=[2, 4, 1])
         kser = ks.from_pandas(pser)
-        self.assert_list_eq(kser.axes, pser.axes)
+        self.assert_eq(kser.axes, pser.axes)
 
         # for MultiIndex
         midx = pd.MultiIndex(
@@ -1371,7 +1386,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
         kser = ks.from_pandas(pser)
-        self.assert_list_eq(kser.axes, pser.axes)
+        self.assert_eq(kser.axes, pser.axes)
 
     def test_combine_first(self):
         pser1 = pd.Series({"falcon": 330.0, "eagle": 160.0})

@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from distutils.version import LooseVersion
 
 import pandas as pd
+from pandas.api.types import is_list_like
 import pyspark
 
 from databricks import koalas as ks
@@ -252,32 +253,29 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
         :param almost: if this is enabled, the comparison is delegated to `unittest`'s
                        `assertAlmostEqual`. See its documentation for more details.
         """
-        lpdf = self._to_pandas(left)
-        rpdf = self._to_pandas(right)
-        if isinstance(lpdf, (pd.DataFrame, pd.Series, pd.Index)):
+        lobj = self._to_pandas(left)
+        robj = self._to_pandas(right)
+        if isinstance(lobj, (pd.DataFrame, pd.Series, pd.Index)):
             if almost:
-                self.assertPandasAlmostEqual(lpdf, rpdf)
+                self.assertPandasAlmostEqual(lobj, robj)
             else:
-                self.assertPandasEqual(lpdf, rpdf, check_exact=check_exact)
+                self.assertPandasEqual(lobj, robj, check_exact=check_exact)
+        elif is_list_like(lobj) and is_list_like(robj):
+            self.assertTrue(len(left) == len(right))
+            for litem, ritem in zip(left, right):
+                self.assert_eq(litem, ritem, check_exact=check_exact, almost=almost)
         else:
             if almost:
-                self.assertAlmostEqual(lpdf, rpdf)
+                self.assertAlmostEqual(lobj, robj)
             else:
-                self.assertEqual(lpdf, rpdf)
-
-    def assert_array_eq(self, left, right):
-        self.assertTrue((left == right).all())
-
-    def assert_list_eq(self, left, right):
-        for litem, ritem in zip(left, right):
-            self.assert_eq(litem, ritem)
+                self.assertEqual(lobj, robj)
 
     @staticmethod
-    def _to_pandas(df):
-        if isinstance(df, (DataFrame, Series, Index)):
-            return df.toPandas()
+    def _to_pandas(obj):
+        if isinstance(obj, (DataFrame, Series, Index)):
+            return obj.to_pandas()
         else:
-            return df
+            return obj
 
 
 class TestUtils(object):
@@ -302,7 +300,7 @@ class ComparisonTestBase(ReusedSQLTestCase):
 
     @property
     def pdf(self):
-        return self.kdf.toPandas()
+        return self.kdf.to_pandas()
 
 
 def compare_both(f=None, almost=True):
@@ -320,7 +318,7 @@ def compare_both(f=None, almost=True):
             compare = self.assertPandasEqual
 
         for result_pandas, result_spark in zip(f(self, self.pdf), f(self, self.kdf)):
-            compare(result_pandas, result_spark.toPandas())
+            compare(result_pandas, result_spark.to_pandas())
 
     return wrapped
 

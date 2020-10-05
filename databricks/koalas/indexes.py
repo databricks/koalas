@@ -110,7 +110,6 @@ class Index(IndexOpsMixin):
 
     def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
         assert data is not None
-        instance = None
 
         if isinstance(data, DataFrame):
             assert dtype is None
@@ -118,17 +117,13 @@ class Index(IndexOpsMixin):
         else:
             if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
                 return MultiIndex.from_tuples(data, names=names)
-            if isinstance(instance, MultiIndex):
-                index = pd.Index(data=data, dtype=dtype, name=name, names=names)
-            else:
-                index = pd.Index(data=data, dtype=dtype, name=name)
+
+            index = pd.Index(data=data, dtype=dtype, name=name)
             data = DataFrame(index=index)
 
-        if instance is None:
-            instance = object.__new__(cls)
+        instance = object.__new__(cls)
 
         instance._anchor = data
-
         return instance
 
     @property

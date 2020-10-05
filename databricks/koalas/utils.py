@@ -21,7 +21,7 @@ import functools
 from collections import OrderedDict
 from distutils.version import LooseVersion
 import os
-from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import pyarrow
 import pyspark
@@ -33,6 +33,7 @@ from pandas.api.types import is_list_like
 
 # For running doctests and reference resolution in PyCharm.
 from databricks import koalas as ks  # noqa: F401
+from databricks.koalas.typedef.typehints import as_spark_type
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
@@ -536,6 +537,96 @@ def name_like_string(name: Optional[Union[str, Tuple]]) -> str:
     else:
         name = (str(name),)
     return ("(%s)" % ", ".join(name)) if len(name) > 1 else name[0]
+
+
+def is_name_like_tuple(
+    value: Optional[Tuple], allow_none: bool = True, check_type: bool = False
+) -> bool:
+    """
+    Check the given tuple is be able to be used as a name.
+
+    Examples
+    --------
+    >>> is_name_like_tuple(('abc',))
+    True
+    >>> is_name_like_tuple((1,))
+    True
+    >>> is_name_like_tuple(('abc', 1, None))
+    True
+    >>> is_name_like_tuple(('abc', 1, None), check_type=True)
+    True
+    >>> is_name_like_tuple((1.0j,))
+    True
+    >>> is_name_like_tuple(tuple())
+    False
+    >>> is_name_like_tuple((list('abc'),))
+    False
+    >>> is_name_like_tuple(('abc', 1, None), allow_none=False)
+    False
+    >>> is_name_like_tuple((1.0j,), check_type=True)
+    False
+    """
+    if value is None:
+        return allow_none
+    elif not isinstance(value, tuple):
+        return False
+    elif len(value) == 0:
+        return False
+    elif not allow_none and any(v is None for v in value):
+        return False
+    elif any(is_list_like(v) or isinstance(v, slice) for v in value):
+        return False
+    elif check_type:
+        try:
+            return all(v is None or as_spark_type(type(v)) is not None for v in value)
+        except TypeError:
+            return False
+    else:
+        return True
+
+
+def is_name_like_value(
+    value: Any, allow_none: bool = True, allow_tuple: bool = True, check_type: bool = False
+) -> bool:
+    """
+    Check the given value is like a name.
+
+    Examples
+    --------
+    >>> is_name_like_value('abc')
+    True
+    >>> is_name_like_value(1)
+    True
+    >>> is_name_like_value(None)
+    True
+    >>> is_name_like_value(('abc',))
+    True
+    >>> is_name_like_value(1.0j)
+    True
+    >>> is_name_like_value(list('abc'))
+    False
+    >>> is_name_like_value(None, allow_none=False)
+    False
+    >>> is_name_like_value(('abc',), allow_tuple=False)
+    False
+    >>> is_name_like_value(1.0j, check_type=True)
+    False
+    """
+    if value is None:
+        return allow_none
+    elif isinstance(value, tuple):
+        return allow_tuple and is_name_like_tuple(
+            value, allow_none=allow_none, check_type=check_type
+        )
+    elif is_list_like(value) or isinstance(value, slice):
+        return False
+    elif check_type:
+        try:
+            return as_spark_type(type(value)) is not None
+        except TypeError:
+            return False
+    else:
+        return True
 
 
 def validate_axis(axis=0, none_axis=0):
