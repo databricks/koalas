@@ -1533,6 +1533,7 @@ class Frame(object, metaclass=ABCMeta):
         b
         1.0  2  3
         2.0  2  5
+
         >>> df.groupby(by=["b"], dropna=False).sum()  # doctest: +NORMALIZE_WHITESPACE
              a  c
         b
