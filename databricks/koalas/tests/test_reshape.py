@@ -40,6 +40,7 @@ class ReshapeTest(ReusedSQLTestCase):
                     "b": list("abcdabcd"),
                 }
             ),
+            pd.DataFrame({10: [1, 2, 3, 4, 4, 3, 2, 1], 20: list("abcdabcd")}),
         ]:
             kdf_or_kser = ks.from_pandas(pdf_or_ps)
 
@@ -74,6 +75,22 @@ class ReshapeTest(ReusedSQLTestCase):
         self.assert_eq(
             ks.get_dummies(kdf, columns=["b"]), pd.get_dummies(pdf, columns=["b"], dtype=np.int8)
         )
+
+        self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=("a", "c")))
+        self.assertRaises(TypeError, lambda: ks.get_dummies(kdf, columns="b"))
+
+        # non-string names
+        pdf = pd.DataFrame(
+            {10: [1, 2, 3, 4, 4, 3, 2, 1], 20: list("abcdabcd"), 30: list("abcdabcd")}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            ks.get_dummies(kdf, columns=[10, 30]),
+            pd.get_dummies(pdf, columns=[10, 30], dtype=np.int8),
+        )
+
+        self.assertRaises(TypeError, lambda: ks.get_dummies(kdf, columns=10))
 
     def test_get_dummies_date_datetime(self):
         pdf = pd.DataFrame(
@@ -136,7 +153,7 @@ class ReshapeTest(ReusedSQLTestCase):
         )
 
     def test_get_dummies_prefix(self):
-        pdf = pd.DataFrame({"A": ["a", "b", "a"], "B": ["b", "a", "c"], "D": [0, 0, 1],})
+        pdf = pd.DataFrame({"A": ["a", "b", "a"], "B": ["b", "a", "c"], "D": [0, 0, 1]})
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
@@ -229,12 +246,36 @@ class ReshapeTest(ReusedSQLTestCase):
             ks.get_dummies(kdf, columns=("x", "a")),
             pd.get_dummies(pdf, columns=("x", "a"), dtype=np.int8).rename(columns=name_like_string),
         )
-        self.assert_eq(
-            ks.get_dummies(kdf, columns=["x"]),
-            pd.get_dummies(pdf, columns=["x"], dtype=np.int8).rename(columns=name_like_string),
-        )
 
         self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=["z"]))
         self.assertRaises(KeyError, lambda: ks.get_dummies(kdf, columns=("x", "c")))
         self.assertRaises(ValueError, lambda: ks.get_dummies(kdf, columns=[("x",), "c"]))
         self.assertRaises(TypeError, lambda: ks.get_dummies(kdf, columns="x"))
+
+        # non-string names
+        pdf = pd.DataFrame(
+            {
+                ("x", 1, "a"): [1, 2, 3, 4, 4, 3, 2, 1],
+                ("x", 2, "b"): list("abcdabcd"),
+                ("y", 3, "c"): list("abcdabcd"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8).rename(columns=name_like_string)
+        )
+        self.assert_eq(
+            ks.get_dummies(kdf, columns=[("y", 3, "c"), ("x", 1, "a")]),
+            pd.get_dummies(pdf, columns=[("y", 3, "c"), ("x", 1, "a")], dtype=np.int8).rename(
+                columns=name_like_string
+            ),
+        )
+        self.assert_eq(
+            ks.get_dummies(kdf, columns=["x"]),
+            pd.get_dummies(pdf, columns=["x"], dtype=np.int8).rename(columns=name_like_string),
+        )
+        self.assert_eq(
+            ks.get_dummies(kdf, columns=("x", 1)),
+            pd.get_dummies(pdf, columns=("x", 1), dtype=np.int8).rename(columns=name_like_string),
+        )

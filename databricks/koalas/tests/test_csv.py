@@ -140,6 +140,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             check(header=None)
             check(names=["n", "a"])
             check(names=[("x", "n"), ("y", "a")])
+            check(names=[10, 20])
             check(header=0, names=["n", "a"])
             check(usecols=[1])
             check(usecols=[1, 0])
