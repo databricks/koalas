@@ -2113,12 +2113,10 @@ class Index(IndexOpsMixin):
         >>> kidx.insert(-3, 100)
         Int64Index([1, 2, 100, 3, 4, 5], dtype='int64')
         """
-        length = len(self)
         if loc < 0:
+            length = len(self)
             loc = loc + length
             loc = 0 if loc < 0 else loc
-        else:
-            loc = length if loc > length else loc
 
         index_name = self._internal.index_spark_column_names[0]
         sdf = self._internal.spark_frame
