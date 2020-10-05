@@ -62,6 +62,7 @@ from databricks.koalas.config import get_option
 from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
+    is_name_like_tuple,
     name_like_string,
     same_anchor,
     scol_for,
@@ -251,7 +252,9 @@ class GroupBy(object, metaclass=ABCMeta):
         data_columns = []
         column_labels = []
         for key, value in func.items():
-            label = key if isinstance(key, tuple) else (key,)
+            label = key if is_name_like_tuple(key) else (key,)
+            if len(label) != kdf._internal.column_labels_level:
+                raise TypeError("The length of the key must be the same as the column label level.")
             for aggfunc in [value] if isinstance(value, str) else value:
                 name = kdf._internal.spark_column_name_for(label)
                 data_col = "('{0}', '{1}')".format(name, aggfunc) if multi_aggs else name
