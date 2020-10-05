@@ -68,6 +68,8 @@ from databricks.koalas.plot import KoalasPlotAccessor
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import (
     combine_frames,
+    is_name_like_tuple,
+    is_name_like_value,
     name_like_string,
     same_anchor,
     scol_for,
@@ -1900,10 +1902,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return self
 
     def drop(
-        self,
-        labels=None,
-        index: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None,
-        level=None,
+        self, labels=None, index: Union[Any, Tuple, List[Any], List[Tuple]] = None, level=None
     ):
         """
         Return Series with specified index labels removed.
@@ -2015,47 +2014,31 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return first_series(self._drop(labels=labels, index=index, level=level))
 
     def _drop(
-        self,
-        labels=None,
-        index: Union[str, Tuple[str, ...], List[str], List[Tuple[str, ...]]] = None,
-        level=None,
+        self, labels=None, index: Union[Any, Tuple, List[Any], List[Tuple]] = None, level=None
     ):
-        level_param = level
         if labels is not None:
             if index is not None:
                 raise ValueError("Cannot specify both 'labels' and 'index'")
             return self._drop(index=labels, level=level)
         if index is not None:
             internal = self._internal
-            if not isinstance(index, (str, tuple, list)):
-                raise ValueError("'index' type should be one of str, list, tuple")
             if level is None:
                 level = 0
             if level >= len(internal.index_spark_columns):
                 raise ValueError("'level' should be less than the number of indexes")
 
-            if isinstance(index, str):
-                index = [(index,)]  # type: ignore
-            elif isinstance(index, tuple):
+            if is_name_like_tuple(index):  # type: ignore
                 index = [index]
-            else:
-                if not (
-                    all((isinstance(idxes, str) for idxes in index))
-                    or all((isinstance(idxes, tuple) for idxes in index))
-                ):
-                    raise ValueError(
-                        "If the given index is a list, it "
-                        "should only contains names as strings, "
-                        "or a list of tuples that contain "
-                        "index names as strings"
-                    )
-                new_index = []
-                for idxes in index:
-                    if isinstance(idxes, tuple):
-                        new_index.append(idxes)
-                    else:
-                        new_index.append((idxes,))
-                index = new_index
+            elif is_name_like_value(index):
+                index = [(index,)]
+            elif all(is_name_like_value(idxes, allow_tuple=False) for idxes in index):
+                index = [(idex,) for idex in index]
+            elif not all(is_name_like_tuple(idxes) for idxes in index):
+                raise ValueError(
+                    "If the given index is a list, it "
+                    "should only contains names as all tuples or all non tuples "
+                    "that contain index names"
+                )
 
             drop_index_scols = []
             for idxes in index:
@@ -2065,14 +2048,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                         for lvl, idx in enumerate(idxes, level)
                     ]
                 except IndexError:
-                    if level_param is None:
-                        raise KeyError(
-                            "Key length ({}) exceeds index depth ({})".format(
-                                len(internal.index_spark_columns), len(idxes)
-                            )
+                    raise KeyError(
+                        "Key length ({}) exceeds index depth ({})".format(
+                            len(internal.index_spark_columns), len(idxes)
                         )
-                    else:
-                        return self._kdf[[self.name]]
+                    )
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
 
             cond = ~reduce(lambda x, y: x | y, drop_index_scols)
@@ -3753,15 +3733,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         (b, falcon, speed)      1.0
         dtype: float64
         """
-        if not isinstance(item, (str, tuple)):
+        if not is_name_like_value(item):
             raise ValueError("'key' should be string or tuple that contains strings")
-        if isinstance(item, str):
+        if not is_name_like_tuple(item):
             item = (item,)
-        if not all(isinstance(index, str) for index in item):
-            raise ValueError(
-                "'key' should have index names as only strings "
-                "or a tuple that contain index names as only strings"
-            )
         if len(self._internal._index_map) < len(item):
             raise KeyError(
                 "Key length ({}) exceeds index depth ({})".format(
