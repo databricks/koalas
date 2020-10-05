@@ -2393,6 +2393,8 @@ class Frame(object, metaclass=ABCMeta):
         """
         return self.fillna(method="bfill", axis=axis, inplace=inplace, limit=limit)
 
+    backfill = bfill
+
     # TODO: add 'downcast' when value parameter exists
     def ffill(self, axis=None, inplace=False, limit=None):
         """
@@ -2464,6 +2466,8 @@ class Frame(object, metaclass=ABCMeta):
         dtype: float64
         """
         return self.fillna(method="ffill", axis=axis, inplace=inplace, limit=limit)
+
+    pad = ffill
 
     @property
     def at(self):

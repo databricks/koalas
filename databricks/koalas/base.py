@@ -138,14 +138,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     """common ops mixin to support a unified interface / docs for Series / Index
 
     Assuming there are following attributes or properties and function.
-
-    :ivar _anchor: Parent's Koalas DataFrame
-    :type _anchor: ks.DataFrame
     """
-
-    def __init__(self, anchor: DataFrame):
-        assert anchor is not None
-        self._anchor = anchor
 
     @property
     @abstractmethod
@@ -153,8 +146,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         pass
 
     @property
+    @abstractmethod
     def _kdf(self) -> DataFrame:
-        return self._anchor
+        pass
 
     @abstractmethod
     def _with_new_scol(self, scol: spark.Column):

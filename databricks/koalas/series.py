@@ -58,6 +58,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_DEFAULT_SERIES_NAME,
@@ -340,13 +341,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     """
 
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False, fastpath=False):
+        assert data is not None
+
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
             assert not copy
             assert not fastpath
 
-            super().__init__(data)
+            self._anchor = data
             self._column_label = index
         else:
             if isinstance(data, pd.Series):
@@ -365,9 +368,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 internal = internal.copy(column_labels=[None])
             anchor = DataFrame(internal)
 
-            super().__init__(anchor)
+            self._anchor = anchor
             self._column_label = anchor._internal.column_labels[0]
             anchor._kseries = {self._column_label: self}
+
+    @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
 
     @property
     def _internal(self) -> InternalFrame:
@@ -1050,7 +1057,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
     # taking dictionary and function to change index are not supported.
-    def rename(self, index: Union[str, Tuple[str, ...]] = None, **kwargs):
+    def rename(self, index=None, **kwargs):
         """
         Alter Series name.
 
@@ -1233,7 +1240,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[str, Tuple[str, ...]] = None) -> spark.DataFrame:
+    def to_frame(self, name: Union[str, Tuple] = None) -> spark.DataFrame:
         """
         Convert Series to DataFrame.
 
@@ -1267,7 +1274,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if name is not None:
             renamed = self.rename(name)
         elif self._column_label is None:
-            renamed = self.rename(SPARK_DEFAULT_SERIES_NAME)
+            renamed = self.rename(DEFAULT_SERIES_NAME)
         else:
             renamed = self
         return DataFrame(renamed._internal)
@@ -3819,7 +3826,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         b    2
         dtype: int64
         """
-        return first_series(DataFrame(self._internal))
+        return self._kdf.copy()._kser_for(self._column_label)
 
     def mode(self, dropna=True) -> "Series":
         """
@@ -5189,6 +5196,204 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = internal.copy(spark_frame=internal.spark_frame.drop(NATURAL_ORDER_COLUMN_NAME))
         return first_series(DataFrame(internal))
 
+    def argsort(self) -> "Series":
+        """
+        Return the integer indices that would sort the Series values.
+        Unlike pandas, the index order is not preserved in the result.
+
+        Returns
+        -------
+        Series
+            Positions of values within the sort order with -1 indicating
+            nan values.
+
+        Examples
+        --------
+        >>> kser = ks.Series([3, 3, 4, 1, 6, 2, 3, 7, 8, 7, 10])
+        >>> kser
+        0      3
+        1      3
+        2      4
+        3      1
+        4      6
+        5      2
+        6      3
+        7      7
+        8      8
+        9      7
+        10    10
+        dtype: int64
+
+        >>> kser.argsort().sort_index()
+        0      3
+        1      5
+        2      0
+        3      1
+        4      6
+        5      2
+        6      4
+        7      7
+        8      9
+        9      8
+        10    10
+        dtype: int64
+        """
+        notnull = self.loc[self.notnull()]
+
+        sdf_for_index = notnull._internal.spark_frame.select(notnull._internal.index_spark_columns)
+
+        tmp_join_key = verify_temp_column_name(sdf_for_index, "__tmp_join_key__")
+        sdf_for_index = InternalFrame.attach_distributed_sequence_column(
+            sdf_for_index, tmp_join_key
+        )
+        # sdf_for_index:
+        # +----------------+-----------------+
+        # |__tmp_join_key__|__index_level_0__|
+        # +----------------+-----------------+
+        # |               0|                0|
+        # |               1|                1|
+        # |               2|                2|
+        # |               3|                3|
+        # |               4|                4|
+        # +----------------+-----------------+
+
+        sdf_for_data = notnull._internal.spark_frame.select(
+            notnull.spark.column.alias("values"), NATURAL_ORDER_COLUMN_NAME
+        )
+        sdf_for_data = InternalFrame.attach_distributed_sequence_column(
+            sdf_for_data, SPARK_DEFAULT_SERIES_NAME
+        )
+        # sdf_for_data:
+        # +---+------+-----------------+
+        # |  0|values|__natural_order__|
+        # +---+------+-----------------+
+        # |  0|     3|      25769803776|
+        # |  1|     3|      51539607552|
+        # |  2|     4|      77309411328|
+        # |  3|     1|     103079215104|
+        # |  4|     2|     128849018880|
+        # +---+------+-----------------+
+
+        sdf_for_data = sdf_for_data.sort(
+            scol_for(sdf_for_data, "values"), NATURAL_ORDER_COLUMN_NAME
+        ).drop("values", NATURAL_ORDER_COLUMN_NAME)
+
+        tmp_join_key = verify_temp_column_name(sdf_for_data, "__tmp_join_key__")
+        sdf_for_data = InternalFrame.attach_distributed_sequence_column(sdf_for_data, tmp_join_key)
+        # sdf_for_index:                         sdf_for_data:
+        # +----------------+-----------------+   +----------------+---+
+        # |__tmp_join_key__|__index_level_0__|   |__tmp_join_key__|  0|
+        # +----------------+-----------------+   +----------------+---+
+        # |               0|                0|   |               0|  3|
+        # |               1|                1|   |               1|  4|
+        # |               2|                2|   |               2|  0|
+        # |               3|                3|   |               3|  1|
+        # |               4|                4|   |               4|  2|
+        # +----------------+-----------------+   +----------------+---+
+
+        sdf = sdf_for_index.join(sdf_for_data, on=tmp_join_key).drop(tmp_join_key)
+
+        internal = self._internal.with_new_sdf(
+            spark_frame=sdf, data_columns=[SPARK_DEFAULT_SERIES_NAME]
+        )
+        kser = first_series(DataFrame(internal))
+
+        return ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
+
+    def argmax(self):
+        """
+        Return int position of the largest value in the Series.
+
+        If the maximum is achieved in multiple locations,
+        the first row position is returned.
+
+        Returns
+        -------
+        int
+            Row position of the maximum value.
+
+        Examples
+        --------
+        Consider dataset containing cereal calories
+
+        >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
+        ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
+        >>> s  # doctest: +SKIP
+        Corn Flakes              100.0
+        Almond Delight           110.0
+        Cinnamon Toast Crunch    120.0
+        Cocoa Puff               110.0
+        dtype: float64
+
+        >>> s.argmax()  # doctest: +SKIP
+        2
+        """
+        sdf = self._internal.spark_frame.select(self.spark.column, NATURAL_ORDER_COLUMN_NAME)
+        max_value = sdf.select(
+            F.max(scol_for(sdf, self._internal.data_spark_column_names[0])),
+            F.first(NATURAL_ORDER_COLUMN_NAME),
+        ).head()
+        if max_value[1] is None:
+            raise ValueError("attempt to get argmax of an empty sequence")
+        elif max_value[0] is None:
+            return -1
+        # We should remember the natural sequence started from 0
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf.drop(NATURAL_ORDER_COLUMN_NAME), seq_col_name
+        )
+        # If the maximum is achieved in multiple locations, the first row position is returned.
+        return sdf.filter(
+            scol_for(sdf, self._internal.data_spark_column_names[0]) == max_value[0]
+        ).head()[0]
+
+    def argmin(self):
+        """
+        Return int position of the smallest value in the Series.
+
+        If the minimum is achieved in multiple locations,
+        the first row position is returned.
+
+        Returns
+        -------
+        int
+            Row position of the minimum value.
+
+        Examples
+        --------
+        Consider dataset containing cereal calories
+
+        >>> s = ks.Series({'Corn Flakes': 100.0, 'Almond Delight': 110.0,
+        ...                'Cinnamon Toast Crunch': 120.0, 'Cocoa Puff': 110.0})
+        >>> s  # doctest: +SKIP
+        Corn Flakes              100.0
+        Almond Delight           110.0
+        Cinnamon Toast Crunch    120.0
+        Cocoa Puff               110.0
+        dtype: float64
+
+        >>> s.argmin()  # doctest: +SKIP
+        0
+        """
+        sdf = self._internal.spark_frame.select(self.spark.column, NATURAL_ORDER_COLUMN_NAME)
+        min_value = sdf.select(
+            F.min(scol_for(sdf, self._internal.data_spark_column_names[0])),
+            F.first(NATURAL_ORDER_COLUMN_NAME),
+        ).head()
+        if min_value[1] is None:
+            raise ValueError("attempt to get argmin of an empty sequence")
+        elif min_value[0] is None:
+            return -1
+        # We should remember the natural sequence started from 0
+        seq_col_name = verify_temp_column_name(sdf, "__distributed_sequence_column__")
+        sdf = InternalFrame.attach_distributed_sequence_column(
+            sdf.drop(NATURAL_ORDER_COLUMN_NAME), seq_col_name
+        )
+        # If the minimum is achieved in multiple locations, the first row position is returned.
+        return sdf.filter(
+            scol_for(sdf, self._internal.data_spark_column_names[0]) == min_value[0]
+        ).head()[0]
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
@@ -5400,10 +5605,18 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             match = REPR_PATTERN.search(prev_footer)
             if match is not None:
                 length = match.group("length")
-                name = str(self.dtype.name)
-                footer = "\nName: {name}, dtype: {dtype}\nShowing only the first {length}".format(
-                    length=length, name=self.name, dtype=pprint_thing(name)
-                )
+                dtype_name = str(self.dtype.name)
+                if self.name is None:
+                    footer = "\ndtype: {dtype}\nShowing only the first {length}".format(
+                        length=length, dtype=pprint_thing(dtype_name)
+                    )
+                else:
+                    footer = (
+                        "\nName: {name}, dtype: {dtype}"
+                        "\nShowing only the first {length}".format(
+                            length=length, name=self.name, dtype=pprint_thing(dtype_name)
+                        )
+                    )
                 return rest + footer
         return pser.to_string(name=self.name, dtype=self.dtype)
 

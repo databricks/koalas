@@ -44,6 +44,7 @@ Conversion
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
+   DataFrame.pad
    DataFrame.bool
 
 Indexing, iteration
@@ -181,6 +182,7 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   DataFrame.backfill
    DataFrame.dropna
    DataFrame.fillna
    DataFrame.replace

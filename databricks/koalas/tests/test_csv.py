@@ -126,15 +126,20 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
     def test_read_csv(self):
         with self.csv_file(self.csv_text) as fn:
 
-            def check(header="infer", names=None, usecols=None):
-                expected = pd.read_csv(fn, header=header, names=names, usecols=usecols)
-                actual = ks.read_csv(fn, header=header, names=names, usecols=usecols)
+            def check(header="infer", names=None, usecols=None, index_col=None):
+                expected = pd.read_csv(
+                    fn, header=header, names=names, usecols=usecols, index_col=index_col
+                )
+                actual = ks.read_csv(
+                    fn, header=header, names=names, usecols=usecols, index_col=index_col
+                )
                 self.assert_eq(expected, actual, almost=True)
 
             check()
-            check(header=None)
             check(header=0)
+            check(header=None)
             check(names=["n", "a"])
+            check(names=[("x", "n"), ("y", "a")])
             check(header=0, names=["n", "a"])
             check(usecols=[1])
             check(usecols=[1, 0])
@@ -143,12 +148,17 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             check(usecols=[])
             check(usecols=[1, 1])
             check(usecols=["amount", "amount"])
+            check(header=None, usecols=[1])
             check(names=["n", "a"], usecols=["a"])
+            check(header=None, names=["n", "a"], usecols=["a"])
+            check(index_col=["amount"])
+            check(header=None, index_col=[1])
+            check(names=["n", "a"], index_col=["a"])
 
             # check with pyspark patch.
             expected = pd.read_csv(fn)
             actual = ks.read_csv(fn)
-            self.assertPandasAlmostEqual(expected, actual.to_pandas())
+            self.assert_eq(expected, actual, almost=True)
 
             self.assertRaisesRegex(
                 ValueError, "non-unique", lambda: ks.read_csv(fn, names=["n", "n"])
@@ -240,6 +250,10 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
 
             expected = pd.read_csv(fn, squeeze=True, usecols=["name", "amount"])
             actual = ks.read_csv(fn, squeeze=True, usecols=["name", "amount"])
+            self.assert_eq(expected, actual, almost=True)
+
+            expected = pd.read_csv(fn, squeeze=True, usecols=["name", "amount"], index_col=["name"])
+            actual = ks.read_csv(fn, squeeze=True, usecols=["name", "amount"], index_col=["name"])
             self.assert_eq(expected, actual, almost=True)
 
     def test_read_csv_with_mangle_dupe_cols(self):

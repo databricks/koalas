@@ -65,10 +65,10 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
-    SPARK_DEFAULT_SERIES_NAME,
 )
 
 
@@ -109,14 +109,27 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __init__(self, data: Union[DataFrame, list], dtype=None, name=None) -> None:
+    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
+        assert data is not None
+
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
         else:
-            data = DataFrame(index=pd.Index(data=data, dtype=dtype, name=name))
+            if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
+                return MultiIndex.from_tuples(data, names=names)
 
-        super().__init__(data)
+            index = pd.Index(data=data, dtype=dtype, name=name)
+            data = DataFrame(index=index)
+
+        instance = object.__new__(cls)
+
+        instance._anchor = data
+        return instance
+
+    @property
+    def _kdf(self) -> DataFrame:
+        return self._anchor
 
     @property
     def _internal(self) -> InternalFrame:
@@ -817,7 +830,7 @@ class Index(IndexOpsMixin):
         """
         if name is None:
             if self._internal.index_names[0] is None:
-                name = (SPARK_DEFAULT_SERIES_NAME,)
+                name = (DEFAULT_SERIES_NAME,)
             else:
                 name = self._internal.index_names[0]
         elif isinstance(name, str):
@@ -2166,10 +2179,10 @@ class MultiIndex(Index):
                )
     """
 
-    def __init__(self, kdf: DataFrame):
+    def __new__(cls, kdf: DataFrame):
         assert len(kdf._internal._index_map) > 1
 
-        super().__init__(kdf)
+        return super().__new__(cls, data=kdf)
 
     @property
     def _internal(self):
@@ -2602,7 +2615,7 @@ class MultiIndex(Index):
         """
         if name is None:
             name = [
-                name if name is not None else (str(i),)
+                name if name is not None else (i,)
                 for i, name in enumerate(self._internal.index_names)
             ]
         elif is_list_like(name):
