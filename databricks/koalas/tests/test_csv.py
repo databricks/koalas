@@ -301,8 +301,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.to_csv(columns=["aa"]), pdf.to_csv(columns=["aa"], index=False))
         self.assert_eq(kdf.aa.to_csv(), pdf.aa.to_csv(index=False, header=True))
 
-        pdf = pd.DataFrame({"a": [1, np.nan, 3], "b": ["one", "two", None],}, index=[0, 1, 3])
-
+        pdf = pd.DataFrame({"a": [1, np.nan, 3], "b": ["one", "two", None]}, index=[0, 1, 3])
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.to_csv(na_rep="null"), pdf.to_csv(na_rep="null", index=False))
@@ -310,26 +309,61 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
             kdf.a.to_csv(na_rep="null"), pdf.a.to_csv(na_rep="null", index=False, header=True)
         )
 
-        pdf = pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [4.0, 5.0, 6.0],}, index=[0, 1, 3])
+        self.assertRaises(KeyError, lambda: kdf.to_csv(columns=["ab"]))
 
+        pdf = pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [4.0, 5.0, 6.0]}, index=[0, 1, 3])
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.to_csv(), pdf.to_csv(index=False))
         self.assert_eq(kdf.to_csv(header=False), pdf.to_csv(header=False, index=False))
         self.assert_eq(kdf.to_csv(), pdf.to_csv(index=False))
 
+        # non-string names
+        pdf = pd.DataFrame({10: [1, 2, 3], 20: [4, 5, 6]}, index=[0, 1, 3])
+        kdf = ks.DataFrame(pdf)
+
+        self.assert_eq(kdf.to_csv(), pdf.to_csv(index=False))
+        self.assert_eq(kdf.to_csv(columns=[10]), pdf.to_csv(columns=[10], index=False))
+
+        self.assertRaises(TypeError, lambda: kdf.to_csv(columns=10))
+
+    def _check_output(self, dir, expected):
+        output_paths = [path for path in os.listdir(dir) if path.startswith("part-")]
+        assert len(output_paths) > 0
+        output_path = "%s/%s" % (dir, output_paths[0])
+        with open(output_path) as f:
+            self.assertEqual(f.read(), expected)
+
     def test_to_csv_with_path(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
         kdf = ks.DataFrame(pdf)
 
-        kdf.to_csv(self.tmp_dir, num_files=1)
-        expected = pdf.to_csv(index=False)
+        tmp_dir = "{}/tmp1".format(self.tmp_dir)
 
-        output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
-        assert len(output_paths) > 0
-        output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        with open(output_path) as f:
-            self.assertEqual(f.read(), expected)
+        kdf.to_csv(tmp_dir, num_files=1)
+        self._check_output(tmp_dir, pdf.to_csv(index=False))
+
+        tmp_dir = "{}/tmp2".format(self.tmp_dir)
+
+        self.assertRaises(KeyError, lambda: kdf.to_csv(tmp_dir, columns=["c"], num_files=1))
+
+        # non-string names
+        pdf = pd.DataFrame({10: [1, 2, 3], 20: ["a", "b", "c"]})
+        kdf = ks.DataFrame(pdf)
+
+        tmp_dir = "{}/tmp3".format(self.tmp_dir)
+
+        kdf.to_csv(tmp_dir, num_files=1)
+        self._check_output(tmp_dir, pdf.to_csv(index=False))
+
+        tmp_dir = "{}/tmp4".format(self.tmp_dir)
+
+        kdf.to_csv(tmp_dir, columns=[10], num_files=1)
+        self._check_output(tmp_dir, pdf.to_csv(columns=[10], index=False))
+
+        tmp_dir = "{}/tmp5".format(self.tmp_dir)
+
+        self.assertRaises(TypeError, lambda: kdf.to_csv(tmp_dir, columns=10, num_files=1))
 
     def test_to_csv_with_path_and_basic_options(self):
         pdf = pd.DataFrame({"aa": [1, 2, 3], "bb": ["a", "b", "c"]})
@@ -338,11 +372,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         kdf.to_csv(self.tmp_dir, num_files=1, sep="|", header=False, columns=["aa"])
         expected = pdf.to_csv(index=False, sep="|", header=False, columns=["aa"])
 
-        output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
-        assert len(output_paths) > 0
-        output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        with open(output_path) as f:
-            self.assertEqual(f.read(), expected)
+        self._check_output(self.tmp_dir, expected)
 
     def test_to_csv_with_path_and_basic_options_multiindex_columns(self):
         pdf = pd.DataFrame({("x", "a"): [1, 2, 3], ("y", "b"): ["a", "b", "c"]})
@@ -355,11 +385,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         pdf.columns = ["a", "b"]
         expected = pdf.to_csv(index=False, sep="|", columns=["a"])
 
-        output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
-        assert len(output_paths) > 0
-        output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        with open(output_path) as f:
-            self.assertEqual(f.read(), expected)
+        self._check_output(self.tmp_dir, expected)
 
     def test_to_csv_with_path_and_pyspark_options(self):
         pdf = pd.DataFrame({"a": [1, 2, 3, None], "b": ["a", "b", "c", None]})
@@ -368,11 +394,7 @@ class CsvTest(ReusedSQLTestCase, TestUtils):
         kdf.to_csv(self.tmp_dir, nullValue="null", num_files=1)
         expected = pdf.to_csv(index=False, na_rep="null")
 
-        output_paths = [path for path in os.listdir(self.tmp_dir) if path.startswith("part-")]
-        assert len(output_paths) > 0
-        output_path = "%s/%s" % (self.tmp_dir, output_paths[0])
-        with open(output_path) as f:
-            self.assertEqual(f.read(), expected)
+        self._check_output(self.tmp_dir, expected)
 
     def test_to_csv_with_partition_cols(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
