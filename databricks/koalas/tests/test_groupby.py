@@ -168,23 +168,15 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
             pdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
         )
-        # TODO: seems like a pandas' bug. it works well in Koalas like the below.
-        # >>> pdf[('x', 'a')].groupby(pdf[('x', 'b')]).sum().sort_index()
-        # Traceback (most recent call last):
-        # ...
-        # ValueError: Can only tuple-index with a MultiIndex
-        # >>> kdf[('x', 'a')].groupby(kdf[('x', 'b')]).sum().sort_index()
-        # (x, b)
-        # 1    13
-        # 2     9
-        # 3     8
-        # 4     1
-        # 7     6
-        # Name: (x, a), dtype: int64
-        expected_result = ks.Series(
-            [13, 9, 8, 1, 6], name=("x", "a"), index=pd.Index([1, 2, 3, 4, 7], name=("x", "b"))
+        # TODO: should work?
+        # self.assert_eq(
+        #     kdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
+        #     pdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
+        # )
+        self.assert_eq(
+            kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(),
+            pdf[("x", "a")].groupby(pdf[("x", "b")]).sum().sort_index(),
         )
-        self.assert_eq(kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(), expected_result)
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame(
