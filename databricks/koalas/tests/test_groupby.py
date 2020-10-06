@@ -173,10 +173,19 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         #     kdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
         #     pdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
         # )
-        self.assert_eq(
-            kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(),
-            pdf[("x", "a")].groupby(pdf[("x", "b")]).sum().sort_index(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.3"):
+            self.assert_eq(
+                kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(),
+                pdf[("x", "a")].groupby(pdf[("x", "b")]).sum().sort_index(),
+            )
+        else:
+            # seems like a pandas bug introduced in pandas 1.1.3.
+            expected_result = ks.Series(
+                [13, 9, 8, 1, 6], name=("x", "a"), index=pd.Index([1, 2, 3, 4, 7], name=("x", "b"))
+            )
+            self.assert_eq(
+                kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(), expected_result
+            )
 
     def test_split_apply_combine_on_series(self):
         pdf = pd.DataFrame(
