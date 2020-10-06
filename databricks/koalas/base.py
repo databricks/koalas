@@ -37,7 +37,7 @@ from pyspark.sql.types import (
     LongType,
     StringType,
     TimestampType,
-    NumericType
+    NumericType,
 )
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -173,9 +173,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __add__(self, other):
         if isinstance(self.spark.data_type, NumericType):
-            if (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)) or isinstance(other, str):
+            if (
+                isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)
+            ) or isinstance(other, str):
                 raise TypeError("string addition can only be applied to string series or literals.")
-        elif isinstance(self.spark.data_type, StringType):
+        if isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
                 return column_op(F.concat)(self, other)
@@ -188,6 +190,22 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
+        if isinstance(self.spark.data_type, NumericType):
+            if (
+                isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)
+            ) or isinstance(other, str):
+                raise TypeError(
+                    "string substraction can only be applied to string series or literals."
+                )
+        elif isinstance(self.spark.data_type, StringType):
+            if not (
+                (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+                or isinstance(other, str)
+            ):
+                raise TypeError(
+                    "string substraction can only be applied to string series or literals."
+                )
+
         if isinstance(self.spark.data_type, TimestampType):
             # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
             # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
@@ -261,12 +279,30 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
-        if isinstance(self.spark.data_type, StringType) and isinstance(other, str):
-            return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
+        if isinstance(self.spark.data_type, NumericType):
+            if isinstance(other, str):
+                raise TypeError("string addition can only be applied to string series or literals.")
+
+        if isinstance(self.spark.data_type, StringType):
+            if isinstance(other, str):
+                return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
+            else:
+                raise TypeError("string addition can only be applied to string series or literals.")
         else:
             return column_op(Column.__radd__)(self, other)
 
     def __rsub__(self, other):
+        if isinstance(self.spark.data_type, NumericType):
+            if isinstance(other, str):
+                raise TypeError(
+                    "string substraction can only be applied to string series or literals."
+                )
+        elif isinstance(self.spark.data_type, StringType):
+            if not isinstance(other, str):
+                raise TypeError(
+                    "string substraction can only be applied to string series or literals."
+                )
+
         if isinstance(self.spark.data_type, TimestampType):
             # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
             # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
