@@ -119,8 +119,8 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kdf.groupby("a", as_index=False)["a"])
         self.assertRaises(ValueError, lambda: kdf.groupby("a", as_index=False)[["a"]])
         self.assertRaises(ValueError, lambda: kdf.groupby("a", as_index=False)[["a", "c"]])
-        self.assertRaises(ValueError, lambda: kdf.groupby(0, as_index=False)[["a", "c"]])
-        self.assertRaises(KeyError, lambda: kdf.groupby([0], as_index=False)[["a", "c"]])
+        self.assertRaises(KeyError, lambda: kdf.groupby("z", as_index=False)[["a", "c"]])
+        self.assertRaises(KeyError, lambda: kdf.groupby(["z"], as_index=False)[["a", "c"]])
 
         self.assertRaises(TypeError, lambda: kdf.a.groupby(kdf.b, as_index=False))
 
@@ -139,43 +139,73 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(ValueError, lambda: kdf.a.groupby(kdf))
         self.assertRaises(ValueError, lambda: kdf.a.groupby((kdf,)))
 
+        # non-string names
+        pdf = pd.DataFrame(
+            {
+                10: [1, 2, 6, 4, 4, 6, 4, 3, 7],
+                20: [4, 2, 7, 3, 3, 1, 1, 1, 2],
+                30: [4, 2, 7, 3, None, 1, 1, 1, 2],
+                40: list("abcdefght"),
+            },
+            index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for as_index in [True, False]:
+            if as_index:
+                sort = lambda df: df.sort_index()
+            else:
+                sort = lambda df: df.sort_values(10).reset_index(drop=True)
+            self.assert_eq(
+                sort(kdf.groupby(10, as_index=as_index).sum()),
+                sort(pdf.groupby(10, as_index=as_index).sum()),
+            )
+            self.assert_eq(
+                sort(kdf.groupby(10, as_index=as_index)[20].sum()),
+                sort(pdf.groupby(10, as_index=as_index)[20].sum()),
+            )
+            self.assert_eq(
+                sort(kdf.groupby(10, as_index=as_index)[[20, 30]].sum()),
+                sort(pdf.groupby(10, as_index=as_index)[[20, 30]].sum()),
+            )
+
     def test_groupby_multiindex_columns(self):
         pdf = pd.DataFrame(
             {
-                ("x", "a"): [1, 2, 6, 4, 4, 6, 4, 3, 7],
-                ("x", "b"): [4, 2, 7, 3, 3, 1, 1, 1, 2],
-                ("y", "c"): [4, 2, 7, 3, None, 1, 1, 1, 2],
-                ("z", "d"): list("abcdefght"),
+                (10, "a"): [1, 2, 6, 4, 4, 6, 4, 3, 7],
+                (10, "b"): [4, 2, 7, 3, 3, 1, 1, 1, 2],
+                (20, "c"): [4, 2, 7, 3, None, 1, 1, 1, 2],
+                (30, "d"): list("abcdefght"),
             },
             index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
         )
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            kdf.groupby(("x", "a")).sum().sort_index(), pdf.groupby(("x", "a")).sum().sort_index()
+            kdf.groupby((10, "a")).sum().sort_index(), pdf.groupby((10, "a")).sum().sort_index()
         )
         self.assert_eq(
-            kdf.groupby(("x", "a"), as_index=False)
+            kdf.groupby((10, "a"), as_index=False)
             .sum()
-            .sort_values(("x", "a"))
+            .sort_values((10, "a"))
             .reset_index(drop=True),
-            pdf.groupby(("x", "a"), as_index=False)
+            pdf.groupby((10, "a"), as_index=False)
             .sum()
-            .sort_values(("x", "a"))
+            .sort_values((10, "a"))
             .reset_index(drop=True),
         )
         self.assert_eq(
-            kdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
-            pdf.groupby(("x", "a"))[[("y", "c")]].sum().sort_index(),
+            kdf.groupby((10, "a"))[[(20, "c")]].sum().sort_index(),
+            pdf.groupby((10, "a"))[[(20, "c")]].sum().sort_index(),
         )
-        # TODO: should work?
+        # TODO: a pandas bug?
         # self.assert_eq(
-        #     kdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
-        #     pdf.groupby(("x", "a"))[("y", "c")].sum().sort_index(),
+        #     kdf.groupby((10, "a"))[(20, "c")].sum().sort_index(),
+        #     pdf.groupby((10, "a"))[(20, "c")].sum().sort_index(),
         # )
         self.assert_eq(
-            kdf[("x", "a")].groupby(kdf[("x", "b")]).sum().sort_index(),
-            pdf[("x", "a")].groupby(pdf[("x", "b")]).sum().sort_index(),
+            kdf[(20, "c")].groupby(kdf[(10, "a")]).sum().sort_index(),
+            pdf[(20, "c")].groupby(pdf[(10, "a")]).sum().sort_index(),
         )
 
     def test_split_apply_combine_on_series(self):
@@ -373,38 +403,61 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
                     )
 
         expected_error_message = (
-            r"aggs must be a dict mapping from column name \(string or "
-            r"tuple\) to aggregate functions \(string or list of strings\)."
+            r"aggs must be a dict mapping from column name to aggregate functions "
+            r"\(string or list of strings\)."
         )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kdf.groupby("A", as_index=as_index).agg(0)
 
         # multi-index columns
-        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
+        columns = pd.MultiIndex.from_tuples([(10, "A"), (10, "B"), (20, "C")])
         pdf.columns = columns
         kdf.columns = columns
 
         for as_index in [True, False]:
-            stats_kdf = kdf.groupby(("X", "A"), as_index=as_index).agg(
-                {("X", "B"): "min", ("Y", "C"): "sum"}
+            stats_kdf = kdf.groupby((10, "A"), as_index=as_index).agg(
+                {(10, "B"): "min", (20, "C"): "sum"}
             )
-            stats_pdf = pdf.groupby(("X", "A"), as_index=as_index).agg(
-                {("X", "B"): "min", ("Y", "C"): "sum"}
+            stats_pdf = pdf.groupby((10, "A"), as_index=as_index).agg(
+                {(10, "B"): "min", (20, "C"): "sum"}
             )
             self.assert_eq(
-                stats_kdf.sort_values(by=[("X", "B"), ("Y", "C")]).reset_index(drop=True),
-                stats_pdf.sort_values(by=[("X", "B"), ("Y", "C")]).reset_index(drop=True),
+                stats_kdf.sort_values(by=[(10, "B"), (20, "C")]).reset_index(drop=True),
+                stats_pdf.sort_values(by=[(10, "B"), (20, "C")]).reset_index(drop=True),
             )
 
-        stats_kdf = kdf.groupby(("X", "A")).agg({("X", "B"): ["min", "max"], ("Y", "C"): "sum"})
-        stats_pdf = pdf.groupby(("X", "A")).agg({("X", "B"): ["min", "max"], ("Y", "C"): "sum"})
+        stats_kdf = kdf.groupby((10, "A")).agg({(10, "B"): ["min", "max"], (20, "C"): "sum"})
+        stats_pdf = pdf.groupby((10, "A")).agg({(10, "B"): ["min", "max"], (20, "C"): "sum"})
         self.assert_eq(
             stats_kdf.sort_values(
-                by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")]
+                by=[(10, "B", "min"), (10, "B", "max"), (20, "C", "sum")]
             ).reset_index(drop=True),
             stats_pdf.sort_values(
-                by=[("X", "B", "min"), ("X", "B", "max"), ("Y", "C", "sum")]
+                by=[(10, "B", "min"), (10, "B", "max"), (20, "C", "sum")]
             ).reset_index(drop=True),
+        )
+
+        # non-string names
+        pdf.columns = [10, 20, 30]
+        kdf.columns = [10, 20, 30]
+
+        for as_index in [True, False]:
+            stats_kdf = kdf.groupby(10, as_index=as_index).agg({20: "min", 30: "sum"})
+            stats_pdf = pdf.groupby(10, as_index=as_index).agg({20: "min", 30: "sum"})
+            self.assert_eq(
+                stats_kdf.sort_values(by=[20, 30]).reset_index(drop=True),
+                stats_pdf.sort_values(by=[20, 30]).reset_index(drop=True),
+            )
+
+        stats_kdf = kdf.groupby(10).agg({20: ["min", "max"], 30: "sum"})
+        stats_pdf = pdf.groupby(10).agg({20: ["min", "max"], 30: "sum"})
+        self.assert_eq(
+            stats_kdf.sort_values(by=[(20, "min"), (20, "max"), (30, "sum")]).reset_index(
+                drop=True
+            ),
+            stats_pdf.sort_values(by=[(20, "min"), (20, "max"), (30, "sum")]).reset_index(
+                drop=True
+            ),
         )
 
     def test_aggregate_func_str_list(self):
@@ -2335,10 +2388,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         self.assertRaises(
             KeyError, lambda: kdf.groupby(("B", "class"))[("A", "name")].get_group("fish")
-        )
-        self.assertRaises(
-            KeyError,
-            lambda: kdf.groupby(("B", "class"))[("A", "name")].get_group(["bird", "mammal"]),
         )
         self.assertRaises(
             KeyError,

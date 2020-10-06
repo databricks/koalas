@@ -63,6 +63,7 @@ from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
     is_name_like_tuple,
+    is_name_like_value,
     name_like_string,
     same_anchor,
     scol_for,
@@ -208,7 +209,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or not all(
-                isinstance(key, (str, tuple))
+                is_name_like_value(key)
                 and (
                     isinstance(value, str)
                     or isinstance(value, list)
@@ -217,7 +218,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 for key, value in func_or_funcs.items()
             ):
                 raise ValueError(
-                    "aggs must be a dict mapping from column name (string or tuple) "
+                    "aggs must be a dict mapping from column name "
                     "to aggregate functions (string or list of strings)."
                 )
 
@@ -2435,18 +2436,24 @@ class DataFrameGroupBy(GroupBy):
         return self.__getitem__(item)
 
     def __getitem__(self, item):
-        if isinstance(item, str) and self._as_index:
-            return SeriesGroupBy(self._kdf[item], self._groupkeys)
+        if self._as_index and is_name_like_value(item):
+            return SeriesGroupBy(
+                self._kdf._kser_for(item if is_name_like_tuple(item) else (item,)), self._groupkeys
+            )
         else:
-            if isinstance(item, str):
+            if is_name_like_tuple(item):
                 item = [item]
-            item = [i if isinstance(i, tuple) else (i,) for i in item]
+            elif is_name_like_value(item):
+                item = [(item,)]
+            else:
+                item = [i if is_name_like_tuple(i) else (i,) for i in item]
             if not self._as_index:
-                groupkey_names = set(key.name for key in self._groupkeys)
-                for i in item:
-                    name = str(i) if len(i) > 1 else i[0]
+                groupkey_names = set(key._column_label for key in self._groupkeys)
+                for name in item:
                     if name in groupkey_names:
-                        raise ValueError("cannot insert {}, already exists".format(name))
+                        raise ValueError(
+                            "cannot insert {}, already exists".format(name_like_string(name))
+                        )
             return DataFrameGroupBy(
                 self._kdf,
                 self._groupkeys,
