@@ -16,6 +16,7 @@
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
+import re
 import sys
 import unittest
 from io import StringIO
@@ -1751,39 +1752,54 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_binary_operator_add(self):
-        kdf = ks.DataFrame({'a': ['x'], 'b': [1]})
+        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
+        ks_err_msg = re.escape("string addition can only be applied to string series or literals")
 
-        self.assertRaisesRegex(
-            TypeError,
-            "string addition can only be applied to string series or literals",
-            lambda: kdf['a'] + kdf['b'])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + kdf["b"])
 
-        self.assertRaisesRegex(
-            TypeError,
-            "string addition can only be applied to string series or literals",
-            lambda: kdf['b'] + kdf['a'])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] + kdf["a"])
 
-        self.assertRaisesRegex(
-            TypeError,
-            "string addition can only be applied to string series or literals",
-            lambda: kdf['b'] + 'literal')
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] + "literal")
 
-        kdf = ks.DataFrame({'a': ['x'], 'b': [0.1]})
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" + kdf["b"])
 
-        self.assertRaisesRegex(
-            TypeError,
-            "string addition can only be applied to string series or literals",
-            lambda: kdf['a'] + kdf['b'])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 + kdf["a"])
 
-        self.assertRaisesRegex(
-                TypeError,
-                "string addition can only be applied to string series or literals",
-                lambda: kdf['b'] + kdf['a'])
+        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
 
-        self.assertRaisesRegex(
-            TypeError,
-            "string addition can only be applied to string series or literals",
-            lambda: kdf['b'] + 'literal')
+        self.assertRaises(TypeError, lambda: pdf["a"] + pdf["b"])
+
+        self.assertRaises(TypeError, lambda: pdf["b"] + pdf["a"])
+
+        self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" + pdf["b"])
+
+        self.assertRaises(TypeError, lambda: 1 + pdf["a"])
+
+    def test_binary_operator_sub(self):
+        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
+        ks_err_msg = re.escape(
+            "string substraction can only be applied to string series or literals."
+        )
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - kdf["a"])
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - "literal")
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" - kdf["b"])
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 - kdf["a"])
+
+        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
+
+        self.assertRaises(TypeError, lambda: pdf["a"] - pdf["b"])
+
+        self.assertRaises(TypeError, lambda: pdf["b"] - pdf["a"])
+
+        self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" - pdf["b"])
+
+        self.assertRaises(TypeError, lambda: 1 - pdf["a"])
 
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})
