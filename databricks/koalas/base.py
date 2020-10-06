@@ -262,6 +262,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         +-----------------------|---------|---------+
         """
 
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("division can not be applied on string series or literals.")
+
         def truediv(left, right):
             return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
                 F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
@@ -334,6 +341,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __rmul__ = column_op(Column.__rmul__)
 
     def __rtruediv__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
         def rtruediv(left, right):
             return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
                 F.lit(right).__truediv__(left)
@@ -358,6 +368,12 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         |          -10          |   null  | -np.inf |
         +-----------------------|---------|---------+
         """
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("division can not be applied on string series or literals.")
 
         def floordiv(left, right):
             return F.when(F.lit(right is np.nan), np.nan).otherwise(
@@ -373,6 +389,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(floordiv)(self, other)
 
     def __rfloordiv__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
         def rfloordiv(left, right):
             return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
                 F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
