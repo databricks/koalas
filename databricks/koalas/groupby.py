@@ -2246,7 +2246,9 @@ class GroupBy(object, metaclass=ABCMeta):
 
         groupkey_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
         groupkey_scols = [s.alias(name) for s, name in zip(self._groupkeys_scols, groupkey_names)]
+
         sdf = self._kdf._internal.spark_frame.select(groupkey_scols + agg_columns_scols)
+
         data_columns = []
         column_labels = []
         if len(agg_columns) > 0:
@@ -2397,7 +2399,6 @@ class DataFrameGroupBy(GroupBy):
     def _build(
         kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]], as_index: bool, dropna: bool
     ) -> "DataFrameGroupBy":
-
         if any(isinstance(col_or_s, Series) and not same_anchor(kdf, col_or_s) for col_or_s in by):
             (
                 kdf,
@@ -2424,7 +2425,6 @@ class DataFrameGroupBy(GroupBy):
         column_labels_to_exlcude: Set[Tuple[str, ...]],
         agg_columns: List[Tuple[str, ...]] = None,
     ):
-
         self._kdf = kdf
         self._groupkeys = by
         self._as_index = as_index
@@ -2457,7 +2457,9 @@ class DataFrameGroupBy(GroupBy):
     def __getitem__(self, item):
         if self._as_index and is_name_like_value(item):
             return SeriesGroupBy(
-                self._kdf._kser_for(item if is_name_like_tuple(item) else (item,)), self._groupkeys, dropna=self._dropna
+                self._kdf._kser_for(item if is_name_like_tuple(item) else (item,)),
+                self._groupkeys,
+                dropna=self._dropna,
             )
         else:
             if is_name_like_tuple(item):
