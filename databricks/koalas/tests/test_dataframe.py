@@ -1750,6 +1750,41 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             lambda: ks.range(10).add(ks.range(10).id),
         )
 
+    def test_binary_operator_add(self):
+        kdf = ks.DataFrame({'a': ['x'], 'b': [1]})
+
+        self.assertRaisesRegex(
+            TypeError,
+            "string addition can only be applied to string series or literals",
+            lambda: kdf['a'] + kdf['b'])
+
+        self.assertRaisesRegex(
+            TypeError,
+            "string addition can only be applied to string series or literals",
+            lambda: kdf['b'] + kdf['a'])
+
+        self.assertRaisesRegex(
+            TypeError,
+            "string addition can only be applied to string series or literals",
+            lambda: kdf['b'] + 'literal')
+
+        kdf = ks.DataFrame({'a': ['x'], 'b': [0.1]})
+
+        self.assertRaisesRegex(
+            TypeError,
+            "string addition can only be applied to string series or literals",
+            lambda: kdf['a'] + kdf['b'])
+
+        self.assertRaisesRegex(
+                TypeError,
+                "string addition can only be applied to string series or literals",
+                lambda: kdf['b'] + kdf['a'])
+
+        self.assertRaisesRegex(
+            TypeError,
+            "string addition can only be applied to string series or literals",
+            lambda: kdf['b'] + 'literal')
+
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})
         kdf = ks.from_pandas(pdf)

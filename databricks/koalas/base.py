@@ -37,6 +37,7 @@ from pyspark.sql.types import (
     LongType,
     StringType,
     TimestampType,
+    NumericType
 )
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -171,7 +172,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other):
-        if isinstance(self.spark.data_type, StringType):
+        if isinstance(self.spark.data_type, NumericType):
+            if (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)) or isinstance(other, str):
+                raise TypeError("string addition can only be applied to string series or literals.")
+        elif isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
                 return column_op(F.concat)(self, other)
