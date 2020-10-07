@@ -1752,31 +1752,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_binary_operator_add(self):
-        kdf = ks.DataFrame({"a": ["x", "y"], "b": ["i", "j"]})
-        kdf["a"] + kdf["b"]
-
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("string addition can only be applied to string series or literals")
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] + kdf["a"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] + "literal")
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" + kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 + kdf["a"])
 
-        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
-
-        self.assertRaises(TypeError, lambda: pdf["a"] + pdf["b"])
-
-        self.assertRaises(TypeError, lambda: pdf["b"] + pdf["a"])
-
-        self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" + pdf["b"])
-
-        self.assertRaises(TypeError, lambda: 1 + pdf["a"])
+        # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
+        # self.assertRaises(TypeError, lambda: pdf["a"] + pdf["b"])
+        # self.assertRaises(TypeError, lambda: pdf["b"] + pdf["a"])
+        # self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" + pdf["b"])
+        # self.assertRaises(TypeError, lambda: 1 + pdf["a"])
 
     def test_binary_operator_sub(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
@@ -1785,72 +1774,48 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - kdf["a"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - "literal")
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" - kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 - kdf["a"])
 
-        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
-
-        self.assertRaises(TypeError, lambda: pdf["a"] - pdf["b"])
-
-        self.assertRaises(TypeError, lambda: pdf["b"] - pdf["a"])
-
-        self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" - pdf["b"])
-
-        self.assertRaises(TypeError, lambda: 1 - pdf["a"])
+        # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
+        # self.assertRaises(TypeError, lambda: pdf["a"] - pdf["b"])
+        # self.assertRaises(TypeError, lambda: pdf["b"] - pdf["a"])
+        # self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" - pdf["b"])
+        # self.assertRaises(TypeError, lambda: 1 - pdf["a"])
 
     def test_binary_operator_truediv(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("division can not be applied on string series or literals")
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] / kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] / kdf["a"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] / "literal")
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" / kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 / kdf["a"])
 
-        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
-
-        self.assertRaises(TypeError, lambda: pdf["a"] / pdf["b"])
-
-        self.assertRaises(TypeError, lambda: pdf["b"] / pdf["a"])
-
-        self.assertRaises(TypeError, lambda: "literal" / pdf["b"])
-
-        self.assertRaises(TypeError, lambda: 1 / pdf["a"])
+        # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
+        # self.assertRaises(TypeError, lambda: pdf["a"] / pdf["b"])
+        # self.assertRaises(TypeError, lambda: pdf["b"] / pdf["a"])
+        # self.assertRaises(TypeError, lambda: "literal" / pdf["b"])
+        # self.assertRaises(TypeError, lambda: 1 / pdf["a"])
 
     def test_binary_operator_floordiv(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("division can not be applied on string series or literals")
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] // kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] // kdf["a"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] // "literal")
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" // kdf["b"])
-
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 // kdf["a"])
 
-        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
-
-        self.assertRaises(TypeError, lambda: pdf["a"] // pdf["b"])
-
-        self.assertRaises(TypeError, lambda: pdf["b"] // pdf["a"])
-
-        self.assertRaises(TypeError, lambda: "literal" // pdf["b"])
-
-        self.assertRaises(TypeError, lambda: 1 // pdf["a"])
+        # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
+        # self.assertRaises(TypeError, lambda: pdf["a"] // pdf["b"])
+        # self.assertRaises(TypeError, lambda: pdf["b"] // pdf["a"])
+        # self.assertRaises(TypeError, lambda: "literal" // pdf["b"])
+        # self.assertRaises(TypeError, lambda: 1 // pdf["a"])
 
     def test_binary_operator_mod(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
@@ -1861,10 +1826,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] % "literal")
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 % kdf["a"])
 
-        pdf = pd.DataFrame({"a": ["x"], "b": [1]})
-        self.assertRaises(TypeError, lambda: pdf["a"] % pdf["b"])
-        self.assertRaises(TypeError, lambda: pdf["b"] % pdf["a"])
-        self.assertRaises(TypeError, lambda: 1 % pdf["a"])
+        # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
+        # self.assertRaises(TypeError, lambda: pdf["a"] % pdf["b"])
+        # self.assertRaises(TypeError, lambda: pdf["b"] % pdf["a"])
+        # self.assertRaises(TypeError, lambda: 1 % pdf["a"])
 
     def test_binary_operator_multiply(self):
         kdf = ks.DataFrame({"a": ["x", "y"], "b": [1, 2]})
@@ -1882,9 +1847,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] * "literal")
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["b"])
 
-        pdf = pd.DataFrame({"a": ["x"], "b": [2]})
-        self.assertRaises(TypeError, lambda: pdf["b"] * "literal")
-        self.assertRaises(TypeError, lambda: "literal" * pdf["b"])
+        # pdf = pd.DataFrame({"a": ["x"], "b": [2]})
+        # self.assertRaises(TypeError, lambda: pdf["b"] * "literal")
+        # self.assertRaises(TypeError, lambda: "literal" * pdf["b"])
 
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})
