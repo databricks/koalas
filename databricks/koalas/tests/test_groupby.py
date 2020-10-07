@@ -664,11 +664,11 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
             # Testing dropna=False
             index = pd.Index([1.0, 2.0, np.nan], name="A")
-            expected = ks.Series([2.0, np.nan, 1.0], index=index, name="B")
+            expected = pd.Series([2.0, np.nan, 1.0], index=index, name="B")
             result = kdf.groupby("A", as_index=True, dropna=False)["B"].min().sort_index()
             self.assert_eq(expected, result)
 
-            expected = ks.DataFrame({"A": [1.0, 2.0, np.nan], "B": [2.0, np.nan, 1.0]})
+            expected = pd.DataFrame({"A": [1.0, 2.0, np.nan], "B": [2.0, np.nan, 1.0]})
             result = (
                 kdf.groupby("A", as_index=False, dropna=False)["B"]
                 .min()
@@ -680,7 +680,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             index = pd.MultiIndex.from_tuples(
                 [(1.0, 2.0), (1.0, None), (2.0, None), (None, 1.0), (None, 3.0)], names=["A", "B"]
             )
-            expected = ks.DataFrame(
+            expected = pd.DataFrame(
                 {
                     ("C", "min"): [5.0, 7.0, np.nan, 4.0, 6.0],
                     ("C", "std"): [np.nan, np.nan, np.nan, np.nan, np.nan],
@@ -694,7 +694,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             )
             self.assert_eq(expected, result)
 
-            expected = ks.DataFrame(
+            expected = pd.DataFrame(
                 {
                     ("A", ""): [1.0, 1.0, 2.0, np.nan, np.nan],
                     ("B", ""): [2.0, np.nan, np.nan, 1.0, 3.0],
