@@ -1027,6 +1027,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 scol = F.when(self.spark.column.isNull(), F.lit(False)).otherwise(
                     self.spark.column.cast(spark_type)
                 )
+        elif isinstance(spark_type, StringType):
+            scol = F.when(self.spark.column.isNull(), str(None)).otherwise(
+                self.spark.column.cast(spark_type)
+            )
         else:
             scol = self.spark.column.cast(spark_type)
         return self._with_new_scol(scol)
