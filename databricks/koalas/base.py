@@ -34,10 +34,10 @@ from pyspark.sql.types import (
     DateType,
     DoubleType,
     FloatType,
+    IntegralType,
     LongType,
     StringType,
     TimestampType,
-    NumericType,
 )
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
@@ -173,7 +173,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other):
-        if isinstance(self.spark.data_type, NumericType):
+        if not isinstance(self.spark.data_type, StringType):
             if (
                 isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)
             ) or isinstance(other, str):
@@ -235,18 +235,18 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(Column.__sub__)(self, other)
 
     def __mul__(self, other):
-        if isinstance(self, str) or isinstance(other, str):
+        if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal")
 
         if (
-            isinstance(self.spark.data_type, NumericType)
+            isinstance(self.spark.data_type, IntegralType)
             and isinstance(other, IndexOpsMixin)
             and isinstance(other.spark.data_type, StringType)
         ):
             return column_op(SF.repeat)(other, self)
 
         if isinstance(self.spark.data_type, StringType) and (
-            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, NumericType))
+            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, IntegralType))
             or isinstance(other, int)
         ):
             return column_op(SF.repeat)(self, other)
@@ -302,7 +302,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
-        if isinstance(self.spark.data_type, NumericType):
+        if not isinstance(self.spark.data_type, StringType):
             if isinstance(other, str):
                 raise TypeError("string addition can only be applied to string series or literals.")
 
