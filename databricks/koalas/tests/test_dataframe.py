@@ -1752,6 +1752,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_binary_operator_add(self):
+        kdf = ks.DataFrame({"a": ["x", "y"], "b": ["i", "j"]})
+        kdf["a"] + kdf["b"]
+
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("string addition can only be applied to string series or literals")
 
@@ -1848,6 +1851,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: "literal" // pdf["b"])
 
         self.assertRaises(TypeError, lambda: 1 // pdf["a"])
+
+    def test_binary_operator_multiply(self):
+        kdf = ks.DataFrame({"a": ["x", "y"], "b": [1, 2]})
+        pdf = pd.DataFrame({"a": ["x", "y"], "b": [1, 2]})
+
+        self.assert_eq(kdf["a"] * kdf["b"], pdf["a"] * pdf["b"])
+        self.assert_eq(kdf["b"] * kdf["a"], pdf["b"] * pdf["a"])
+        self.assert_eq(kdf["a"] * 2, pdf["a"] * 2)
+        self.assert_eq(kdf["b"] * 2, pdf["b"] * 2)
+        self.assert_eq(2 * kdf["a"], 2 * pdf["a"])
+        self.assert_eq(2 * kdf["b"], 2 * pdf["b"])
+
+        kdf = ks.DataFrame({"a": ["x"], "b": [2]})
+        ks_err_msg = "multiplication can not be applied to an int series and a string literal"
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] * "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["b"])
+
+        pdf = pd.DataFrame({"a": ["x"], "b": [2]})
+        self.assertRaises(TypeError, lambda: pdf["b"] * "literal")
+        self.assertRaises(TypeError, lambda: "literal" * pdf["b"])
 
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})

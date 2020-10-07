@@ -47,6 +47,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
+from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
@@ -242,7 +243,22 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__sub__)(self, other)
 
-    __mul__ = column_op(Column.__mul__)
+    def __mul__(self, other):
+        if isinstance(self.spark.data_type, NumericType):
+            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
+                return column_op(SF.repeat)(other, self)
+            elif isinstance(other, str):
+                raise TypeError(
+                    "multiplication can not be applied to an int series and a string literal"
+                )
+
+        if isinstance(self.spark.data_type, StringType) and (
+            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, NumericType))
+            or isinstance(other, int)
+        ):
+            return column_op(SF.repeat)(self, other)
+
+        return column_op(Column.__mul__)(self, other)
 
     def __truediv__(self, other):
         """
@@ -338,7 +354,17 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__rsub__)(self, other)
 
-    __rmul__ = column_op(Column.__rmul__)
+    def __rmul__(self, other):
+        if isinstance(self.spark.data_type, StringType):
+            if isinstance(other, int):
+                return column_op(SF.repeat)(self, other)
+        if isinstance(self.spark.data_type, NumericType):
+            if isinstance(other, str):
+                raise TypeError(
+                    "multiplication can not be applied to an int series and a string literal"
+                )
+
+        return column_op(Column.__rmul__)(self, other)
 
     def __rtruediv__(self, other):
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
