@@ -1528,18 +1528,18 @@ class Frame(object, metaclass=ABCMeta):
 
         >>> l = [[1, 2, 3], [1, None, 4], [2, 1, 3], [1, 2, 2]]
         >>> df = ks.DataFrame(l, columns=["a", "b", "c"])
-        >>> df.groupby(by=["b"]).sum()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(by=["b"]).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
              a  c
         b
         1.0  2  3
         2.0  2  5
 
-        >>> df.groupby(by=["b"], dropna=False).sum()  # doctest: +NORMALIZE_WHITESPACE
+        >>> df.groupby(by=["b"], dropna=False).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
              a  c
         b
-        NaN  1  4
         1.0  2  3
         2.0  2  5
+        NaN  1  4
         """
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
