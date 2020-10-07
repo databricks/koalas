@@ -295,6 +295,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(truediv)(self, other)
 
     def __mod__(self, other):
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("mod can not be applied on string series or literals.")
+
         def mod(left, right):
             return ((left % right) + right) % right
 
@@ -426,6 +433,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(rfloordiv)(self, other)
 
     def __rmod__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("mod can not be applied on string series or literals.")
+
         def rmod(left, right):
             return ((right % left) + left) % left
 
