@@ -417,7 +417,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __rmod__(self, other):
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
-            raise TypeError("mod can not be applied on string series or literals.")
+            raise TypeError("modulo can not be applied on string series or literals.")
 
         def rmod(left, right):
             return ((right % left) + left) % left
