@@ -1769,21 +1769,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_binary_operator_sub(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
-        ks_err_msg = re.escape(
-            "string substraction can only be applied to string series or literals."
-        )
+        ks_err_msg = re.escape("substraction can not be applied to string series or literals.")
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - kdf["a"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - "literal")
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" - kdf["b"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 - kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - 1)
+
+        kdf = ks.DataFrame({"a": ["x"], "b": ["y"]})
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
 
         # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
         # self.assertRaises(TypeError, lambda: pdf["a"] - pdf["b"])
         # self.assertRaises(TypeError, lambda: pdf["b"] - pdf["a"])
         # self.assertRaises(np.core._exceptions.UFuncTypeError, lambda: "literal" - pdf["b"])
         # self.assertRaises(TypeError, lambda: 1 - pdf["a"])
+        # self.assertRaises(TypeError, lambda: pdf["a"] - 1)
+        # pdf = pd.DataFrame({"a": ["x"], "b": ["y"]})
+        # self.assertRaises(TypeError, lambda: pdf["a"] - pdf["b"])
 
     def test_binary_operator_truediv(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})

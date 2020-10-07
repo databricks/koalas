@@ -191,21 +191,12 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
-        if isinstance(self.spark.data_type, NumericType):
-            if (
-                isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)
-            ) or isinstance(other, str):
-                raise TypeError(
-                    "string substraction can only be applied to string series or literals."
-                )
-        elif isinstance(self.spark.data_type, StringType):
-            if not (
-                (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
-                or isinstance(other, str)
-            ):
-                raise TypeError(
-                    "string substraction can only be applied to string series or literals."
-                )
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("substraction can not be applied to string series or literals.")
 
         if isinstance(self.spark.data_type, TimestampType):
             # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
@@ -322,16 +313,8 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__radd__)(self, other)
 
     def __rsub__(self, other):
-        if isinstance(self.spark.data_type, NumericType):
-            if isinstance(other, str):
-                raise TypeError(
-                    "string substraction can only be applied to string series or literals."
-                )
-        elif isinstance(self.spark.data_type, StringType):
-            if not isinstance(other, str):
-                raise TypeError(
-                    "string substraction can only be applied to string series or literals."
-                )
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("substraction can not be applied to string series or literals.")
 
         if isinstance(self.spark.data_type, TimestampType):
             # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
