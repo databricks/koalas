@@ -22,11 +22,12 @@ from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
-from typing import Optional, Union, List
+from typing import List, Optional, Tuple, Union
 import warnings
 
 import numpy as np  # noqa: F401
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -37,6 +38,8 @@ from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIn
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.utils import (
+    is_name_like_tuple,
+    is_name_like_value,
     name_like_string,
     scol_for,
     validate_arguments_and_invoke_function,
@@ -738,14 +741,14 @@ class Frame(object, metaclass=ABCMeta):
 
         if columns is None:
             column_labels = kdf._internal.column_labels
-        elif isinstance(columns, str):
-            column_labels = [(columns,)]
-        elif isinstance(columns, tuple):
-            column_labels = [columns]
         else:
-            column_labels = [
-                lb if isinstance(lb, tuple) else (lb,) for lb in columns  # type: ignore
-            ]
+            column_labels = []
+            for label in columns:
+                if not is_name_like_tuple(label):
+                    label = (label,)
+                if label not in kdf._internal.column_labels:
+                    raise KeyError(name_like_string(label))
+                column_labels.append(label)
 
         if isinstance(index_col, str):
             index_cols = [index_col]
@@ -1520,27 +1523,34 @@ class Frame(object, metaclass=ABCMeta):
 
         if isinstance(by, ks.DataFrame):
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
-        elif isinstance(by, str):
+        elif isinstance(by, ks.Series):
+            by = [by]
+        elif is_name_like_tuple(by):
+            if isinstance(self, ks.Series):
+                raise KeyError(by)
+            by = [by]
+        elif is_name_like_value(by):
             if isinstance(self, ks.Series):
                 raise KeyError(by)
             by = [(by,)]
-        elif isinstance(by, tuple):
-            if isinstance(self, ks.Series):
-                for key in by:
-                    if isinstance(key, str):
-                        raise KeyError(key)
+        elif is_list_like(by):
+            new_by = []  # type: List[Union[Tuple, ks.Series]]
             for key in by:
                 if isinstance(key, ks.DataFrame):
                     raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
-            by = [by]
-        elif isinstance(by, ks.Series):
-            by = [by]
-        elif isinstance(by, Iterable):
-            if isinstance(self, ks.Series):
-                for key in by:
-                    if isinstance(key, str):
+                elif isinstance(key, ks.Series):
+                    new_by.append(key)
+                elif is_name_like_tuple(key):
+                    if isinstance(self, ks.Series):
                         raise KeyError(key)
-            by = [key if isinstance(key, (tuple, ks.Series)) else (key,) for key in by]
+                    new_by.append(key)
+                elif is_name_like_value(key):
+                    if isinstance(self, ks.Series):
+                        raise KeyError(key)
+                    new_by.append((key,))
+                else:
+                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
+            by = new_by
         else:
             raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
         if not len(by):
