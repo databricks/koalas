@@ -235,13 +235,15 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(Column.__sub__)(self, other)
 
     def __mul__(self, other):
-        if isinstance(self.spark.data_type, NumericType):
-            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
-                return column_op(SF.repeat)(other, self)
-            elif isinstance(other, str):
-                raise TypeError(
-                    "multiplication can not be applied to an int series and a string literal"
-                )
+        if isinstance(self, str) or isinstance(other, str):
+            raise TypeError("multiplication can not be applied to a string literal")
+
+        if (
+            isinstance(self.spark.data_type, NumericType)
+            and isinstance(other, IndexOpsMixin)
+            and isinstance(other.spark.data_type, StringType)
+        ):
+            return column_op(SF.repeat)(other, self)
 
         if isinstance(self.spark.data_type, StringType) and (
             (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, NumericType))
@@ -291,7 +293,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
             or isinstance(other, str)
         ):
-            raise TypeError("mod can not be applied on string series or literals.")
+            raise TypeError("modulo can not be applied on string series or literals.")
 
         def mod(left, right):
             return ((left % right) + right) % right
@@ -345,14 +347,12 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(Column.__rsub__)(self, other)
 
     def __rmul__(self, other):
+        if isinstance(other, str):
+            raise TypeError("multiplication can not be applied to a string literal")
+
         if isinstance(self.spark.data_type, StringType):
             if isinstance(other, int):
                 return column_op(SF.repeat)(self, other)
-        if isinstance(self.spark.data_type, NumericType):
-            if isinstance(other, str):
-                raise TypeError(
-                    "multiplication can not be applied to an int series and a string literal"
-                )
 
         return column_op(Column.__rmul__)(self, other)
 

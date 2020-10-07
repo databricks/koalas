@@ -1848,13 +1848,17 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(2 * kdf["b"], 2 * pdf["b"])
 
         kdf = ks.DataFrame({"a": ["x"], "b": [2]})
-        ks_err_msg = "multiplication can not be applied to an int series and a string literal"
+        ks_err_msg = "multiplication can not be applied to a string literal"
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] * "literal")
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] * "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["a"])
 
         # pdf = pd.DataFrame({"a": ["x"], "b": [2]})
         # self.assertRaises(TypeError, lambda: pdf["b"] * "literal")
         # self.assertRaises(TypeError, lambda: "literal" * pdf["b"])
+        # self.assertRaises(TypeError, lambda: pdf["a"] * "literal")
+        # self.assertRaises(TypeError, lambda: "literal" * pdf["a"])
 
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})
