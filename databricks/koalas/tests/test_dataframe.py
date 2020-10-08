@@ -1752,6 +1752,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_binary_operator_add(self):
+        # Positive
+        pdf = pd.DataFrame({"a": ["x"], "b": ["y"]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] + kdf["b"], pdf["a"] + pdf["b"])
+
+        # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("string addition can only be applied to string series or literals")
 
@@ -1768,6 +1775,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertRaises(TypeError, lambda: 1 + pdf["a"])
 
     def test_binary_operator_sub(self):
+        # Positive
+        pdf = pd.DataFrame({"a": [2], "b": [1]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] - kdf["b"], pdf["a"] - pdf["b"])
+
+        # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("substraction can not be applied to string series or literals.")
 
@@ -1791,6 +1805,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertRaises(TypeError, lambda: pdf["a"] - pdf["b"])
 
     def test_binary_operator_truediv(self):
+        # Positive
+        pdf = pd.DataFrame({"a": [3], "b": [2]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] / kdf["b"], pdf["a"] / pdf["b"])
+
+        # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("division can not be applied on string series or literals")
 
@@ -1823,6 +1844,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertRaises(TypeError, lambda: 1 // pdf["a"])
 
     def test_binary_operator_mod(self):
+        # Positive
+        pdf = pd.DataFrame({"a": [3], "b": [2]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] % kdf["b"], pdf["a"] % pdf["b"])
+
+        # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
         ks_err_msg = re.escape("modulo can not be applied on string series or literals")
 
@@ -1837,8 +1865,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assertRaises(TypeError, lambda: 1 % pdf["a"])
 
     def test_binary_operator_multiply(self):
-        kdf = ks.DataFrame({"a": ["x", "y"], "b": [1, 2]})
+        # Positive
         pdf = pd.DataFrame({"a": ["x", "y"], "b": [1, 2]})
+        kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf["a"] * kdf["b"], pdf["a"] * pdf["b"])
         self.assert_eq(kdf["b"] * kdf["a"], pdf["b"] * pdf["a"])
@@ -1847,6 +1876,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(2 * kdf["a"], 2 * pdf["a"])
         self.assert_eq(2 * kdf["b"], 2 * pdf["b"])
 
+        # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [2]})
         ks_err_msg = "multiplication can not be applied to a string literal"
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] * "literal")
