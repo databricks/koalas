@@ -34,6 +34,7 @@ from pyspark.sql.types import (
     DateType,
     DoubleType,
     FloatType,
+    IntegralType,
     LongType,
     StringType,
     TimestampType,
@@ -46,6 +47,7 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
+from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
 from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
@@ -171,6 +173,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other):
+        if not isinstance(self.spark.data_type, StringType) and (
+            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("string addition can only be applied to string series or literals.")
         if isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
@@ -184,6 +191,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other):
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("substraction can not be applied to string series or literals.")
+
         if isinstance(self.spark.data_type, TimestampType):
             # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
             # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
@@ -220,7 +234,24 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__sub__)(self, other)
 
-    __mul__ = column_op(Column.__mul__)
+    def __mul__(self, other):
+        if isinstance(other, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if (
+            isinstance(self.spark.data_type, IntegralType)
+            and isinstance(other, IndexOpsMixin)
+            and isinstance(other.spark.data_type, StringType)
+        ):
+            return column_op(SF.repeat)(other, self)
+
+        if isinstance(self.spark.data_type, StringType) and (
+            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, IntegralType))
+            or isinstance(other, int)
+        ):
+            return column_op(SF.repeat)(self, other)
+
+        return column_op(Column.__mul__)(self, other)
 
     def __truediv__(self, other):
         """
@@ -240,6 +271,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         +-----------------------|---------|---------+
         """
 
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("division can not be applied on string series or literals.")
+
         def truediv(left, right):
             return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
                 F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
@@ -250,6 +288,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(truediv)(self, other)
 
     def __mod__(self, other):
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("modulo can not be applied on string series or literals.")
+
         def mod(left, right):
             return ((left % right) + right) % right
 
@@ -257,12 +302,21 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
-        if isinstance(self.spark.data_type, StringType) and isinstance(other, str):
-            return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
+        if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+
+        if isinstance(self.spark.data_type, StringType):
+            if isinstance(other, str):
+                return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
+            else:
+                raise TypeError("string addition can only be applied to string series or literals.")
         else:
             return column_op(Column.__radd__)(self, other)
 
     def __rsub__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("substraction can not be applied to string series or literals.")
+
         if isinstance(self.spark.data_type, TimestampType):
             # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
             # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
@@ -291,9 +345,19 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__rsub__)(self, other)
 
-    __rmul__ = column_op(Column.__rmul__)
+    def __rmul__(self, other):
+        if isinstance(other, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if isinstance(self.spark.data_type, StringType) and isinstance(other, int):
+            return column_op(SF.repeat)(self, other)
+
+        return column_op(Column.__rmul__)(self, other)
 
     def __rtruediv__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
         def rtruediv(left, right):
             return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
                 F.lit(right).__truediv__(left)
@@ -318,6 +382,12 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         |          -10          |   null  | -np.inf |
         +-----------------------|---------|---------+
         """
+        if (
+            isinstance(self.spark.data_type, StringType)
+            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("division can not be applied on string series or literals.")
 
         def floordiv(left, right):
             return F.when(F.lit(right is np.nan), np.nan).otherwise(
@@ -333,6 +403,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(floordiv)(self, other)
 
     def __rfloordiv__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
         def rfloordiv(left, right):
             return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
                 F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
@@ -341,6 +414,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(rfloordiv)(self, other)
 
     def __rmod__(self, other):
+        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
+            raise TypeError("modulo can not be applied on string series or literals.")
+
         def rmod(left, right):
             return ((right % left) + left) % left
 

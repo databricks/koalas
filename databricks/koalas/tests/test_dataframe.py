@@ -1750,6 +1750,110 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             lambda: ks.range(10).add(ks.range(10).id),
         )
 
+    def test_binary_operator_add(self):
+        # Positive
+        pdf = pd.DataFrame({"a": ["x"], "b": ["y"], "c": [1], "d": [2]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] + kdf["b"], pdf["a"] + pdf["b"])
+        self.assert_eq(kdf["c"] + kdf["d"], pdf["c"] + pdf["d"])
+
+        # Negative
+        ks_err_msg = "string addition can only be applied to string series or literals"
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + kdf["c"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["c"] + kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["c"] + "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" + kdf["c"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 + kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + 1)
+
+    def test_binary_operator_sub(self):
+        # Positive
+        pdf = pd.DataFrame({"a": [2], "b": [1]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] - kdf["b"], pdf["a"] - pdf["b"])
+
+        # Negative
+        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
+        ks_err_msg = "substraction can not be applied to string series or literals"
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" - kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 - kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - 1)
+
+        kdf = ks.DataFrame({"a": ["x"], "b": ["y"]})
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
+
+    def test_binary_operator_truediv(self):
+        # Positive
+        pdf = pd.DataFrame({"a": [3], "b": [2]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] / kdf["b"], pdf["a"] / pdf["b"])
+
+        # Negative
+        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
+        ks_err_msg = "division can not be applied on string series or literals"
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] / kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] / kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] / "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" / kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 / kdf["a"])
+
+    def test_binary_operator_floordiv(self):
+        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
+        ks_err_msg = "division can not be applied on string series or literals"
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] // kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] // kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] // "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" // kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 // kdf["a"])
+
+    def test_binary_operator_mod(self):
+        # Positive
+        pdf = pd.DataFrame({"a": [3], "b": [2]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["a"] % kdf["b"], pdf["a"] % pdf["b"])
+
+        # Negative
+        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
+        ks_err_msg = "modulo can not be applied on string series or literals"
+
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] % kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] % kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] % "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 % kdf["a"])
+
+    def test_binary_operator_multiply(self):
+        # Positive
+        pdf = pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": [3, 4]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf["b"] * kdf["c"], pdf["b"] * pdf["c"])
+        self.assert_eq(kdf["c"] * kdf["b"], pdf["c"] * pdf["b"])
+        self.assert_eq(kdf["a"] * kdf["b"], pdf["a"] * pdf["b"])
+        self.assert_eq(kdf["b"] * kdf["a"], pdf["b"] * pdf["a"])
+        self.assert_eq(kdf["a"] * 2, pdf["a"] * 2)
+        self.assert_eq(kdf["b"] * 2, pdf["b"] * 2)
+        self.assert_eq(2 * kdf["a"], 2 * pdf["a"])
+        self.assert_eq(2 * kdf["b"], 2 * pdf["b"])
+
+        # Negative
+        kdf = ks.DataFrame({"a": ["x"], "b": [2]})
+        ks_err_msg = "multiplication can not be applied to a string literal"
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] * "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] * "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["a"])
+
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})
         kdf = ks.from_pandas(pdf)
