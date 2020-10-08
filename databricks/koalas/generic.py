@@ -1461,7 +1461,7 @@ class Frame(object, metaclass=ABCMeta):
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
-    def groupby(self, by, axis=0, as_index: bool = True):
+    def groupby(self, by, axis=0, as_index: bool = True, dropna: bool = True):
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1483,6 +1483,10 @@ class Frame(object, metaclass=ABCMeta):
             For aggregated output, return object with group labels as the
             index. Only relevant for DataFrame input. as_index=False is
             effectively "SQL-style" grouped output.
+        dropna : bool, default True
+            If True, and if group keys contain NA values,
+            NA values together with row/column will be dropped.
+            If False, NA values will also be treated as the key in groups.
 
         Returns
         -------
@@ -1518,6 +1522,24 @@ class Frame(object, metaclass=ABCMeta):
            Animal  Max Speed
         ...Falcon      375.0
         ...Parrot       25.0
+
+        We can also choose to include NA in group keys or not by setting dropna parameter,
+        the default setting is True:
+
+        >>> l = [[1, 2, 3], [1, None, 4], [2, 1, 3], [1, 2, 2]]
+        >>> df = ks.DataFrame(l, columns=["a", "b", "c"])
+        >>> df.groupby(by=["b"]).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+             a  c
+        b
+        1.0  2  3
+        2.0  2  5
+
+        >>> df.groupby(by=["b"], dropna=False).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+             a  c
+        b
+        1.0  2  3
+        2.0  2  5
+        NaN  1  4
         """
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
@@ -1560,9 +1582,9 @@ class Frame(object, metaclass=ABCMeta):
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         if isinstance(self, ks.DataFrame):
-            return DataFrameGroupBy._build(self, by, as_index=as_index)
+            return DataFrameGroupBy._build(self, by, as_index=as_index, dropna=dropna)
         elif isinstance(self, ks.Series):
-            return SeriesGroupBy._build(self, by, as_index=as_index)
+            return SeriesGroupBy._build(self, by, as_index=as_index, dropna=dropna)
         else:
             raise TypeError(
                 "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
