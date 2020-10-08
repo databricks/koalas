@@ -236,7 +236,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __mul__(self, other):
         if isinstance(other, str):
-            raise TypeError("multiplication can not be applied to a string literal")
+            raise TypeError("multiplication can not be applied to a string literal.")
 
         if (
             isinstance(self.spark.data_type, IntegralType)
@@ -347,7 +347,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __rmul__(self, other):
         if isinstance(other, str):
-            raise TypeError("multiplication can not be applied to a string literal")
+            raise TypeError("multiplication can not be applied to a string literal.")
 
         if isinstance(self.spark.data_type, StringType) and isinstance(other, int):
             return column_op(SF.repeat)(self, other)
