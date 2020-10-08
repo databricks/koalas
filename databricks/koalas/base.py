@@ -254,7 +254,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 return column_op(SF.repeat)(self, other)
             else:
                 raise TypeError(
-                    "multiplication involves a string series can only be applied to an int series or literal"
+                    "a string series can only be multiplied to an int series or literal"
                 )
 
         return column_op(Column.__mul__)(self, other)
@@ -360,7 +360,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 return column_op(SF.repeat)(self, other)
             else:
                 raise TypeError(
-                    "multiplication involves a string series can only be applied to an int series or literal"
+                    "a string series can only be multiplied to an int series or literal"
                 )
 
         return column_op(Column.__rmul__)(self, other)
