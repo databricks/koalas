@@ -16,7 +16,6 @@
 from datetime import datetime
 from distutils.version import LooseVersion
 import inspect
-import re
 import sys
 import unittest
 from io import StringIO
@@ -1753,20 +1752,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_binary_operator_add(self):
         # Positive
-        pdf = pd.DataFrame({"a": ["x"], "b": ["y"]})
+        pdf = pd.DataFrame({"a": ["x"], "b": ["y"], "c": [1], "d": [2]})
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf["a"] + kdf["b"], pdf["a"] + pdf["b"])
+        self.assert_eq(kdf["c"] + kdf["d"], pdf["c"] + pdf["d"])
 
         # Negative
-        kdf = ks.DataFrame({"a": ["x"], "b": [1]})
-        ks_err_msg = re.escape("string addition can only be applied to string series or literals")
+        ks_err_msg = "string addition can only be applied to string series or literals"
 
-        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + kdf["b"])
-        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] + kdf["a"])
-        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] + "literal")
-        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" + kdf["b"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + kdf["c"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["c"] + kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["c"] + "literal")
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" + kdf["c"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 1 + kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] + 1)
 
         # pdf = pd.DataFrame({"a": ["x"], "b": [1]})
         # self.assertRaises(TypeError, lambda: pdf["a"] + pdf["b"])
@@ -1783,7 +1783,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
-        ks_err_msg = re.escape("substraction can not be applied to string series or literals.")
+        ks_err_msg = "substraction can not be applied to string series or literals."
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] - kdf["b"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] - kdf["a"])
@@ -1813,7 +1813,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
-        ks_err_msg = re.escape("division can not be applied on string series or literals")
+        ks_err_msg = "division can not be applied on string series or literals"
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] / kdf["b"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] / kdf["a"])
@@ -1829,7 +1829,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_binary_operator_floordiv(self):
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
-        ks_err_msg = re.escape("division can not be applied on string series or literals")
+        ks_err_msg = "division can not be applied on string series or literals"
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] // kdf["b"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] // kdf["a"])
@@ -1852,7 +1852,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Negative
         kdf = ks.DataFrame({"a": ["x"], "b": [1]})
-        ks_err_msg = re.escape("modulo can not be applied on string series or literals")
+        ks_err_msg = "modulo can not be applied on string series or literals"
 
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] % kdf["b"])
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["b"] % kdf["a"])
@@ -1866,9 +1866,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_binary_operator_multiply(self):
         # Positive
-        pdf = pd.DataFrame({"a": ["x", "y"], "b": [1, 2]})
+        pdf = pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": [3, 4]})
         kdf = ks.from_pandas(pdf)
 
+        self.assert_eq(kdf["b"] * kdf["c"], pdf["b"] * pdf["c"])
+        self.assert_eq(kdf["c"] * kdf["b"], pdf["c"] * pdf["b"])
         self.assert_eq(kdf["a"] * kdf["b"], pdf["a"] * pdf["b"])
         self.assert_eq(kdf["b"] * kdf["a"], pdf["b"] * pdf["a"])
         self.assert_eq(kdf["a"] * 2, pdf["a"] * 2)
