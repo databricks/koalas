@@ -549,6 +549,167 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(agg_kdf, agg_pdf)
 
+    def test_dropna(self):
+        pdf = pd.DataFrame(
+            {"A": [None, 1, None, 1, 2], "B": [1, 2, 3, None, None], "C": [4, 5, 6, 7, None]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        # pd.DataFrame.groupby with dropna parameter is implemented since pandas 1.1.0
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
+            for dropna in [True, False]:
+                for as_index in [True, False]:
+                    if as_index:
+                        sort = lambda df: df.sort_index()
+                    else:
+                        sort = lambda df: df.sort_values("A").reset_index(drop=True)
+
+                    self.assert_eq(
+                        sort(kdf.groupby("A", as_index=as_index, dropna=dropna).std()),
+                        sort(pdf.groupby("A", as_index=as_index, dropna=dropna).std()),
+                    )
+
+                    self.assert_eq(
+                        sort(kdf.groupby("A", as_index=as_index, dropna=dropna).B.std()),
+                        sort(pdf.groupby("A", as_index=as_index, dropna=dropna).B.std()),
+                    )
+                    self.assert_eq(
+                        sort(kdf.groupby("A", as_index=as_index, dropna=dropna)["B"].std()),
+                        sort(pdf.groupby("A", as_index=as_index, dropna=dropna)["B"].std()),
+                    )
+
+                    self.assert_eq(
+                        sort(
+                            kdf.groupby("A", as_index=as_index, dropna=dropna).agg(
+                                {"B": "min", "C": "std"}
+                            )
+                        ),
+                        sort(
+                            pdf.groupby("A", as_index=as_index, dropna=dropna).agg(
+                                {"B": "min", "C": "std"}
+                            )
+                        ),
+                    )
+
+            for dropna in [True, False]:
+                for as_index in [True, False]:
+                    if as_index:
+                        sort = lambda df: df.sort_index()
+                    else:
+                        sort = lambda df: df.sort_values(["A", "B"]).reset_index(drop=True)
+
+                    self.assert_eq(
+                        sort(
+                            kdf.groupby(["A", "B"], as_index=as_index, dropna=dropna).agg(
+                                {"C": ["min", "std"]}
+                            )
+                        ),
+                        sort(
+                            pdf.groupby(["A", "B"], as_index=as_index, dropna=dropna).agg(
+                                {"C": ["min", "std"]}
+                            )
+                        ),
+                        almost=True,
+                    )
+
+            # multi-index columns
+            columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
+            pdf.columns = columns
+            kdf.columns = columns
+
+            for dropna in [True, False]:
+                for as_index in [True, False]:
+                    if as_index:
+                        sort = lambda df: df.sort_index()
+                    else:
+                        sort = lambda df: df.sort_values(("X", "A")).reset_index(drop=True)
+                    sorted_stats_kdf = sort(
+                        kdf.groupby(("X", "A"), as_index=as_index, dropna=dropna).agg(
+                            {("X", "B"): "min", ("Y", "C"): "std"}
+                        )
+                    )
+                    sorted_stats_pdf = sort(
+                        pdf.groupby(("X", "A"), as_index=as_index, dropna=dropna).agg(
+                            {("X", "B"): "min", ("Y", "C"): "std"}
+                        )
+                    )
+                    self.assert_eq(sorted_stats_kdf, sorted_stats_pdf)
+        else:
+            # Testing dropna=True (pandas default behavior)
+            for as_index in [True, False]:
+                if as_index:
+                    sort = lambda df: df.sort_index()
+                else:
+                    sort = lambda df: df.sort_values("A").reset_index(drop=True)
+
+                self.assert_eq(
+                    sort(kdf.groupby("A", as_index=as_index, dropna=True)["B"].min()),
+                    sort(pdf.groupby("A", as_index=as_index)["B"].min()),
+                )
+
+                if as_index:
+                    sort = lambda df: df.sort_index()
+                else:
+                    sort = lambda df: df.sort_values(["A", "B"]).reset_index(drop=True)
+
+                self.assert_eq(
+                    sort(
+                        kdf.groupby(["A", "B"], as_index=as_index, dropna=True).agg(
+                            {"C": ["min", "std"]}
+                        )
+                    ),
+                    sort(pdf.groupby(["A", "B"], as_index=as_index).agg({"C": ["min", "std"]})),
+                    almost=True,
+                )
+
+            # Testing dropna=False
+            index = pd.Index([1.0, 2.0, np.nan], name="A")
+            expected = pd.Series([2.0, np.nan, 1.0], index=index, name="B")
+            result = kdf.groupby("A", as_index=True, dropna=False)["B"].min().sort_index()
+            self.assert_eq(expected, result)
+
+            expected = pd.DataFrame({"A": [1.0, 2.0, np.nan], "B": [2.0, np.nan, 1.0]})
+            result = (
+                kdf.groupby("A", as_index=False, dropna=False)["B"]
+                .min()
+                .sort_values("A")
+                .reset_index(drop=True)
+            )
+            self.assert_eq(expected, result)
+
+            index = pd.MultiIndex.from_tuples(
+                [(1.0, 2.0), (1.0, None), (2.0, None), (None, 1.0), (None, 3.0)], names=["A", "B"]
+            )
+            expected = pd.DataFrame(
+                {
+                    ("C", "min"): [5.0, 7.0, np.nan, 4.0, 6.0],
+                    ("C", "std"): [np.nan, np.nan, np.nan, np.nan, np.nan],
+                },
+                index=index,
+            )
+            result = (
+                kdf.groupby(["A", "B"], as_index=True, dropna=False)
+                .agg({"C": ["min", "std"]})
+                .sort_index()
+            )
+            self.assert_eq(expected, result)
+
+            expected = pd.DataFrame(
+                {
+                    ("A", ""): [1.0, 1.0, 2.0, np.nan, np.nan],
+                    ("B", ""): [2.0, np.nan, np.nan, 1.0, 3.0],
+                    ("C", "min"): [5.0, 7.0, np.nan, 4.0, 6.0],
+                    ("C", "std"): [np.nan, np.nan, np.nan, np.nan, np.nan],
+                }
+            )
+            result = (
+                kdf.groupby(["A", "B"], as_index=False, dropna=False)
+                .agg({"C": ["min", "std"]})
+                .sort_values(["A", "B"])
+                .reset_index(drop=True)
+            )
+            self.assert_eq(expected, result)
+
     def test_describe(self):
         # support for numeric type, not support for string type yet
         datas = []
