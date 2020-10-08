@@ -247,10 +247,8 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         if isinstance(self.spark.data_type, StringType):
             if (
-                isinstance(other, IndexOpsMixin)
-                and isinstance(other.spark.data_type, IntegralType)
-                or isinstance(other, int)
-            ):
+                isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, IntegralType)
+            ) or isinstance(other, int):
                 return column_op(SF.repeat)(self, other)
             else:
                 raise TypeError(
