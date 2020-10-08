@@ -1854,6 +1854,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] * "literal")
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: "literal" * kdf["a"])
 
+        ks_err_msg = "a string series can only be multiplied to an int series or literal"
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] * kdf["a"])
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: kdf["a"] * 0.1)
+        self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 0.1 * kdf["a"])
+
     def test_sample(self):
         pdf = pd.DataFrame({"A": [0, 2, 4]})
         kdf = ks.from_pandas(pdf)
