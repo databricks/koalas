@@ -245,11 +245,17 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         ):
             return column_op(SF.repeat)(other, self)
 
-        if isinstance(self.spark.data_type, StringType) and (
-            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, IntegralType))
-            or isinstance(other, int)
-        ):
-            return column_op(SF.repeat)(self, other)
+        if isinstance(self.spark.data_type, StringType):
+            if (
+                isinstance(other, IndexOpsMixin)
+                and isinstance(other.spark.data_type, IntegralType)
+                or isinstance(other, int)
+            ):
+                return column_op(SF.repeat)(self, other)
+            else:
+                raise TypeError(
+                    "string multiplication can only be applied between a string series and an int series or literals."
+                )
 
         return column_op(Column.__mul__)(self, other)
 
@@ -349,8 +355,13 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
-        if isinstance(self.spark.data_type, StringType) and isinstance(other, int):
-            return column_op(SF.repeat)(self, other)
+        if isinstance(self.spark.data_type, StringType):
+            if isinstance(other, int):
+                return column_op(SF.repeat)(self, other)
+            else:
+                raise TypeError(
+                    "string multiplication can only be applied between a string series and an int series or literals."
+                )
 
         return column_op(Column.__rmul__)(self, other)
 
