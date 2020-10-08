@@ -173,11 +173,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other):
-        if not isinstance(self.spark.data_type, StringType):
-            if (
-                isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType)
-            ) or isinstance(other, str):
-                raise TypeError("string addition can only be applied to string series or literals.")
+        if not isinstance(self.spark.data_type, StringType) and (
+            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
+            or isinstance(other, str)
+        ):
+            raise TypeError("string addition can only be applied to string series or literals.")
         if isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
@@ -302,9 +302,8 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def __radd__(self, other):
         # Handle 'literal' + df['col']
-        if not isinstance(self.spark.data_type, StringType):
-            if isinstance(other, str):
-                raise TypeError("string addition can only be applied to string series or literals.")
+        if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
 
         if isinstance(self.spark.data_type, StringType):
             if isinstance(other, str):
@@ -350,9 +349,8 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal")
 
-        if isinstance(self.spark.data_type, StringType):
-            if isinstance(other, int):
-                return column_op(SF.repeat)(self, other)
+        if isinstance(self.spark.data_type, StringType) and isinstance(other, int):
+            return column_op(SF.repeat)(self, other)
 
         return column_op(Column.__rmul__)(self, other)
 
