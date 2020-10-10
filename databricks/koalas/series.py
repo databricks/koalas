@@ -1115,6 +1115,71 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return first_series(kdf)
 
+    def rename_axis(
+        self, mapper: Optional[Any] = None, index: Optional[Any] = None, inplace: bool = False
+    ):
+        """
+        Set the name of the axis for the index or columns.
+
+        Parameters
+        ----------
+        mapper, index :  scalar, list-like, dict-like or function, optional
+            A scalar, list-like, dict-like or functions transformations to
+            apply to the index values.
+        inplace : bool, default False
+            Modifies the object directly, instead of creating a new Series.
+
+        Returns
+        -------
+        Series, or None if `inplace` is True.
+
+        See Also
+        --------
+        Series.rename : Alter Series index labels or name.
+        Index.rename : Set new names on index.
+
+        Examples
+        --------
+        >>> s = ks.Series(["dog", "cat", "monkey"], name="animal")
+        >>> s  # doctest: +NORMALIZE_WHITESPACE
+        0       dog
+        1       cat
+        2    monkey
+        Name: animal, dtype: object
+        >>> s.rename_axis("index").sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        index
+        0       dog
+        1       cat
+        2    monkey
+        Name: animal, dtype: object
+
+        **MultiIndex**
+
+        >>> index = pd.MultiIndex.from_product([['mammal'],
+        ...                                        ['dog', 'cat', 'monkey']],
+        ...                                       names=['type', 'name'])
+        >>> s = ks.Series([4, 4, 2], index=index, name='num_legs')
+        >>> s  # doctest: +NORMALIZE_WHITESPACE
+        type    name
+        mammal  dog       4
+                cat       4
+                monkey    2
+        Name: num_legs, dtype: int64
+        >>> s.rename_axis(index={'type': 'class'}).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        class   name
+        mammal  cat       4
+                dog       4
+                monkey    2
+        Name: num_legs, dtype: int64
+        >>> s.rename_axis(index=str.upper).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+        TYPE    NAME
+        mammal  cat       4
+                dog       4
+                monkey    2
+        Name: num_legs, dtype: int64
+        """
+        return first_series(self.to_frame().rename_axis(mapper=mapper, index=index))
+
     @property
     def index(self):
         """The index (axis labels) Column of the Series.

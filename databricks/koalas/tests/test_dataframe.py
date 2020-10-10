@@ -581,6 +581,112 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf5 = kdf3 + 1
         self.assert_eq(kdf5.rename(index=str_lower), pdf5.rename(index=str_lower))
 
+    def test_rename_axis(self):
+        index = pd.Index(["A", "B", "C"], name="index")
+        columns = pd.Index(["numbers", "values"], name="cols")
+        pdf = pd.DataFrame([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        for axis in [0, "index"]:
+            self.assert_eq(
+                pdf.rename_axis("index2", axis=axis).sort_index(),
+                kdf.rename_axis("index2", axis=axis).sort_index(),
+            )
+
+        for axis in [1, "columns"]:
+            self.assert_eq(
+                pdf.rename_axis("cols2", axis=axis).sort_index(),
+                kdf.rename_axis("cols2", axis=axis).sort_index(),
+            )
+
+        self.assert_eq(
+            pdf.rename_axis(index="index2", columns="cols2").sort_index(),
+            kdf.rename_axis(index="index2", columns="cols2").sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index=["index2"], columns=["cols2"]).sort_index(),
+            kdf.rename_axis(index=["index2"], columns=["cols2"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index={"index": "index2"}, columns={"columns": "cols2"}).sort_index(),
+            kdf.rename_axis(index={"index": "index2"}, columns={"columns": "cols2"}).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index={"missing": "index2"}, columns={"missing": "cols2"}).sort_index(),
+            kdf.rename_axis(index={"missing": "index2"}, columns={"missing": "cols2"}).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index=str.upper, columns=str.upper).sort_index(),
+            kdf.rename_axis(index=str.upper, columns=str.upper).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kdf.rename_axis(mapper=["index2"], index=["index3"]))
+        self.assertRaises(ValueError, lambda: kdf.rename_axis(index=["index2", "index3"]))
+        self.assertRaises(ValueError, lambda: kdf.rename_axis(columns=["cols2", "cols3"]))
+
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+
+        columns = pd.MultiIndex.from_tuples(
+            [("numbers", "first"), ("values", "second")], names=["cols1", "cols2"]
+        )
+
+        pdf = pd.DataFrame([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        for axis in [0, "index"]:
+            self.assert_eq(
+                pdf.rename_axis(["index3", "index4"], axis=axis).sort_index(),
+                kdf.rename_axis(["index3", "index4"], axis=axis).sort_index(),
+            )
+
+        for axis in [1, "columns"]:
+            self.assert_eq(
+                pdf.rename_axis(["cols3", "cols4"], axis=axis).sort_index(),
+                kdf.rename_axis(["cols3", "cols4"], axis=axis).sort_index(),
+            )
+
+        self.assert_eq(
+            pdf.rename_axis(index=["index3", "index4"], columns=["cols3", "cols4"]).sort_index(),
+            kdf.rename_axis(index=["index3", "index4"], columns=["cols3", "cols4"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index={"index1": "index3"}, columns={"cols1": "cols3"}).sort_index(),
+            kdf.rename_axis(index={"index1": "index3"}, columns={"cols1": "cols3"}).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index={"missing": "index2"}, columns={"missing": "cols2"}).sort_index(),
+            kdf.rename_axis(index={"missing": "index2"}, columns={"missing": "cols2"}).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(
+                index={"index1": "index3", "index2": "index4"},
+                columns={"cols1": "cols3", "cols2": "cols4"},
+            ).sort_index(),
+            kdf.rename_axis(
+                index={"index1": "index3", "index2": "index4"},
+                columns={"cols1": "cols3", "cols2": "cols4"},
+            ).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.rename_axis(index=str.upper, columns=str.upper).sort_index(),
+            kdf.rename_axis(index=str.upper, columns=str.upper).sort_index(),
+        )
+
+        self.assertRaises(ValueError, lambda: kdf.rename_axis(index=["index3", "index4", "index5"]))
+        self.assertRaises(
+            ValueError, lambda: kdf.rename_axis(columns=["columns3", "columns4", "columns5"])
+        )
+
     def test_dot_in_column_name(self):
         self.assert_eq(
             ks.DataFrame(ks.range(1)._internal.spark_frame.selectExpr("1L as `a.b`"))["a.b"],

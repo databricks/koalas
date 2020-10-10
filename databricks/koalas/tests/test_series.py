@@ -170,6 +170,67 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(kser, pser)
 
+    def test_rename_axis(self):
+
+        index = pd.Index(["A", "B", "C"], name="index")
+        pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.rename_axis("index2").sort_index(), kser.rename_axis("index2").sort_index(),
+        )
+
+        self.assert_eq(
+            pser.rename_axis(index="index2").sort_index(),
+            kser.rename_axis(index="index2").sort_index(),
+        )
+
+        self.assert_eq(
+            pser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+            kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+        )
+
+        self.assert_eq(
+            pser.rename_axis(index=str.upper).sort_index(),
+            kser.rename_axis(index=str.upper).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"]))
+        self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
+
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+
+        pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.rename_axis(["index3", "index4"]).sort_index(),
+            kser.rename_axis(["index3", "index4"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pser.rename_axis(index=["index3", "index4"]).sort_index(),
+            kser.rename_axis(index=["index3", "index4"]).sort_index(),
+        )
+
+        self.assert_eq(
+            pser.rename_axis(
+                index={"index1": "index3", "index2": "index4", "missing": "index5"}
+            ).sort_index(),
+            kser.rename_axis(
+                index={"index1": "index3", "index2": "index4", "missing": "index5"}
+            ).sort_index(),
+        )
+
+        self.assert_eq(
+            pser.rename_axis(index=str.upper).sort_index(),
+            kser.rename_axis(index=str.upper).sort_index(),
+        )
+
+        self.assertRaises(ValueError, lambda: kser.rename_axis(["index3", "index4", "index5"]))
+
     def test_or(self):
         pdf = pd.DataFrame(
             {

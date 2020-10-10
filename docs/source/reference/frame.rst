@@ -168,6 +168,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.filter
    DataFrame.head
    DataFrame.rename
+   DataFrame.rename_axis
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.take
