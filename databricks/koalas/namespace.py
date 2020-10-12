@@ -409,7 +409,7 @@ def read_csv(
 
 def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
     """
-    Convert a JSON string to pandas object.
+    Convert a JSON string to DataFrame.
 
     Parameters
     ----------
