@@ -794,10 +794,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.delete(5).sort_values(), kidx.delete(5).sort_values())
         self.assert_eq(pidx.delete(-5).sort_values(), kidx.delete(-5).sort_values())
-        self.assert_eq(pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values())
-        self.assert_eq(
-            pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
-        )
+        if LooseVersion(np.__version__) >= LooseVersion("1.19.0"):
+            with self.assertRaisesRegex(
+                IndexError, "index 10000 is out of bounds for axis 0 with size 9"
+            ):
+                kidx.delete([0, 10000])
+            with self.assertRaisesRegex(
+                IndexError, "index 10000 is out of bounds for axis 0 with size 9"
+            ):
+                kidx.delete([10000, 20000])
+        else:
+            self.assert_eq(
+                pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values()
+            )
+            self.assert_eq(
+                pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
+            )
 
         with self.assertRaisesRegex(IndexError, "index 10 is out of bounds for axis 0 with size 9"):
             kidx.delete(10)
@@ -807,10 +819,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.delete(1).sort_values(), kidx.delete(1).sort_values())
         self.assert_eq(pidx.delete(-1).sort_values(), kidx.delete(-1).sort_values())
-        self.assert_eq(pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values())
-        self.assert_eq(
-            pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
-        )
+        if LooseVersion(np.__version__) >= LooseVersion("1.19.0"):
+            with self.assertRaisesRegex(
+                IndexError, "index 10000 is out of bounds for axis 0 with size 3"
+            ):
+                kidx.delete([0, 10000])
+            with self.assertRaisesRegex(
+                IndexError, "index 10000 is out of bounds for axis 0 with size 3"
+            ):
+                kidx.delete([10000, 20000])
+        else:
+            self.assert_eq(
+                pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values()
+            )
+            self.assert_eq(
+                pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
+            )
 
     def test_append(self):
         # Index
