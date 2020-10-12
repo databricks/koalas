@@ -1484,6 +1484,16 @@ class Index(IndexOpsMixin):
                     "index {} is out of bounds for axis 0 with size {}".format(loc, length)
                 )
             loc = [loc]
+        # pandas with numpy>=1.19.0 raises Exception if the item in the list exceeds the length.
+        # Because the behavior of `np.delete` has been changed from numpy 1.19.0
+        # which pandas uses directly.
+        elif LooseVersion(np.__version__) >= LooseVersion("1.19.0"):
+            for index in loc:
+                if abs(index) >= length:
+                    raise IndexError(
+                        "index {} is out of bounds for axis 0 with size {}".format(index, length)
+                    )
+
         loc = [int(item) for item in loc]
         loc = [item if item >= 0 else length + item for item in loc]
 
