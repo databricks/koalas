@@ -334,34 +334,38 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         )
 
     def test_box_summary(self):
-        kdf = self.kdf1
-        pdf = self.pdf1
-        k = 1.5
+        def check_box_summary(kdf, pdf):
+            k = 1.5
+            stats, fences = KoalasBoxPlot._compute_stats(kdf["a"], "a", whis=k, precision=0.01)
+            outliers = KoalasBoxPlot._outliers(kdf["a"], "a", *fences)
+            whiskers = KoalasBoxPlot._calc_whiskers("a", outliers)
+            fliers = KoalasBoxPlot._get_fliers("a", outliers, whiskers[0])
 
-        stats, fences = KoalasBoxPlot._compute_stats(kdf["a"], "a", whis=k, precision=0.01)
-        outliers = KoalasBoxPlot._outliers(kdf["a"], "a", *fences)
-        whiskers = KoalasBoxPlot._calc_whiskers("a", outliers)
-        fliers = KoalasBoxPlot._get_fliers("a", outliers)
+            expected_mean = pdf["a"].mean()
+            expected_median = pdf["a"].median()
+            expected_q1 = np.percentile(pdf["a"], 25)
+            expected_q3 = np.percentile(pdf["a"], 75)
+            iqr = expected_q3 - expected_q1
+            expected_fences = (expected_q1 - k * iqr, expected_q3 + k * iqr)
+            pdf["outlier"] = ~pdf["a"].between(fences[0], fences[1])
+            expected_whiskers = (
+                pdf.query("not outlier")["a"].min(),
+                pdf.query("not outlier")["a"].max(),
+            )
+            expected_fliers = pdf.query("outlier")["a"].values
 
-        expected_mean = pdf["a"].mean()
-        expected_median = pdf["a"].median()
-        expected_q1 = np.percentile(pdf["a"], 25)
-        expected_q3 = np.percentile(pdf["a"], 75)
-        iqr = expected_q3 - expected_q1
-        expected_fences = (expected_q1 - k * iqr, expected_q3 + k * iqr)
-        pdf["outlier"] = ~pdf["a"].between(fences[0], fences[1])
-        expected_whiskers = pdf.query("not outlier")["a"].min(), pdf.query("not outlier")["a"].max()
-        expected_fliers = pdf.query("outlier")["a"].values
+            self.assertEqual(expected_mean, stats["mean"])
+            self.assertEqual(expected_median, stats["med"])
+            self.assertEqual(expected_q1, stats["q1"] + 0.5)
+            self.assertEqual(expected_q3, stats["q3"] - 0.5)
+            self.assertEqual(expected_fences[0], fences[0] + 2.0)
+            self.assertEqual(expected_fences[1], fences[1] - 2.0)
+            self.assertEqual(expected_whiskers[0], whiskers[0])
+            self.assertEqual(expected_whiskers[1], whiskers[1])
+            self.assertEqual(expected_fliers, fliers)
 
-        self.assertEqual(expected_mean, stats["mean"])
-        self.assertEqual(expected_median, stats["med"])
-        self.assertEqual(expected_q1, stats["q1"] + 0.5)
-        self.assertEqual(expected_q3, stats["q3"] - 0.5)
-        self.assertEqual(expected_fences[0], fences[0] + 2.0)
-        self.assertEqual(expected_fences[1], fences[1] - 2.0)
-        self.assertEqual(expected_whiskers[0], whiskers[0])
-        self.assertEqual(expected_whiskers[1], whiskers[1])
-        self.assertEqual(expected_fliers, fliers)
+        check_box_summary(self.kdf1, self.pdf1)
+        check_box_summary(self.kdf1 * -1, -self.pdf1)
 
     def test_kde_plot(self):
         def moving_average(a, n=10):

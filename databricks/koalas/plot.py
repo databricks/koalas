@@ -326,7 +326,7 @@ class KoalasBoxPlot(BoxPlot):
         whiskers = KoalasBoxPlot._calc_whiskers(spark_column_name, outliers)
 
         if showfliers:
-            fliers = KoalasBoxPlot._get_fliers(spark_column_name, outliers)
+            fliers = KoalasBoxPlot._get_fliers(spark_column_name, outliers, whiskers[0])
         else:
             fliers = []
 
@@ -479,14 +479,17 @@ class KoalasBoxPlot(BoxPlot):
         return minmax.iloc[0][["min", "max"]].values
 
     @staticmethod
-    def _get_fliers(colname, outliers):
+    def _get_fliers(colname, outliers, min_val):
         # Filters only the outliers, should "showfliers" be True
         fliers_df = outliers.filter("`__{}_outlier`".format(colname))
 
         # If shows fliers, takes the top 1k with highest absolute values
+        # Here we normalize the values by subtracting the minimum value from
+        # each, and use absolute values.
+        order_col = F.abs(F.col("`{}`".format(colname)) - min_val.item())
         fliers = (
-            fliers_df.select(F.abs(F.col("`{}`".format(colname))).alias(colname))
-            .orderBy(F.desc("`{}`".format(colname)))
+            fliers_df.select(F.col("`{}`".format(colname)))
+            .orderBy(order_col)
             .limit(1001)
             .toPandas()[colname]
             .values
