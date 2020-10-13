@@ -167,7 +167,10 @@ class KoalasBoxPlot(BoxPlot):
         meanprops=None,
         capprops=None,
         whiskerprops=None,
-        manage_xticks=True,
+        manage_ticks=None,
+        # manage_xticks is for compatibility of matplotlib < 3.1.0.
+        # Remove this when minimum version is 3.0.0
+        manage_xticks=None,
         autorange=False,
         zorder=None,
         precision=None,
@@ -265,6 +268,17 @@ class KoalasBoxPlot(BoxPlot):
                             if ci[1] is not None:
                                 stats["cihi"] = ci[1]
 
+        should_manage_ticks = True
+        if manage_xticks is not None:
+            should_manage_ticks = manage_xticks
+        if manage_ticks is not None:
+            should_manage_ticks = manage_ticks
+
+        if LooseVersion(matplotlib.__version__) < LooseVersion("3.1.0"):
+            extra_args = {"manage_xticks": should_manage_ticks}
+        else:
+            extra_args = {"manage_ticks": should_manage_ticks}
+
         artists = ax.bxp(
             bxpstats,
             positions=positions,
@@ -283,8 +297,8 @@ class KoalasBoxPlot(BoxPlot):
             showfliers=showfliers,
             capprops=capprops,
             whiskerprops=whiskerprops,
-            manage_xticks=manage_xticks,
             zorder=zorder,
+            **extra_args,
         )
         return artists
 
@@ -434,7 +448,7 @@ class KoalasBoxPlot(BoxPlot):
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
-            F.mean("`%s`" % colname).alias("{}_mean".format(colname))
+            F.mean("`%s`" % colname).alias("{}_mean".format(colname)),
         ).toPandas()
 
         # Computes IQR and Tukey's fences
@@ -920,7 +934,7 @@ def plot_series(
         xerr=xerr,
         label=label,
         secondary_y=secondary_y,
-        **kwds
+        **kwds,
     )
 
 
@@ -1089,7 +1103,7 @@ def plot_frame(
         secondary_y=secondary_y,
         layout=layout,
         sort_columns=sort_columns,
-        **kwds
+        **kwds,
     )
 
 
