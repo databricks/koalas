@@ -300,6 +300,7 @@ class KoalasBoxPlot(BoxPlot):
 
     def _compute_plot_data(self):
         colname = self.data.name
+        spark_column_name = self.data._internal.spark_column_name_for(self.data._column_label)
         data = self.data
 
         # Updates all props with the rc defaults from matplotlib
@@ -314,16 +315,18 @@ class KoalasBoxPlot(BoxPlot):
         precision = self.kwds.get("precision", 0.01)
 
         # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        col_stats, col_fences = KoalasBoxPlot._compute_stats(data, colname, whis, precision)
+        col_stats, col_fences = KoalasBoxPlot._compute_stats(
+            data, spark_column_name, whis, precision
+        )
 
         # # Creates a column to flag rows as outliers or not
-        outliers = KoalasBoxPlot._outliers(data, colname, *col_fences)
+        outliers = KoalasBoxPlot._outliers(data, spark_column_name, *col_fences)
 
         # # Computes min and max values of non-outliers - the whiskers
-        whiskers = KoalasBoxPlot._calc_whiskers(colname, outliers)
+        whiskers = KoalasBoxPlot._calc_whiskers(spark_column_name, outliers)
 
         if showfliers:
-            fliers = KoalasBoxPlot._get_fliers(colname, outliers)
+            fliers = KoalasBoxPlot._get_fliers(spark_column_name, outliers)
         else:
             fliers = []
 
@@ -427,7 +430,7 @@ class KoalasBoxPlot(BoxPlot):
         pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
             *[
                 F.expr(
-                    "approx_percentile({}, {}, {})".format(colname, q, int(1.0 / precision))
+                    "approx_percentile(`{}`, {}, {})".format(colname, q, int(1.0 / precision))
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
