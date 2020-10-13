@@ -9177,9 +9177,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = ks.DataFrame({"num_legs": [4, 4, 2],
+        >>> df = pd.DataFrame({"num_legs": [4, 4, 2],
         ...                    "num_arms": [0, 0, 2]},
-        ...                   ["dog", "cat", "monkey"])
+        ...                   index=["dog", "cat", "monkey"],
+        ...                   columns=["num_legs", "num_arms"])
         >>> df
                 num_legs  num_arms
         dog            4         0
@@ -9203,11 +9204,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         **MultiIndex**
 
         >>> index = pd.MultiIndex.from_product([['mammal'],
-        ...                                        ['dog', 'cat', 'monkey']],
-        ...                                       names=['type', 'name'])
+        ...                                     ['dog', 'cat', 'monkey']],
+        ...                                    names=['type', 'name'])
         >>> df = ks.DataFrame({"num_legs": [4, 4, 2],
         ...                    "num_arms": [0, 0, 2]},
-        ...                   index=index)
+        ...                   index=index,
+        ...                   columns=["num_legs", "num_arms"])
         >>> df  # doctest: +NORMALIZE_WHITESPACE
                        num_legs  num_arms
         type   name
