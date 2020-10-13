@@ -25,6 +25,8 @@ from pyspark.sql.types import StringType, BinaryType, ArrayType, LongType, MapTy
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 
+from databricks.koalas.spark import functions as SF
+
 if TYPE_CHECKING:
     import databricks.koalas as ks
 
@@ -1487,11 +1489,7 @@ class StringMethods(object):
         """
         if not isinstance(repeats, int):
             raise ValueError("repeats expects an int parameter")
-
-        def pandas_repeat(s) -> "ks.Series[str]":
-            return s.str.repeat(repeats=repeats)
-
-        return self._data.koalas.transform_batch(pandas_repeat)
+        return self._data.spark.transform(lambda c: SF.repeat(col=c, n=repeats))
 
     def replace(self, pat, repl, n=-1, case=None, flags=0, regex=True) -> "ks.Series":
         """
