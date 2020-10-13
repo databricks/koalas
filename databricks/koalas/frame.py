@@ -811,6 +811,9 @@ class DataFrame(Frame, Generic[T]):
     def __abs__(self):
         return self._apply_series_op(lambda kser: abs(kser))
 
+    def __neg__(self):
+        return self._apply_series_op(lambda kser: -kser)
+
     def add(self, other):
         return self + other
 
