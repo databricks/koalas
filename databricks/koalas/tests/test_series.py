@@ -180,23 +180,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             pser.rename_axis("index2").sort_index(), kser.rename_axis("index2").sort_index(),
         )
 
-        self.assert_eq(
-            pser.rename_axis(index="index2").sort_index(),
-            kser.rename_axis(index="index2").sort_index(),
-        )
-
-        self.assert_eq(
-            pser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
-            kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
-        )
-
-        self.assert_eq(
-            pser.rename_axis(index=str.upper).sort_index(),
-            kser.rename_axis(index=str.upper).sort_index(),
-        )
-
-        self.assertRaises(TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"]))
         self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
+
+        # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assert_eq(
+                pser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+                kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+            )
+
+            self.assert_eq(
+                pser.rename_axis(index=str.upper).sort_index(),
+                kser.rename_axis(index=str.upper).sort_index(),
+            )
+
+            self.assertRaises(
+                TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"])
+            )
 
         index = pd.MultiIndex.from_tuples(
             [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
@@ -210,26 +210,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.rename_axis(["index3", "index4"]).sort_index(),
         )
 
-        self.assert_eq(
-            pser.rename_axis(index=["index3", "index4"]).sort_index(),
-            kser.rename_axis(index=["index3", "index4"]).sort_index(),
-        )
-
-        self.assert_eq(
-            pser.rename_axis(
-                index={"index1": "index3", "index2": "index4", "missing": "index5"}
-            ).sort_index(),
-            kser.rename_axis(
-                index={"index1": "index3", "index2": "index4", "missing": "index5"}
-            ).sort_index(),
-        )
-
-        self.assert_eq(
-            pser.rename_axis(index=str.upper).sort_index(),
-            kser.rename_axis(index=str.upper).sort_index(),
-        )
-
         self.assertRaises(ValueError, lambda: kser.rename_axis(["index3", "index4", "index5"]))
+
+        # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+
+            self.assert_eq(
+                pser.rename_axis(
+                    index={"index1": "index3", "index2": "index4", "missing": "index5"}
+                ).sort_index(),
+                kser.rename_axis(
+                    index={"index1": "index3", "index2": "index4", "missing": "index5"}
+                ).sort_index(),
+            )
+
+            self.assert_eq(
+                pser.rename_axis(index=str.upper).sort_index(),
+                kser.rename_axis(index=str.upper).sort_index(),
+            )
 
     def test_or(self):
         pdf = pd.DataFrame(
