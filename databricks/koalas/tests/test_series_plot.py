@@ -365,7 +365,7 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
             self.assertEqual(expected_fliers, fliers)
 
         check_box_summary(self.kdf1, self.pdf1)
-        check_box_summary(self.kdf1 * -1, -self.pdf1)
+        check_box_summary(-self.kdf1, -self.pdf1)
 
     def test_kde_plot(self):
         def moving_average(a, n=10):
