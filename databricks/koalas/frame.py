@@ -10573,7 +10573,7 @@ class CachedDataFrame(DataFrame):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self.unpersist()
+        self.spark.unpersist()
 
     # create accessor for Spark related methods.
     spark = CachedAccessor("spark", CachedSparkFrameMethods)
