@@ -65,6 +65,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.columns, pd.Index(["a", "b"]))
 
         self.assert_eq(kdf[kdf["b"] > 2], pdf[pdf["b"] > 2])
+        self.assert_eq(-kdf[kdf["b"] > 2], -pdf[pdf["b"] > 2])
         self.assert_eq(kdf[["a", "b"]], pdf[["a", "b"]])
         self.assert_eq(kdf.a, pdf.a)
         self.assert_eq(kdf.b.mean(), pdf.b.mean())
