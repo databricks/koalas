@@ -31,7 +31,6 @@ from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable
 
 import numpy as np
 import pandas as pd
-import pandas.core.common as com
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
 
 if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
@@ -9236,9 +9235,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 newnames = [v]
             elif is_list_like(v) and not is_dict_like(v):
                 newnames = list(v)
+            elif is_dict_like(v):
+                newnames = [v[name] if name in v else name for name in curnames]
+            elif callable(v):
+                newnames = [v(name) for name in curnames]
             else:
-                f = com.get_rename_function(v)
-                newnames = [f(name) for name in curnames]
+                raise ValueError(
+                    "`mapper` or `index` or `columns` should be "
+                    "either dict-like or function type."
+                )
 
             if len(newnames) != len(curnames):
                 raise ValueError(
