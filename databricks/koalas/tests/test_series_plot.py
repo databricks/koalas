@@ -284,11 +284,11 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(bin1, bin2)
 
     def test_box_plot(self):
-        def check_box_plot(pdf, kdf, *args, **kwargs):
+        def check_box_plot(pser, kser, *args, **kwargs):
             _, ax1 = plt.subplots(1, 1)
-            ax1 = pdf["a"].plot.box(*args, **kwargs)
+            ax1 = pser.plot.box(*args, **kwargs)
             _, ax2 = plt.subplots(1, 1)
-            ax2 = kdf["a"].plot.box(*args, **kwargs)
+            ax2 = kser.plot.box(*args, **kwargs)
 
             diffs = [
                 np.array([0, 0.5, 0, 0.5, 0, -0.5, 0, -0.5, 0, 0.5]),
@@ -307,13 +307,20 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
                 ax1.cla()
                 ax2.cla()
 
-        check_box_plot(self.pdf1, self.kdf1)
-        check_box_plot(self.pdf1, self.kdf1, showfliers=True)
-        check_box_plot(self.pdf1, self.kdf1, sym="")
-        check_box_plot(self.pdf1, self.kdf1, sym=".", color="r")
-        check_box_plot(self.pdf1, self.kdf1, use_index=False, labels=["Test"])
-        check_box_plot(self.pdf1, self.kdf1, usermedians=[2.0])
-        check_box_plot(self.pdf1, self.kdf1, conf_intervals=[(1.0, 3.0)])
+        # Non-named Series
+        pser = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50], [0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10])
+        kser = ks.from_pandas(pser)
+
+        spec = [(self.pdf1.a, self.kdf1.a), (pser, kser)]
+
+        for p, k in spec:
+            check_box_plot(p, k)
+            check_box_plot(p, k, showfliers=True)
+            check_box_plot(p, k, sym="")
+            check_box_plot(p, k, sym=".", color="r")
+            check_box_plot(p, k, use_index=False, labels=["Test"])
+            check_box_plot(p, k, usermedians=[2.0])
+            check_box_plot(p, k, conf_intervals=[(1.0, 3.0)])
 
         val = (1, 3)
         self.assertRaises(

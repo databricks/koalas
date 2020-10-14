@@ -300,6 +300,7 @@ class KoalasBoxPlot(BoxPlot):
 
     def _compute_plot_data(self):
         colname = self.data.name
+        spark_column_name = self.data._internal.spark_column_name_for(self.data._column_label)
         data = self.data
 
         # Updates all props with the rc defaults from matplotlib
@@ -314,16 +315,18 @@ class KoalasBoxPlot(BoxPlot):
         precision = self.kwds.get("precision", 0.01)
 
         # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        col_stats, col_fences = KoalasBoxPlot._compute_stats(data, colname, whis, precision)
+        col_stats, col_fences = KoalasBoxPlot._compute_stats(
+            data, spark_column_name, whis, precision
+        )
 
         # # Creates a column to flag rows as outliers or not
-        outliers = KoalasBoxPlot._outliers(data, colname, *col_fences)
+        outliers = KoalasBoxPlot._outliers(data, spark_column_name, *col_fences)
 
         # # Computes min and max values of non-outliers - the whiskers
-        whiskers = KoalasBoxPlot._calc_whiskers(colname, outliers)
+        whiskers = KoalasBoxPlot._calc_whiskers(spark_column_name, outliers)
 
         if showfliers:
-            fliers = KoalasBoxPlot._get_fliers(colname, outliers)
+            fliers = KoalasBoxPlot._get_fliers(spark_column_name, outliers)
         else:
             fliers = []
 
@@ -427,11 +430,11 @@ class KoalasBoxPlot(BoxPlot):
         pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
             *[
                 F.expr(
-                    "approx_percentile({}, {}, {})".format(colname, q, int(1.0 / precision))
+                    "approx_percentile(`{}`, {}, {})".format(colname, q, int(1.0 / precision))
                 ).alias("{}_{}%".format(colname, int(q * 100)))
                 for q in [0.25, 0.50, 0.75]
             ],
-            F.mean(colname).alias("{}_mean".format(colname))
+            F.mean("`%s`" % colname).alias("{}_mean".format(colname))
         ).toPandas()
 
         # Computes IQR and Tukey's fences
@@ -459,7 +462,7 @@ class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def _outliers(data, colname, lfence, ufence):
         # Builds expression to identify outliers
-        expression = F.col(colname).between(lfence, ufence)
+        expression = F.col("`%s`" % colname).between(lfence, ufence)
         # Creates a column to flag rows as outliers or not
         return data._kdf._internal.resolved_copy.spark_frame.withColumn(
             "__{}_outlier".format(colname), ~expression
@@ -469,8 +472,8 @@ class KoalasBoxPlot(BoxPlot):
     def _calc_whiskers(colname, outliers):
         # Computes min and max values of non-outliers - the whiskers
         minmax = (
-            outliers.filter("not __{}_outlier".format(colname))
-            .agg(F.min(colname).alias("min"), F.max(colname).alias("max"))
+            outliers.filter("not `__{}_outlier`".format(colname))
+            .agg(F.min("`%s`" % colname).alias("min"), F.max(colname).alias("max"))
             .toPandas()
         )
         return minmax.iloc[0][["min", "max"]].values
@@ -478,7 +481,7 @@ class KoalasBoxPlot(BoxPlot):
     @staticmethod
     def _get_fliers(colname, outliers):
         # Filters only the outliers, should "showfliers" be True
-        fliers_df = outliers.filter("__{}_outlier".format(colname))
+        fliers_df = outliers.filter("`__{}_outlier`".format(colname))
 
         # If shows fliers, takes the top 1k with highest absolute values
         fliers = (
