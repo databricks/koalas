@@ -1778,7 +1778,7 @@ def get_dummies(
 # TODO: there are many parameters to implement and support. See pandas's pd.concat.
 def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     """
-    Concatenate pandas objects along a particular axis with optional set logic
+    Concatenate Koalas objects along a particular axis with optional set logic
     along the other axes.
 
     Parameters
