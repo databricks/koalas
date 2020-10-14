@@ -124,7 +124,7 @@ Package       Required version
 `pandas`      >=0.23.2
 `pyspark`     >=2.4.0
 `pyarrow`     >=0.10
-`matplotlib`  >=3.0.0,<3.3.0
+`matplotlib`  >=3.0.0
 `numpy`       >=1.14
 ============= ================
 
