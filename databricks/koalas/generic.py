@@ -1544,7 +1544,7 @@ class Frame(object, metaclass=ABCMeta):
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
         if isinstance(by, ks.DataFrame):
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by).__name__))
         elif isinstance(by, ks.Series):
             by = [by]
         elif is_name_like_tuple(by):
@@ -1559,7 +1559,9 @@ class Frame(object, metaclass=ABCMeta):
             new_by = []  # type: List[Union[Tuple, ks.Series]]
             for key in by:
                 if isinstance(key, ks.DataFrame):
-                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
+                    raise ValueError(
+                        "Grouper for '{}' not 1-dimensional".format(type(key).__name__)
+                    )
                 elif isinstance(key, ks.Series):
                     new_by.append(key)
                 elif is_name_like_tuple(key):
@@ -1571,10 +1573,12 @@ class Frame(object, metaclass=ABCMeta):
                         raise KeyError(key)
                     new_by.append((key,))
                 else:
-                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
+                    raise ValueError(
+                        "Grouper for '{}' not 1-dimensional".format(type(key).__name__)
+                    )
             by = new_by
         else:
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by).__name__))
         if not len(by):
             raise ValueError("No group keys passed!")
         axis = validate_axis(axis)
@@ -1912,7 +1916,9 @@ class Frame(object, metaclass=ABCMeta):
         125.0
         """
         if not isinstance(accuracy, int):
-            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+            )
 
         return self._reduce_for_stat_function(
             lambda scol: SF.percentile_approx(scol, 0.5, accuracy),

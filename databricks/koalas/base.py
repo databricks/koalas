@@ -1143,7 +1143,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     def _shift(self, periods, fill_value, part_cols=()):
         if not isinstance(periods, int):
-            raise ValueError("periods should be an int; however, got [%s]" % type(periods))
+            raise ValueError("periods should be an int; however, got [%s]" % type(periods).__name__)
 
         col = self.spark.column
         window = (

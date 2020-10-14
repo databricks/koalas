@@ -699,7 +699,7 @@ class Index(IndexOpsMixin):
         Float64Index([1.0, 2.0, 0.0], dtype='float64')
         """
         if not isinstance(value, (float, int, str, bool)):
-            raise TypeError("Unsupported type %s" % type(value))
+            raise TypeError("Unsupported type %s" % type(value).__name__)
         sdf = self._internal.spark_frame.fillna(value)
         result = DataFrame(self._kdf._internal.with_new_sdf(sdf)).index
         return result
@@ -1900,7 +1900,9 @@ class Index(IndexOpsMixin):
         MultiIndex([], )
         """
         if not isinstance(repeats, int):
-            raise ValueError("`repeats` argument must be integer, but got {}".format(type(repeats)))
+            raise ValueError(
+                "`repeats` argument must be integer, but got {}".format(type(repeats).__name__)
+            )
         elif repeats < 0:
             raise ValueError("negative dimensions are not allowed")
 
