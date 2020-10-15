@@ -2304,8 +2304,8 @@ class GroupBy(object, metaclass=ABCMeta):
 
     @staticmethod
     def _resolve_grouping_from_diff_dataframes(
-        kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]
-    ) -> Tuple[DataFrame, List[Series], Set[Tuple[str, ...]]]:
+        kdf: DataFrame, by: List[Union[Series, Tuple]]
+    ) -> Tuple[DataFrame, List[Series], Set[Tuple]]:
         column_labels_level = kdf._internal.column_labels_level
 
         column_labels = []
@@ -2379,7 +2379,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return kdf, new_by_series, tmp_column_labels  # type: ignore
 
     @staticmethod
-    def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]) -> List[Series]:
+    def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple]]) -> List[Series]:
         new_by_series = []
         for col_or_s in by:
             if isinstance(col_or_s, Series):
@@ -2397,7 +2397,7 @@ class GroupBy(object, metaclass=ABCMeta):
 class DataFrameGroupBy(GroupBy):
     @staticmethod
     def _build(
-        kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]], as_index: bool, dropna: bool
+        kdf: DataFrame, by: List[Union[Series, Tuple]], as_index: bool, dropna: bool
     ) -> "DataFrameGroupBy":
         if any(isinstance(col_or_s, Series) and not same_anchor(kdf, col_or_s) for col_or_s in by):
             (
@@ -2422,8 +2422,8 @@ class DataFrameGroupBy(GroupBy):
         by: List[Series],
         as_index: bool,
         dropna: bool,
-        column_labels_to_exlcude: Set[Tuple[str, ...]],
-        agg_columns: List[Tuple[str, ...]] = None,
+        column_labels_to_exlcude: Set[Tuple],
+        agg_columns: List[Tuple] = None,
     ):
         self._kdf = kdf
         self._groupkeys = by
@@ -2590,7 +2590,7 @@ class DataFrameGroupBy(GroupBy):
 class SeriesGroupBy(GroupBy):
     @staticmethod
     def _build(
-        kser: Series, by: List[Union[Series, Tuple[str, ...]]], as_index: bool, dropna: bool
+        kser: Series, by: List[Union[Series, Tuple]], as_index: bool, dropna: bool
     ) -> "SeriesGroupBy":
         if any(isinstance(col_or_s, Series) and not same_anchor(kser, col_or_s) for col_or_s in by):
             kdf, new_by_series, _ = GroupBy._resolve_grouping_from_diff_dataframes(
