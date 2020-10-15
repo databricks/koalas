@@ -576,7 +576,9 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
             if isinstance(value, (Series, spark.Column)):
                 if remaining_index is not None and remaining_index == 0:
-                    raise ValueError("No axis named {} for object type {}".format(key, type(value)))
+                    raise ValueError(
+                        "No axis named {} for object type {}".format(key, type(value).__name__)
+                    )
                 if isinstance(value, Series):
                     value = value.spark.column
             else:

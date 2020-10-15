@@ -125,7 +125,7 @@ def from_pandas(
     elif isinstance(pobj, pd.Index):
         return DataFrame(pd.DataFrame(index=pobj)).index
     else:
-        raise ValueError("Unknown data type: {}".format(type(pobj)))
+        raise ValueError("Unknown data type: {}".format(type(pobj).__name__))
 
 
 _range = range  # built-in range
@@ -2539,7 +2539,7 @@ def broadcast(obj):
     ...
     """
     if not isinstance(obj, DataFrame):
-        raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
+        raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj).__name__))
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
 
 

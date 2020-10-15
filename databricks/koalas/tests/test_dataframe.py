@@ -1007,7 +1007,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.fillna(-1, limit=1)
         with self.assertRaisesRegex(TypeError, "Unsupported.*DataFrame"):
             kdf.fillna(pd.DataFrame({"x": [-1], "y": [-1], "z": [-1]}))
-        with self.assertRaisesRegex(TypeError, "Unsupported.*numpy.int64"):
+        with self.assertRaisesRegex(TypeError, "Unsupported.*int64"):
             kdf.fillna({"x": np.int64(-6), "y": np.int64(-4), "z": -5})
         with self.assertRaisesRegex(ValueError, "Expecting 'pad', 'ffill', 'backfill' or 'bfill'."):
             kdf.fillna(method="xxx")
@@ -2032,9 +2032,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         ):
             kdf.replace(regex="")
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type tuple"):
             kdf.replace(value=(1, 2, 3))
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'tuple'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type tuple"):
             kdf.replace(to_replace=(1, 2, 3))
 
         with self.assertRaisesRegex(ValueError, "Length of to_replace and value must be same"):
@@ -3411,7 +3411,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.filter(items=[("aa", 1), ("bd", 2)], axis=0).sort_index(),
         )
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type list"):
             kdf.filter(items=[["aa", 1], ("bd", 2)], axis=0)
 
         with self.assertRaisesRegex(ValueError, "The item should not be empty."):
@@ -3864,7 +3864,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         invalid_exprs = (1, 1.0, (exprs[0],), [exprs[0]])
         for expr in invalid_exprs:
             with self.assertRaisesRegex(
-                ValueError, "expr must be a string to be evaluated, {} given".format(type(expr))
+                ValueError,
+                "expr must be a string to be evaluated, {} given".format(type(expr).__name__),
             ):
                 kdf.query(expr)
 

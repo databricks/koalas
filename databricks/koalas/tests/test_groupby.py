@@ -1876,7 +1876,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.a.rename().groupby(pdf.b.rename()).apply(lambda x: x + x.min()).sort_index(),
         )
 
-        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+        with self.assertRaisesRegex(TypeError, "int object is not callable"):
             kdf.groupby("b").apply(1)
 
         # multi-index columns
@@ -2120,7 +2120,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.a.rename().groupby(pdf.b.rename()).filter(lambda x: any(x == 2)).sort_index(),
         )
 
-        with self.assertRaisesRegex(TypeError, "<class 'int'> object is not callable"):
+        with self.assertRaisesRegex(TypeError, "int object is not callable"):
             kdf.groupby("b").filter(1)
 
         # multi-index columns
