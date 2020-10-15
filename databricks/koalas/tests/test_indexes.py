@@ -607,7 +607,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.fillna(0), kidx.fillna(0), almost=True)
         self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0), almost=True)
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type list"):
             kidx.fillna([1, 2])
 
     def test_index_drop(self):

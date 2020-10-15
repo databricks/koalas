@@ -666,7 +666,7 @@ class DataFrame(Frame, Generic[T]):
             return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
 
         else:
-            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+            raise ValueError("No axis named %s for object type %s." % (axis, type(axis).__name__))
 
     def _kser_for(self, label):
         """
@@ -715,7 +715,7 @@ class DataFrame(Frame, Generic[T]):
         ):
             raise ValueError(
                 "%s with a sequence is currently not supported; "
-                "however, got %s." % (op, type(other))
+                "however, got %s." % (op, type(other).__name__)
             )
 
         if isinstance(other, DataFrame):
@@ -4850,7 +4850,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if value is not None:
             if not isinstance(value, (float, int, str, bool, dict, pd.Series)):
-                raise TypeError("Unsupported type %s" % type(value))
+                raise TypeError("Unsupported type %s" % type(value).__name__)
             if limit is not None:
                 raise ValueError("limit parameter for value is not support now")
             if isinstance(value, pd.Series):
@@ -4858,7 +4858,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if isinstance(value, dict):
                 for v in value.values():
                     if not isinstance(v, (float, int, str, bool)):
-                        raise TypeError("Unsupported type %s" % type(v))
+                        raise TypeError("Unsupported type %s" % type(v).__name__)
                 value = {k if is_name_like_tuple(k) else (k,): v for k, v in value.items()}
 
                 def op(kser):
@@ -4977,9 +4977,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         inplace = validate_bool_kwarg(inplace, "inplace")
 
         if value is not None and not isinstance(value, (int, float, str, list, dict)):
-            raise TypeError("Unsupported type {}".format(type(value)))
+            raise TypeError("Unsupported type {}".format(type(value).__name__))
         if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
-            raise TypeError("Unsupported type {}".format(type(to_replace)))
+            raise TypeError("Unsupported type {}".format(type(to_replace).__name__))
 
         if isinstance(value, list) and isinstance(to_replace, list):
             if len(value) != len(to_replace):
@@ -7812,7 +7812,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             elif axis == 1:
                 columns = labels
             else:
-                raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+                raise ValueError(
+                    "No axis named %s for object type %s." % (axis, type(axis).__name__)
+                )
 
         if index is not None and not is_list_like(index):
             raise TypeError(
@@ -7929,7 +7931,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             label_columns = list(columns)
             for col in label_columns:
                 if not isinstance(col, tuple):
-                    raise TypeError("Expected tuple, got {}".format(type(col)))
+                    raise TypeError("Expected tuple, got {}".format(type(col).__name__))
         else:
             label_columns = [(col,) for col in columns]
         for col in label_columns:
@@ -8847,7 +8849,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     col = None
                     for item in items:
                         if not isinstance(item, tuple):
-                            raise TypeError("Unsupported type {}".format(type(item)))
+                            raise TypeError("Unsupported type {}".format(type(item).__name__))
                         if not item:
                             raise ValueError("The item should not be empty.")
                         midx_col = None
@@ -9675,7 +9677,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(self.columns, pd.MultiIndex):
             raise ValueError("Doesn't support for MultiIndex columns")
         if not isinstance(expr, str):
-            raise ValueError("expr must be a string to be evaluated, {} given".format(type(expr)))
+            raise ValueError(
+                "expr must be a string to be evaluated, {} given".format(type(expr).__name__)
+            )
         inplace = validate_bool_kwarg(inplace, "inplace")
 
         data_columns = [label[0] for label in self._internal.column_labels]

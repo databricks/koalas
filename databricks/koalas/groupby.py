@@ -1050,7 +1050,7 @@ class GroupBy(object, metaclass=ABCMeta):
         from pandas.core.base import SelectionMixin
 
         if not isinstance(func, Callable):
-            raise TypeError("%s object is not callable" % type(func))
+            raise TypeError("%s object is not callable" % type(func).__name__)
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
@@ -1238,7 +1238,7 @@ class GroupBy(object, metaclass=ABCMeta):
         from pandas.core.base import SelectionMixin
 
         if not isinstance(func, Callable):
-            raise TypeError("%s object is not callable" % type(func))
+            raise TypeError("%s object is not callable" % type(func).__name__)
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
 
@@ -2012,7 +2012,7 @@ class GroupBy(object, metaclass=ABCMeta):
         2  31  35
         """
         if not isinstance(func, Callable):
-            raise TypeError("%s object is not callable" % type(func))
+            raise TypeError("%s object is not callable" % type(func).__name__)
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)

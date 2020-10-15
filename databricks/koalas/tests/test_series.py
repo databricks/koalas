@@ -1786,7 +1786,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.filter(items=[("one", "x"), ("three", "z")]),
         )
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type list"):
             kser.filter(items=[["one", "x"], ("three", "z")])
 
         with self.assertRaisesRegex(ValueError, "The item should not be empty."):

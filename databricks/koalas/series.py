@@ -1775,7 +1775,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         if value is not None:
             if not isinstance(value, (float, int, str, bool)):
-                raise TypeError("Unsupported type %s" % type(value))
+                raise TypeError("Unsupported type %s" % type(value).__name__)
             if limit is not None:
                 raise ValueError("limit parameter for value is not support now")
             scol = F.when(cond, value).otherwise(scol)
@@ -3117,7 +3117,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
         """
         if not isinstance(accuracy, int):
-            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+            )
 
         if isinstance(q, Iterable):
             q = list(q)
@@ -3397,7 +3399,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def _diff(self, periods, part_cols=()):
         if not isinstance(periods, int):
-            raise ValueError("periods should be an int; however, got [%s]" % type(periods))
+            raise ValueError("periods should be an int; however, got [%s]" % type(periods).__name__)
         window = (
             Window.partitionBy(*part_cols)
             .orderBy(NATURAL_ORDER_COLUMN_NAME)
