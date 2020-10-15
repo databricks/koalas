@@ -34,7 +34,6 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.spark import functions as SF
@@ -1464,7 +1463,7 @@ class Frame(object, metaclass=ABCMeta):
     # should be updated when it's supported.
     def groupby(
         self, by, axis=0, as_index: bool = True, dropna: bool = True
-    ) -> Union[DataFrameGroupBy, SeriesGroupBy]:
+    ) -> Union["DataFrameGroupBy", "SeriesGroupBy"]:
         """
         Group DataFrame or Series using a Series of columns.
 
