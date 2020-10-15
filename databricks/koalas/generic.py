@@ -22,7 +22,7 @@ from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 import warnings
 
 import numpy as np  # noqa: F401
@@ -46,6 +46,10 @@ from databricks.koalas.utils import (
     validate_axis,
 )
 from databricks.koalas.window import Rolling, Expanding
+
+
+if TYPE_CHECKING:
+    from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
 
 class Frame(object, metaclass=ABCMeta):
