@@ -1478,18 +1478,20 @@ class Index(IndexOpsMixin):
                    )
         """
         length = len(self)
+
+        def is_len_exceeded(index):
+            """Check if the given index is exceeded the length or not"""
+            return index >= length if index >= 0 else abs(index) > length
+
         if not is_list_like(loc):
-            if not isinstance(self, str) and abs(loc) >= length:
+            if is_len_exceeded(loc):
                 raise IndexError(
                     "index {} is out of bounds for axis 0 with size {}".format(loc, length)
                 )
             loc = [loc]
-        # pandas with numpy>=1.19.0 raises Exception if the item in the list exceeds the length.
-        # Because the behavior of `np.delete` has been changed from numpy 1.19.0
-        # which pandas uses directly.
-        elif LooseVersion(np.__version__) >= LooseVersion("1.19.0"):
+        else:
             for index in loc:
-                if abs(index) >= length:
+                if is_len_exceeded(index):
                     raise IndexError(
                         "index {} is out of bounds for axis 0 with size {}".format(index, length)
                     )
