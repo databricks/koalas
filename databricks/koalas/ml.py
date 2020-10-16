@@ -61,7 +61,7 @@ def corr(kdf: "ks.DataFrame", method: str = "pearson") -> pd.DataFrame:
     return pd.DataFrame(arr, columns=idx, index=idx)
 
 
-def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[Tuple[str, ...]]]:
+def to_numeric_df(kdf: "ks.DataFrame") -> Tuple[pyspark.sql.DataFrame, List[Tuple]]:
     """
     Takes a dataframe and turns it into a dataframe containing a single numerical
     vector of doubles. This dataframe has a single field called '_1'.
