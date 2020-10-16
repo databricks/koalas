@@ -502,7 +502,7 @@ def scol_for(sdf: spark.DataFrame, column_name: str) -> spark.Column:
     return sdf["`{}`".format(column_name)]
 
 
-def column_labels_level(column_labels: List[Tuple[str, ...]]) -> int:
+def column_labels_level(column_labels: List[Tuple]) -> int:
     """ Return the level of the column index. """
     if len(column_labels) == 0:
         return 1
@@ -647,8 +647,8 @@ def validate_bool_kwarg(value, arg_name):
 
 
 def verify_temp_column_name(
-    df: Union["DataFrame", spark.DataFrame], column_name_or_label: Union[str, Tuple[str, ...]]
-) -> Union[str, Tuple[str, ...]]:
+    df: Union["DataFrame", spark.DataFrame], column_name_or_label: Union[Any, Tuple]
+) -> Union[Any, Tuple]:
     """
     Verify that the given column name does not exist in the given Koalas or Spark DataFrame.
 

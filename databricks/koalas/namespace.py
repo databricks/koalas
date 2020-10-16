@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List, Tuple
+from typing import Any, Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
@@ -2303,9 +2303,9 @@ def merge(
     obj,
     right: "DataFrame",
     how: str = "inner",
-    on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-    left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-    right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+    on: Union[Any, List[Any], Tuple, List[Tuple]] = None,
+    left_on: Union[Any, List[Any], Tuple, List[Tuple]] = None,
+    right_on: Union[Any, List[Any], Tuple, List[Tuple]] = None,
     left_index: bool = False,
     right_index: bool = False,
     suffixes: Tuple[str, str] = ("_x", "_y"),
