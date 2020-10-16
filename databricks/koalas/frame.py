@@ -4265,7 +4265,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     to_spark.__doc__ = SparkFrameMethods.__doc__
 
-    def to_pandas(self) -> Pandas_DataFrame:
+    def to_pandas(self) -> "Pandas_DataFrame":
         """
         Return a pandas DataFrame.
 
