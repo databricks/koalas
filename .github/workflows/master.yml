@@ -53,6 +53,7 @@ jobs:
     - name: Setup Python ${{ matrix.python-version }}
       run: |
         sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
         sudo apt-get install tk-dev python$PYTHON_VERSION-tk python$PYTHON_VERSION
         sudo rm /usr/bin/python
         sudo ln -s /usr/bin/python$PYTHON_VERSION /usr/bin/python
