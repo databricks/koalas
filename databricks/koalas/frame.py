@@ -27,7 +27,19 @@ import types
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict, Callable
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Generic,
+    Iterable,
+    List,
+    Tuple,
+    TYPE_CHECKING,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import pandas as pd
@@ -303,6 +315,9 @@ rectangle    16.0  2.348543e+108
 """
 
 T = TypeVar("T")
+
+if TYPE_CHECKING:
+    from pandas.core.frame import DataFrame as Pandas_DataFrame
 
 
 def _create_tuple_for_frame_type(params):
@@ -3976,7 +3991,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
-    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None):
+    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None) -> "DataFrame":
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -4250,7 +4265,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     to_spark.__doc__ = SparkFrameMethods.__doc__
 
-    def to_pandas(self):
+    def to_pandas(self) -> Pandas_DataFrame:
         """
         Return a pandas DataFrame.
 
