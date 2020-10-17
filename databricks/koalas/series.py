@@ -1441,7 +1441,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     to_latex.__doc__ = DataFrame.to_latex.__doc__
 
-    def to_pandas(self):
+    def to_pandas(self) -> "pd.Series":
         """
         Return a pandas Series.
 
@@ -1461,7 +1461,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return first_series(self._internal.to_pandas_frame.copy())
 
     # Alias to maintain backward compatibility with Spark
-    def toPandas(self):
+    def toPandas(self) -> "pd.Series":
         warnings.warn(
             "Series.toPandas is deprecated as of Series.to_pandas. Please use the API instead.",
             FutureWarning,

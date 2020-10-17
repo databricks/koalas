@@ -36,7 +36,6 @@ from typing import (
     Iterable,
     List,
     Tuple,
-    TYPE_CHECKING,
     TypeVar,
     Union,
 )
@@ -315,9 +314,6 @@ rectangle    16.0  2.348543e+108
 """
 
 T = TypeVar("T")
-
-if TYPE_CHECKING:
-    from pandas.core.frame import DataFrame as Pandas_DataFrame
 
 
 def _create_tuple_for_frame_type(params):
@@ -4265,7 +4261,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     to_spark.__doc__ = SparkFrameMethods.__doc__
 
-    def to_pandas(self) -> "Pandas_DataFrame":
+    def to_pandas(self) -> "pd.DataFrame":
         """
         Return a pandas DataFrame.
 
@@ -4286,7 +4282,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.to_pandas_frame.copy()
 
     # Alias to maintain backward compatibility with Spark
-    def toPandas(self):
+    def toPandas(self) -> "pd.DataFrame":
         warnings.warn(
             "DataFrame.toPandas is deprecated as of DataFrame.to_pandas. "
             "Please use the API instead.",
