@@ -27,18 +27,7 @@ import types
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Optional,
-    Generic,
-    Iterable,
-    List,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict, Callable
 
 import numpy as np
 import pandas as pd
