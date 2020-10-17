@@ -3976,7 +3976,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
-    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None):
+    def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None) -> "DataFrame":
         """
         Converts the existing DataFrame into a Koalas DataFrame.
 
@@ -4250,7 +4250,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     to_spark.__doc__ = SparkFrameMethods.__doc__
 
-    def to_pandas(self):
+    def to_pandas(self) -> pd.DataFrame:
         """
         Return a pandas DataFrame.
 
@@ -4271,7 +4271,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._internal.to_pandas_frame.copy()
 
     # Alias to maintain backward compatibility with Spark
-    def toPandas(self):
+    def toPandas(self) -> pd.DataFrame:
         warnings.warn(
             "DataFrame.toPandas is deprecated as of DataFrame.to_pandas. "
             "Please use the API instead.",
