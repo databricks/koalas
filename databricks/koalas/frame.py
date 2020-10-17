@@ -9129,7 +9129,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         columns: Optional[Any] = None,
         axis: Optional[Union[int, str]] = 0,
         inplace: Optional[bool] = False,
-    ):
+    ) -> Optional["DataFrame"]:
         """
         Set the name of the axis for the index or columns.
 
@@ -9186,6 +9186,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dog            4         0
         cat            4         0
         monkey         2         2
+
         >>> df = df.rename_axis("animal").sort_index()
         >>> df  # doctest: +NORMALIZE_WHITESPACE
                 num_legs  num_arms
@@ -9193,6 +9194,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cat            4         0
         dog            4         0
         monkey         2         2
+
         >>> df = df.rename_axis("limbs", axis="columns").sort_index()
         >>> df # doctest: +NORMALIZE_WHITESPACE
         limbs   num_legs  num_arms
@@ -9265,8 +9267,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index = mapper
             elif axis == 1:
                 columns = mapper
-            else:
-                raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
 
         column_label_names = (
             gen_names(columns, self.columns.names)
@@ -9278,19 +9278,20 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         index_map = OrderedDict(zip(self._internal.index_spark_column_names, index_names))
 
+        spark_frame = self._internal.resolved_copy.spark_frame
         internal = InternalFrame(
-            self._internal.spark_frame,
+            spark_frame=spark_frame,
             index_map=index_map,
             column_labels=self._internal.column_labels,
             data_spark_columns=[
-                scol_for(self._internal.spark_frame, col)
-                for col in self._internal.data_spark_column_names
+                scol_for(spark_frame, col) for col in self._internal.data_spark_column_names
             ],
             column_label_names=column_label_names,
         )
 
         if inplace:
             self._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal)
 

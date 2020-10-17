@@ -180,6 +180,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             pser.rename_axis("index2").sort_index(), kser.rename_axis("index2").sort_index(),
         )
 
+        self.assert_eq(
+            (pser + 1).rename_axis("index2").sort_index(),
+            (kser + 1).rename_axis("index2").sort_index(),
+        )
+
         self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
 
         # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0

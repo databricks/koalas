@@ -1117,7 +1117,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def rename_axis(
         self, mapper: Optional[Any] = None, index: Optional[Any] = None, inplace: bool = False
-    ):
+    ) -> Optional["Series"]:
         """
         Set the name of the axis for the index or columns.
 
