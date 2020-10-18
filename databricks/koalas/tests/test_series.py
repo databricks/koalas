@@ -184,6 +184,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             (kser + 1).rename_axis("index2").sort_index(),
         )
 
+        pser2 = pser.copy()
+        kser2 = kser.copy()
+        pser2.rename_axis("index2", inplace=True)
+        kser2.rename_axis("index2", inplace=True)
+        self.assert_eq(pser2.sort_index(), kser2.sort_index())
+
         self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
         self.assertRaises(TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"]))
 

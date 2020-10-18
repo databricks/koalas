@@ -1179,9 +1179,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 monkey    2
         Name: num_legs, dtype: int64
         """
-        return first_series(
-            self.to_frame().rename_axis(mapper=mapper, index=index, inplace=inplace)
-        )
+        kdf = self.to_frame().rename_axis(mapper=mapper, index=index, inplace=False)
+        if inplace:
+            self._update_anchor(kdf)
+            return None
+        else:
+            return first_series(kdf)
 
     @property
     def index(self):

@@ -607,6 +607,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 kdf.rename_axis(["cols2"], axis=axis).sort_index(),
             )
 
+        pdf2 = pdf.copy()
+        kdf2 = kdf.copy()
+        pdf2.rename_axis("index2", axis="index", inplace=True)
+        kdf2.rename_axis("index2", axis="index", inplace=True)
+        self.assert_eq(pdf2.sort_index(), kdf2.sort_index())
+
         self.assertRaises(ValueError, lambda: kdf.rename_axis(["index2", "index3"], axis=0))
         self.assertRaises(ValueError, lambda: kdf.rename_axis(["cols2", "cols3"], axis=1))
         self.assertRaises(TypeError, lambda: kdf.rename_axis(mapper=["index2"], index=["index3"]))
