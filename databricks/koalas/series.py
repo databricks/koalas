@@ -1136,6 +1136,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         See Also
         --------
         Series.rename : Alter Series index labels or name.
+        DataFrame.rename : Alter DataFrame index labels or name.
         Index.rename : Set new names on index.
 
         Examples
@@ -2216,7 +2217,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def sort_values(
         self, ascending: bool = True, inplace: bool = False, na_position: str = "last"
-    ) -> Union["Series", None]:
+    ) -> Optional["Series"]:
         """
         Sort by the values.
 

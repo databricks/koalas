@@ -9156,6 +9156,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         See Also
         --------
+        Series.rename : Alter Series index labels or name.
         DataFrame.rename : Alter DataFrame index labels or name.
         Index.rename : Set new names on index.
 
