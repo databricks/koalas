@@ -9280,7 +9280,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         index_map = OrderedDict(zip(self._internal.index_spark_column_names, index_names))
 
         internal = self._internal.copy(index_map=index_map, column_label_names=column_label_names)
-
         if inplace:
             self._update_internal_frame(internal)
             return None

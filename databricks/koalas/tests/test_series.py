@@ -171,7 +171,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # self.assert_eq(kser, pser)
 
     def test_rename_axis(self):
-
         index = pd.Index(["A", "B", "C"], name="index")
         pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
         kser = ks.from_pandas(pser)
@@ -213,7 +212,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         index = pd.MultiIndex.from_tuples(
             [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
         )
-
         pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
         kser = ks.from_pandas(pser)
 
@@ -226,7 +224,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-
             self.assert_eq(
                 pser.rename_axis(
                     index={"index1": "index3", "index2": "index4", "missing": "index5"}

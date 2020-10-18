@@ -655,11 +655,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         index = pd.MultiIndex.from_tuples(
             [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
         )
-
         columns = pd.MultiIndex.from_tuples(
             [("numbers", "first"), ("values", "second")], names=["cols1", "cols2"]
         )
-
         pdf = pd.DataFrame([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], index=index, columns=columns)
         kdf = ks.from_pandas(pdf)
 
@@ -715,7 +713,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 pdf.rename_axis(index=str.upper, columns=str.upper).sort_index(),
                 kdf.rename_axis(index=str.upper, columns=str.upper).sort_index(),
             )
-
         else:
             expected = pdf
             expected.index.names = ["index3", "index2"]
