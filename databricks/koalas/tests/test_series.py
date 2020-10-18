@@ -186,6 +186,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
         self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
+        self.assertRaises(TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"]))
 
         # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
@@ -198,10 +199,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 pser.rename_axis(index=str.upper).sort_index(),
                 kser.rename_axis(index=str.upper).sort_index(),
             )
+        else:
+            expected = kser
+            expected.index.name = "index2"
+            result = kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index()
+            self.assert_eq(expected, result)
 
-            self.assertRaises(
-                TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"])
-            )
+            expected = kser
+            expected.index.name = "INDEX"
+            result = kser.rename_axis(index=str.upper).sort_index()
+            self.assert_eq(expected, result)
 
         index = pd.MultiIndex.from_tuples(
             [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
@@ -233,6 +240,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 pser.rename_axis(index=str.upper).sort_index(),
                 kser.rename_axis(index=str.upper).sort_index(),
             )
+        else:
+            expected = kser
+            expected.index.names = ["index3", "index4"]
+            result = kser.rename_axis(
+                index={"index1": "index3", "index2": "index4", "missing": "index5"}
+            ).sort_index()
+            self.assert_eq(expected, result)
+
+            expected.index.names = ["INDEX1", "INDEX2"]
+            result = kser.rename_axis(index=str.upper).sort_index()
+            self.assert_eq(expected, result)
 
     def test_or(self):
         pdf = pd.DataFrame(
