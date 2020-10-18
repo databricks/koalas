@@ -790,51 +790,41 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_delete(self):
         pidx = pd.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
-        kidx = ks.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
+        kidx = ks.from_pandas(pidx)
 
-        self.assert_eq(pidx.delete(5).sort_values(), kidx.delete(5).sort_values())
-        self.assert_eq(pidx.delete(-5).sort_values(), kidx.delete(-5).sort_values())
-        if LooseVersion(np.__version__) >= LooseVersion("1.19.0"):
-            with self.assertRaisesRegex(
-                IndexError, "index 10000 is out of bounds for axis 0 with size 9"
-            ):
-                kidx.delete([0, 10000])
-            with self.assertRaisesRegex(
-                IndexError, "index 10000 is out of bounds for axis 0 with size 9"
-            ):
-                kidx.delete([10000, 20000])
-        else:
-            self.assert_eq(
-                pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values()
-            )
-            self.assert_eq(
-                pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
-            )
+        self.assert_eq(pidx.delete(8).sort_values(), kidx.delete(8).sort_values())
+        self.assert_eq(pidx.delete(-9).sort_values(), kidx.delete(-9).sort_values())
+        self.assert_eq(pidx.delete([-9, 0, 8]).sort_values(), kidx.delete([-9, 0, 8]).sort_values())
 
-        with self.assertRaisesRegex(IndexError, "index 10 is out of bounds for axis 0 with size 9"):
-            kidx.delete(10)
+        with self.assertRaisesRegex(IndexError, "index 9 is out of bounds for axis 0 with size 9"):
+            kidx.delete([0, 9])
+        with self.assertRaisesRegex(
+            IndexError, "index -10 is out of bounds for axis 0 with size 9"
+        ):
+            kidx.delete([-10, 0])
+        with self.assertRaisesRegex(IndexError, "index 9 is out of bounds for axis 0 with size 9"):
+            kidx.delete(9)
+        with self.assertRaisesRegex(
+            IndexError, "index -10 is out of bounds for axis 0 with size 9"
+        ):
+            kidx.delete(-10)
 
+        # MultiIndex
         pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
         kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
 
-        self.assert_eq(pidx.delete(1).sort_values(), kidx.delete(1).sort_values())
-        self.assert_eq(pidx.delete(-1).sort_values(), kidx.delete(-1).sort_values())
-        if LooseVersion(np.__version__) >= LooseVersion("1.19.0"):
-            with self.assertRaisesRegex(
-                IndexError, "index 10000 is out of bounds for axis 0 with size 3"
-            ):
-                kidx.delete([0, 10000])
-            with self.assertRaisesRegex(
-                IndexError, "index 10000 is out of bounds for axis 0 with size 3"
-            ):
-                kidx.delete([10000, 20000])
-        else:
-            self.assert_eq(
-                pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values()
-            )
-            self.assert_eq(
-                pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
-            )
+        self.assert_eq(pidx.delete(2).sort_values(), kidx.delete(2).sort_values())
+        self.assert_eq(pidx.delete(-3).sort_values(), kidx.delete(-3).sort_values())
+        self.assert_eq(pidx.delete([-3, 0, 2]).sort_values(), kidx.delete([-3, 0, 2]).sort_values())
+
+        with self.assertRaisesRegex(IndexError, "index 3 is out of bounds for axis 0 with size 3"):
+            kidx.delete([0, 3])
+        with self.assertRaisesRegex(IndexError, "index -4 is out of bounds for axis 0 with size 3"):
+            kidx.delete([-4, 0])
+        with self.assertRaisesRegex(IndexError, "index 3 is out of bounds for axis 0 with size 3"):
+            kidx.delete(3)
+        with self.assertRaisesRegex(IndexError, "index -4 is out of bounds for axis 0 with size 3"):
+            kidx.delete(-4)
 
     def test_append(self):
         # Index
