@@ -9255,9 +9255,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "Length of new names must be {}, got {}".format(len(curnames), len(newnames))
                 )
 
-            return [
-                name if name is None or isinstance(name, tuple) else (name,) for name in newnames
-            ]
+            return [name if is_name_like_tuple(name) else (name,) for name in newnames]
 
         if mapper is not None and (index is not None or columns is not None):
             raise TypeError("Cannot specify both 'mapper' and any of 'index' or 'columns'.")
