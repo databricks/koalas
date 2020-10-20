@@ -9124,6 +9124,168 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
+    def rename_axis(
+        self,
+        mapper: Optional[Any] = None,
+        index: Optional[Any] = None,
+        columns: Optional[Any] = None,
+        axis: Optional[Union[int, str]] = 0,
+        inplace: Optional[bool] = False,
+    ) -> Optional["DataFrame"]:
+        """
+        Set the name of the axis for the index or columns.
+
+        Parameters
+        ----------
+        mapper : scalar, list-like, optional
+            A scalar, list-like, dict-like or functions transformations to
+            apply to the axis name attribute.
+        index, columns : scalar, list-like, dict-like or function, optional
+            A scalar, list-like, dict-like or functions transformations to
+            apply to that axis' values.
+
+            Use either ``mapper`` and ``axis`` to
+            specify the axis to target with ``mapper``, or ``index``
+            and/or ``columns``.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            The axis to rename.
+        inplace : bool, default False
+            Modifies the object directly, instead of creating a new DataFrame.
+
+        Returns
+        -------
+        DataFrame, or None if `inplace` is True.
+
+        See Also
+        --------
+        Series.rename : Alter Series index labels or name.
+        DataFrame.rename : Alter DataFrame index labels or name.
+        Index.rename : Set new names on index.
+
+        Notes
+        -----
+        ``DataFrame.rename_axis`` supports two calling conventions
+
+        * ``(index=index_mapper, columns=columns_mapper, ...)``
+        * ``(mapper, axis={'index', 'columns'}, ...)``
+
+        The first calling convention will only modify the names of
+        the index and/or the names of the Index object that is the columns.
+
+        The second calling convention will modify the names of the
+        corresponding index specified by axis.
+
+        We *highly* recommend using keyword arguments to clarify your
+        intent.
+
+        Examples
+        --------
+        >>> df = pd.DataFrame({"num_legs": [4, 4, 2],
+        ...                    "num_arms": [0, 0, 2]},
+        ...                   index=["dog", "cat", "monkey"],
+        ...                   columns=["num_legs", "num_arms"])
+        >>> df
+                num_legs  num_arms
+        dog            4         0
+        cat            4         0
+        monkey         2         2
+
+        >>> df = df.rename_axis("animal").sort_index()
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                num_legs  num_arms
+        animal
+        cat            4         0
+        dog            4         0
+        monkey         2         2
+
+        >>> df = df.rename_axis("limbs", axis="columns").sort_index()
+        >>> df # doctest: +NORMALIZE_WHITESPACE
+        limbs   num_legs  num_arms
+        animal
+        cat            4         0
+        dog            4         0
+        monkey         2         2
+
+        **MultiIndex**
+
+        >>> index = pd.MultiIndex.from_product([['mammal'],
+        ...                                     ['dog', 'cat', 'monkey']],
+        ...                                    names=['type', 'name'])
+        >>> df = ks.DataFrame({"num_legs": [4, 4, 2],
+        ...                    "num_arms": [0, 0, 2]},
+        ...                   index=index,
+        ...                   columns=["num_legs", "num_arms"])
+        >>> df  # doctest: +NORMALIZE_WHITESPACE
+                       num_legs  num_arms
+        type   name
+        mammal dog            4         0
+               cat            4         0
+               monkey         2         2
+
+        >>> df.rename_axis(index={'type': 'class'}).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                       num_legs  num_arms
+        class  name
+        mammal cat            4         0
+               dog            4         0
+               monkey         2         2
+
+        >>> df.rename_axis(index=str.upper).sort_index()  # doctest: +NORMALIZE_WHITESPACE
+                       num_legs  num_arms
+        TYPE   NAME
+        mammal cat            4         0
+               dog            4         0
+               monkey         2         2
+        """
+
+        def gen_names(v, curnames):
+            if is_scalar(v):
+                newnames = [v]
+            elif is_list_like(v) and not is_dict_like(v):
+                newnames = list(v)
+            elif is_dict_like(v):
+                newnames = [v[name] if name in v else name for name in curnames]
+            elif callable(v):
+                newnames = [v(name) for name in curnames]
+            else:
+                raise ValueError(
+                    "`mapper` or `index` or `columns` should be "
+                    "either dict-like or function type."
+                )
+
+            if len(newnames) != len(curnames):
+                raise ValueError(
+                    "Length of new names must be {}, got {}".format(len(curnames), len(newnames))
+                )
+
+            return [name if is_name_like_tuple(name) else (name,) for name in newnames]
+
+        if mapper is not None and (index is not None or columns is not None):
+            raise TypeError("Cannot specify both 'mapper' and any of 'index' or 'columns'.")
+
+        if mapper is not None:
+            axis = validate_axis(axis)
+            if axis == 0:
+                index = mapper
+            elif axis == 1:
+                columns = mapper
+
+        column_label_names = (
+            gen_names(columns, self.columns.names)
+            if columns is not None
+            else self._internal.column_label_names
+        )
+        index_names = (
+            gen_names(index, self.index.names) if index is not None else self._internal.index_names
+        )
+        index_map = OrderedDict(zip(self._internal.index_spark_column_names, index_names))
+
+        internal = self._internal.copy(index_map=index_map, column_label_names=column_label_names)
+        if inplace:
+            self._update_internal_frame(internal)
+            return None
+        else:
+            return DataFrame(internal)
+
     def keys(self):
         """
         Return alias for columns.

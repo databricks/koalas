@@ -51,7 +51,6 @@ class MissingPandasLikeSeries(object):
     interpolate = _unsupported_function("interpolate")
     last = _unsupported_function("last")
     reindex_like = _unsupported_function("reindex_like")
-    rename_axis = _unsupported_function("rename_axis")
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
     searchsorted = _unsupported_function("searchsorted")

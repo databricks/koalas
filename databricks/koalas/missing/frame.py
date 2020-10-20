@@ -58,7 +58,6 @@ class _MissingPandasLikeDataFrame(object):
     lookup = _unsupported_function("lookup")
     mode = _unsupported_function("mode")
     reindex_like = _unsupported_function("reindex_like")
-    rename_axis = _unsupported_function("rename_axis")
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
     sem = _unsupported_function("sem")
