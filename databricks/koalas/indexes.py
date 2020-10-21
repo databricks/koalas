@@ -35,6 +35,7 @@ from pandas.api.types import (
     is_numeric_dtype,
     is_object_dtype,
 )
+from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_hashable
 from pandas._libs import lib
@@ -51,6 +52,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.spark.accessors import SparkIndexMethods
 from databricks.koalas.utils import (
     compare_allow_null,
     compare_disallow_null,
@@ -158,6 +160,8 @@ class Index(IndexOpsMixin):
             index_map=OrderedDict(zip(sdf.columns, self._internal.index_names)),  # type: ignore
         )
         return DataFrame(internal).index
+
+    spark = CachedAccessor("spark", SparkIndexMethods)
 
     # This method is used via `DataFrame.info` API internally.
     def _summary(self, name=None):

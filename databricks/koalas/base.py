@@ -21,13 +21,12 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 import datetime
 from functools import wraps, partial
-from typing import Union, Callable, Any
+from typing import Any, Callable, Tuple, Union
 import warnings
 
 import numpy as np
 import pandas as pd  # noqa: F401
 from pandas.api.types import is_list_like
-from pandas.core.accessor import CachedAccessor
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window, Column
 from pyspark.sql.types import (
@@ -156,10 +155,18 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     def _with_new_scol(self, scol: spark.Column):
         pass
 
-    spark = CachedAccessor("spark", SparkIndexOpsMethods)
+    @property
+    @abstractmethod
+    def _column_label(self) -> Tuple:
+        pass
 
     @property
-    def spark_column(self):
+    @abstractmethod
+    def spark(self) -> SparkIndexOpsMethods:
+        pass
+
+    @property
+    def spark_column(self) -> Column:
         warnings.warn(
             "Series.spark_column is deprecated as of Series.spark.column. "
             "Please use the API instead.",

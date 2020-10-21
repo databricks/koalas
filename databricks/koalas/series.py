@@ -34,7 +34,7 @@ from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like
 import pyspark
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column
+from pyspark.sql import functions as F, Column, DataFrame as SparkDataFrame
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -80,7 +80,7 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
-from databricks.koalas.spark.accessors import SparkIndexOpsMethods
+from databricks.koalas.spark.accessors import SparkSeriesMethods
 from databricks.koalas.strings import StringMethods
 from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
 
@@ -352,7 +352,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             assert not fastpath
 
             self._anchor = data
-            self._column_label = index
+            self._col_label = index
         else:
             if isinstance(data, pd.Series):
                 assert index is None
@@ -371,7 +371,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             anchor = DataFrame(internal)
 
             self._anchor = anchor
-            self._column_label = anchor._internal.column_labels[0]
+            self._col_label = anchor._internal.column_labels[0]
             anchor._kseries = {self._column_label: self}
 
     @property
@@ -381,6 +381,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     @property
     def _internal(self) -> InternalFrame:
         return self._kdf._internal.select_column(self._column_label)
+
+    @property
+    def _column_label(self) -> Tuple:
+        return self._col_label
 
     def _update_anchor(self, kdf: DataFrame):
         assert kdf._internal.column_labels == [self._column_label], (
@@ -403,6 +407,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             column_label_names=None,
         )
         return first_series(DataFrame(internal))
+
+    spark = CachedAccessor("spark", SparkSeriesMethods)
 
     @property
     def dtypes(self):
@@ -437,7 +443,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         return self.spark.data_type
 
-    spark_type.__doc__ = SparkIndexOpsMethods.data_type.__doc__
+    spark_type.__doc__ = SparkSeriesMethods.data_type.__doc__
 
     # Arithmetic Operators
     def add(self, other):
@@ -1109,7 +1115,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = DataFrame(internal)  # type: DataFrame
 
         if kwargs.get("inplace", False):
-            self._column_label = index
+            self._col_label = index
             self._update_anchor(kdf)
             return self
         else:
@@ -1317,7 +1323,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[str, Tuple] = None) -> spark.DataFrame:
+    def to_frame(self, name: Union[str, Tuple] = None) -> SparkDataFrame:
         """
         Convert Series to DataFrame.
 
