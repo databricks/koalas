@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Optional, Union, List
 import pyspark
 from pyspark import StorageLevel
 from pyspark.sql import Column, DataFrame as SparkDataFrame
+from pyspark.sql.types import DataType, StructType
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -39,17 +40,17 @@ class SparkIndexOpsMethods(object):
         self._data = data
 
     @property
-    def data_type(self):
+    def data_type(self) -> DataType:
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         return self._data._internal.spark_type_for(self._data._column_label)
 
     @property
-    def nullable(self):
+    def nullable(self) -> bool:
         """ Returns the nullability as defined by Spark. """
         return self._data._internal.spark_column_nullable_for(self._data._column_label)
 
     @property
-    def column(self):
+    def column(self) -> Column:
         """
         Spark Column object representing the Series/Index.
 
@@ -122,7 +123,14 @@ class SparkIndexOpsMethods(object):
         new_ser._internal.to_internal_spark_frame
         return new_ser
 
-    def apply(self, func):
+
+class SparkSeriesMethods(SparkIndexOpsMethods):
+    def transform(self, func) -> "ks.Series":
+        return super().transform(func)
+
+    transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
+
+    def apply(self, func) -> "ks.Series":
         """
         Applies a function that takes and returns a Spark column. It allows to natively
         apply a Spark function and column APIs with the Spark column internally used
@@ -172,12 +180,10 @@ class SparkIndexOpsMethods(object):
         2    9
         Name: a, dtype: int64
         """
-        from databricks.koalas import Index, DataFrame, Series
-        from databricks.koalas.series import first_series
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import Series, first_series
         from databricks.koalas.internal import HIDDEN_COLUMNS
 
-        if isinstance(self._data, Index):
-            raise NotImplementedError("Index does not support spark.apply yet.")
         output = func(self._data.spark.column)
         if not isinstance(output, Column):
             raise ValueError(
@@ -191,6 +197,13 @@ class SparkIndexOpsMethods(object):
         return first_series(DataFrame(sdf)).rename(self._data.name)
 
 
+class SparkIndexMethods(SparkIndexOpsMethods):
+    def transform(self, func) -> "ks.Index":
+        return super().transform(func)
+
+    transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
+
+
 class SparkFrameMethods(object):
     """Spark related features. Usually, the features here are missing in pandas
     but Spark has it."""
@@ -198,7 +211,7 @@ class SparkFrameMethods(object):
     def __init__(self, frame: "ks.DataFrame"):
         self._kdf = frame
 
-    def schema(self, index_col=None):
+    def schema(self, index_col: Optional[Union[str, List[str]]] = None) -> StructType:
         """
         Returns the underlying Spark schema.
 
@@ -268,7 +281,7 @@ class SparkFrameMethods(object):
         """
         self.frame(index_col).printSchema()
 
-    def frame(self, index_col=None):
+    def frame(self, index_col: Optional[Union[str, List[str]]] = None) -> SparkDataFrame:
         """
         Return the current DataFrame as a Spark DataFrame.  :meth:`DataFrame.spark.frame` is an
         alias of  :meth:`DataFrame.to_spark`.
@@ -395,7 +408,7 @@ class SparkFrameMethods(object):
             ]
             return kdf._internal.spark_frame.select(new_index_scols + data_columns)
 
-    def cache(self):
+    def cache(self) -> "CachedDataFrame":
         """
         Yields and caches the current DataFrame.
 
@@ -445,7 +458,9 @@ class SparkFrameMethods(object):
         )
         return CachedDataFrame(self._kdf._internal)
 
-    def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
+    def persist(
+        self, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK
+    ) -> "CachedDataFrame":
         """
         Yields and caches the current DataFrame with a specific StorageLevel.
         If a StogeLevel is not given, the `MEMORY_AND_DISK` level is used by default like PySpark.
@@ -773,7 +788,7 @@ class SparkFrameMethods(object):
         else:
             self._kdf._internal.to_internal_spark_frame.explain(extended, mode)
 
-    def apply(self, func, index_col=None):
+    def apply(self, func, index_col: Optional[Union[str, List[str]]] = None) -> "ks.DataFrame":
         """
         Applies a function that takes and returns a Spark DataFrame. It allows natively
         apply a Spark function and column APIs with the Spark column internally used
@@ -845,7 +860,7 @@ class CachedSparkFrameMethods(SparkFrameMethods):
         super().__init__(frame)
 
     @property
-    def storage_level(self):
+    def storage_level(self) -> StorageLevel:
         """
         Return the storage level of this cache.
 
