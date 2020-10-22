@@ -5390,7 +5390,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def compare(
         self, other: "Series", keep_shape: bool = False, keep_equal: bool = False
-    ) -> "DataFrame":
+    ) -> DataFrame:
         """
         Compare to another Series and show the differences.
 
