@@ -87,6 +87,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.internal import (
         InternalFrame,
+        HIDDEN_COLUMNS,
         NATURAL_ORDER_COLUMN_NAME,
         SPARK_INDEX_NAME_FORMAT,
     )
@@ -108,8 +109,37 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         raise AssertionError("args should be single DataFrame or " "single/multiple Series")
 
     if get_option("compute.ops_on_diff_frames"):
-        this_index_map = this._internal.index_map
-        that_index_map = that._internal.index_map
+
+        def resolve(internal, side):
+            rename = lambda col: "__{}_{}".format(side, col)
+            internal = internal.resolved_copy
+            sdf = internal.spark_frame
+            sdf = internal.spark_frame.select(
+                [
+                    scol_for(sdf, col).alias(rename(col))
+                    for col in sdf.columns
+                    if col not in HIDDEN_COLUMNS
+                ]
+                + list(HIDDEN_COLUMNS)
+            )
+            return internal.copy(
+                spark_frame=sdf,
+                index_map=OrderedDict(
+                    zip(
+                        [rename(col) for col in internal.index_spark_column_names],
+                        internal.index_names,
+                    )
+                ),
+                data_spark_columns=[
+                    scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
+                ],
+            )
+
+        this_internal = resolve(this._internal, "this")
+        that_internal = resolve(that._internal, "that")
+
+        this_index_map = this_internal.index_map
+        that_index_map = that_internal.index_map
         assert len(this_index_map) == len(that_index_map)
 
         join_scols = []
@@ -119,8 +149,8 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         # level.
         this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
 
-        this_sdf = this._internal.resolved_copy.spark_frame.alias("this")
-        that_sdf = that._internal.resolved_copy.spark_frame.alias("that")
+        this_sdf = this_internal.spark_frame.alias("this")
+        that_sdf = that_internal.spark_frame.alias("that")
 
         # If the same named index is found, that's used.
         index_column_names = []
@@ -155,16 +185,12 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         joined_df = joined_df.select(
             merged_index_scols
             + [
-                scol_for(this_sdf, this._internal.spark_column_name_for(label)).alias(
-                    "__this_%s" % this._internal.spark_column_name_for(label)
-                )
-                for label in this._internal.column_labels
+                scol_for(this_sdf, this_internal.spark_column_name_for(label))
+                for label in this_internal.column_labels
             ]
             + [
-                scol_for(that_sdf, that._internal.spark_column_name_for(label)).alias(
-                    "__that_%s" % that._internal.spark_column_name_for(label)
-                )
-                for label in that._internal.column_labels
+                scol_for(that_sdf, that_internal.spark_column_name_for(label))
+                for label in that_internal.column_labels
             ]
             + order_column
         )
@@ -175,7 +201,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             for col in joined_df.columns
             if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
         ]
-        level = max(this._internal.column_labels_level, that._internal.column_labels_level)
+        level = max(this_internal.column_labels_level, that_internal.column_labels_level)
 
         def fill_label(label):
             if label is None:
@@ -184,15 +210,15 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
                 return ([""] * (level - len(label))) + list(label)
 
         column_labels = [
-            tuple(["this"] + fill_label(label)) for label in this._internal.column_labels
-        ] + [tuple(["that"] + fill_label(label)) for label in that._internal.column_labels]
+            tuple(["this"] + fill_label(label)) for label in this_internal.column_labels
+        ] + [tuple(["that"] + fill_label(label)) for label in that_internal.column_labels]
         column_label_names = (
-            [None] * (1 + level - this._internal.column_labels_level)
-        ) + this._internal.column_label_names
+            [None] * (1 + level - this_internal.column_labels_level)
+        ) + this_internal.column_label_names
         return DataFrame(
             InternalFrame(
                 spark_frame=joined_df,
-                index_map=OrderedDict(zip(index_column_names, this._internal.index_names)),
+                index_map=OrderedDict(zip(index_column_names, this_internal.index_names)),
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
                 column_label_names=column_label_names,
