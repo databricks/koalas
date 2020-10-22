@@ -791,7 +791,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        Tuple
+        2-Tuple of Series
             The result of the operation.
 
         See Also
@@ -811,7 +811,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        Tuple
+        2-Tuple of Series
             The result of the operation.
 
         See Also
