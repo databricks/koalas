@@ -4549,11 +4549,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_repartition(self):
         kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
 
-        kdf = kdf.repartition(7)
+        kdf = kdf.spark.repartition(7)
         self.assertEqual(kdf.to_spark().rdd.getNumPartitions(), 7)
 
         kdf = kdf.set_index("age")
-        nkdf = kdf.repartition(5, "age")
+        nkdf = kdf.spark.repartition(5, "age")
         self.assertEqual(nkdf.to_spark().rdd.getNumPartitions(), 5)
         self.assertEqual(kdf.index.name, nkdf.index.name)
 

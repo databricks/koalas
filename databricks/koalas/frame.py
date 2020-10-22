@@ -9286,13 +9286,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    def repartition(
-        self, numPartitions: Union[int, str], index_col: Optional[Union[str, List[str]]] = None
-    ) -> "ks.DataFrame":
-        return self.spark.repartition(numPartitions, index_col)
-
-    repartition.__doc__ = SparkFrameMethods.repartition.__doc__
-
     def keys(self):
         """
         Return alias for columns.
