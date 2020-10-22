@@ -2935,7 +2935,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             limit = get_option("compute.shortcut_limit")
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.apply(func, *args, **kwds)
-            kser: "Series" = Series(transformed)
+            kser = Series(transformed)  # type: "Series"
             return self.koalas._transform_batch(apply_each, kser.spark.data_type)
         else:
             sig_return = infer_return_type(func)
