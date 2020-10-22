@@ -16,7 +16,6 @@
 
 import base64
 import unittest
-import sys
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -2228,11 +2227,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
 
-    # TODO: Remove skip after dropping Python 3.5
-    @unittest.skipIf(
-        sys.version_info.minor <= 5,
-        "The columns order is not preserved in the result in Python<=3.5",
-    )
     def test_compare(self):
         if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
             pser1 = pd.Series(["b", "c", np.nan, "g", np.nan])
@@ -2301,29 +2295,31 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser1 = ks.Series(["b", "c", np.nan, "g", np.nan])
             kser2 = ks.Series(["a", "c", np.nan, np.nan, "h"])
             expected = ks.DataFrame(
-                {"self": ["b", "g", None], "other": ["a", None, "h"]}, index=pd.Index([0, 3, 4])
+                [["b", "a"], ["g", None], [None, "h"]], index=[0, 3, 4], columns=["self", "other"]
             )
             self.assert_eq(expected, kser1.compare(kser2).sort_index())
 
             # `keep_shape=True`
             expected = ks.DataFrame(
-                {"self": ["b", None, None, "g", None], "other": ["a", None, None, None, "h"]},
-                index=pd.Index([0, 1, 2, 3, 4]),
+                [["b", "a"], [None, None], [None, None], ["g", None], [None, "h"]],
+                index=[0, 1, 2, 3, 4],
+                columns=["self", "other"],
             )
             self.assert_eq(
                 expected, kser1.compare(kser2, keep_shape=True).sort_index(),
             )
             # `keep_equal=True`
             expected = ks.DataFrame(
-                {"self": ["b", "g", None], "other": ["a", None, "h"]}, index=pd.Index([0, 3, 4])
+                [["b", "a"], ["g", None], [None, "h"]], index=[0, 3, 4], columns=["self", "other"]
             )
             self.assert_eq(
                 expected, kser1.compare(kser2, keep_equal=True).sort_index(),
             )
             # `keep_shape=True` and `keep_equal=True`
             expected = ks.DataFrame(
-                {"self": ["b", "c", None, "g", None], "other": ["a", "c", None, None, "h"]},
-                index=pd.Index([0, 1, 2, 3, 4]),
+                [["b", "a"], ["c", "c"], [None, None], ["g", None], [None, "h"]],
+                index=[0, 1, 2, 3, 4],
+                columns=["self", "other"],
             )
             self.assert_eq(
                 expected, kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
@@ -2343,35 +2339,39 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 ),
             )
             expected = ks.DataFrame(
-                {"self": ["b", None, "g"], "other": ["a", "h", None]},
+                [["b", "a"], [None, "h"], ["g", None]],
                 index=pd.MultiIndex.from_tuples([("a", "x"), ("q", "l"), ("x", "k")]),
+                columns=["self", "other"],
             )
             self.assert_eq(expected, kser1.compare(kser2).sort_index())
 
             # `keep_shape=True`
             expected = ks.DataFrame(
-                {"self": ["b", None, None, None, "g"], "other": ["a", None, None, "h", None]},
+                [["b", "a"], [None, None], [None, None], [None, "h"], ["g", None]],
                 index=pd.MultiIndex.from_tuples(
                     [("a", "x"), ("b", "y"), ("c", "z"), ("q", "l"), ("x", "k")]
                 ),
+                columns=["self", "other"],
             )
             self.assert_eq(
                 expected, kser1.compare(kser2, keep_shape=True).sort_index(),
             )
             # `keep_equal=True`
             expected = ks.DataFrame(
-                {"self": ["b", None, "g"], "other": ["a", "h", None]},
+                [["b", "a"], [None, "h"], ["g", None]],
                 index=pd.MultiIndex.from_tuples([("a", "x"), ("q", "l"), ("x", "k")]),
+                columns=["self", "other"],
             )
             self.assert_eq(
                 expected, kser1.compare(kser2, keep_equal=True).sort_index(),
             )
             # `keep_shape=True` and `keep_equal=True`
             expected = ks.DataFrame(
-                {"self": ["b", "c", None, None, "g"], "other": ["a", "c", None, "h", None]},
+                [["b", "a"], ["c", "c"], [None, None], [None, "h"], ["g", None]],
                 index=pd.MultiIndex.from_tuples(
                     [("a", "x"), ("b", "y"), ("c", "z"), ("q", "l"), ("x", "k")]
                 ),
+                columns=["self", "other"],
             )
             self.assert_eq(
                 expected, kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
