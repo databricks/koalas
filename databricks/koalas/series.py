@@ -5388,8 +5388,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol_for(sdf, self._internal.data_spark_column_names[0]) == min_value[0]
         ).head()[0]
 
-    # TODO: Remove skip after dropping Python 3.5
-    def compare(self, other, keep_shape=False, keep_equal=False):
+    def compare(
+        self, other: "Series", keep_shape: bool = False, keep_equal: bool = False
+    ) -> "DataFrame":
         """
         Compare to another Series and show the differences.
 
