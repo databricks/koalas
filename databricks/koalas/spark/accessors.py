@@ -851,14 +851,14 @@ class SparkFrameMethods(object):
             )
         return output.to_koalas(index_col)
 
-    def repartition(self, numPartitions: int) -> "ks.DataFrame":
+    def repartition(self, num_partitions: int) -> "ks.DataFrame":
         """
         Returns a new DataFrame partitioned by the given partitioning expressions. The
         resulting DataFrame is hash partitioned.
 
         Parameters
         ----------
-        numPartitions : int
+        num_partitions : int
             The target number of partitions.
 
         Returns
@@ -867,7 +867,7 @@ class SparkFrameMethods(object):
         """
         internal_frame = self._kdf._internal_frame
         internal_frame_index = internal_frame.index_spark_column_names
-        return internal_frame.to_internal_spark_frame.repartition(numPartitions).to_koalas(
+        return internal_frame.to_internal_spark_frame.repartition(num_partitions).to_koalas(
             internal_frame_index
         )
 
