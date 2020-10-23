@@ -1235,7 +1235,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def reset_index(
         self, level=None, drop=False, name=None, inplace=False
-    ) -> Optional[Union["Series", ks.DataFrame]]:
+    ) -> Optional[Union["Series", DataFrame]]:
         """
         Generate a new DataFrame or Series with the index reset.
 
@@ -3020,7 +3020,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     T = property(transpose)
 
-    def transform(self, func, axis=0, *args, **kwargs) -> Union["Series", ks.DataFrame]:
+    def transform(self, func, axis=0, *args, **kwargs) -> Union["Series", DataFrame]:
         """
         Call ``func`` producing the same type as `self` with transformed values
         and that has the same axis length as input.
@@ -4895,7 +4895,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         with ks.option_context(
             "compute.default_index_type", "distributed", "compute.max_rows", None
         ):
-            kdf: ks.DataFrame = ks.DataFrame(sdf)
+            kdf = ks.DataFrame(sdf)  # type: DataFrame
             kdf.columns = pd.Index(where)
             return first_series(kdf.transpose()).rename(self.name)
 
@@ -4924,7 +4924,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return mad
 
-    def unstack(self, level=-1) -> ks.DataFrame:
+    def unstack(self, level=-1) -> DataFrame:
         """
         Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.
         The level involved will automatically get sorted.
