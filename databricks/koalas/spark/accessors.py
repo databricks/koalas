@@ -851,9 +851,7 @@ class SparkFrameMethods(object):
             )
         return output.to_koalas(index_col)
 
-    def repartition(
-        self, numPartitions: int, index_col: Optional[Union[str, List[str]]] = None
-    ) -> "ks.DataFrame":
+    def repartition(self, numPartitions: int) -> "ks.DataFrame":
         """
         Returns a new DataFrame partitioned by the given partitioning expressions. The
         resulting DataFrame is hash partitioned.
@@ -862,15 +860,16 @@ class SparkFrameMethods(object):
         ----------
         numPartitions : int
             The target number of partitions.
-        index_col: str or list of str, optional, default: None
-            Column names to be used in Spark to represent Koalas' index. The index name
-            in Koalas is ignored. By default, the index is always lost.
 
         Returns
         -------
         DataFrame
         """
-        return self.frame(index_col).repartition(numPartitions).to_koalas(index_col)
+        internal_frame = self._kdf._internal_frame
+        internal_frame_index = internal_frame.index_spark_column_names
+        return internal_frame.to_internal_spark_frame.repartition(numPartitions).to_koalas(
+            internal_frame_index
+        )
 
 
 class CachedSparkFrameMethods(SparkFrameMethods):
