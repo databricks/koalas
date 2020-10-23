@@ -854,7 +854,7 @@ class InternalFrame(object):
         return pdf
 
     @lazy_property
-    def resolved_copy(self):
+    def resolved_copy(self) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates resolved. """
         sdf = self.spark_frame.select(self.spark_columns + list(HIDDEN_COLUMNS))
         return self.copy(
