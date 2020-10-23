@@ -23,3 +23,22 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
             ValueError, "The output of the function.* pyspark.sql.DataFrame.*int"
         ):
             ks.range(10).spark.apply(lambda scol: 1)
+
+    def test_repartition(self):
+        kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
+        num_partitions = kdf.to_spark().rdd.getNumPartitions() + 1
+        new_kdf = kdf.spark.repartition(num_partitions)
+        self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
+        self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
+
+        kdf = kdf.set_index("age")
+        num_partitions = kdf.to_spark().rdd.getNumPartitions() + 1
+        new_kdf = kdf.spark.repartition(num_partitions)
+        self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
+        self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
+
+        kdf = ks.DataFrame({"a": ["a", "b", "c"]}, index=[[1, 2, 3], [4, 5, 6]])
+        num_partitions = kdf.to_spark().rdd.getNumPartitions() + 1
+        new_kdf = kdf.spark.repartition(num_partitions)
+        self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
+        self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
