@@ -4551,6 +4551,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         new_kdf = kdf.spark.repartition(7)
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), 7)
+        self.assertEqual(kdf.index.name, new_kdf.index.name)
 
         kdf = kdf.set_index("age")
         new_kdf = kdf.spark.repartition(5)

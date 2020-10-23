@@ -864,12 +864,34 @@ class SparkFrameMethods(object):
         Returns
         -------
         DataFrame
+
+        Examples
+        --------
+        >>> import databricks.koalas as ks
+        >>> import pyspark
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
+        >>> kdf
+           age   name
+        0    5    Bob
+        1    5    Bob
+        2    2  Alice
+        3    2  Alice
+        >>> new_kdf = kdf.spark.repartition(7)
+        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        7
+        >>> new_kdf.sort_index()
+           age   name
+        0    5    Bob
+        1    5    Bob
+        2    2  Alice
+        3    2  Alice
         """
-        internal_frame = self._kdf._internal_frame
-        internal_frame_index = internal_frame.index_spark_column_names
-        return internal_frame.to_internal_spark_frame.repartition(num_partitions).to_koalas(
-            internal_frame_index
+        from databricks.koalas.frame import DataFrame
+
+        repartitioned_sdf = self._kdf._internal_frame.to_internal_spark_frame.repartition(
+            num_partitions
         )
+        return DataFrame(self._kdf._internal_frame.with_new_sdf(repartitioned_sdf))
 
 
 class CachedSparkFrameMethods(SparkFrameMethods):
