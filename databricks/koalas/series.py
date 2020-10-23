@@ -5407,7 +5407,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        Series
+        DataFrame
 
         Notes
         -----
