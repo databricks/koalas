@@ -888,10 +888,11 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import DataFrame
 
-        repartitioned_sdf = self._kdf._internal_frame.to_internal_spark_frame.repartition(
-            num_partitions
-        )
-        return DataFrame(self._kdf._internal_frame.with_new_sdf(repartitioned_sdf))
+        internal = self._kdf._internal.resolved_copy
+
+        repartitioned_sdf = internal.spark_frame.repartition(num_partitions)
+
+        return DataFrame(internal.with_new_sdf(repartitioned_sdf))
 
 
 class CachedSparkFrameMethods(SparkFrameMethods):
