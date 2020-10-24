@@ -82,7 +82,7 @@ from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkSeriesMethods
 from databricks.koalas.strings import StringMethods
-from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
+from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType, Scalar
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -311,8 +311,6 @@ T = TypeVar("T")
 
 # Needed to disambiguate Series.str and str type
 str_type = str
-
-Scalar = Union[int, float, bool, str, bytes, complex, None]
 
 
 class Series(Frame, IndexOpsMixin, Generic[T]):
