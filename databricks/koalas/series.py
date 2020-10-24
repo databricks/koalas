@@ -778,7 +778,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self != other
 
-    def divmod(self, other) -> Tuple[Any, Any]:
+    def divmod(self, other) -> Tuple["Series", "Series"]:
         """
         Return Integer division and modulo of series and other, element-wise
         (binary operator `divmod`).
@@ -798,7 +798,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return (self.floordiv(other), self.mod(other))
 
-    def rdivmod(self, other) -> Tuple[Any, Any]:
+    def rdivmod(self, other) -> Tuple["Series", "Series"]:
         """
         Return Integer division and modulo of series and other, element-wise
         (binary operator `rdivmod`).
@@ -1550,7 +1550,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     toPandas.__doc__ = to_pandas.__doc__
 
-    def to_list(self) -> list:
+    def to_list(self) -> List:
         """
         Return a list of the values.
 
