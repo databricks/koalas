@@ -243,7 +243,6 @@ in Spark. These can be accessed by ``Series.spark.<function/property>``.
    Series.spark.column
    Series.spark.transform
    Series.spark.apply
-   Series.spark.analyzed
 
 Accessors
 ---------
