@@ -196,6 +196,59 @@ class SparkSeriesMethods(SparkIndexOpsMethods):
         # Lose index.
         return first_series(DataFrame(sdf)).rename(self._data.name)
 
+    @property
+    def analyzed(self) -> "ks.Series":
+        """
+        Returns a new Series with the analyzed Spark DataFrame.
+
+        After multiple operations, the underlying Spark plan could grow huge
+        and make the Spark planner take a long time to finish the planning.
+
+        This function is for the workaround to avoid it.
+
+        .. note:: After analyzed, operations between the analyzed Series and the original one
+            will **NOT** work without setting a config `compute.ops_on_diff_frames` to `True`.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+        >>> ser = ks.Series([1, 2, 3])
+        >>> ser
+        0    1
+        1    2
+        2    3
+        dtype: int64
+
+        The analyzed one should return the same value.
+
+        >>> ser.spark.analyzed
+        0    1
+        1    2
+        2    3
+        dtype: int64
+
+        However, it won't work with the same anchor Series.
+
+        >>> ser + ser.spark.analyzed
+        Traceback (most recent call last):
+        ...
+        ValueError: ... enable 'compute.ops_on_diff_frames' option.
+
+        >>> with ks.option_context('compute.ops_on_diff_frames', True):
+        ...     (ser + ser.spark.analyzed).sort_index()
+        0    2
+        1    4
+        2    6
+        dtype: int64
+        """
+        from databricks.koalas.frame import DataFrame
+        from databricks.koalas.series import first_series
+
+        return first_series(DataFrame(self._data._internal.resolved_copy))
+
 
 class SparkIndexMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Index":
@@ -817,7 +870,6 @@ class SparkFrameMethods(object):
 
         Examples
         --------
-        >>> from databricks import koalas as ks
         >>> kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, columns=["a", "b"])
         >>> kdf
            a  b
@@ -894,6 +946,58 @@ class SparkFrameMethods(object):
         repartitioned_sdf = internal.spark_frame.repartition(num_partitions)
 
         return DataFrame(internal.with_new_sdf(repartitioned_sdf))
+
+    @property
+    def analyzed(self) -> "ks.DataFrame":
+        """
+        Returns a new DataFrame with the analyzed Spark DataFrame.
+
+        After multiple operations, the underlying Spark plan could grow huge
+        and make the Spark planner take a long time to finish the planning.
+
+        This function is for the workaround to avoid it.
+
+        .. note:: After analyzed, operations between the analyzed DataFrame and the original one
+            will **NOT** work without setting a config `compute.ops_on_diff_frames` to `True`.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, columns=["a", "b"])
+        >>> df
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        The analyzed one should return the same value.
+
+        >>> df.spark.analyzed
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        However, it won't work with the same anchor Series.
+
+        >>> df + df.spark.analyzed
+        Traceback (most recent call last):
+        ...
+        ValueError: ... enable 'compute.ops_on_diff_frames' option.
+
+        >>> with ks.option_context('compute.ops_on_diff_frames', True):
+        ...     (df + df.spark.analyzed).sort_index()
+           a   b
+        0  2   8
+        1  4  10
+        2  6  12
+        """
+        from databricks.koalas.frame import DataFrame
+
+        return DataFrame(self._kdf._internal.resolved_copy)
 
 
 class CachedSparkFrameMethods(SparkFrameMethods):

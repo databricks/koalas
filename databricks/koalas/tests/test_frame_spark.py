@@ -13,6 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
+import pandas as pd
+import pyspark
+
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 
@@ -23,6 +28,41 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
             ValueError, "The output of the function.* pyspark.sql.DataFrame.*int"
         ):
             ks.range(10).spark.apply(lambda scol: 1)
+
+    def test_hint(self):
+        pdf1 = pd.DataFrame(
+            {"lkey": ["foo", "bar", "baz", "foo"], "value": [1, 2, 3, 5]}
+        ).set_index("lkey")
+        pdf2 = pd.DataFrame(
+            {"rkey": ["foo", "bar", "baz", "foo"], "value": [5, 6, 7, 8]}
+        ).set_index("rkey")
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
+            hints = ["broadcast", "merge", "shuffle_hash", "shuffle_replicate_nl"]
+        else:
+            hints = ["broadcast"]
+
+        for hint in hints:
+            self.assert_eq(
+                pdf1.merge(pdf2, left_index=True, right_index=True).sort_values(
+                    ["value_x", "value_y"]
+                ),
+                kdf1.merge(kdf2.spark.hint(hint), left_index=True, right_index=True).sort_values(
+                    ["value_x", "value_y"]
+                ),
+                almost=True,
+            )
+            self.assert_eq(
+                pdf1.merge(pdf2 + 1, left_index=True, right_index=True).sort_values(
+                    ["value_x", "value_y"]
+                ),
+                kdf1.merge(
+                    (kdf2 + 1).spark.hint(hint), left_index=True, right_index=True
+                ).sort_values(["value_x", "value_y"]),
+                almost=True,
+            )
 
     def test_repartition(self):
         kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
