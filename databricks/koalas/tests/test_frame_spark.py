@@ -32,7 +32,7 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
         self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
 
-        # Supports Index
+        # Reserves Index
         kdf = kdf.set_index("age")
         new_kdf = kdf.spark.repartition(++num_partitions)
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
@@ -46,7 +46,7 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
             kdf2.sort_index(), (kdf + 1).spark.repartition(++num_partitions).sort_index()
         )
 
-        # Supports MultiIndex
+        # Reserves MultiIndex
         kdf = ks.DataFrame({"a": ["a", "b", "c"]}, index=[[1, 2, 3], [4, 5, 6]])
         num_partitions = kdf.to_spark().rdd.getNumPartitions() + 1
         new_kdf = kdf.spark.repartition(num_partitions)
