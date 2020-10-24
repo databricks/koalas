@@ -3982,7 +3982,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return first_series(DataFrame(internal))
 
-    def keys(self) -> Union["ks.Index", "ks.MultiIndex"]:
+    def keys(self) -> "ks.Index":
         """
         Return alias for index.
 
