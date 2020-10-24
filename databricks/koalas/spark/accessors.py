@@ -623,11 +623,8 @@ class SparkFrameMethods(object):
         """
         from databricks.koalas.frame import DataFrame
 
-        return DataFrame(
-            self._kdf._internal.with_new_sdf(
-                self._kdf._internal.spark_frame.hint(name, *parameters)
-            )
-        )
+        internal = self._kdf._internal.resolved_copy
+        return DataFrame(internal.with_new_sdf(internal.spark_frame.hint(name, *parameters)))
 
     def to_table(
         self,
