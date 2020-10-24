@@ -867,7 +867,8 @@ class SparkFrameMethods(object):
 
         Examples
         --------
-        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2],
+        ...         "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
         >>> kdf  # doctest: +NORMALIZE_WHITESPACE
               name
         age
