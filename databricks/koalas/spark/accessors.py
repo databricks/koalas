@@ -867,24 +867,24 @@ class SparkFrameMethods(object):
 
         Examples
         --------
-        >>> import databricks.koalas as ks
-        >>> import pyspark
-        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
-        >>> kdf
-           age   name
-        0    5    Bob
-        1    5    Bob
-        2    2  Alice
-        3    2  Alice
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        5      Bob
+        5      Bob
+        2    Alice
+        2    Alice
         >>> new_kdf = kdf.spark.repartition(7)
         >>> new_kdf.to_spark().rdd.getNumPartitions()
         7
-        >>> new_kdf.sort_index()
-           age   name
-        0    5    Bob
-        1    5    Bob
-        2    2  Alice
-        3    2  Alice
+        >>> new_kdf.sort_index()   # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
         """
         from databricks.koalas.frame import DataFrame
 
