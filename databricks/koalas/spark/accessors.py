@@ -900,6 +900,50 @@ class SparkFrameMethods(object):
             )
         return output.to_koalas(index_col)
 
+    def repartition(self, num_partitions: int) -> "ks.DataFrame":
+        """
+        Returns a new DataFrame partitioned by the given partitioning expressions. The
+        resulting DataFrame is hash partitioned.
+
+        Parameters
+        ----------
+        num_partitions : int
+            The target number of partitions.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2],
+        ...         "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
+        >>> kdf.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        >>> new_kdf = kdf.spark.repartition(7)
+        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        7
+        >>> new_kdf.sort_index()   # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+
+        repartitioned_sdf = internal.spark_frame.repartition(num_partitions)
+
+        return DataFrame(internal.with_new_sdf(repartitioned_sdf))
+
     @property
     def analyzed(self) -> "ks.DataFrame":
         """
