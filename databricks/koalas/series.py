@@ -22,7 +22,7 @@ import inspect
 import sys
 import warnings
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
@@ -82,7 +82,7 @@ from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkSeriesMethods
 from databricks.koalas.strings import StringMethods
-from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType
+from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType, Scalar
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -411,7 +411,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     spark = CachedAccessor("spark", SparkSeriesMethods)
 
     @property
-    def dtypes(self):
+    def dtypes(self) -> np.dtype:
         """Return the dtype object of the underlying data.
 
         >>> s = ks.Series(list('abc'))
@@ -421,7 +421,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return self.dtype
 
     @property
-    def axes(self):
+    def axes(self) -> List:
         """
         Return a list of the row axis labels.
 
@@ -778,7 +778,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self != other
 
-    def divmod(self, other):
+    def divmod(self, other) -> Tuple["Series", "Series"]:
         """
         Return Integer division and modulo of series and other, element-wise
         (binary operator `divmod`).
@@ -789,7 +789,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        Series
+        2-Tuple of Series
             The result of the operation.
 
         See Also
@@ -798,7 +798,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return (self.floordiv(other), self.mod(other))
 
-    def rdivmod(self, other):
+    def rdivmod(self, other) -> Tuple["Series", "Series"]:
         """
         Return Integer division and modulo of series and other, element-wise
         (binary operator `rdivmod`).
@@ -809,7 +809,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        Series
+        2-Tuple of Series
             The result of the operation.
 
         See Also
@@ -818,7 +818,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return (self.rfloordiv(other), self.rmod(other))
 
-    def between(self, left, right, inclusive=True):
+    def between(self, left, right, inclusive=True) -> "Series":
         """
         Return boolean Series equivalent to left <= series <= right.
         This function returns a boolean vector containing `True` wherever the
@@ -1193,7 +1193,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return first_series(kdf)
 
     @property
-    def index(self):
+    def index(self) -> "ks.Index":
         """The index (axis labels) Column of the Series.
 
         See Also
@@ -1203,7 +1203,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return self._kdf.index
 
     @property
-    def is_unique(self):
+    def is_unique(self) -> bool:
         """
         Return boolean if values in the object are unique
 
@@ -1231,7 +1231,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             & (F.count(F.when(scol.isNull(), 1).otherwise(None)) <= 1)
         ).collect()[0][0]
 
-    def reset_index(self, level=None, drop=False, name=None, inplace=False):
+    def reset_index(
+        self, level=None, drop=False, name=None, inplace=False
+    ) -> Optional[Union["Series", DataFrame]]:
         """
         Generate a new DataFrame or Series with the index reset.
 
@@ -1263,7 +1265,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        >>> s = pd.Series([1, 2, 3, 4], index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
+        >>> s = ks.Series([1, 2, 3, 4], index=pd.Index(['a', 'b', 'c', 'd'], name='idx'))
 
         Generate a DataFrame with default index.
 
@@ -1318,6 +1320,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if drop:
             if inplace:
                 self._update_anchor(kdf)
+                return None
             else:
                 return first_series(kdf)
         else:
@@ -1375,7 +1378,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype=False,
         name=False,
         max_rows=None,
-    ):
+    ) -> str:
         """
         Render a string representation of the Series.
 
@@ -1434,7 +1437,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             kseries._to_internal_pandas(), self.to_string, pd.Series.to_string, args
         )
 
-    def to_clipboard(self, excel=True, sep=None, **kwargs):
+    def to_clipboard(self, excel=True, sep=None, **kwargs) -> None:
         # Docstring defined below by reusing DataFrame.to_clipboard's.
         args = locals()
         kseries = self
@@ -1445,7 +1448,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     to_clipboard.__doc__ = DataFrame.to_clipboard.__doc__
 
-    def to_dict(self, into=dict):
+    def to_dict(self, into=dict) -> Mapping:
         """
         Convert Series to {label -> value} dict or dict-like object.
 
@@ -1508,7 +1511,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         multicolumn=None,
         multicolumn_format=None,
         multirow=None,
-    ):
+    ) -> Optional[str]:
 
         args = locals()
         kseries = self
@@ -1547,7 +1550,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     toPandas.__doc__ = to_pandas.__doc__
 
-    def to_list(self):
+    def to_list(self) -> List:
         """
         Return a list of the values.
 
@@ -1567,7 +1570,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     tolist = to_list
 
-    def drop_duplicates(self, keep="first", inplace=False):
+    def drop_duplicates(self, keep="first", inplace=False) -> Optional["Series"]:
         """
         Return Series with duplicate values removed.
 
@@ -1638,6 +1641,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         if inplace:
             self._update_anchor(kdf)
+            return None
         else:
             return first_series(kdf)
 
@@ -1744,7 +1748,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             self.name
         )
 
-    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+    def fillna(
+        self, value=None, method=None, axis=None, inplace=False, limit=None
+    ) -> Optional["Series"]:
         """Fill NA/NaN values.
 
         .. note:: the current implementation of 'method' parameter in fillna uses Spark's Window
@@ -1829,6 +1835,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         inplace = validate_bool_kwarg(inplace, "inplace")
         if inplace:
             self._kdf._update_internal_frame(kser._kdf._internal, requires_same_anchor=False)
+            return None
         else:
             return kser._with_new_scol(kser.spark.column)
 
@@ -1988,7 +1995,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def drop(
         self, labels=None, index: Union[Any, Tuple, List[Any], List[Tuple]] = None, level=None
-    ):
+    ) -> "Series":
         """
         Return Series with specified index labels removed.
 
@@ -2173,7 +2180,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.
-    def unique(self):
+    def unique(self) -> "Series":
         """
         Return unique values of Series object.
 
@@ -2423,7 +2430,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return first_series(kdf)
 
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix) -> "Series":
         """
         Prefix labels with string `prefix`.
 
@@ -2476,7 +2483,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         return first_series(DataFrame(internal.with_new_sdf(sdf)))
 
-    def add_suffix(self, suffix):
+    def add_suffix(self, suffix) -> "Series":
         """
         Suffix labels with string suffix.
 
@@ -2529,7 +2536,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         return first_series(DataFrame(internal.with_new_sdf(sdf)))
 
-    def corr(self, other, method="pearson"):
+    def corr(self, other, method="pearson") -> float:
         """
         Compute correlation with `other` Series, excluding missing values.
 
@@ -2696,7 +2703,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.sort_values(ascending=False).head(n)  # type: ignore
 
-    def count(self):
+    def count(self) -> int:
         """
         Return number of non-NA/null observations in the Series.
 
@@ -2797,7 +2804,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
-    def apply(self, func, args=(), **kwds):
+    def apply(self, func, args=(), **kwds) -> "Series":
         """
         Invoke function on values of Series.
 
@@ -2926,7 +2933,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             limit = get_option("compute.shortcut_limit")
             pser = self.head(limit)._to_internal_pandas()
             transformed = pser.apply(func, *args, **kwds)
-            kser = Series(transformed)
+            kser = Series(transformed)  # type: "Series"
             return self.koalas._transform_batch(apply_each, kser.spark.data_type)
         else:
             sig_return = infer_return_type(func)
@@ -2939,7 +2946,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return self.koalas._transform_batch(apply_each, return_schema)
 
     # TODO: not all arguments are implemented comparing to pandas' for now.
-    def aggregate(self, func: Union[str, List[str]]):
+    def aggregate(self, func: Union[str, List[str]]) -> Union[Scalar, "Series"]:
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -2985,7 +2992,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     agg = aggregate
 
-    def transpose(self, *args, **kwargs):
+    def transpose(self, *args, **kwargs) -> "Series":
         """
         Return the transpose, which is by definition self.
 
@@ -3011,7 +3018,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     T = property(transpose)
 
-    def transform(self, func, axis=0, *args, **kwargs):
+    def transform(self, func, axis=0, *args, **kwargs) -> Union["Series", DataFrame]:
         """
         Call ``func`` producing the same type as `self` with transformed values
         and that has the same axis length as input.
@@ -3109,7 +3116,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     transform_batch.__doc__ = KoalasSeriesMethods.transform_batch.__doc__
 
-    def round(self, decimals=0):
+    def round(self, decimals=0) -> "Series":
         """
         Round each value in a Series to the given number of decimals.
 
@@ -3149,7 +3156,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return self._with_new_scol(scol)
 
     # TODO: add 'interpolation' parameter.
-    def quantile(self, q=0.5, accuracy=10000):
+    def quantile(self, q=0.5, accuracy=10000) -> Union[Scalar, "Series"]:
         """
         Return value at the given quantile.
 
@@ -3263,7 +3270,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
 
     # TODO: add axis, numeric_only, pct, na_option parameter
-    def rank(self, method="average", ascending=True):
+    def rank(self, method="average", ascending=True) -> "Series":
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
@@ -3391,7 +3398,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kser = self._with_new_scol(scol)
         return kser.astype(np.float64)
 
-    def filter(self, items=None, like=None, regex=None, axis=None):
+    def filter(self, items=None, like=None, regex=None, axis=None) -> "Series":
         axis = validate_axis(axis)
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
@@ -3406,7 +3413,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     describe.__doc__ = DataFrame.describe.__doc__
 
-    def diff(self, periods=1):
+    def diff(self, periods=1) -> "Series":
         """
         First discrete difference of element.
 
@@ -3425,7 +3432,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        diffed : DataFrame
+        diffed : Series
 
         Examples
         --------
@@ -3485,7 +3492,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         scol = self.spark.column - F.lag(self.spark.column, periods).over(window)
         return self._with_new_scol(scol)
 
-    def idxmax(self, skipna=True):
+    def idxmax(self, skipna=True) -> Union[Tuple, Any]:
         """
         Return the row label of the maximum value.
 
@@ -3588,7 +3595,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
-    def idxmin(self, skipna=True):
+    def idxmin(self, skipna=True) -> Union[Tuple, Any]:
         """
         Return the row label of the minimum value.
 
@@ -3698,7 +3705,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def pop(self, item):
         """
-        Return item and drop from sereis.
+        Return item and drop from series.
 
         Parameters
         ----------
@@ -3707,7 +3714,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        Series
+        Value that is popped from series.
 
         Examples
         --------
@@ -3975,7 +3982,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return first_series(DataFrame(internal))
 
-    def keys(self):
+    def keys(self) -> "ks.Index":
         """
         Return alias for index.
 
@@ -4190,7 +4197,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(current)
 
-    def update(self, other):
+    def update(self, other) -> None:
         """
         Modify Series in place using non-NA values from passed Series. Aligns on index.
 
@@ -4278,7 +4285,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         self._kdf._update_internal_frame(internal.resolved_copy, requires_same_anchor=False)
 
-    def where(self, cond, other=np.nan):
+    def where(self, cond, other=np.nan) -> "Series":
         """
         Replace values where the condition is False.
 
@@ -4384,7 +4391,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
             return self._with_new_scol(condition)
 
-    def mask(self, cond, other=np.nan):
+    def mask(self, cond, other=np.nan) -> "Series":
         """
         Replace values where the condition is True.
 
@@ -4443,7 +4450,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.where(~cond, other)
 
-    def xs(self, key, level=None):
+    def xs(self, key, level=None) -> "Series":
         """
         Return cross-section from the Series.
 
@@ -4541,7 +4548,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         return first_series(DataFrame(internal))
 
-    def pct_change(self, periods=1):
+    def pct_change(self, periods=1) -> "Series":
         """
         Percentage change between the current and a prior element.
 
@@ -4594,7 +4601,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol((scol - prev_row) / prev_row)
 
-    def combine_first(self, other):
+    def combine_first(self, other) -> "Series":
         """
         Combine Series values, choosing the calling Series's values first.
 
@@ -4649,7 +4656,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = self._internal.with_new_sdf(sdf)
         return first_series(ks.DataFrame(internal))
 
-    def dot(self, other):
+    def dot(self, other) -> Union[Scalar, "Series"]:
         """
         Compute the dot product between the Series and the columns of other.
 
@@ -4804,7 +4811,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             else:
                 return first_series(ks.concat([kdf] * repeats))
 
-    def asof(self, where):
+    def asof(self, where) -> Union[Scalar, "Series"]:
         """
         Return the last row(s) without any NaNs before `where`.
 
@@ -4886,11 +4893,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         with ks.option_context(
             "compute.default_index_type", "distributed", "compute.max_rows", None
         ):
-            kdf = ks.DataFrame(sdf)
+            kdf = ks.DataFrame(sdf)  # type: DataFrame
             kdf.columns = pd.Index(where)
             return first_series(kdf.transpose()).rename(self.name)
 
-    def mad(self):
+    def mad(self) -> float:
         """
         Return the mean absolute deviation of values.
 
@@ -4915,7 +4922,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return mad
 
-    def unstack(self, level=-1):
+    def unstack(self, level=-1) -> DataFrame:
         """
         Unstack, a.k.a. pivot, Series with MultiIndex to produce DataFrame.
         The level involved will automatically get sorted.
@@ -5010,7 +5017,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.head(2)._to_internal_pandas().item()
 
-    def iteritems(self):
+    def iteritems(self) -> Iterable:
         """
         Lazily iterate over (index, value) tuples.
 
@@ -5060,7 +5067,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
-    def droplevel(self, level):
+    def droplevel(self, level) -> "Series":
         """
         Return Series with requested index level(s) removed.
 
@@ -5111,7 +5118,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self.to_frame().droplevel(level=level, axis=0)).rename(self.name)
 
-    def tail(self, n=5):
+    def tail(self, n=5) -> "Series":
         """
         Return the last `n` rows.
 
@@ -5155,7 +5162,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self.to_frame().tail(n=n)).rename(self.name)
 
-    def product(self, min_count=0):
+    def product(self, min_count=0) -> Union[int, float]:
         """
         Return the product of the values.
 
