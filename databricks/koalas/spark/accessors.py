@@ -918,13 +918,13 @@ class SparkFrameMethods(object):
         --------
         >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2],
         ...         "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
-        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf.sort_index()  # doctest: +NORMALIZE_WHITESPACE
               name
         age
-        5      Bob
-        5      Bob
         2    Alice
         2    Alice
+        5      Bob
+        5      Bob
         >>> new_kdf = kdf.spark.repartition(7)
         >>> new_kdf.to_spark().rdd.getNumPartitions()
         7
