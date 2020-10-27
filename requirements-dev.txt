@@ -13,7 +13,7 @@ nbsphinx
 # Temporarily exclude nbconvert 6.0 that is a dependency from nbsphinx.
 # It causes Read the Docs build fails
 nbconvert!=6.0.*
-numpydoc==0.8
+numpydoc>=1.1.0
 pypandoc
 ipython
 pydata-sphinx-theme

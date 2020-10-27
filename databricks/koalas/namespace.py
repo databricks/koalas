@@ -2169,7 +2169,6 @@ def isna(obj):
 
     See Also
     --------
-    notnull : Boolean inverse of pandas.isnull.
     Series.isna : Detect missing values in a Series.
     Series.isnull : Detect missing values in a Series.
     DataFrame.isna : Detect missing values in a DataFrame.
@@ -2218,6 +2217,9 @@ def isna(obj):
     2    False
     Name: b, dtype: bool
     """
+    # TODO: Add back:
+    #     notnull : Boolean inverse of pandas.isnull.
+    #   into the See Also in the docstring. It does not find the method in the latest numpydoc.
     if isinstance(obj, (DataFrame, Series)):
         return obj.isnull()
     else:
@@ -2245,8 +2247,6 @@ def notna(obj):
     --------
     isna : Detect missing values for an array-like object.
     Series.notna : Boolean inverse of Series.isna.
-    Series.notnull :Boolean inverse of Series.isnull.
-    DataFrame.notna :Boolean inverse of DataFrame.isna.
     DataFrame.notnull : Boolean inverse of DataFrame.isnull.
     Index.notna : Boolean inverse of Index.isna.
     Index.notnull : Boolean inverse of Index.isnull.
@@ -2290,6 +2290,10 @@ def notna(obj):
     >>> ks.notna(ser.index)
     True
     """
+    # TODO: Add back:
+    #     Series.notnull :Boolean inverse of Series.isnull.
+    #     DataFrame.notna :Boolean inverse of DataFrame.isna.
+    #   into the See Also in the docstring. It does not find the method in the latest numpydoc.
     if isinstance(obj, (DataFrame, Series)):
         return obj.notna()
     else:
