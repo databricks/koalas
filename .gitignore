@@ -58,3 +58,5 @@ spark-warehouse/
 pandoc*
 whatsnew
 
+# Mlflow directory during documentation generation
+docs/mlruns
