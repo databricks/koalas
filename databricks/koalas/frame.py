@@ -9557,7 +9557,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return ks.from_pandas(kdf._to_internal_pandas().idxmin())   # type: ignore
+        return ks.from_pandas(kdf._to_internal_pandas().idxmin())  # type: ignore
 
     def info(self, verbose=None, buf=None, max_cols=None, null_counts=None):
         """
@@ -9674,7 +9674,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self.count = count_func
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
-    def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000) -> Frame:
+    def quantile(
+        self, q=0.5, axis=0, numeric_only=True, accuracy=10000
+    ) -> Union["DataFrame", "ks.Series"]:
         """
         Return value at the given quantile.
 
