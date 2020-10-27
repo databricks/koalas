@@ -939,9 +939,7 @@ class SparkFrameMethods(object):
         from databricks.koalas.frame import DataFrame
 
         internal = self._kdf._internal.resolved_copy
-
         repartitioned_sdf = internal.spark_frame.repartition(num_partitions)
-
         return DataFrame(internal.with_new_sdf(repartitioned_sdf))
 
     def coalesce(self, num_partitions: int) -> "ks.DataFrame":
@@ -970,9 +968,7 @@ class SparkFrameMethods(object):
         from databricks.koalas.frame import DataFrame
 
         internal = self._kdf._internal.resolved_copy
-
         coalesced_sdf = internal.spark_frame.coalesce(num_partitions)
-
         return DataFrame(internal.with_new_sdf(coalesced_sdf))
 
     @property
