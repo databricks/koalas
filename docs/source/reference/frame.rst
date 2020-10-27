@@ -277,8 +277,6 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.explain
    DataFrame.spark.apply
    DataFrame.spark.repartition
-   DataFrame.spark.coalesce
-
 
 .. _api.dataframe.plot:
 
