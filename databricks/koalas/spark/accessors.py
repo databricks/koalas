@@ -944,6 +944,37 @@ class SparkFrameMethods(object):
 
         return DataFrame(internal.with_new_sdf(repartitioned_sdf))
 
+    def coalesce(self, num_partitions: int) -> "ks.DataFrame":
+        """
+        Returns a new DataFrame that has exactly `num_partitions` partitions.
+
+        .. note:: This operation results in a narrow dependency, e.g. if you go from 1000
+        partitions to 100 partitions, there will not be a shuffle, instead each of the 100 new
+        partitions will claim 10 of the current partitions. If a larger number of partitions is
+        requested, it will stay at the current number of partitions. However, if you're doing a
+        drastic coalesce, e.g. to num_partitions = 1, this may result in your computation taking
+        place on fewer nodes than you like (e.g. one node in the case of num_partitions = 1). To
+        avoid this, you can call repartition(). This will add a shuffle step, but means the
+        current upstream partitions will be executed in parallel (per whatever the current
+        partitioning is).
+
+        Parameters
+        ----------
+        num_partitions : int
+            The target number of partitions.
+
+        Returns
+        -------
+        DataFrame
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+
+        coalesced_sdf = internal.spark_frame.coalesce(num_partitions)
+
+        return DataFrame(internal.with_new_sdf(coalesced_sdf))
+
     @property
     def analyzed(self) -> "ks.DataFrame":
         """
