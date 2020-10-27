@@ -276,6 +276,7 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.to_spark_io
    DataFrame.spark.explain
    DataFrame.spark.apply
+   DataFrame.spark.repartition
 
 .. _api.dataframe.plot:
 

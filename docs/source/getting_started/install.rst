@@ -21,7 +21,7 @@ To install PySpark, you can use:
 Python version support
 ----------------------
 
-Officially Python 3.5 and above.
+Officially Python 3.5 to 3.8.
 
 
 Installing Koalas
@@ -49,7 +49,7 @@ following command::
 
 To install a specific Koalas version::
 
-    conda install -c conda-forge koalas=0.19.0
+    conda install -c conda-forge koalas=1.3.0
 
 
 Installing from PyPI
