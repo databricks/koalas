@@ -18,6 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from collections import OrderedDict, defaultdict
+from collections.abc import Mapping
 from distutils.version import LooseVersion
 import re
 import warnings
@@ -27,11 +28,25 @@ import types
 from functools import partial, reduce
 import sys
 from itertools import zip_longest
-from typing import Any, Optional, List, Tuple, Union, Generic, TypeVar, Iterable, Dict, Callable
+from typing import (
+    Any,
+    Optional,
+    List,
+    Tuple,
+    Union,
+    Generic,
+    TypeVar,
+    Iterable,
+    Iterator,
+    Dict,
+    Callable,
+)
 
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
+from pandas.io.formats.style import Styler
+
 
 if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
     from pandas.core.dtypes.common import infer_dtype_from_object
@@ -42,7 +57,7 @@ from pandas.core.dtypes.inference import is_sequence
 import pyspark
 from pyspark import StorageLevel
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column
+from pyspark.sql import Column, DataFrame as SparkDataFrame, functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import (
     BooleanType,
@@ -541,7 +556,7 @@ class DataFrame(Frame, Generic[T]):
             del self._repr_pandas_cache
 
     @property
-    def ndim(self):
+    def ndim(self) -> int:
         """
         Return an int representing the number of array dimensions.
 
@@ -564,7 +579,7 @@ class DataFrame(Frame, Generic[T]):
         return 2
 
     @property
-    def axes(self):
+    def axes(self) -> List:
         """
         Return a list representing the axes of the DataFrame.
 
@@ -760,61 +775,61 @@ class DataFrame(Frame, Generic[T]):
         else:
             return self._apply_series_op(lambda kser: getattr(kser, op)(other))
 
-    def __add__(self, other):
+    def __add__(self, other) -> "DataFrame":
         return self._map_series_op("add", other)
 
-    def __radd__(self, other):
+    def __radd__(self, other) -> "DataFrame":
         return self._map_series_op("radd", other)
 
-    def __div__(self, other):
+    def __div__(self, other) -> "DataFrame":
         return self._map_series_op("div", other)
 
-    def __rdiv__(self, other):
+    def __rdiv__(self, other) -> "DataFrame":
         return self._map_series_op("rdiv", other)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> "DataFrame":
         return self._map_series_op("truediv", other)
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other) -> "DataFrame":
         return self._map_series_op("rtruediv", other)
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> "DataFrame":
         return self._map_series_op("mul", other)
 
-    def __rmul__(self, other):
+    def __rmul__(self, other) -> "DataFrame":
         return self._map_series_op("rmul", other)
 
-    def __sub__(self, other):
+    def __sub__(self, other) -> "DataFrame":
         return self._map_series_op("sub", other)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other) -> "DataFrame":
         return self._map_series_op("rsub", other)
 
-    def __pow__(self, other):
+    def __pow__(self, other) -> "DataFrame":
         return self._map_series_op("pow", other)
 
-    def __rpow__(self, other):
+    def __rpow__(self, other) -> "DataFrame":
         return self._map_series_op("rpow", other)
 
-    def __mod__(self, other):
+    def __mod__(self, other) -> "DataFrame":
         return self._map_series_op("mod", other)
 
-    def __rmod__(self, other):
+    def __rmod__(self, other) -> "DataFrame":
         return self._map_series_op("rmod", other)
 
-    def __floordiv__(self, other):
+    def __floordiv__(self, other) -> "DataFrame":
         return self._map_series_op("floordiv", other)
 
-    def __rfloordiv__(self, other):
+    def __rfloordiv__(self, other) -> "DataFrame":
         return self._map_series_op("rfloordiv", other)
 
-    def __abs__(self):
+    def __abs__(self) -> "DataFrame":
         return self._apply_series_op(lambda kser: abs(kser))
 
-    def __neg__(self):
+    def __neg__(self) -> "DataFrame":
         return self._apply_series_op(lambda kser: -kser)
 
-    def add(self, other):
+    def add(self, other) -> "DataFrame":
         return self + other
 
     # create accessor for plot
@@ -840,14 +855,14 @@ class DataFrame(Frame, Generic[T]):
         desc="Addition", op_name="+", equiv="dataframe + other", reverse="radd"
     )
 
-    def radd(self, other):
+    def radd(self, other) -> "DataFrame":
         return other + self
 
     radd.__doc__ = _flex_doc_FRAME.format(
         desc="Addition", op_name="+", equiv="other + dataframe", reverse="add"
     )
 
-    def div(self, other):
+    def div(self, other) -> "DataFrame":
         return self / other
 
     div.__doc__ = _flex_doc_FRAME.format(
@@ -856,28 +871,28 @@ class DataFrame(Frame, Generic[T]):
 
     divide = div
 
-    def rdiv(self, other):
+    def rdiv(self, other) -> "DataFrame":
         return other / self
 
     rdiv.__doc__ = _flex_doc_FRAME.format(
         desc="Floating division", op_name="/", equiv="other / dataframe", reverse="div"
     )
 
-    def truediv(self, other):
+    def truediv(self, other) -> "DataFrame":
         return self / other
 
     truediv.__doc__ = _flex_doc_FRAME.format(
         desc="Floating division", op_name="/", equiv="dataframe / other", reverse="rtruediv"
     )
 
-    def rtruediv(self, other):
+    def rtruediv(self, other) -> "DataFrame":
         return other / self
 
     rtruediv.__doc__ = _flex_doc_FRAME.format(
         desc="Floating division", op_name="/", equiv="other / dataframe", reverse="truediv"
     )
 
-    def mul(self, other):
+    def mul(self, other) -> "DataFrame":
         return self * other
 
     mul.__doc__ = _flex_doc_FRAME.format(
@@ -886,14 +901,14 @@ class DataFrame(Frame, Generic[T]):
 
     multiply = mul
 
-    def rmul(self, other):
+    def rmul(self, other) -> "DataFrame":
         return other * self
 
     rmul.__doc__ = _flex_doc_FRAME.format(
         desc="Multiplication", op_name="*", equiv="other * dataframe", reverse="mul"
     )
 
-    def sub(self, other):
+    def sub(self, other) -> "DataFrame":
         return self - other
 
     sub.__doc__ = _flex_doc_FRAME.format(
@@ -902,49 +917,49 @@ class DataFrame(Frame, Generic[T]):
 
     subtract = sub
 
-    def rsub(self, other):
+    def rsub(self, other) -> "DataFrame":
         return other - self
 
     rsub.__doc__ = _flex_doc_FRAME.format(
         desc="Subtraction", op_name="-", equiv="other - dataframe", reverse="sub"
     )
 
-    def mod(self, other):
+    def mod(self, other) -> "DataFrame":
         return self % other
 
     mod.__doc__ = _flex_doc_FRAME.format(
         desc="Modulo", op_name="%", equiv="dataframe % other", reverse="rmod"
     )
 
-    def rmod(self, other):
+    def rmod(self, other) -> "DataFrame":
         return other % self
 
     rmod.__doc__ = _flex_doc_FRAME.format(
         desc="Modulo", op_name="%", equiv="other % dataframe", reverse="mod"
     )
 
-    def pow(self, other):
+    def pow(self, other) -> "DataFrame":
         return self ** other
 
     pow.__doc__ = _flex_doc_FRAME.format(
         desc="Exponential power of series", op_name="**", equiv="dataframe ** other", reverse="rpow"
     )
 
-    def rpow(self, other):
+    def rpow(self, other) -> "DataFrame":
         return other ** self
 
     rpow.__doc__ = _flex_doc_FRAME.format(
         desc="Exponential power", op_name="**", equiv="other ** dataframe", reverse="pow"
     )
 
-    def floordiv(self, other):
+    def floordiv(self, other) -> "DataFrame":
         return self // other
 
     floordiv.__doc__ = _flex_doc_FRAME.format(
         desc="Integer division", op_name="//", equiv="dataframe // other", reverse="rfloordiv"
     )
 
-    def rfloordiv(self, other):
+    def rfloordiv(self, other) -> "DataFrame":
         return other // self
 
     rfloordiv.__doc__ = _flex_doc_FRAME.format(
@@ -952,25 +967,25 @@ class DataFrame(Frame, Generic[T]):
     )
 
     # Comparison Operators
-    def __eq__(self, other):
+    def __eq__(self, other) -> "DataFrame":  # type: ignore
         return self._map_series_op("eq", other)
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> "DataFrame":  # type: ignore
         return self._map_series_op("ne", other)
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> "DataFrame":
         return self._map_series_op("lt", other)
 
-    def __le__(self, other):
+    def __le__(self, other) -> "DataFrame":
         return self._map_series_op("le", other)
 
-    def __ge__(self, other):
+    def __ge__(self, other) -> "DataFrame":
         return self._map_series_op("ge", other)
 
-    def __gt__(self, other):
+    def __gt__(self, other) -> "DataFrame":
         return self._map_series_op("gt", other)
 
-    def eq(self, other):
+    def eq(self, other) -> "DataFrame":
         """
         Compare if the current value is equal to the other.
 
@@ -989,7 +1004,7 @@ class DataFrame(Frame, Generic[T]):
 
     equals = eq
 
-    def gt(self, other):
+    def gt(self, other) -> "DataFrame":
         """
         Compare if the current value is greater than the other.
 
@@ -1006,7 +1021,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return self > other
 
-    def ge(self, other):
+    def ge(self, other) -> "DataFrame":
         """
         Compare if the current value is greater than or equal to the other.
 
@@ -1023,7 +1038,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return self >= other
 
-    def lt(self, other):
+    def lt(self, other) -> "DataFrame":
         """
         Compare if the current value is less than the other.
 
@@ -1040,7 +1055,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return self < other
 
-    def le(self, other):
+    def le(self, other) -> "DataFrame":
         """
         Compare if the current value is less than or equal to the other.
 
@@ -1057,7 +1072,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return self <= other
 
-    def ne(self, other):
+    def ne(self, other) -> "DataFrame":
         """
         Compare if the current value is not equal to the other.
 
@@ -1074,7 +1089,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return self != other
 
-    def applymap(self, func):
+    def applymap(self, func) -> "DataFrame":
         """
         Apply a function to a Dataframe elementwise.
 
@@ -1137,7 +1152,9 @@ class DataFrame(Frame, Generic[T]):
         return self._apply_series_op(lambda kser: kser.apply(func))
 
     # TODO: not all arguments are implemented comparing to pandas' for now.
-    def aggregate(self, func: Union[List[str], Dict[Any, List[str]]]):
+    def aggregate(
+        self, func: Union[List[str], Dict[Any, List[str]]]
+    ) -> Union["ks.Series", "DataFrame", "ks.Index"]:
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -1260,7 +1277,7 @@ class DataFrame(Frame, Generic[T]):
 
     agg = aggregate
 
-    def corr(self, method="pearson"):
+    def corr(self, method="pearson") -> Union["ks.Series", "DataFrame", "ks.Index"]:
         """
         Compute pairwise correlation of columns, excluding NA/null values.
 
@@ -1272,7 +1289,7 @@ class DataFrame(Frame, Generic[T]):
 
         Returns
         -------
-        y : pandas.DataFrame
+        y : DataFrame
 
         See Also
         --------
@@ -1304,7 +1321,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return ks.from_pandas(corr(self, method))
 
-    def iteritems(self) -> Iterable:
+    def iteritems(self) -> Iterator:
         """
         Iterator over (column name, Series) pairs.
 
@@ -1348,7 +1365,7 @@ class DataFrame(Frame, Generic[T]):
             for label in self._internal.column_labels
         )
 
-    def iterrows(self):
+    def iterrows(self) -> Iterator:
         """
         Iterate over DataFrame rows as (index, Series) pairs.
 
@@ -1409,7 +1426,7 @@ class DataFrame(Frame, Generic[T]):
             s = pd.Series(v, index=columns, name=k)
             yield k, s
 
-    def items(self) -> Iterable:
+    def items(self) -> Iterator:
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
@@ -1512,7 +1529,7 @@ class DataFrame(Frame, Generic[T]):
         border=None,
         table_id=None,
         render_links=False,
-    ):
+    ) -> Optional[str]:
         """
         Render a DataFrame as an HTML table.
 
@@ -1626,7 +1643,7 @@ class DataFrame(Frame, Generic[T]):
         show_dimensions=False,
         decimal=".",
         line_width=None,
-    ):
+    ) -> Optional[str]:
         """
         Render a DataFrame to a console-friendly tabular output.
 
@@ -1723,7 +1740,7 @@ class DataFrame(Frame, Generic[T]):
             kdf._to_internal_pandas(), self.to_string, pd.DataFrame.to_string, args
         )
 
-    def to_dict(self, orient="dict", into=dict):
+    def to_dict(self, orient="dict", into=dict) -> Union[List, Mapping]:
         """
         Convert the DataFrame to a dictionary.
 
@@ -1841,7 +1858,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         multicolumn=None,
         multicolumn_format=None,
         multirow=None,
-    ):
+    ) -> Optional[str]:
         r"""
         Render an object to a LaTeX tabular environment table.
 
@@ -1940,7 +1957,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: enable doctests once we drop Spark 2.3.x (due to type coercion logic
     #  when creating arrays)
-    def transpose(self):
+    def transpose(self) -> "DataFrame":
         """
         Transpose index and columns.
 
@@ -2139,7 +2156,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     T = property(transpose)
 
-    def apply_batch(self, func, args=(), **kwds):
+    def apply_batch(self, func, args=(), **kwds) -> "DataFrame":
         warnings.warn(
             "DataFrame.apply_batch is deprecated as of DataFrame.koalas.apply_batch. "
             "Please use the API instead.",
@@ -2150,7 +2167,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     apply_batch.__doc__ = KoalasFrameMethods.apply_batch.__doc__
 
     # TODO: Remove this API when Koalas 2.0.0.
-    def map_in_pandas(self, func):
+    def map_in_pandas(self, func) -> "DataFrame":
         warnings.warn(
             "DataFrame.map_in_pandas is deprecated as of DataFrame.koalas.apply_batch. "
             "Please use the API instead.",
@@ -2160,7 +2177,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     map_in_pandas.__doc__ = KoalasFrameMethods.apply_batch.__doc__
 
-    def apply(self, func, axis=0, args=(), **kwds):
+    def apply(self, func, axis=0, args=(), **kwds) -> Union["ks.Series", "DataFrame", "ks.Index"]:
         """
         Apply a function along an axis of the DataFrame.
 
@@ -2362,8 +2379,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             else:
                 return pdf_or_pser
 
-        self_applied = DataFrame(self._internal.resolved_copy)
+        self_applied = DataFrame(self._internal.resolved_copy)  # type: "DataFrame"
 
+        column_labels = None
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
@@ -2404,7 +2422,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return_schema = return_type.tpe
             require_index_axis = isinstance(return_type, SeriesType)
             require_column_axis = isinstance(return_type, DataFrameType)
-            column_labels = None
+
             if require_index_axis:
                 if axis != 0:
                     raise TypeError(
@@ -2446,15 +2464,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_map=None, column_labels=column_labels)
+            internal = InternalFrame(
+                spark_frame=sdf, index_map=None, column_labels=column_labels  # type: ignore
+            )
 
-        result = DataFrame(internal)
+        result = DataFrame(internal)  # type: "DataFrame"
         if should_return_series:
             return first_series(result)
         else:
             return result
 
-    def transform(self, func, axis=0, *args, **kwargs):
+    def transform(self, func, axis=0, *args, **kwargs) -> "DataFrame":
         """
         Call ``func`` on self producing a Series with transformed values
         and that has the same length as its input.
@@ -2581,7 +2601,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
             transformed = pdf.transform(func, axis, *args, **kwargs)
-            kdf = DataFrame(transformed)
+            kdf = DataFrame(transformed)  # type: "DataFrame"
             if len(pdf) <= limit:
                 return kdf
 
@@ -2604,7 +2624,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 lambda kser: kser.koalas.transform_batch(func, *args, **kwargs)
             )
 
-    def transform_batch(self, func, *args, **kwargs):
+    def transform_batch(self, func, *args, **kwargs) -> "DataFrame":
         warnings.warn(
             "DataFrame.transform_batch is deprecated as of DataFrame.koalas.transform_batch. "
             "Please use the API instead.",
@@ -2614,7 +2634,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     transform_batch.__doc__ = KoalasFrameMethods.transform_batch.__doc__
 
-    def pop(self, item):
+    def pop(self, item) -> "DataFrame":
         """
         Return item and drop from frame. Raise KeyError if not found.
 
@@ -2693,7 +2713,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return result
 
     # TODO: add axis parameter can work when '1' or 'columns'
-    def xs(self, key, axis=0, level=None):
+    def xs(self, key, axis=0, level=None) -> "DataFrame":
         """
         Return cross-section from the DataFrame.
 
@@ -2808,7 +2828,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return result
 
-    def where(self, cond, other=np.nan):
+    def where(self, cond, other=np.nan) -> "DataFrame":
         """
         Replace values where the condition is False.
 
@@ -2999,7 +3019,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
-    def mask(self, cond, other=np.nan):
+    def mask(self, cond, other=np.nan) -> "DataFrame":
         """
         Replace values where the condition is True.
 
@@ -3080,7 +3100,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self.where(cond_inversed, other)
 
     @property
-    def index(self):
+    def index(self) -> "ks.Index":
         """The index (row labels) Column of the DataFrame.
 
         Currently not supported when the DataFrame has no index.
@@ -3097,7 +3117,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return MultiIndex(self)
 
     @property
-    def empty(self):
+    def empty(self) -> bool:
         """
         Returns true if the current DataFrame is empty. Otherwise, returns false.
 
@@ -3118,10 +3138,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
     @property
-    def style(self):
+    def style(self) -> Styler:
         """
         Property returning a Styler object containing methods for
-        building a styled HTML representation fo the DataFrame.
+        building a styled HTML representation for the DataFrame.
 
         .. note:: currently it collects top 1000 rows and return its
             pandas `pandas.io.formats.style.Styler` instance.
@@ -3137,7 +3157,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             warnings.warn("'style' property will only use top %s rows." % max_results, UserWarning)
         return pdf.head(max_results).style
 
-    def set_index(self, keys, drop=True, append=False, inplace=False):
+    def set_index(self, keys, drop=True, append=False, inplace=False) -> Optional["DataFrame"]:
         """Set the DataFrame index (row labels) using one or more existing columns.
 
         Set the DataFrame index (row labels) using one or more existing
@@ -3235,10 +3255,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if inplace:
             self._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal)
 
-    def reset_index(self, level=None, drop=False, inplace=False, col_level=0, col_fill=""):
+    def reset_index(
+        self, level=None, drop=False, inplace=False, col_level=0, col_fill=""
+    ) -> Optional["DataFrame"]:
         """Reset the index, or a level of it.
 
         For DataFrame with multi-level index, return new DataFrame with labeling information in
@@ -3398,7 +3421,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 (column, name if name is not None else rename(i))
                 for i, (column, name) in enumerate(self._internal.index_map.items())
             ]
-            index_map = []
+            index_map = {}  # type: Dict
         else:
             if is_list_like(level):
                 level = list(level)
@@ -3465,7 +3488,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol_for(sdf, column).alias(name_like_string(name)) for column, name in new_index_map
         ]
 
-        if len(index_map) > 0:
+        if len(index_map) > 0:  # type: ignore
             index_scols = [scol_for(sdf, column) for column in index_map]
             sdf = sdf.select(
                 index_scols
@@ -3514,10 +3537,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if inplace:
             self._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal)
 
-    def isnull(self):
+    def isnull(self) -> "DataFrame":
         """
         Detects missing values for items in the current Dataframe.
 
@@ -3549,7 +3573,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     isna = isnull
 
-    def notnull(self):
+    def notnull(self) -> "DataFrame":
         """
         Detects non-missing values for items in the current Dataframe.
 
@@ -3582,7 +3606,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     notna = notnull
 
     # TODO: add frep and axis parameter
-    def shift(self, periods=1, fill_value=None):
+    def shift(self, periods=1, fill_value=None) -> "DataFrame":
         """
         Shift DataFrame by desired number of periods.
 
@@ -3630,7 +3654,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(lambda kser: kser.shift(periods, fill_value))
 
     # TODO: axis should support 1 or 'columns' either at this moment
-    def diff(self, periods: int = 1, axis: Union[int, str] = 0):
+    def diff(self, periods: int = 1, axis: Union[int, str] = 0) -> "DataFrame":
         """
         First discrete difference of element.
 
@@ -3903,7 +3927,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("'keep' only supports 'first', 'last' and False")
         return sdf, column
 
-    def duplicated(self, subset=None, keep="first"):
+    def duplicated(self, subset=None, keep="first") -> "ks.Series":
         """
         Return boolean Series denoting duplicate rows, optionally only considering certain columns.
 
@@ -3970,7 +3994,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 InternalFrame(
                     spark_frame=sdf,
                     index_map=self._internal.index_map,
-                    column_labels=[None],
+                    column_labels=[None],  # type: ignore
                     data_spark_columns=[scol_for(sdf, SPARK_DEFAULT_SERIES_NAME)],
                 )
             )
@@ -4041,7 +4065,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = InternalFrame(spark_frame=self, index_map=index_map)
             return DataFrame(internal)
 
-    def cache(self):
+    def cache(self) -> "CachedDataFrame":
         warnings.warn(
             "DataFrame.cache is deprecated as of DataFrame.spark.cache. "
             "Please use the API instead.",
@@ -4051,7 +4075,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     cache.__doc__ = SparkFrameMethods.cache.__doc__
 
-    def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK):
+    def persist(self, storage_level=StorageLevel.MEMORY_AND_DISK) -> "CachedDataFrame":
         warnings.warn(
             "DataFrame.persist is deprecated as of DataFrame.spark.persist. "
             "Please use the API instead.",
@@ -4079,7 +4103,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         return self.spark.to_table(name, format, mode, partition_cols, index_col, **options)
 
     to_table.__doc__ = SparkFrameMethods.to_table.__doc__
@@ -4091,7 +4115,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         """
         Write the DataFrame out as a Delta Lake table.
 
@@ -4169,7 +4193,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         compression: Optional[str] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         """
         Write the DataFrame out as a Parquet file or directory.
 
@@ -4240,12 +4264,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         return self.spark.to_spark_io(path, format, mode, partition_cols, index_col, **options)
 
     to_spark_io.__doc__ = SparkFrameMethods.to_spark_io.__doc__
 
-    def to_spark(self, index_col: Optional[Union[str, List[str]]] = None):
+    def to_spark(self, index_col: Optional[Union[str, List[str]]] = None) -> SparkDataFrame:
         return self.spark.frame(index_col)
 
     to_spark.__doc__ = SparkFrameMethods.__doc__
@@ -4281,7 +4305,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     toPandas.__doc__ = to_pandas.__doc__
 
-    def assign(self, **kwargs):
+    def assign(self, **kwargs) -> "DataFrame":
         """
         Assign new columns to a DataFrame.
 
@@ -4455,7 +4479,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             pd.DataFrame.from_records(data, index, exclude, columns, coerce_float, nrows)
         )
 
-    def to_records(self, index=True, column_dtypes=None, index_dtypes=None):
+    def to_records(self, index=True, column_dtypes=None, index_dtypes=None) -> np.recarray:
         """
         Convert DataFrame to a NumPy record array.
 
@@ -4563,7 +4587,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return DataFrame(self._internal)
 
-    def dropna(self, axis=0, how="any", thresh=None, subset=None, inplace=False):
+    def dropna(
+        self, axis=0, how="any", thresh=None, subset=None, inplace=False
+    ) -> Optional["DataFrame"]:
         """
         Remove missing values.
 
@@ -4665,7 +4691,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if subset is not None:
             if isinstance(subset, str):
-                labels = [(subset,)]
+                labels = [(subset,)]  # type: Optional[List[Tuple]]
             elif isinstance(subset, tuple):
                 labels = [subset]
             else:
@@ -4699,6 +4725,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = self._internal.with_filter(pred)
             if inplace:
                 self._update_internal_frame(internal)
+                return None
             else:
                 return DataFrame(internal)
         else:
@@ -4761,11 +4788,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf = self[column_labels]
             if inplace:
                 self._update_internal_frame(kdf._internal)
+                return None
             else:
                 return kdf
 
     # TODO: add 'limit' when value parameter exists
-    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+    def fillna(
+        self, value=None, method=None, axis=None, inplace=False, limit=None
+    ) -> Optional["DataFrame"]:
         """Fill NA/NaN values.
 
         .. note:: the current implementation of 'method' parameter in fillna uses Spark's Window
@@ -4883,12 +4913,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         inplace = validate_bool_kwarg(inplace, "inplace")
         if inplace:
             self._update_internal_frame(kdf._internal, requires_same_anchor=False)
+            return None
         else:
             return kdf
 
     def replace(
         self, to_replace=None, value=None, inplace=False, limit=None, regex=False, method="pad",
-    ):
+    ) -> Optional["DataFrame"]:
         """
         Returns a new DataFrame replacing a value with another value.
 
@@ -5001,6 +5032,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = self._apply_series_op(op)
         if inplace:
             self._update_internal_frame(kdf._internal)
+            return None
         else:
             return kdf
 
@@ -5109,7 +5141,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
             return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
 
-    def pivot_table(self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None):
+    def pivot_table(
+        self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None
+    ) -> "DataFrame":
         """
         Create a spreadsheet-style pivot table as a DataFrame. The levels in
         the pivot table will be stored in MultiIndex objects (hierarchical
@@ -5333,9 +5367,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         index_map=index_map,
                         column_labels=column_labels,
                         data_spark_columns=[scol_for(sdf, col) for col in data_columns],
-                        column_label_names=column_label_names,
+                        column_label_names=column_label_names,  # type: ignore
                     )
-                    kdf = DataFrame(internal)
+                    kdf = DataFrame(internal)  # type: "DataFrame"
                 else:
                     column_labels = [tuple(list(values[0]) + [column]) for column in data_columns]
                     index_map = OrderedDict(zip(index_columns, index))
@@ -5345,14 +5379,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         index_map=index_map,
                         column_labels=column_labels,
                         data_spark_columns=[scol_for(sdf, col) for col in data_columns],
-                        column_label_names=column_label_names,
+                        column_label_names=column_label_names,  # type: ignore
                     )
                     kdf = DataFrame(internal)
             else:
                 index_columns = [self._internal.spark_column_name_for(label) for label in index]
                 index_map = OrderedDict(zip(index_columns, index))
                 internal = InternalFrame(
-                    spark_frame=sdf, index_map=index_map, column_label_names=[columns]
+                    spark_frame=sdf,
+                    index_map=index_map,
+                    column_label_names=[columns],  # type: ignore
                 )
                 kdf = DataFrame(internal)
         else:
@@ -5385,7 +5421,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return kdf
 
-    def pivot(self, index=None, columns=None, values=None):
+    def pivot(self, index=None, columns=None, values=None) -> "DataFrame":
         """
         Return reshaped DataFrame organized by given index / column values.
 
@@ -5506,7 +5542,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # The index after `reset_index()` will never be used, so use "distributed" index
             # as a dummy to avoid overhead.
             with option_context("compute.default_index_type", "distributed"):
-                df = self.reset_index()
+                df = self.reset_index()  # type: ignore
             index = df._internal.column_labels[: len(self._internal.index_spark_column_names)]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
@@ -5524,7 +5560,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     @property
-    def columns(self):
+    def columns(self) -> pd.Index:
         """The column labels of the DataFrame."""
         names = [
             name if name is None or len(name) > 1 else name[0]
@@ -5537,7 +5573,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return columns
 
     @columns.setter
-    def columns(self, columns):
+    def columns(self, columns) -> None:
         if isinstance(columns, pd.MultiIndex):
             column_labels = columns.tolist()
         else:
@@ -5556,7 +5592,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(columns, pd.Index):
             column_label_names = [
                 name if is_name_like_tuple(name) else (name,) for name in columns.names
-            ]
+            ]  # type: Optional[List]
         else:
             column_label_names = None
 
@@ -5569,12 +5605,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal.with_new_columns(
                 data_spark_columns,
                 column_labels=column_labels,
-                column_label_names=column_label_names,
+                column_label_names=column_label_names,  # type: ignore
             )
         )
 
     @property
-    def dtypes(self):
+    def dtypes(self) -> pd.Series:
         """Return the dtypes in the DataFrame.
 
         This returns a Series with the data type of each column. The result's index is the original
@@ -5610,7 +5646,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ),
         )
 
-    def spark_schema(self, index_col: Optional[Union[str, List[str]]] = None):
+    def spark_schema(self, index_col: Optional[Union[str, List[str]]] = None) -> StructType:
         warnings.warn(
             "DataFrame.spark_schema is deprecated as of DataFrame.spark.schema. "
             "Please use the API instead.",
@@ -5620,7 +5656,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     spark_schema.__doc__ = SparkFrameMethods.schema.__doc__
 
-    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None):
+    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None) -> None:
         warnings.warn(
             "DataFrame.print_schema is deprecated as of DataFrame.spark.print_schema. "
             "Please use the API instead.",
@@ -5630,7 +5666,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     print_schema.__doc__ = SparkFrameMethods.print_schema.__doc__
 
-    def select_dtypes(self, include=None, exclude=None):
+    def select_dtypes(self, include=None, exclude=None) -> "DataFrame":
         """
         Return a subset of the DataFrame's columns based on the column dtypes.
 
@@ -5797,7 +5833,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal.with_new_columns(data_spark_columns, column_labels=column_labels)
         )
 
-    def count(self, axis=None):
+    def count(self, axis=None) -> pd.Series:
         """
         Count non-NA cells for each column.
 
@@ -5956,7 +5992,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             kdf.columns = kdf.columns.droplevel(level)
             return kdf
 
-    def drop(self, labels=None, axis=1, columns: Union[Any, Tuple, List[Any], List[Tuple]] = None):
+    def drop(
+        self, labels=None, axis=1, columns: Union[Any, Tuple, List[Any], List[Tuple]] = None
+    ) -> "DataFrame":
         """
         Drop specified labels from columns.
 
@@ -6434,7 +6472,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.sort_values(by=columns, ascending=True).head(n=n)  # type: ignore
 
-    def isin(self, values):
+    def isin(self, values) -> "DataFrame":
         """
         Whether each element in the DataFrame is contained in values.
 
@@ -6511,7 +6549,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return DataFrame(self._internal.with_new_columns(data_spark_columns))
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple[int, int]:
         """
         Return a tuple representing the dimensionality of the DataFrame.
 
@@ -6957,12 +6995,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             need_set_index = len(set(on) & set(self.index.names)) == 0
         if need_set_index:
-            self = self.set_index(on)
+            self = self.set_index(on)  # type: ignore
 
         join_kdf = self.merge(
             right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
         )
-        return join_kdf.reset_index() if need_set_index else join_kdf
+        return join_kdf.reset_index() if need_set_index else join_kdf  # type: ignore
 
     def append(
         self,
@@ -7038,7 +7076,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return concat([self, other], ignore_index=ignore_index)
 
     # TODO: add 'filter_func' and 'errors' parameter
-    def update(self, other: "DataFrame", join: str = "left", overwrite: bool = True):
+    def update(self, other: "DataFrame", join: str = "left", overwrite: bool = True) -> None:
         """
         Modify in place using non-NA values from another DataFrame.
         Aligns on indices. There is no return value.
@@ -7305,7 +7343,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 applied.append(col.astype(dtype=dtype))
         return DataFrame(self._internal.with_new_columns(applied))
 
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix) -> "DataFrame":
         """
         Prefix labels with string `prefix`.
 
@@ -7350,7 +7388,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             lambda kser: kser.rename(tuple([prefix + i for i in kser._column_label]))
         )
 
-    def add_suffix(self, suffix):
+    def add_suffix(self, suffix) -> "DataFrame":
         """
         Suffix labels with string `suffix`.
 
@@ -7414,8 +7452,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        Series or DataFrame
-            Summary statistics of the Series or Dataframe provided.
+        DataFrame
+            Summary statistics of the Dataframe provided.
 
         See Also
         --------
@@ -7579,7 +7617,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         return DataFrame(internal).astype("float64")
 
-    def drop_duplicates(self, subset=None, keep="first", inplace=False):
+    def drop_duplicates(self, subset=None, keep="first", inplace=False) -> Optional["DataFrame"]:
         """
         Return DataFrame with duplicate rows removed, optionally only
         considering certain columns.
@@ -7653,6 +7691,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = self._internal.with_new_sdf(sdf)
         if inplace:
             self._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal)
 
@@ -7950,7 +7989,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.with_new_columns(scols, column_labels=labels))
 
-    def melt(self, id_vars=None, value_vars=None, var_name=None, value_name="value"):
+    def melt(self, id_vars=None, value_vars=None, var_name=None, value_name="value") -> "DataFrame":
         """
         Unpivot a DataFrame from wide format to long format, optionally
         leaving identifier variables set.
@@ -8164,7 +8203,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
-    def stack(self):
+    def stack(self) -> Union["DataFrame", "ks.Series"]:
         """
         Stack the prescribed level(s) from columns to index.
 
@@ -8279,13 +8318,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ).with_filter(F.lit(False))
             )
 
-        column_labels = defaultdict(dict)
+        column_labels = defaultdict(dict)  # type: Union[defaultdict, OrderedDict]
         index_values = set()
         should_returns_series = False
         for label in self._internal.column_labels:
             new_label = label[:-1]
             if len(new_label) == 0:
-                new_label = None
+                new_label = None  # type: ignore
                 should_returns_series = True
             value = label[-1]
 
@@ -8334,9 +8373,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             index_map=OrderedDict(index_map),
             column_labels=list(column_labels),
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
-            column_label_names=column_label_names,
+            column_label_names=column_label_names,  # type: ignore
         )
-        kdf = DataFrame(internal)
+        kdf = DataFrame(internal)  # type: "DataFrame"
 
         if should_returns_series:
             return first_series(kdf)
@@ -8675,7 +8714,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return first_series(DataFrame(internal))
 
     # TODO: add axis, numeric_only, pct, na_option parameter
-    def rank(self, method="average", ascending=True):
+    def rank(self, method="average", ascending=True) -> "DataFrame":
         """
         Compute numerical data ranks (1 through n) along axis. Equal values are
         assigned a rank that is the average of the ranks of those values.
@@ -8746,7 +8785,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self._apply_series_op(lambda kser: kser.rank(method=method, ascending=ascending))
 
-    def filter(self, items=None, like=None, regex=None, axis=None):
+    def filter(self, items=None, like=None, regex=None, axis=None) -> "DataFrame":
         """
         Subset rows or columns of dataframe according to labels in
         the specified index.
@@ -8865,7 +8904,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     raise ValueError("Single or multi index must be specified.")
                 return DataFrame(self._internal.with_filter(col))
-            elif axis == 1:
+            else:  # if axis == 1
                 return self[items]
         elif like is not None:
             if axis == 0:
@@ -8876,7 +8915,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     else:
                         col = col | index_scol.contains(like)
                 return DataFrame(self._internal.with_filter(col))
-            elif axis == 1:
+            else:  # if axis == 1
                 column_labels = self._internal.column_labels
                 output_labels = [label for label in column_labels if any(like in i for i in label)]
                 return self[output_labels]
@@ -8889,7 +8928,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     else:
                         col = col | index_scol.rlike(regex)
                 return DataFrame(self._internal.with_filter(col))
-            elif axis == 1:
+            else:  # if axis == 1
                 column_labels = self._internal.column_labels
                 matcher = re.compile(regex)
                 output_labels = [
@@ -8910,7 +8949,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         inplace=False,
         level=None,
         errors="ignore",
-    ):
+    ) -> Optional["DataFrame"]:
 
         """
         Alter axes labels.
@@ -9121,6 +9160,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = internal.with_new_columns(new_data_scols, column_labels=new_column_labels)
         if inplace:
             self._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal)
 
@@ -9286,7 +9326,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return DataFrame(internal)
 
-    def keys(self):
+    def keys(self) -> pd.Index:
         """
         Return alias for columns.
 
@@ -9311,7 +9351,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return self.columns
 
-    def pct_change(self, periods=1):
+    def pct_change(self, periods=1) -> "DataFrame":
         """
         Percentage change between the current and a prior element.
 
@@ -9370,7 +9410,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(op)
 
     # TODO: axis = 1
-    def idxmax(self, axis=0):
+    def idxmax(self, axis=0) -> Union["ks.Series", "DataFrame", "ks.Index"]:
         """
         Return index of first occurrence of maximum over requested axis.
         NA/null values are excluded.
@@ -9443,12 +9483,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         cond = reduce(lambda x, y: x | y, conds)
 
-        kdf = DataFrame(self._internal.with_filter(cond))
+        kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
         return ks.from_pandas(kdf._to_internal_pandas().idxmax())
 
     # TODO: axis = 1
-    def idxmin(self, axis=0):
+    def idxmin(self, axis=0) -> Union["ks.Series", "DataFrame", "ks.Index"]:
         """
         Return index of first occurrence of minimum over requested axis.
         NA/null values are excluded.
@@ -9515,7 +9555,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
         cond = reduce(lambda x, y: x | y, conds)
 
-        kdf = DataFrame(self._internal.with_filter(cond))
+        kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
         return ks.from_pandas(kdf._to_internal_pandas().idxmin())
 
@@ -9634,7 +9674,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self.count = count_func
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
-    def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000):
+    def quantile(self, q=0.5, axis=0, numeric_only=True, accuracy=10000) -> Frame:
         """
         Return value at the given quantile.
 
@@ -9722,7 +9762,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |[2, 3, 4]|[6, 7, 8]|
         # +---------+---------+
 
-        cols_dict = OrderedDict()
+        cols_dict = OrderedDict()  # type: OrderedDict
         for column in self._internal.data_spark_column_names:
             cols_dict[column] = list()
             for i in range(len(quantiles)):
@@ -9756,7 +9796,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
 
-    def query(self, expr, inplace=False):
+    def query(self, expr, inplace=False) -> Optional["DataFrame"]:
         """
         Query the columns of a DataFrame with a boolean expression.
 
@@ -9856,10 +9896,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if inplace:
             self._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal)
 
-    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None):
+    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None) -> None:
         warnings.warn(
             "DataFrame.explain is deprecated as of DataFrame.spark.explain. "
             "Please use the API instead.",
@@ -9869,7 +9910,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     explain.__doc__ = SparkFrameMethods.explain.__doc__
 
-    def take(self, indices, axis=0, **kwargs):
+    def take(self, indices, axis=0, **kwargs) -> "DataFrame":
         """
         Return the elements in the given *positional* indices along an axis.
 
@@ -9947,10 +9988,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("`indices` must be a list-like except dict or set")
         if axis == 0:
             return self.iloc[indices, :]
-        elif axis == 1:
+        else:  # if axis == 1
             return self.iloc[:, indices]
 
-    def eval(self, expr, inplace=False):
+    def eval(self, expr, inplace=False) -> Optional["DataFrame"]:
         """
         Evaluate a string describing operations on DataFrame columns.
 
@@ -10060,6 +10101,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Here, the result is always a frame because the error is thrown during schema inference
             # from pandas.
             self._update_internal_frame(result._internal, requires_same_anchor=False)
+            return None
         elif should_return_series:
             return first_series(result).rename(series_name)
         elif should_return_scalar:
@@ -10068,7 +10110,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # Returns a frame
             return result
 
-    def explode(self, column):
+    def explode(self, column) -> "DataFrame":
         """
         Transform each element of a list-like to a row, replicating index values.
 
@@ -10112,7 +10154,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not is_name_like_value(column):
             raise ValueError("column must be a scalar")
 
-        kdf = DataFrame(self._internal.resolved_copy)
+        kdf = DataFrame(self._internal.resolved_copy)  # type: "DataFrame"
         kser = kdf[column]
         if not isinstance(kser, Series):
             raise ValueError(
@@ -10129,7 +10171,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = kdf._internal.with_new_sdf(sdf)
         return DataFrame(internal)
 
-    def mad(self, axis=0):
+    def mad(self, axis=0) -> "ks.Series":
         """
         Return the mean absolute deviation of values.
 
@@ -10205,7 +10247,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                 return first_series(DataFrame(internal).transpose())
 
-        elif axis == 1:
+        else:  # if axis == 1
 
             @pandas_udf(returnType=DoubleType())
             def calculate_columns_axis(*cols):
@@ -10222,7 +10264,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
             return first_series(DataFrame(internal))
 
-    def tail(self, n=5):
+    def tail(self, n=5) -> "DataFrame":
         """
         Return the last `n` rows.
 
@@ -10306,7 +10348,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
 
-    def product(self):
+    def product(self) -> "ks.Series":
         """
         Return the product of the values as Series.
 
@@ -10706,7 +10748,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
 def _reduce_spark_multi(sdf, aggs):
     """
-    Performs a reduction on a dataframe, the functions being known sql aggregate functions.
+    Performs a reduction on a spark DataFrame, the functions being known sql aggregate functions.
     """
     assert isinstance(sdf, spark.DataFrame)
     sdf0 = sdf.agg(*aggs)
@@ -10745,7 +10787,7 @@ class CachedDataFrame(DataFrame):
     spark = CachedAccessor("spark", CachedSparkFrameMethods)
 
     @property
-    def storage_level(self):
+    def storage_level(self) -> StorageLevel:
         warnings.warn(
             "DataFrame.storage_level is deprecated as of DataFrame.spark.storage_level. "
             "Please use the API instead.",
@@ -10755,7 +10797,7 @@ class CachedDataFrame(DataFrame):
 
     storage_level.__doc__ = CachedSparkFrameMethods.storage_level.__doc__
 
-    def unpersist(self):
+    def unpersist(self) -> None:
         warnings.warn(
             "DataFrame.unpersist is deprecated as of DataFrame.spark.unpersist. "
             "Please use the API instead.",
