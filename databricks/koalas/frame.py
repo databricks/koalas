@@ -9410,7 +9410,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(op)
 
     # TODO: axis = 1
-    def idxmax(self, axis=0) -> Union["ks.Series", "DataFrame", "ks.Index"]:
+    def idxmax(self, axis=0) -> "ks.Series":
         """
         Return index of first occurrence of maximum over requested axis.
         NA/null values are excluded.
@@ -9485,10 +9485,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return ks.from_pandas(kdf._to_internal_pandas().idxmax())
+        return ks.from_pandas(kdf._to_internal_pandas().idxmax())  # type: ignore
 
     # TODO: axis = 1
-    def idxmin(self, axis=0) -> Union["ks.Series", "DataFrame", "ks.Index"]:
+    def idxmin(self, axis=0) -> "ks.Series":
         """
         Return index of first occurrence of minimum over requested axis.
         NA/null values are excluded.
@@ -9557,7 +9557,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return ks.from_pandas(kdf._to_internal_pandas().idxmin())
+        return ks.from_pandas(kdf._to_internal_pandas().idxmin())   # type: ignore
 
     def info(self, verbose=None, buf=None, max_cols=None, null_counts=None):
         """
