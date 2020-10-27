@@ -1196,7 +1196,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
 
+        self.assert_eq(kser.astype(int), pser.astype(int))
+        self.assert_eq(kser.astype(np.int), pser.astype(np.int))
+        self.assert_eq(kser.astype(np.int8), pser.astype(np.int8))
+        self.assert_eq(kser.astype(np.int16), pser.astype(np.int16))
         self.assert_eq(kser.astype(np.int32), pser.astype(np.int32))
+        self.assert_eq(kser.astype(np.int64), pser.astype(np.int64))
+        self.assert_eq(kser.astype("int"), pser.astype("int"))
+        self.assert_eq(kser.astype("int8"), pser.astype("int8"))
+        self.assert_eq(kser.astype("int16"), pser.astype("int16"))
+        self.assert_eq(kser.astype("int32"), pser.astype("int32"))
+        self.assert_eq(kser.astype("int64"), pser.astype("int64"))
+        self.assert_eq(kser.astype(np.float), pser.astype(np.float))
+        self.assert_eq(kser.astype(np.float32), pser.astype(np.float32))
+        self.assert_eq(kser.astype(np.float64), pser.astype(np.float64))
+        self.assert_eq(kser.astype("float"), pser.astype("float"))
+        self.assert_eq(kser.astype("float32"), pser.astype("float32"))
+        self.assert_eq(kser.astype("float64"), pser.astype("float64"))
         self.assert_eq(kser.astype(bool), pser.astype(bool))
 
         pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
@@ -1217,6 +1233,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series(["2020-10-27"], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(np.datetime64), pser.astype(np.datetime64))
+        self.assert_eq(kser.astype("datetime64[ns]"), pser.astype("datetime64[ns]"))
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")

@@ -3071,7 +3071,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         0    0.000000
         1    1.000000
         2    1.414214
-        dtype: float32
+        dtype: float64
 
         Even though the resulting instance must have the same length as the
         input, it is possible to provide several input functions:
