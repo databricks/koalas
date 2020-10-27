@@ -8904,7 +8904,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 else:
                     raise ValueError("Single or multi index must be specified.")
                 return DataFrame(self._internal.with_filter(col))
-            else:  # if axis == 1
+            else:
                 return self[items]
         elif like is not None:
             if axis == 0:
@@ -8915,7 +8915,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     else:
                         col = col | index_scol.contains(like)
                 return DataFrame(self._internal.with_filter(col))
-            else:  # if axis == 1
+            else:
                 column_labels = self._internal.column_labels
                 output_labels = [label for label in column_labels if any(like in i for i in label)]
                 return self[output_labels]
@@ -8928,7 +8928,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     else:
                         col = col | index_scol.rlike(regex)
                 return DataFrame(self._internal.with_filter(col))
-            else:  # if axis == 1
+            else:
                 column_labels = self._internal.column_labels
                 matcher = re.compile(regex)
                 output_labels = [
@@ -9988,7 +9988,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("`indices` must be a list-like except dict or set")
         if axis == 0:
             return self.iloc[indices, :]
-        else:  # if axis == 1
+        else:
             return self.iloc[:, indices]
 
     def eval(self, expr, inplace=False) -> Optional["DataFrame"]:
@@ -10247,7 +10247,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                 return first_series(DataFrame(internal).transpose())
 
-        else:  # if axis == 1
+        else:
 
             @pandas_udf(returnType=DoubleType())
             def calculate_columns_axis(*cols):
