@@ -38,6 +38,10 @@ from databricks.koalas.typedef.string_typehints import resolve_string_type_hint
 
 T = typing.TypeVar("T")
 
+Scalar = typing.Union[
+    int, float, bool, str, bytes, decimal.Decimal, datetime.date, datetime.datetime, None
+]
+
 
 # A column of data, with the data type.
 class SeriesType(typing.Generic[T]):
@@ -130,7 +134,7 @@ def as_spark_type(tpe) -> types.DataType:
 
 def spark_type_to_pandas_dtype(spark_type):
     """ Return the given Spark DataType to pandas dtype. """
-    if isinstance(spark_type, (types.DateType, types.UserDefinedType)):
+    if isinstance(spark_type, (types.DateType, types.StructType, types.UserDefinedType)):
         return np.dtype("object")
     elif isinstance(spark_type, types.TimestampType):
         return np.dtype("datetime64[ns]")

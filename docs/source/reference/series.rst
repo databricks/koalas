@@ -170,6 +170,7 @@ Reindexing / Selection / Label manipulation
    Series.idxmin
    Series.isin
    Series.rename
+   Series.rename_axis
    Series.reindex
    Series.reset_index
    Series.sample
@@ -185,6 +186,7 @@ Missing data handling
    :toctree: api/
 
    Series.backfill
+   Series.bfill
    Series.isna
    Series.isnull
    Series.notna

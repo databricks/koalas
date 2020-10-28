@@ -45,13 +45,13 @@ if TYPE_CHECKING:
     from databricks.koalas.series import Series
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import (
-    as_spark_type,
     infer_pd_series_spark_type,
     spark_type_to_pandas_dtype,
 )
 from databricks.koalas.utils import (
     column_labels_level,
     default_session,
+    is_name_like_tuple,
     is_testing,
     lazy_property,
     name_like_string,
@@ -377,7 +377,7 @@ class InternalFrame(object):
         index_map: Optional[Dict[str, Optional[Tuple]]],
         column_labels: Optional[List[Tuple]] = None,
         data_spark_columns: Optional[List[spark.Column]] = None,
-        column_label_names: Optional[List[Optional[Tuple[str, ...]]]] = None,
+        column_label_names: Optional[List[Optional[Tuple]]] = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -469,16 +469,7 @@ class InternalFrame(object):
 
         assert isinstance(index_map, OrderedDict), index_map
         assert all(
-            isinstance(index_field, str)
-            and (
-                index_name is None
-                or (
-                    isinstance(index_name, tuple)
-                    and all(
-                        name is None or as_spark_type(type(name)) is not None for name in index_name
-                    )
-                )
-            )
+            isinstance(index_field, str) and is_name_like_tuple(index_name, check_type=True)
             for index_field, index_name in index_map.items()
         ), index_map
         assert data_spark_columns is None or all(
@@ -509,22 +500,10 @@ class InternalFrame(object):
             )
             if len(column_labels) == 1:
                 column_label = column_labels[0]
-                assert column_label is None or (
-                    isinstance(column_label, tuple)
-                    and len(column_label) > 0
-                    and all(
-                        label is None or as_spark_type(type(label)) is not None
-                        for label in column_label
-                    )
-                ), column_label
+                assert is_name_like_tuple(column_label, check_type=True), column_label
             else:
                 assert all(
-                    isinstance(column_label, tuple)
-                    and len(column_label) > 0
-                    and all(
-                        label is None or as_spark_type(type(label)) is not None
-                        for label in column_label
-                    )
+                    is_name_like_tuple(column_label, check_type=True)
                     for column_label in column_labels
                 ), column_labels
                 assert len(set(len(label) for label in column_labels)) <= 1, column_labels
@@ -533,7 +512,7 @@ class InternalFrame(object):
         if column_label_names is None:
             self._column_label_names = [None] * column_labels_level(
                 self._column_labels
-            )  # type: List[Optional[Tuple[str, ...]]]
+            )  # type: List[Optional[Tuple]]
         else:
             if len(self._column_labels) > 0:
                 assert len(column_label_names) == column_labels_level(self._column_labels), (
@@ -543,14 +522,7 @@ class InternalFrame(object):
             else:
                 assert len(column_label_names) > 0, len(column_label_names)
             assert all(
-                column_label_name is None
-                or (
-                    isinstance(column_label_name, tuple)
-                    and all(
-                        name is None or as_spark_type(type(name)) is not None
-                        for name in column_label_name
-                    )
-                )
+                is_name_like_tuple(column_label_name, check_type=True)
                 for column_label_name in column_label_names
             ), column_label_names
             self._column_label_names = column_label_names
@@ -726,11 +698,11 @@ class InternalFrame(object):
             (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
         )
 
-    def spark_column_name_for(self, label: Tuple[str, ...]) -> str:
+    def spark_column_name_for(self, label: Tuple) -> str:
         """ Return the actual Spark column name for the given column label. """
         return self.spark_frame.select(self.spark_column_for(label)).columns[0]
 
-    def spark_column_for(self, label: Tuple[str, ...]):
+    def spark_column_for(self, label: Tuple):
         """ Return Spark Column for the given column label. """
         column_labels_to_scol = dict(zip(self.column_labels, self.data_spark_columns))
         if label in column_labels_to_scol:
@@ -738,11 +710,11 @@ class InternalFrame(object):
         else:
             raise KeyError(name_like_string(label))
 
-    def spark_type_for(self, label: Tuple[str, ...]) -> DataType:
+    def spark_type_for(self, label: Tuple) -> DataType:
         """ Return DataType for the given column label. """
         return self.spark_frame.select(self.spark_column_for(label)).schema[0].dataType
 
-    def spark_column_nullable_for(self, label: Tuple[str, ...]) -> bool:
+    def spark_column_nullable_for(self, label: Tuple) -> bool:
         """ Return nullability for the given column label. """
         return self.spark_frame.select(self.spark_column_for(label)).schema[0].nullable
 
@@ -787,18 +759,18 @@ class InternalFrame(object):
         ]
 
     @property
-    def index_map(self) -> Dict[str, Optional[Tuple[str, ...]]]:
+    def index_map(self) -> Dict[str, Optional[Tuple]]:
         """ Return the managed index information. """
         assert len(self._index_map) > 0
         return self._index_map
 
     @lazy_property
-    def index_names(self) -> List[Optional[Tuple[str, ...]]]:
+    def index_names(self) -> List[Optional[Tuple]]:
         """ Return the managed index names. """
         return list(self.index_map.values())
 
     @property
-    def column_labels(self) -> List[Tuple[str, ...]]:
+    def column_labels(self) -> List[Tuple]:
         """ Return the managed column index. """
         return self._column_labels
 
@@ -808,7 +780,7 @@ class InternalFrame(object):
         return len(self._column_label_names)
 
     @property
-    def column_label_names(self) -> List[Optional[Tuple[str, ...]]]:
+    def column_label_names(self) -> List[Optional[Tuple]]:
         """ Return names of the index levels. """
         return self._column_label_names
 
@@ -882,7 +854,7 @@ class InternalFrame(object):
         return pdf
 
     @lazy_property
-    def resolved_copy(self):
+    def resolved_copy(self) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates resolved. """
         sdf = self.spark_frame.select(self.spark_columns + list(HIDDEN_COLUMNS))
         return self.copy(
@@ -994,7 +966,7 @@ class InternalFrame(object):
         return self.with_new_sdf(self.spark_frame.filter(pred).select(self.spark_columns))
 
     def with_new_spark_column(
-        self, column_label: Tuple[str, ...], scol: spark.Column, keep_order: bool = True
+        self, column_label: Tuple, scol: spark.Column, keep_order: bool = True
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Column.
@@ -1010,7 +982,7 @@ class InternalFrame(object):
         data_spark_columns[idx] = scol
         return self.with_new_columns(data_spark_columns, keep_order=keep_order)
 
-    def select_column(self, column_label: Tuple[str, ...]) -> "InternalFrame":
+    def select_column(self, column_label: Tuple) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the specified column.
 
@@ -1031,9 +1003,7 @@ class InternalFrame(object):
         index_map: Optional[Union[Dict[str, Optional[Tuple]], _NoValueType]] = _NoValue,
         column_labels: Optional[Union[List[Tuple], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
-        column_label_names: Optional[
-            Union[List[Optional[Tuple[str, ...]]], _NoValueType]
-        ] = _NoValue,
+        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 

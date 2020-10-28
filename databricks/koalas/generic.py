@@ -22,11 +22,12 @@ from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
-from typing import Optional, Union, List
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 import warnings
 
 import numpy as np  # noqa: F401
 import pandas as pd
+from pandas.api.types import is_list_like
 
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -37,12 +38,18 @@ from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIn
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.utils import (
+    is_name_like_tuple,
+    is_name_like_value,
     name_like_string,
     scol_for,
     validate_arguments_and_invoke_function,
     validate_axis,
 )
 from databricks.koalas.window import Rolling, Expanding
+
+
+if TYPE_CHECKING:
+    from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
 
 class Frame(object, metaclass=ABCMeta):
@@ -738,14 +745,14 @@ class Frame(object, metaclass=ABCMeta):
 
         if columns is None:
             column_labels = kdf._internal.column_labels
-        elif isinstance(columns, str):
-            column_labels = [(columns,)]
-        elif isinstance(columns, tuple):
-            column_labels = [columns]
         else:
-            column_labels = [
-                lb if isinstance(lb, tuple) else (lb,) for lb in columns  # type: ignore
-            ]
+            column_labels = []
+            for label in columns:
+                if not is_name_like_tuple(label):
+                    label = (label,)
+                if label not in kdf._internal.column_labels:
+                    raise KeyError(name_like_string(label))
+                column_labels.append(label)
 
         if isinstance(index_col, str):
             index_cols = [index_col]
@@ -1458,7 +1465,9 @@ class Frame(object, metaclass=ABCMeta):
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
-    def groupby(self, by, axis=0, as_index: bool = True):
+    def groupby(
+        self, by, axis=0, as_index: bool = True, dropna: bool = True
+    ) -> Union["DataFrameGroupBy", "SeriesGroupBy"]:
         """
         Group DataFrame or Series using a Series of columns.
 
@@ -1480,6 +1489,10 @@ class Frame(object, metaclass=ABCMeta):
             For aggregated output, return object with group labels as the
             index. Only relevant for DataFrame input. as_index=False is
             effectively "SQL-style" grouped output.
+        dropna : bool, default True
+            If True, and if group keys contain NA values,
+            NA values together with row/column will be dropped.
+            If False, NA values will also be treated as the key in groups.
 
         Returns
         -------
@@ -1515,34 +1528,63 @@ class Frame(object, metaclass=ABCMeta):
            Animal  Max Speed
         ...Falcon      375.0
         ...Parrot       25.0
+
+        We can also choose to include NA in group keys or not by setting dropna parameter,
+        the default setting is True:
+
+        >>> l = [[1, 2, 3], [1, None, 4], [2, 1, 3], [1, 2, 2]]
+        >>> df = ks.DataFrame(l, columns=["a", "b", "c"])
+        >>> df.groupby(by=["b"]).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+             a  c
+        b
+        1.0  2  3
+        2.0  2  5
+
+        >>> df.groupby(by=["b"], dropna=False).sum().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+             a  c
+        b
+        1.0  2  3
+        2.0  2  5
+        NaN  1  4
         """
         from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 
         if isinstance(by, ks.DataFrame):
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
-        elif isinstance(by, str):
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by).__name__))
+        elif isinstance(by, ks.Series):
+            by = [by]
+        elif is_name_like_tuple(by):
+            if isinstance(self, ks.Series):
+                raise KeyError(by)
+            by = [by]
+        elif is_name_like_value(by):
             if isinstance(self, ks.Series):
                 raise KeyError(by)
             by = [(by,)]
-        elif isinstance(by, tuple):
-            if isinstance(self, ks.Series):
-                for key in by:
-                    if isinstance(key, str):
-                        raise KeyError(key)
+        elif is_list_like(by):
+            new_by = []  # type: List[Union[Tuple, ks.Series]]
             for key in by:
                 if isinstance(key, ks.DataFrame):
-                    raise ValueError("Grouper for '{}' not 1-dimensional".format(type(key)))
-            by = [by]
-        elif isinstance(by, ks.Series):
-            by = [by]
-        elif isinstance(by, Iterable):
-            if isinstance(self, ks.Series):
-                for key in by:
-                    if isinstance(key, str):
+                    raise ValueError(
+                        "Grouper for '{}' not 1-dimensional".format(type(key).__name__)
+                    )
+                elif isinstance(key, ks.Series):
+                    new_by.append(key)
+                elif is_name_like_tuple(key):
+                    if isinstance(self, ks.Series):
                         raise KeyError(key)
-            by = [key if isinstance(key, (tuple, ks.Series)) else (key,) for key in by]
+                    new_by.append(key)
+                elif is_name_like_value(key):
+                    if isinstance(self, ks.Series):
+                        raise KeyError(key)
+                    new_by.append((key,))
+                else:
+                    raise ValueError(
+                        "Grouper for '{}' not 1-dimensional".format(type(key).__name__)
+                    )
+            by = new_by
         else:
-            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by)))
+            raise ValueError("Grouper for '{}' not 1-dimensional".format(type(by).__name__))
         if not len(by):
             raise ValueError("No group keys passed!")
         axis = validate_axis(axis)
@@ -1550,9 +1592,9 @@ class Frame(object, metaclass=ABCMeta):
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         if isinstance(self, ks.DataFrame):
-            return DataFrameGroupBy._build(self, by, as_index=as_index)
+            return DataFrameGroupBy._build(self, by, as_index=as_index, dropna=dropna)
         elif isinstance(self, ks.Series):
-            return SeriesGroupBy._build(self, by, as_index=as_index)
+            return SeriesGroupBy._build(self, by, as_index=as_index, dropna=dropna)
         else:
             raise TypeError(
                 "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
@@ -1880,7 +1922,9 @@ class Frame(object, metaclass=ABCMeta):
         125.0
         """
         if not isinstance(accuracy, int):
-            raise ValueError("accuracy must be an integer; however, got [%s]" % type(accuracy))
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+            )
 
         return self._reduce_for_stat_function(
             lambda scol: SF.percentile_approx(scol, 0.5, accuracy),

@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Optional, Union, List, Tuple
+from typing import Any, Optional, Union, List, Tuple
 from collections import OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
@@ -54,6 +54,7 @@ from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import (
     align_diff_frames,
     default_session,
+    is_name_like_tuple,
     name_like_string,
     same_anchor,
     scol_for,
@@ -124,7 +125,7 @@ def from_pandas(
     elif isinstance(pobj, pd.Index):
         return DataFrame(pd.DataFrame(index=pobj)).index
     else:
-        raise ValueError("Unknown data type: {}".format(type(pobj)))
+        raise ValueError("Unknown data type: {}".format(type(pobj).__name__))
 
 
 _range = range  # built-in range
@@ -307,11 +308,11 @@ def read_csv(
             column_labels = OrderedDict((col, col) for col in sdf.columns)
         else:
             sdf = reader.csv(path)
-            if isinstance(names, list):
+            if is_list_like(names):
                 names = list(names)
                 if len(set(names)) != len(names):
                     raise ValueError("Found non-unique column index")
-                if len(names) != len(sdf.schema):
+                if len(names) != len(sdf.columns):
                     raise ValueError(
                         "The number of names [%s] does not match the number "
                         "of columns [%d]. Try names by a Spark SQL DDL-formatted "
@@ -387,8 +388,7 @@ def read_csv(
             spark_frame=sdf,
             index_map=index_map,
             column_labels=[
-                label if label is None or isinstance(label, tuple) else (label,)
-                for label in column_labels
+                label if is_name_like_tuple(label) else (label,) for label in column_labels
             ],
             data_spark_columns=[scol_for(sdf, col) for col in column_labels.values()],
         )
@@ -409,7 +409,7 @@ def read_csv(
 
 def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
     """
-    Convert a JSON string to pandas object.
+    Convert a JSON string to DataFrame.
 
     Parameters
     ----------
@@ -1679,29 +1679,31 @@ def get_dummies(
                 )
             ]
         else:
-            if isinstance(columns, (str, tuple)):
-                if isinstance(columns, str):
-                    key = (columns,)
-                else:
-                    key = columns
+            if is_name_like_tuple(columns):
                 column_labels = [
-                    label for label in kdf._internal.column_labels if label[: len(key)] == key
+                    label
+                    for label in kdf._internal.column_labels
+                    if label[: len(columns)] == columns
                 ]
                 if len(column_labels) == 0:
-                    raise KeyError(column_labels)
+                    raise KeyError(name_like_string(columns))
                 if prefix is None:
                     prefix = [
-                        str(label[len(key) :])
-                        if len(label) > len(key) + 1
-                        else label[len(key)]
-                        if len(label) == len(key) + 1
+                        str(label[len(columns) :])
+                        if len(label) > len(columns) + 1
+                        else label[len(columns)]
+                        if len(label) == len(columns) + 1
                         else ""
                         for label in column_labels
                     ]
-            elif any(isinstance(col, str) for col in columns) and any(
-                isinstance(col, tuple) for col in columns
+            elif any(isinstance(col, tuple) for col in columns) and any(
+                not is_name_like_tuple(col) for col in columns
             ):
-                raise ValueError("Expected tuple, got str")
+                raise ValueError(
+                    "Expected tuple, got {}".format(
+                        type(set(col for col in columns if not is_name_like_tuple(col)).pop())
+                    )
+                )
             else:
                 column_labels = [
                     label
@@ -1719,7 +1721,11 @@ def get_dummies(
 
         column_labels_set = set(column_labels)
         remaining_columns = [
-            kdf[label].rename(name_like_string(label))
+            (
+                kdf[label]
+                if kdf._internal.column_labels_level == 1
+                else kdf[label].rename(name_like_string(label))
+            )
             for label in kdf._internal.column_labels
             if label not in column_labels_set
         ]
@@ -1772,7 +1778,7 @@ def get_dummies(
 # TODO: there are many parameters to implement and support. See pandas's pd.concat.
 def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
     """
-    Concatenate pandas objects along a particular axis with optional set logic
+    Concatenate Koalas objects along a particular axis with optional set logic
     along the other axes.
 
     Parameters
@@ -2163,7 +2169,6 @@ def isna(obj):
 
     See Also
     --------
-    notnull : Boolean inverse of pandas.isnull.
     Series.isna : Detect missing values in a Series.
     Series.isnull : Detect missing values in a Series.
     DataFrame.isna : Detect missing values in a DataFrame.
@@ -2212,6 +2217,9 @@ def isna(obj):
     2    False
     Name: b, dtype: bool
     """
+    # TODO: Add back:
+    #     notnull : Boolean inverse of pandas.isnull.
+    #   into the See Also in the docstring. It does not find the method in the latest numpydoc.
     if isinstance(obj, (DataFrame, Series)):
         return obj.isnull()
     else:
@@ -2239,8 +2247,6 @@ def notna(obj):
     --------
     isna : Detect missing values for an array-like object.
     Series.notna : Boolean inverse of Series.isna.
-    Series.notnull :Boolean inverse of Series.isnull.
-    DataFrame.notna :Boolean inverse of DataFrame.isna.
     DataFrame.notnull : Boolean inverse of DataFrame.isnull.
     Index.notna : Boolean inverse of Index.isna.
     Index.notnull : Boolean inverse of Index.isnull.
@@ -2284,6 +2290,10 @@ def notna(obj):
     >>> ks.notna(ser.index)
     True
     """
+    # TODO: Add back:
+    #     Series.notnull :Boolean inverse of Series.isnull.
+    #     DataFrame.notna :Boolean inverse of DataFrame.isna.
+    #   into the See Also in the docstring. It does not find the method in the latest numpydoc.
     if isinstance(obj, (DataFrame, Series)):
         return obj.notna()
     else:
@@ -2297,9 +2307,9 @@ def merge(
     obj,
     right: "DataFrame",
     how: str = "inner",
-    on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-    left_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
-    right_on: Union[str, List[str], Tuple[str, ...], List[Tuple[str, ...]]] = None,
+    on: Union[Any, List[Any], Tuple, List[Tuple]] = None,
+    left_on: Union[Any, List[Any], Tuple, List[Tuple]] = None,
+    right_on: Union[Any, List[Any], Tuple, List[Tuple]] = None,
     left_index: bool = False,
     right_index: bool = False,
     suffixes: Tuple[str, str] = ("_x", "_y"),
@@ -2533,7 +2543,7 @@ def broadcast(obj):
     ...
     """
     if not isinstance(obj, DataFrame):
-        raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj)))
+        raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj).__name__))
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
 
 

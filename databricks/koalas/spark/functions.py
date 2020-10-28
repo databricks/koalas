@@ -77,6 +77,15 @@ def array_repeat(col, count):
     )
 
 
+def repeat(col, n):
+    """
+    Repeats a string column n times, and returns it as a new string column.
+    """
+    sc = SparkContext._active_spark_context
+    n = _to_java_column(n) if isinstance(n, Column) else _create_column_from_literal(n)
+    return _call_udf(sc, "repeat", _to_java_column(col), n)
+
+
 def _call_udf(sc, name, *cols):
     return Column(sc._jvm.functions.callUDF(name, _make_arguments(sc, *cols)))
 

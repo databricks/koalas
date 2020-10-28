@@ -298,4 +298,4 @@ class SQLProcessor(object):
             return "(" + ", ".join([self._convert_var(v) for v in var]) + ")"
         if isinstance(var, (tuple, range)):
             return self._convert_var(list(var))
-        raise ValueError("Unsupported variable type {}: {}".format(type(var), str(var)))
+        raise ValueError("Unsupported variable type {}: {}".format(type(var).__name__, str(var)))

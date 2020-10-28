@@ -62,6 +62,8 @@ from databricks.koalas.config import get_option
 from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
+    is_name_like_tuple,
+    is_name_like_value,
     name_like_string,
     same_anchor,
     scol_for,
@@ -207,7 +209,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         if not isinstance(func_or_funcs, (str, list)):
             if not isinstance(func_or_funcs, dict) or not all(
-                isinstance(key, (str, tuple))
+                is_name_like_value(key)
                 and (
                     isinstance(value, str)
                     or isinstance(value, list)
@@ -216,7 +218,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 for key, value in func_or_funcs.items()
             ):
                 raise ValueError(
-                    "aggs must be a dict mapping from column name (string or tuple) "
+                    "aggs must be a dict mapping from column name "
                     "to aggregate functions (string or list of strings)."
                 )
 
@@ -225,6 +227,14 @@ class GroupBy(object, metaclass=ABCMeta):
             func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
 
         kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
+
+        if self._dropna:
+            kdf = DataFrame(
+                kdf._internal.with_new_sdf(
+                    kdf._internal.spark_frame.dropna(subset=kdf._internal.index_spark_column_names)
+                )
+            )
+
         if not self._as_index:
             should_drop_index = set(
                 i for i, gkey in enumerate(self._groupkeys) if gkey._kdf is not self._kdf
@@ -251,7 +261,9 @@ class GroupBy(object, metaclass=ABCMeta):
         data_columns = []
         column_labels = []
         for key, value in func.items():
-            label = key if isinstance(key, tuple) else (key,)
+            label = key if is_name_like_tuple(key) else (key,)
+            if len(label) != kdf._internal.column_labels_level:
+                raise TypeError("The length of the key must be the same as the column label level.")
             for aggfunc in [value] if isinstance(value, str) else value:
                 name = kdf._internal.spark_column_name_for(label)
                 data_col = "('{0}', '{1}')".format(name, aggfunc) if multi_aggs else name
@@ -1038,7 +1050,7 @@ class GroupBy(object, metaclass=ABCMeta):
         from pandas.core.base import SelectionMixin
 
         if not isinstance(func, Callable):
-            raise TypeError("%s object is not callable" % type(func))
+            raise TypeError("%s object is not callable" % type(func).__name__)
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
@@ -1226,7 +1238,7 @@ class GroupBy(object, metaclass=ABCMeta):
         from pandas.core.base import SelectionMixin
 
         if not isinstance(func, Callable):
-            raise TypeError("%s object is not callable" % type(func))
+            raise TypeError("%s object is not callable" % type(func).__name__)
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
 
@@ -2000,7 +2012,7 @@ class GroupBy(object, metaclass=ABCMeta):
         2  31  35
         """
         if not isinstance(func, Callable):
-            raise TypeError("%s object is not callable" % type(func))
+            raise TypeError("%s object is not callable" % type(func).__name__)
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
@@ -2272,6 +2284,14 @@ class GroupBy(object, metaclass=ABCMeta):
             column_label_names=self._kdf._internal.column_label_names,
         )
         kdf = DataFrame(internal)
+
+        if self._dropna:
+            kdf = DataFrame(
+                kdf._internal.with_new_sdf(
+                    kdf._internal.spark_frame.dropna(subset=kdf._internal.index_spark_column_names)
+                )
+            )
+
         if not self._as_index:
             should_drop_index = set(
                 i for i, gkey in enumerate(self._groupkeys) if gkey._kdf is not self._kdf
@@ -2284,8 +2304,8 @@ class GroupBy(object, metaclass=ABCMeta):
 
     @staticmethod
     def _resolve_grouping_from_diff_dataframes(
-        kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]
-    ) -> Tuple[DataFrame, List[Series], Set[Tuple[str, ...]]]:
+        kdf: DataFrame, by: List[Union[Series, Tuple]]
+    ) -> Tuple[DataFrame, List[Series], Set[Tuple]]:
         column_labels_level = kdf._internal.column_labels_level
 
         column_labels = []
@@ -2359,7 +2379,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return kdf, new_by_series, tmp_column_labels  # type: ignore
 
     @staticmethod
-    def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]]) -> List[Series]:
+    def _resolve_grouping(kdf: DataFrame, by: List[Union[Series, Tuple]]) -> List[Series]:
         new_by_series = []
         for col_or_s in by:
             if isinstance(col_or_s, Series):
@@ -2377,7 +2397,7 @@ class GroupBy(object, metaclass=ABCMeta):
 class DataFrameGroupBy(GroupBy):
     @staticmethod
     def _build(
-        kdf: DataFrame, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
+        kdf: DataFrame, by: List[Union[Series, Tuple]], as_index: bool, dropna: bool
     ) -> "DataFrameGroupBy":
         if any(isinstance(col_or_s, Series) and not same_anchor(kdf, col_or_s) for col_or_s in by):
             (
@@ -2392,6 +2412,7 @@ class DataFrameGroupBy(GroupBy):
             kdf,
             new_by_series,
             as_index=as_index,
+            dropna=dropna,
             column_labels_to_exlcude=column_labels_to_exlcude,
         )
 
@@ -2400,12 +2421,14 @@ class DataFrameGroupBy(GroupBy):
         kdf: DataFrame,
         by: List[Series],
         as_index: bool,
-        column_labels_to_exlcude: Set[Tuple[str, ...]],
-        agg_columns: List[Tuple[str, ...]] = None,
+        dropna: bool,
+        column_labels_to_exlcude: Set[Tuple],
+        agg_columns: List[Tuple] = None,
     ):
         self._kdf = kdf
         self._groupkeys = by
         self._as_index = as_index
+        self._dropna = dropna
         self._column_labels_to_exlcude = column_labels_to_exlcude
 
         self._agg_columns_selected = agg_columns is not None
@@ -2432,22 +2455,31 @@ class DataFrameGroupBy(GroupBy):
         return self.__getitem__(item)
 
     def __getitem__(self, item):
-        if isinstance(item, str) and self._as_index:
-            return SeriesGroupBy(self._kdf[item], self._groupkeys)
+        if self._as_index and is_name_like_value(item):
+            return SeriesGroupBy(
+                self._kdf._kser_for(item if is_name_like_tuple(item) else (item,)),
+                self._groupkeys,
+                dropna=self._dropna,
+            )
         else:
-            if isinstance(item, str):
+            if is_name_like_tuple(item):
                 item = [item]
-            item = [i if isinstance(i, tuple) else (i,) for i in item]
+            elif is_name_like_value(item):
+                item = [(item,)]
+            else:
+                item = [i if is_name_like_tuple(i) else (i,) for i in item]
             if not self._as_index:
-                groupkey_names = set(key.name for key in self._groupkeys)
-                for i in item:
-                    name = str(i) if len(i) > 1 else i[0]
+                groupkey_names = set(key._column_label for key in self._groupkeys)
+                for name in item:
                     if name in groupkey_names:
-                        raise ValueError("cannot insert {}, already exists".format(name))
+                        raise ValueError(
+                            "cannot insert {}, already exists".format(name_like_string(name))
+                        )
             return DataFrameGroupBy(
                 self._kdf,
                 self._groupkeys,
                 as_index=self._as_index,
+                dropna=self._dropna,
                 column_labels_to_exlcude=self._column_labels_to_exlcude,
                 agg_columns=item,
             )
@@ -2558,26 +2590,27 @@ class DataFrameGroupBy(GroupBy):
 class SeriesGroupBy(GroupBy):
     @staticmethod
     def _build(
-        kser: Series, by: List[Union[Series, Tuple[str, ...]]], as_index: bool
+        kser: Series, by: List[Union[Series, Tuple]], as_index: bool, dropna: bool
     ) -> "SeriesGroupBy":
         if any(isinstance(col_or_s, Series) and not same_anchor(kser, col_or_s) for col_or_s in by):
             kdf, new_by_series, _ = GroupBy._resolve_grouping_from_diff_dataframes(
                 kser.to_frame(), by
             )
             return SeriesGroupBy(
-                first_series(kdf).rename(kser.name), new_by_series, as_index=as_index
+                first_series(kdf).rename(kser.name), new_by_series, as_index=as_index, dropna=dropna
             )
         else:
             new_by_series = GroupBy._resolve_grouping(kser._kdf, by)
-            return SeriesGroupBy(kser, new_by_series, as_index=as_index)
+            return SeriesGroupBy(kser, new_by_series, as_index=as_index, dropna=dropna)
 
-    def __init__(self, kser: Series, by: List[Series], as_index: bool = True):
+    def __init__(self, kser: Series, by: List[Series], as_index: bool = True, dropna: bool = True):
         self._kser = kser
         self._groupkeys = by
 
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         self._as_index = True
+        self._dropna = dropna
         self._agg_columns_selected = True
 
     def __getattr__(self, item: str) -> Any:
