@@ -85,9 +85,7 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = kdf.set_index("name")
         kdf2 = kdf + 1
         num_partitions += 1
-        self.assert_eq(
-            kdf2.sort_index(), (kdf + 1).spark.repartition(num_partitions).sort_index()
-        )
+        self.assert_eq(kdf2.sort_index(), (kdf + 1).spark.repartition(num_partitions).sort_index())
 
         # Reserves MultiIndex
         kdf = ks.DataFrame({"a": ["a", "b", "c"]}, index=[[1, 2, 3], [4, 5, 6]])
