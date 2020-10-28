@@ -976,9 +976,12 @@ class SparkFrameMethods(object):
         2    Alice
         5      Bob
         5      Bob
-        >>> new_kdf = kdf.spark.coalesce(7)
-        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        >>> kdf = kdf.spark.repartition(7)
+        >>> kdf.to_spark().rdd.getNumPartitions()
         7
+        >>> new_kdf = kdf.spark.coalesce(6)
+        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        6
         >>> new_kdf.sort_index()   # doctest: +NORMALIZE_WHITESPACE
               name
         age
