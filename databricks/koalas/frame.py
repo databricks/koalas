@@ -7987,7 +7987,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 scols.append(F.lit(fill_value).alias(name_like_string(label)))
             labels.append(label)
 
-        return DataFrame(self._internal.with_new_columns(scols, column_labels=labels))
+        if isinstance(columns, pd.Index):
+            column_label_names = [
+                name if is_name_like_tuple(name) else (name,) for name in columns.names
+            ]
+            internal = self._internal.with_new_columns(
+                scols, column_labels=labels, column_label_names=column_label_names
+            )
+        else:
+            internal = self._internal.with_new_columns(scols, column_labels=labels)
+
+        return DataFrame(internal)
 
     def melt(self, id_vars=None, value_vars=None, var_name=None, value_name="value") -> "DataFrame":
         """
