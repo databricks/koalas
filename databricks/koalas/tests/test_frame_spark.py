@@ -68,13 +68,15 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
         num_partitions = kdf.to_spark().rdd.getNumPartitions() + 1
 
-        new_kdf = kdf.spark.repartition(++num_partitions)
+        num_partitions += 1
+        new_kdf = kdf.spark.repartition(num_partitions)
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
         self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
 
         # Reserves Index
         kdf = kdf.set_index("age")
-        new_kdf = kdf.spark.repartition(++num_partitions)
+        num_partitions += 1
+        new_kdf = kdf.spark.repartition(num_partitions)
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
         self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
 
@@ -82,13 +84,46 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = kdf.reset_index()
         kdf = kdf.set_index("name")
         kdf2 = kdf + 1
-        self.assert_eq(
-            kdf2.sort_index(), (kdf + 1).spark.repartition(++num_partitions).sort_index()
-        )
+        num_partitions += 1
+        self.assert_eq(kdf2.sort_index(), (kdf + 1).spark.repartition(num_partitions).sort_index())
 
         # Reserves MultiIndex
         kdf = ks.DataFrame({"a": ["a", "b", "c"]}, index=[[1, 2, 3], [4, 5, 6]])
         num_partitions = kdf.to_spark().rdd.getNumPartitions() + 1
         new_kdf = kdf.spark.repartition(num_partitions)
+        self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
+        self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
+
+    def test_coalesce(self):
+        num_partitions = 10
+        kdf = ks.DataFrame({"age": [5, 5, 2, 2], "name": ["Bob", "Bob", "Alice", "Alice"]})
+        kdf = kdf.spark.repartition(num_partitions)
+
+        num_partitions -= 1
+        new_kdf = kdf.spark.coalesce(num_partitions)
+        self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
+        self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
+
+        # Reserves Index
+        kdf = kdf.set_index("age")
+        num_partitions -= 1
+        new_kdf = kdf.spark.coalesce(num_partitions)
+        self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
+        self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
+
+        # Reflects internal changes
+        kdf = kdf.reset_index()
+        kdf = kdf.set_index("name")
+        kdf2 = kdf + 1
+        num_partitions -= 1
+        self.assert_eq(kdf2.sort_index(), (kdf + 1).spark.coalesce(num_partitions).sort_index())
+
+        # Reserves MultiIndex
+        kdf = ks.DataFrame({"a": ["a", "b", "c"]}, index=[[1, 2, 3], [4, 5, 6]])
+        num_partitions -= 1
+        kdf = kdf.spark.repartition(num_partitions)
+
+        num_partitions -= 1
+        new_kdf = kdf.spark.coalesce(num_partitions)
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
         self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
