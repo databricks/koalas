@@ -2344,8 +2344,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser1 = ks.from_pandas(pser1)
             kser2 = ks.from_pandas(pser2)
             self.assert_eq(
-                pser1.compare(pser2).sort_index(),
-                kser1.compare(kser2).sort_index(),
+                pser1.compare(pser2).sort_index(), kser1.compare(kser2).sort_index(),
             )
 
             # `keep_shape=True`
@@ -2374,8 +2373,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser1 = ks.from_pandas(pser1)
             kser2 = ks.from_pandas(pser2)
             self.assert_eq(
-                pser1.compare(pser2).sort_index(),
-                kser1.compare(kser2).sort_index(),
+                pser1.compare(pser2).sort_index(), kser1.compare(kser2).sort_index(),
             )
 
             # `keep_shape=True` with MultiIndex
