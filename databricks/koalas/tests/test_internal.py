@@ -40,6 +40,20 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(internal.to_pandas_frame, pdf)
 
+        # non-string column name
+        pdf1 = pd.DataFrame({0: [1, 2, 3], 1: [4, 5, 6]})
+
+        internal = InternalFrame.from_pandas(pdf1)
+        sdf = internal.spark_frame
+
+        self.assert_eq(internal.index_map, OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}))
+        self.assert_eq(internal.column_labels, [(0,), (1,)])
+        self.assert_eq(internal.data_spark_column_names, ["0", "1"])
+        self.assertTrue(internal.spark_column_for((0,))._jc.equals(sdf["0"]._jc))
+        self.assertTrue(internal.spark_column_for((1,))._jc.equals(sdf["1"]._jc))
+
+        self.assert_eq(internal.to_pandas_frame, pdf1)
+
         # multi-index
         pdf.set_index("a", append=True, inplace=True)
 

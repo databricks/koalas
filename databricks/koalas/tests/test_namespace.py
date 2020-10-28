@@ -43,7 +43,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kmidx, pmidx)
 
-        expected_error_message = "Unknown data type: {}".format(type(kidx))
+        expected_error_message = "Unknown data type: {}".format(type(kidx).__name__)
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(kidx)
 
@@ -254,6 +254,8 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, ks.broadcast(kdf))
 
         kser = ks.Series([1, 2, 3])
-        expected_error_message = "Invalid type : expected DataFrame got {}".format(type(kser))
+        expected_error_message = "Invalid type : expected DataFrame got {}".format(
+            type(kser).__name__
+        )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.broadcast(kser)

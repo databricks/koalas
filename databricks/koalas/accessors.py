@@ -19,7 +19,7 @@ Koalas specific features.
 import inspect
 from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Tuple, Union, TYPE_CHECKING
+from typing import Any, Tuple, Union, TYPE_CHECKING
 import types
 
 import numpy as np  # noqa: F401
@@ -35,7 +35,13 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.typedef import infer_return_type, DataFrameType, SeriesType
-from databricks.koalas.utils import name_like_string, scol_for, verify_temp_column_name
+from databricks.koalas.utils import (
+    is_name_like_value,
+    is_name_like_tuple,
+    name_like_string,
+    scol_for,
+    verify_temp_column_name,
+)
 
 if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
@@ -49,7 +55,7 @@ class KoalasFrameMethods(object):
     def __init__(self, frame: "DataFrame"):
         self._kdf = frame
 
-    def attach_id_column(self, id_type: str, column: Union[str, Tuple[str, ...]]) -> "DataFrame":
+    def attach_id_column(self, id_type: str, column: Union[Any, Tuple]) -> "DataFrame":
         """
         Attach a column to be used as identifier of rows similar to the default index.
 
@@ -90,15 +96,15 @@ class KoalasFrameMethods(object):
         1  b   1
         2  c   2
 
-        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column="id")
-           x  id
-        0  a   0
-        1  b   1
-        2  c   2
+        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column=0)
+           x  0
+        0  a  0
+        1  b  1
+        2  c  2
 
-        >>> df.koalas.attach_id_column(id_type="distributed", column="id")
+        >>> df.koalas.attach_id_column(id_type="distributed", column=0.0)
         ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-           x   id
+           x  0.0
         0  a  ...
         1  b  ...
         2  c  ...
@@ -112,6 +118,13 @@ class KoalasFrameMethods(object):
         0  a    0
         1  b    1
         2  c    2
+
+        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column=(0, 1.0))
+           x   0
+           y 1.0
+        0  a   0
+        1  b   1
+        2  c   2
         """
         from databricks.koalas.frame import DataFrame
 
@@ -126,10 +139,9 @@ class KoalasFrameMethods(object):
                 "id_type should be one of 'sequence', 'distributed-sequence' and 'distributed'"
             )
 
-        if isinstance(column, str):
+        assert is_name_like_value(column, allow_none=False), column
+        if not is_name_like_tuple(column):
             column = (column,)
-        else:
-            assert isinstance(column, tuple), type(column)
 
         internal = self._kdf._internal
 

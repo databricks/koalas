@@ -38,6 +38,10 @@ from databricks.koalas.typedef.string_typehints import resolve_string_type_hint
 
 T = typing.TypeVar("T")
 
+Scalar = typing.Union[
+    int, float, bool, str, bytes, decimal.Decimal, datetime.date, datetime.datetime, None
+]
+
 
 # A column of data, with the data type.
 class SeriesType(typing.Generic[T]):

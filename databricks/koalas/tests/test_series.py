@@ -170,6 +170,91 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(kser, pser)
 
+    def test_rename_axis(self):
+        index = pd.Index(["A", "B", "C"], name="index")
+        pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.rename_axis("index2").sort_index(), kser.rename_axis("index2").sort_index(),
+        )
+
+        self.assert_eq(
+            (pser + 1).rename_axis("index2").sort_index(),
+            (kser + 1).rename_axis("index2").sort_index(),
+        )
+
+        pser2 = pser.copy()
+        kser2 = kser.copy()
+        pser2.rename_axis("index2", inplace=True)
+        kser2.rename_axis("index2", inplace=True)
+        self.assert_eq(pser2.sort_index(), kser2.sort_index())
+
+        self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
+        self.assertRaises(TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"]))
+
+        # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assert_eq(
+                pser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+                kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+            )
+
+            self.assert_eq(
+                pser.rename_axis(index=str.upper).sort_index(),
+                kser.rename_axis(index=str.upper).sort_index(),
+            )
+        else:
+            expected = kser
+            expected.index.name = "index2"
+            result = kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index()
+            self.assert_eq(expected, result)
+
+            expected = kser
+            expected.index.name = "INDEX"
+            result = kser.rename_axis(index=str.upper).sort_index()
+            self.assert_eq(expected, result)
+
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+        pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.rename_axis(["index3", "index4"]).sort_index(),
+            kser.rename_axis(["index3", "index4"]).sort_index(),
+        )
+
+        self.assertRaises(ValueError, lambda: kser.rename_axis(["index3", "index4", "index5"]))
+
+        # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assert_eq(
+                pser.rename_axis(
+                    index={"index1": "index3", "index2": "index4", "missing": "index5"}
+                ).sort_index(),
+                kser.rename_axis(
+                    index={"index1": "index3", "index2": "index4", "missing": "index5"}
+                ).sort_index(),
+            )
+
+            self.assert_eq(
+                pser.rename_axis(index=str.upper).sort_index(),
+                kser.rename_axis(index=str.upper).sort_index(),
+            )
+        else:
+            expected = kser
+            expected.index.names = ["index3", "index4"]
+            result = kser.rename_axis(
+                index={"index1": "index3", "index2": "index4", "missing": "index5"}
+            ).sort_index()
+            self.assert_eq(expected, result)
+
+            expected.index.names = ["INDEX1", "INDEX2"]
+            result = kser.rename_axis(index=str.upper).sort_index()
+            self.assert_eq(expected, result)
+
     def test_or(self):
         pdf = pd.DataFrame(
             {
@@ -861,7 +946,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            self.assertEqual(self.kser.to_list(), self.pser.to_list())
+            self.assert_eq(self.kser.to_list(), self.pser.to_list())
+        else:
+            self.assert_eq(self.kser.tolist(), self.pser.tolist())
 
     def test_append(self):
         pser1 = pd.Series([1, 2, 3], name="0")
@@ -1121,6 +1208,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        # TODO: restore after pandas 1.1.4 is released.
+        # self.assert_eq(kser.astype(str).tolist(), pser.astype(str).tolist())
+        self.assert_eq(kser.astype(str).tolist(), ["hi", "hi ", " ", " \t", "", "None"])
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
         pser = pd.Series([True, False, None], name="x")
@@ -1146,37 +1236,51 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_drop(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
+
+        self.assert_eq(kser.drop(1), pser.drop(1))
+        self.assert_eq(kser.drop([1, 4]), pser.drop([1, 4]))
+
         msg = "Need to specify at least one of 'labels' or 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop()
+        self.assertRaises(KeyError, lambda: kser.drop((0, 1)))
 
         # For MultiIndex
         midx = pd.MultiIndex(
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.drop("lama"), pser.drop("lama"))
+        self.assert_eq(kser.drop(labels="weight", level=1), pser.drop(labels="weight", level=1))
+        self.assert_eq(kser.drop(("lama", "weight")), pser.drop(("lama", "weight")))
+        self.assert_eq(
+            kser.drop([("lama", "speed"), ("falcon", "weight")]),
+            pser.drop([("lama", "speed"), ("falcon", "weight")]),
+        )
+        self.assert_eq(kser.drop({"lama": "speed"}), pser.drop({"lama": "speed"}))
+
         msg = "'level' should be less than the number of indexes"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(labels="weight", level=2)
+
         msg = (
             "If the given index is a list, it "
-            "should only contains names as strings, "
-            "or a list of tuples that contain "
-            "index names as strings"
+            "should only contains names as all tuples or all non tuples "
+            "that contain index names"
         )
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(["lama", ["cow", "falcon"]])
-        msg = "'index' type should be one of str, list, tuple"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.drop({"lama": "speed"})
+
         msg = "Cannot specify both 'labels' and 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop("lama", index="cow")
+
         msg = r"'Key length \(2\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.drop(("lama", "speed", "x"))
-        self.assert_eq(kser.drop(("lama", "speed", "x"), level=1), kser)
 
     def test_pop(self):
         midx = pd.MultiIndex(
@@ -1193,15 +1297,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
-        msg = "'key' should be string or tuple that contains strings"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(0)
-        msg = (
-            "'key' should have index names as only strings "
-            "or a tuple that contain index names as only strings"
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(("lama", 0))
         msg = r"'Key length \(3\) exceeds index depth \(2\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.pop(("lama", "speed", "x"))
@@ -1776,7 +1871,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.filter(items=[("one", "x"), ("three", "z")]),
         )
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type list"):
             kser.filter(items=[["one", "x"], ("three", "z")])
 
         with self.assertRaisesRegex(ValueError, "The item should not be empty."):

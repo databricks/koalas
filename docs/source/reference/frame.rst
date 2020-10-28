@@ -168,6 +168,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.filter
    DataFrame.head
    DataFrame.rename
+   DataFrame.rename_axis
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.take
@@ -275,6 +276,7 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.to_spark_io
    DataFrame.spark.explain
    DataFrame.spark.apply
+   DataFrame.spark.repartition
 
 .. _api.dataframe.plot:
 

@@ -124,6 +124,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 kidx.to_frame(index=False, name="x"), pidx.to_frame(index=False, name="x"),
             )
 
+            self.assertRaises(TypeError, lambda: kidx.to_frame(name=["x"]))
+
+            # non-string name
+            self.assert_eq(kidx.to_frame(name=10), pidx.to_frame(name=10))
+            self.assert_eq(kidx.to_frame(name=("x", 10)), pidx.to_frame(name=("x", 10)))
+
         pidx = self.pdf.set_index("b", append=True).index
         kidx = self.kdf.set_index("b", append=True).index
 
@@ -133,9 +139,21 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `name` argument is added in pandas 0.24.
             self.assert_eq(kidx.to_frame(name=["x", "y"]), pidx.to_frame(name=["x", "y"]))
+            self.assert_eq(kidx.to_frame(name=("x", "y")), pidx.to_frame(name=("x", "y")))
             self.assert_eq(
                 kidx.to_frame(index=False, name=["x", "y"]),
                 pidx.to_frame(index=False, name=["x", "y"]),
+            )
+
+            self.assertRaises(TypeError, lambda: kidx.to_frame(name="x"))
+            self.assertRaises(ValueError, lambda: kidx.to_frame(name=["x"]))
+
+            # non-string names
+            self.assert_eq(kidx.to_frame(name=[10, 20]), pidx.to_frame(name=[10, 20]))
+            self.assert_eq(kidx.to_frame(name=("x", 10)), pidx.to_frame(name=("x", 10)))
+            self.assert_eq(
+                kidx.to_frame(name=[("x", 10), ("y", 20)]),
+                pidx.to_frame(name=[("x", 10), ("y", 20)]),
             )
 
     def test_index_names(self):
@@ -222,6 +240,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.rename("y"), pidx.rename("y"))
         self.assert_eq(kdf.index.names, pdf.index.names)
 
+        # non-string names
+        self.assert_eq(kidx.rename(0), pidx.rename(0))
+        self.assert_eq(kidx.rename(("y", 0)), pidx.rename(("y", 0)))
+
         kidx.rename("z", inplace=True)
         pidx.rename("z", inplace=True)
 
@@ -230,6 +252,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kidx.rename(None), pidx.rename(None))
         self.assert_eq(kdf.index.names, pdf.index.names)
+
+        self.assertRaises(ValueError, lambda: kidx.rename(["x", "y"]))
 
     def test_multi_index_rename(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
@@ -243,6 +267,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kmidx.rename(["n", "c"]), pmidx.rename(["n", "c"]))
         self.assert_eq(kdf.index.names, pdf.index.names)
 
+        # non-string names
+        self.assert_eq(kmidx.rename([0, 1]), pmidx.rename([0, 1]))
+        self.assert_eq(
+            kmidx.rename([("x", "a"), ("y", "b")]), pmidx.rename([("x", "a"), ("y", "b")])
+        )
+
         kmidx.rename(["num", "col"], inplace=True)
         pmidx.rename(["num", "col"], inplace=True)
 
@@ -253,6 +283,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.index.names, pdf.index.names)
 
         self.assertRaises(TypeError, lambda: kmidx.rename("number"))
+        self.assertRaises(TypeError, lambda: kmidx.rename(None))
         self.assertRaises(ValueError, lambda: kmidx.rename(["number"]))
 
     def test_multi_index_levshape(self):
@@ -559,7 +590,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.droplevel(0), kidx.droplevel(0))
         self.assert_eq(pidx.droplevel([0, 1]), kidx.droplevel([0, 1]))
+        self.assert_eq(pidx.droplevel((0, 1)), kidx.droplevel((0, 1)))
         self.assert_eq(pidx.droplevel([0, "level2"]), kidx.droplevel([0, "level2"]))
+        self.assert_eq(pidx.droplevel((0, "level2")), kidx.droplevel((0, "level2")))
+
+        # non-string names
+        pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2)], names=[1.0, 2.0, 3.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.droplevel(1.0), kidx.droplevel(1.0))
+        self.assert_eq(pidx.droplevel([0, 2.0]), kidx.droplevel([0, 2.0]))
 
     def test_index_fillna(self):
         pidx = pd.Index([1, 2, None])
@@ -568,7 +607,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(pidx.fillna(0), kidx.fillna(0), almost=True)
         self.assert_eq(pidx.rename("name").fillna(0), kidx.rename("name").fillna(0), almost=True)
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type list"):
             kidx.fillna([1, 2])
 
     def test_index_drop(self):
@@ -751,27 +790,41 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_delete(self):
         pidx = pd.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
-        kidx = ks.Index([10, 9, 8, 7, 6, 7, 8, 9, 10])
+        kidx = ks.from_pandas(pidx)
 
-        self.assert_eq(pidx.delete(5).sort_values(), kidx.delete(5).sort_values())
-        self.assert_eq(pidx.delete(-5).sort_values(), kidx.delete(-5).sort_values())
-        self.assert_eq(pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values())
-        self.assert_eq(
-            pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
-        )
+        self.assert_eq(pidx.delete(8).sort_values(), kidx.delete(8).sort_values())
+        self.assert_eq(pidx.delete(-9).sort_values(), kidx.delete(-9).sort_values())
+        self.assert_eq(pidx.delete([-9, 0, 8]).sort_values(), kidx.delete([-9, 0, 8]).sort_values())
 
-        with self.assertRaisesRegex(IndexError, "index 10 is out of bounds for axis 0 with size 9"):
-            kidx.delete(10)
+        with self.assertRaisesRegex(IndexError, "index 9 is out of bounds for axis 0 with size 9"):
+            kidx.delete([0, 9])
+        with self.assertRaisesRegex(
+            IndexError, "index -10 is out of bounds for axis 0 with size 9"
+        ):
+            kidx.delete([-10, 0])
+        with self.assertRaisesRegex(IndexError, "index 9 is out of bounds for axis 0 with size 9"):
+            kidx.delete(9)
+        with self.assertRaisesRegex(
+            IndexError, "index -10 is out of bounds for axis 0 with size 9"
+        ):
+            kidx.delete(-10)
 
+        # MultiIndex
         pidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
         kidx = ks.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2), ("c", "z", 3)])
 
-        self.assert_eq(pidx.delete(1).sort_values(), kidx.delete(1).sort_values())
-        self.assert_eq(pidx.delete(-1).sort_values(), kidx.delete(-1).sort_values())
-        self.assert_eq(pidx.delete([0, 10000]).sort_values(), kidx.delete([0, 10000]).sort_values())
-        self.assert_eq(
-            pidx.delete([10000, 20000]).sort_values(), kidx.delete([10000, 20000]).sort_values()
-        )
+        self.assert_eq(pidx.delete(2).sort_values(), kidx.delete(2).sort_values())
+        self.assert_eq(pidx.delete(-3).sort_values(), kidx.delete(-3).sort_values())
+        self.assert_eq(pidx.delete([-3, 0, 2]).sort_values(), kidx.delete([-3, 0, 2]).sort_values())
+
+        with self.assertRaisesRegex(IndexError, "index 3 is out of bounds for axis 0 with size 3"):
+            kidx.delete([0, 3])
+        with self.assertRaisesRegex(IndexError, "index -4 is out of bounds for axis 0 with size 3"):
+            kidx.delete([-4, 0])
+        with self.assertRaisesRegex(IndexError, "index 3 is out of bounds for axis 0 with size 3"):
+            kidx.delete(3)
+        with self.assertRaisesRegex(IndexError, "index -4 is out of bounds for axis 0 with size 3"):
+            kidx.delete(-4)
 
     def test_append(self):
         # Index
@@ -1602,6 +1655,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.MultiIndex.from_frame(kdf, names=["state", "observation"])
         self.assert_eq(pidx, kidx)
 
+        pidx = pd.MultiIndex.from_frame(pdf, names=("state", "observation"))
+        kidx = ks.MultiIndex.from_frame(kdf, names=("state", "observation"))
+        self.assert_eq(pidx, kidx)
+
         # MultiIndex columns
         pidx = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x")])
         pdf.columns = pidx
@@ -1621,6 +1678,21 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         err_msg = "Input must be a DataFrame"
         with self.assertRaisesRegex(TypeError, err_msg):
             ks.MultiIndex.from_frame({"a": [1, 2, 3], "b": [4, 5, 6]})
+
+        self.assertRaises(ValueError, lambda: ks.MultiIndex.from_frame(kdf, names="ab"))
+
+        # non-string names
+        self.assert_eq(
+            ks.MultiIndex.from_frame(kdf, names=[0, 1]), pd.MultiIndex.from_frame(pdf, names=[0, 1])
+        )
+        self.assert_eq(
+            ks.MultiIndex.from_frame(kdf, names=[("x", 0), ("y", 1)]),
+            pd.MultiIndex.from_frame(pdf, names=[("x", 0), ("y", 1)]),
+        )
+
+        pdf = pd.DataFrame([["HI", "Temp"], ["HI", "Precip"], ["NJ", "Temp"], ["NJ", "Precip"]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(ks.MultiIndex.from_frame(kdf), pd.MultiIndex.from_frame(pdf))
 
     def test_is_type_compatible(self):
         data_types = ["integer", "floating", "string", "boolean"]
@@ -1730,3 +1802,48 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kmidx = ks.from_pandas(pmidx)
 
         self.assert_eq(pmidx.view(), kmidx.view())
+
+    def test_insert(self):
+        # Integer
+        pidx = pd.Index([1, 2, 3], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, 100), kidx.insert(1, 100))
+        self.assert_eq(pidx.insert(-1, 100), kidx.insert(-1, 100))
+        self.assert_eq(pidx.insert(100, 100), kidx.insert(100, 100))
+        self.assert_eq(pidx.insert(-100, 100), kidx.insert(-100, 100))
+
+        # Floating
+        pidx = pd.Index([1.0, 2.0, 3.0], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, 100.0), kidx.insert(1, 100.0))
+        self.assert_eq(pidx.insert(-1, 100.0), kidx.insert(-1, 100.0))
+        self.assert_eq(pidx.insert(100, 100.0), kidx.insert(100, 100.0))
+        self.assert_eq(pidx.insert(-100, 100.0), kidx.insert(-100, 100.0))
+
+        # String
+        pidx = pd.Index(["a", "b", "c"], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, "x"), kidx.insert(1, "x"))
+        self.assert_eq(pidx.insert(-1, "x"), kidx.insert(-1, "x"))
+        self.assert_eq(pidx.insert(100, "x"), kidx.insert(100, "x"))
+        self.assert_eq(pidx.insert(-100, "x"), kidx.insert(-100, "x"))
+
+        # Boolean
+        pidx = pd.Index([True, False, True, False], name="Koalas")
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(pidx.insert(1, True), kidx.insert(1, True))
+        self.assert_eq(pidx.insert(-1, True), kidx.insert(-1, True))
+        self.assert_eq(pidx.insert(100, True), kidx.insert(100, True))
+        self.assert_eq(pidx.insert(-100, True), kidx.insert(-100, True))
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples(
+            [("a", "x"), ("b", "y"), ("c", "z")], names=["Hello", "Koalas"]
+        )
+        kmidx = ks.from_pandas(pmidx)
+        self.assert_eq(pmidx.insert(2, ("h", "j")), kmidx.insert(2, ("h", "j")))
+        self.assert_eq(pmidx.insert(-1, ("h", "j")), kmidx.insert(-1, ("h", "j")))
+
+        err_msg = "index 4 is out of bounds for axis 0 with size 3"
+        with self.assertRaisesRegex(IndexError, err_msg):
+            kmidx.insert(4, ("b", "y"))
