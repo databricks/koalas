@@ -964,6 +964,28 @@ class SparkFrameMethods(object):
         Returns
         -------
         DataFrame
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2],
+        ...         "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
+        >>> kdf.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        >>> new_kdf = kdf.spark.coalesce(7)
+        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        7
+        >>> new_kdf.sort_index()   # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
         """
         from databricks.koalas.frame import DataFrame
 
