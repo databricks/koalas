@@ -4793,7 +4793,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 )
             else:
                 scol = F.explode(
-                    SF.array_repeat(self.spark.column, repeats.astype(int).spark.column)
+                    SF.array_repeat(self.spark.column, repeats.astype("int32").spark.column)
                 ).alias(name_like_string(self.name))
                 sdf = self._internal.spark_frame.select(self._internal.index_spark_columns + [scol])
                 internal = self._internal.copy(
