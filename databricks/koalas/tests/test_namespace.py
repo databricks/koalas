@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from collections import OrderedDict
 import itertools
 
 import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.namespace import _get_index_map
 
 
 class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
@@ -259,3 +261,14 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.broadcast(kser)
+
+    def test_get_index_map(self):
+        kdf = ks.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
+        sdf = kdf.to_spark()
+        self.assertIsNone(_get_index_map(sdf))
+        self.assertEqual(_get_index_map(sdf, "year"), OrderedDict([("year", ("year",))]))
+        self.assertEqual(
+            _get_index_map(sdf, ["year", "month"]),
+            OrderedDict([("year", ("year",)), ("month", ("month",))]),
+        )
+        self.assertRaises(KeyError, lambda: _get_index_map(sdf, ["year", "hour"]))
