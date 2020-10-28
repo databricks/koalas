@@ -2346,26 +2346,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(
                 pser1.compare(pser2).sort_index(),
                 kser1.compare(kser2).sort_index(),
-                check_exact=False,
             )
 
             # `keep_shape=True`
             self.assert_eq(
                 pser1.compare(pser2, keep_shape=True).sort_index(),
                 kser1.compare(kser2, keep_shape=True).sort_index(),
-                check_exact=False,
             )
             # `keep_equal=True`
             self.assert_eq(
                 pser1.compare(pser2, keep_equal=True).sort_index(),
                 kser1.compare(kser2, keep_equal=True).sort_index(),
-                check_exact=False,
             )
             # `keep_shape=True` and `keep_equal=True`
             self.assert_eq(
                 pser1.compare(pser2, keep_shape=True, keep_equal=True).sort_index(),
                 kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
-                check_exact=False,
             )
 
             # MultiIndex
@@ -2380,26 +2376,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(
                 pser1.compare(pser2).sort_index(),
                 kser1.compare(kser2).sort_index(),
-                check_exact=False,
             )
 
             # `keep_shape=True` with MultiIndex
             self.assert_eq(
                 pser1.compare(pser2, keep_shape=True).sort_index(),
                 kser1.compare(kser2, keep_shape=True).sort_index(),
-                check_exact=False,
             )
             # `keep_equal=True` with MultiIndex
             self.assert_eq(
                 pser1.compare(pser2, keep_equal=True).sort_index(),
                 kser1.compare(kser2, keep_equal=True).sort_index(),
-                check_exact=False,
             )
             # `keep_shape=True` and `keep_equal=True` with MultiIndex
             self.assert_eq(
                 pser1.compare(pser2, keep_shape=True, keep_equal=True).sort_index(),
                 kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
-                check_exact=False,
             )
         else:
             kser1 = ks.Series(["b", "c", np.nan, "g", np.nan])
