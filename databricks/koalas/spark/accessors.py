@@ -993,6 +993,45 @@ class SparkFrameMethods(object):
         coalesced_sdf = internal.spark_frame.coalesce(num_partitions)
         return DataFrame(internal.with_new_sdf(coalesced_sdf))
 
+    def checkpoint(self, eager=True):
+        """Returns a checkpointed version of this DataFrame.
+
+        Checkpointing can be used to truncate the logical plan of this DataFrame, which is
+        especially useful in iterative algorithms where the plan may grow exponentially. It will be
+        saved to files inside the checkpoint directory set with `SparkContext.setCheckpointDir`.
+
+        Parameters
+        ----------
+        eager : bool
+            Whether to checkpoint this DataFrame immediately
+
+        Returns
+        -------
+        DataFrame
+
+        .. note:: Experimental
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+           a
+        0  a
+        1  b
+        2  c
+        >>> new_kdf = kdf.spark.checkpoint()  # doctest: +SKIP
+        >>> new_kdf  # doctest: +SKIP
+           a
+        0  a
+        1  b
+        2  c
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        checkpointed_sdf = internal.spark_frame.checkpoint(eager)
+        return DataFrame(internal.with_new_sdf(checkpointed_sdf))
+
     @property
     def analyzed(self) -> "ks.DataFrame":
         """
