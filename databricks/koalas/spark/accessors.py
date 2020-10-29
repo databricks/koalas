@@ -1032,6 +1032,46 @@ class SparkFrameMethods(object):
         checkpointed_sdf = internal.spark_frame.checkpoint(eager)
         return DataFrame(internal.with_new_sdf(checkpointed_sdf))
 
+    def local_checkpoint(self, eager: bool = True) -> "ks.DataFrame":
+        """Returns a locally checkpointed version of this DataFrame.
+
+        Checkpointing can be used to truncate the logical plan of this DataFrame, which is
+        especially useful in iterative algorithms where the plan may grow exponentially. Local
+        checkpoints are stored in the executors using the caching subsystem and therefore they are
+        not reliable.
+
+        Parameters
+        ----------
+        eager : bool
+            Whether to locally checkpoint this DataFrame immediately
+
+        Returns
+        -------
+        DataFrame
+
+        .. note:: Experimental
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        >>> kdf
+           a
+        0  a
+        1  b
+        2  c
+        >>> new_kdf = kdf.spark.local_checkpoint()
+        >>> new_kdf
+           a
+        0  a
+        1  b
+        2  c
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        checkpointed_sdf = internal.spark_frame.localCheckpoint(eager)
+        return DataFrame(internal.with_new_sdf(checkpointed_sdf))
+
     @property
     def analyzed(self) -> "ks.DataFrame":
         """
