@@ -209,6 +209,7 @@ class TypeHintTests(unittest.TestCase):
     def test_as_spark_type(self):
         type_mapper = {
             # binary
+            np.character: BinaryType(),
             bytes: BinaryType(),
             # integer
             np.int8: ByteType(),

@@ -106,7 +106,7 @@ def as_spark_type(tpe) -> types.DataType:
         # TODO: support other child types
         return types.ArrayType(types.StringType())
     # BinaryType
-    elif tpe in (bytes,):
+    elif tpe in (bytes, np.character):
         return types.BinaryType()
     # BooleanType
     elif tpe in (bool, np.bool, "bool", "boolean"):
