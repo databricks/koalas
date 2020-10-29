@@ -993,7 +993,7 @@ class SparkFrameMethods(object):
         coalesced_sdf = internal.spark_frame.coalesce(num_partitions)
         return DataFrame(internal.with_new_sdf(coalesced_sdf))
 
-    def checkpoint(self, eager=True):
+    def checkpoint(self, eager=True) -> "ks.DataFrame":
         """Returns a checkpointed version of this DataFrame.
 
         Checkpointing can be used to truncate the logical plan of this DataFrame, which is
@@ -1014,7 +1014,7 @@ class SparkFrameMethods(object):
         Examples
         --------
         >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
-        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
+        >>> kdf
            a
         0  a
         1  b
