@@ -5386,9 +5386,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_columns = [self._internal.spark_column_name_for(label) for label in index]
                 index_map = OrderedDict(zip(index_columns, index))
                 internal = InternalFrame(
-                    spark_frame=sdf,
-                    index_map=index_map,
-                    column_label_names=[columns],  # type: ignore
+                    spark_frame=sdf, index_map=index_map, column_label_names=[columns],
                 )
                 kdf = DataFrame(internal)
         else:
@@ -5542,7 +5540,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # The index after `reset_index()` will never be used, so use "distributed" index
             # as a dummy to avoid overhead.
             with option_context("compute.default_index_type", "distributed"):
-                df = self.reset_index()  # type: ignore
+                df = self.reset_index()
             index = df._internal.column_labels[: len(self._internal.index_spark_column_names)]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
@@ -5605,7 +5603,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             self._internal.with_new_columns(
                 data_spark_columns,
                 column_labels=column_labels,
-                column_label_names=column_label_names,  # type: ignore
+                column_label_names=column_label_names,
             )
         )
 
@@ -6405,7 +6403,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  6.0  10
 
         """
-        return self.sort_values(by=columns, ascending=False).head(n=n)  # type: ignore
+        return self.sort_values(by=columns, ascending=False).head(n=n)
 
     # TODO: add keep = First
     def nsmallest(self, n: int, columns: "Any") -> "DataFrame":
@@ -6470,7 +6468,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1  2.0   7
         2  3.0   8
         """
-        return self.sort_values(by=columns, ascending=True).head(n=n)  # type: ignore
+        return self.sort_values(by=columns, ascending=True).head(n=n)
 
     def isin(self, values) -> "DataFrame":
         """
@@ -6702,7 +6700,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             elif is_name_like_value(os):
                 return [(os,)]
             else:
-                return [o if is_name_like_tuple(o) else (o,) for o in os]  # type: ignore
+                return [o if is_name_like_tuple(o) else (o,) for o in os]
 
         if isinstance(right, ks.Series):
             right = right.to_frame()
@@ -6741,7 +6739,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     )
                 left_key_names = list(map(self._internal.spark_column_name_for, to_list(common)))
                 right_key_names = list(map(right._internal.spark_column_name_for, to_list(common)))
-            if len(left_key_names) != len(right_key_names):  # type: ignore
+            if len(left_key_names) != len(right_key_names):
                 raise ValueError("len(left_keys) must equal len(right_keys)")
 
         if how == "full":
@@ -6762,12 +6760,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         left_table = self._internal.resolved_copy.spark_frame.alias("left_table")
         right_table = right._internal.resolved_copy.spark_frame.alias("right_table")
 
-        left_key_columns = [  # type: ignore
-            scol_for(left_table, label) for label in left_key_names
-        ]
-        right_key_columns = [  # type: ignore
-            scol_for(right_table, label) for label in right_key_names
-        ]
+        left_key_columns = [scol_for(left_table, label) for label in left_key_names]
+        right_key_columns = [scol_for(right_table, label) for label in right_key_names]
 
         join_condition = reduce(
             lambda x, y: x & y,
@@ -6799,9 +6793,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol = left_scol_for(label)
             if label in duplicate_columns:
                 spark_column_name = self._internal.spark_column_name_for(label)
-                if (
-                    spark_column_name in left_key_names and spark_column_name in right_key_names
-                ):  # type: ignore
+                if spark_column_name in left_key_names and spark_column_name in right_key_names:
                     right_scol = right_scol_for(label)
                     if how == "right":
                         scol = right_scol
@@ -6821,9 +6813,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol = right_scol_for(label)
             if label in duplicate_columns:
                 spark_column_name = self._internal.spark_column_name_for(label)
-                if (
-                    spark_column_name in left_key_names and spark_column_name in right_key_names
-                ):  # type: ignore
+                if spark_column_name in left_key_names and spark_column_name in right_key_names:
                     continue
                 else:
                     col = col + right_suffix
@@ -6995,12 +6985,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             need_set_index = len(set(on) & set(self.index.names)) == 0
         if need_set_index:
-            self = self.set_index(on)  # type: ignore
-
+            self = self.set_index(on)
         join_kdf = self.merge(
             right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
         )
-        return join_kdf.reset_index() if need_set_index else join_kdf  # type: ignore
+        return join_kdf.reset_index() if need_set_index else join_kdf
 
     def append(
         self,
@@ -8324,7 +8313,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label in self._internal.column_labels:
             new_label = label[:-1]
             if len(new_label) == 0:
-                new_label = None  # type: ignore
+                new_label = None
                 should_returns_series = True
             value = label[-1]
 
