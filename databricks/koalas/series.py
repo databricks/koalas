@@ -2639,7 +2639,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    3.0
         dtype: float64
         """
-        return self.sort_values(ascending=True).head(n)  # type: ignore
+        return self.sort_values(ascending=True).head(n)
 
     def nlargest(self, n: int = 5) -> "Series":
         """
@@ -2701,7 +2701,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
 
         """
-        return self.sort_values(ascending=False).head(n)  # type: ignore
+        return self.sort_values(ascending=False).head(n)
 
     def count(self) -> int:
         """
