@@ -210,9 +210,12 @@ class TypeHintTests(unittest.TestCase):
         type_mapper = {
             # binary
             np.character: BinaryType(),
+            np.bytes_: BinaryType(),
+            np.string_: BinaryType(),
             bytes: BinaryType(),
             # integer
             np.int8: ByteType(),
+            np.byte: ByteType(),
             np.int16: ShortType(),
             np.int32: IntegerType(),
             np.int64: LongType(),
@@ -225,6 +228,7 @@ class TypeHintTests(unittest.TestCase):
             float: DoubleType(),
             # string
             np.str: StringType(),
+            np.unicode_: StringType(),
             str: StringType(),
             # bool
             np.bool: BooleanType(),

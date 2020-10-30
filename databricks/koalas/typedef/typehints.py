@@ -106,7 +106,7 @@ def as_spark_type(tpe) -> types.DataType:
         # TODO: support other child types
         return types.ArrayType(types.StringType())
     # BinaryType
-    elif tpe in (bytes, np.character):
+    elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()
     # BooleanType
     elif tpe in (bool, np.bool, "bool", "boolean"):
@@ -115,7 +115,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (datetime.date,):
         return types.DateType()
     # NumericType
-    elif tpe in (np.int8, "int8", "byte"):
+    elif tpe in (np.int8, np.byte, "int8", "byte"):
         return types.ByteType()
     elif tpe in (decimal.Decimal,):
         return types.DecimalType(38, 18)
@@ -130,7 +130,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (np.int16, "int16", "short"):
         return types.ShortType()
     # StringType
-    elif tpe in (str, "str", "string"):
+    elif tpe in (str, np.unicode_, "str", "string"):
         return types.StringType()
     # TimestampType
     elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]"):
