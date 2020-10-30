@@ -109,21 +109,22 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()
     # BooleanType
-    elif tpe in (bool, np.bool, "bool", "boolean"):
+    elif tpe in (bool, np.bool, "bool", "boolean", "?"):
         return types.BooleanType()
     # DateType
     elif tpe in (datetime.date,):
         return types.DateType()
     # NumericType
-    elif tpe in (np.int8, np.byte, "int8", "byte"):
+    elif tpe in (np.int8, np.byte, "int8", "byte", "b"):
         return types.ByteType()
+    # TODO: considering about the precision & scale for decimal type.
     elif tpe in (decimal.Decimal,):
         return types.DecimalType(38, 18)
     elif tpe in (float, np.float, np.float64, "float", "float64", "double"):
         return types.DoubleType()
-    elif tpe in (np.float32, "float32"):
+    elif tpe in (np.float32, "float32", "f"):
         return types.FloatType()
-    elif tpe in (np.int32, "int32"):
+    elif tpe in (np.int32, "int32", "i"):
         return types.IntegerType()
     elif tpe in (int, np.int, np.int64, "int", "int64", "long", "bigint"):
         return types.LongType()
@@ -133,7 +134,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (str, np.unicode_, "str", "string"):
         return types.StringType()
     # TimestampType
-    elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]"):
+    elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]", "M"):
         return types.TimestampType()
     else:
         raise TypeError("Type %s was not understood." % tpe)
