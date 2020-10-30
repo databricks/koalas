@@ -136,3 +136,8 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
             new_kdf = kdf.spark.checkpoint()
             self.assertIsNotNone(os.listdir(tmp))
             self.assert_eq(kdf, new_kdf)
+
+    def test_local_checkpoint(self):
+        kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        new_kdf = kdf.spark.local_checkpoint()
+        self.assert_eq(kdf, new_kdf)
