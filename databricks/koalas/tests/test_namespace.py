@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from collections import OrderedDict
 import itertools
 
 import pandas as pd
@@ -265,10 +264,9 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
     def test_get_index_map(self):
         kdf = ks.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
         sdf = kdf.to_spark()
-        self.assertIsNone(_get_index_map(sdf))
-        self.assertEqual(_get_index_map(sdf, "year"), OrderedDict([("year", ("year",))]))
+        self.assertEqual(_get_index_map(sdf), (None, None))
+        self.assertEqual(_get_index_map(sdf, "year"), (["year"], [("year",)]))
         self.assertEqual(
-            _get_index_map(sdf, ["year", "month"]),
-            OrderedDict([("year", ("year",)), ("month", ("month",))]),
+            _get_index_map(sdf, ["year", "month"]), (["year", "month"], [("year",), ("month",)])
         )
         self.assertRaises(KeyError, lambda: _get_index_map(sdf, ["year", "hour"]))
