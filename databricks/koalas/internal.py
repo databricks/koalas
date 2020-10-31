@@ -1019,13 +1019,15 @@ class InternalFrame(object):
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
-        :param spark_frame: the new Spark DataFrame. If None, then the original one is used.
+        :param spark_frame: the new Spark DataFrame. If not specified, the original one is used.
         :param index_spark_column_names: the index field names which exists in Spark fields.
-                                         If None, then the original ones are used.
-        :param index_names: the index names. If None, then the original ones are used.
-        :param column_labels: the new column labels. If None, then the original ones are used.
-        :param data_spark_columns: the new Spark Columns. If None, then the original ones are used.
+                                         If not specified, the original ones are used.
+        :param index_names: the index names. If not specified, the original ones are used.
+        :param column_labels: the new column labels. If not specified, the original ones are used.
+        :param data_spark_columns: the new Spark Columns.
+                                   If not specified, the original ones are used.
         :param column_label_names: the new names of the column index levels.
+                                   If not specified, the original ones are used.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
