@@ -117,8 +117,8 @@ def as_spark_type(tpe) -> types.DataType:
     # NumericType
     elif tpe in (np.int8, np.byte, "int8", "byte", "b"):
         return types.ByteType()
-    # TODO: considering about the precision & scale for decimal type.
     elif tpe in (decimal.Decimal,):
+        # TODO: considering about the precision & scale for decimal type.
         return types.DecimalType(38, 18)
     elif tpe in (float, np.float, np.float64, "float", "float64", "double"):
         return types.DoubleType()
@@ -131,7 +131,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (np.int16, "int16", "short"):
         return types.ShortType()
     # StringType
-    elif tpe in (str, np.unicode_, "str", "string"):
+    elif tpe in (str, np.unicode_, "str", "string", "U"):
         return types.StringType()
     # TimestampType
     elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]", "M"):
