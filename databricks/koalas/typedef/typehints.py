@@ -101,6 +101,7 @@ def as_spark_type(tpe) -> types.DataType:
     - dictionaries of field_name -> type
     - Python3's typing system
     """
+    # TODO: Add "boolean" and "string" types.
     # ArrayType
     if tpe in (np.ndarray,):
         # TODO: support other child types
@@ -109,7 +110,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()
     # BooleanType
-    elif tpe in (bool, np.bool, "bool", "boolean", "?"):
+    elif tpe in (bool, np.bool, "bool", "?"):
         return types.BooleanType()
     # DateType
     elif tpe in (datetime.date,):
@@ -131,7 +132,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (np.int16, "int16", "short"):
         return types.ShortType()
     # StringType
-    elif tpe in (str, np.unicode_, "str", "string", "U"):
+    elif tpe in (str, np.unicode_, "str", "U"):
         return types.StringType()
     # TimestampType
     elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]", "M"):
