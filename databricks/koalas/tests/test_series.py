@@ -339,6 +339,62 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(TypeError, lambda: kser.reindex(index=123))
 
+    def test_reindex_like(self):
+        data = [1.0, 2.0, None]
+        index = pd.Index(["A", "B", "C"], name="index1")
+        pser = pd.Series(data=data, index=index, name="name1")
+        kser = ks.from_pandas(pser)
+
+        # Reindexing single Index on single Index
+        data2 = [3.0, None, 4.0]
+        index2 = pd.Index(["A", "C", "D"], name="index2")
+        pser2 = pd.Series(data=data2, index=index2, name="name2")
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        self.assert_eq(
+            (pser + 1).reindex_like(pser2).sort_index(),
+            (kser + 1).reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing MultiIndex on single Index
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "G"), ("C", "D"), ("I", "J")], names=["index3", "index4"]
+        )
+        pser2 = pd.Series(data=data2, index=index2, name="name2")
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing MultiIndex on MultiIndex
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+        pser = pd.Series(data=data, index=index, name="name1")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing with DataFrame
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["name3", "name4"]
+        )
+        pdf = pd.DataFrame(data=data, index=index2)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pser.reindex_like(pdf).sort_index(), kser.reindex_like(kdf).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kser.reindex_like(index2))
+
     def test_fillna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)

@@ -3087,6 +3087,65 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["X"]))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[("X",)]))
 
+    def test_reindex_like(self):
+        data = [[1.0, 2.0], [3.0, None], [None, 4.0]]
+        index = pd.Index(["A", "B", "C"], name="index")
+        columns = pd.Index(["numbers", "values"], name="cols")
+        pdf = pd.DataFrame(data=data, index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        # Reindexing single Index on single Index
+        data2 = [[5.0, None], [6.0, 7.0], [8.0, None]]
+        index2 = pd.Index(["A", "C", "D"], name="index2")
+        columns2 = pd.Index(["numbers", "F"], name="cols2")
+        pdf2 = pd.DataFrame(data=data2, index=index2, columns=columns2)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
+        )
+
+        pdf2 = pd.DataFrame({"index_level_1": ["A", "C", "I"]})
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2.set_index(["index_level_1"])).sort_index(),
+            kdf.reindex_like(kdf2.set_index(["index_level_1"])).sort_index(),
+        )
+
+        # Reindexing MultiIndex on single Index
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "G"), ("C", "D"), ("I", "J")], names=["name3", "name4"]
+        )
+        pdf2 = pd.DataFrame(data=data2, index=index2)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
+        )
+
+        # Reindexing MultiIndex on MultiIndex
+        columns2 = pd.MultiIndex.from_tuples(
+            [("numbers", "third"), ("values", "second")], names=["cols3", "cols4"]
+        )
+        pdf2.columns = columns2
+        kdf2.columns = columns2
+
+        columns = pd.MultiIndex.from_tuples(
+            [("numbers", "first"), ("values", "second")], names=["cols1", "cols2"]
+        )
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["name1", "name2"]
+        )
+        pdf = pd.DataFrame(data=data, index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kdf.reindex_like(index2))
+
     def test_melt(self):
         pdf = pd.DataFrame(
             {"A": [1, 3, 5], "B": [2, 4, 6], "C": [7, 8, 9]}, index=np.random.rand(3)
