@@ -2077,7 +2077,7 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
-    def intersection(self, other):
+    def intersection(self, other) -> "Index":
         """
         Form the intersection of two Index objects.
 
