@@ -939,10 +939,138 @@ class SparkFrameMethods(object):
         from databricks.koalas.frame import DataFrame
 
         internal = self._kdf._internal.resolved_copy
-
         repartitioned_sdf = internal.spark_frame.repartition(num_partitions)
-
         return DataFrame(internal.with_new_sdf(repartitioned_sdf))
+
+    def coalesce(self, num_partitions: int) -> "ks.DataFrame":
+        """
+        Returns a new DataFrame that has exactly `num_partitions` partitions.
+
+        .. note:: This operation results in a narrow dependency, e.g. if you go from 1000
+            partitions to 100 partitions, there will not be a shuffle, instead each of the 100 new
+            partitions will claim 10 of the current partitions. If a larger number of partitions is
+            requested, it will stay at the current number of partitions. However, if you're doing a
+            drastic coalesce, e.g. to num_partitions = 1, this may result in your computation taking
+            place on fewer nodes than you like (e.g. one node in the case of num_partitions = 1). To
+            avoid this, you can call repartition(). This will add a shuffle step, but means the
+            current upstream partitions will be executed in parallel (per whatever the current
+            partitioning is).
+
+        Parameters
+        ----------
+        num_partitions : int
+            The target number of partitions.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2],
+        ...         "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
+        >>> kdf.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        >>> new_kdf = kdf.spark.coalesce(1)
+        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        1
+        >>> new_kdf.sort_index()   # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        coalesced_sdf = internal.spark_frame.coalesce(num_partitions)
+        return DataFrame(internal.with_new_sdf(coalesced_sdf))
+
+    def checkpoint(self, eager: bool = True) -> "ks.DataFrame":
+        """Returns a checkpointed version of this DataFrame.
+
+        Checkpointing can be used to truncate the logical plan of this DataFrame, which is
+        especially useful in iterative algorithms where the plan may grow exponentially. It will be
+        saved to files inside the checkpoint directory set with `SparkContext.setCheckpointDir`.
+
+        Parameters
+        ----------
+        eager : bool
+            Whether to checkpoint this DataFrame immediately
+
+        Returns
+        -------
+        DataFrame
+
+        .. note:: Experimental
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        >>> kdf
+           a
+        0  a
+        1  b
+        2  c
+        >>> new_kdf = kdf.spark.checkpoint()  # doctest: +SKIP
+        >>> new_kdf  # doctest: +SKIP
+           a
+        0  a
+        1  b
+        2  c
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        checkpointed_sdf = internal.spark_frame.checkpoint(eager)
+        return DataFrame(internal.with_new_sdf(checkpointed_sdf))
+
+    def local_checkpoint(self, eager: bool = True) -> "ks.DataFrame":
+        """Returns a locally checkpointed version of this DataFrame.
+
+        Checkpointing can be used to truncate the logical plan of this DataFrame, which is
+        especially useful in iterative algorithms where the plan may grow exponentially. Local
+        checkpoints are stored in the executors using the caching subsystem and therefore they are
+        not reliable.
+
+        Parameters
+        ----------
+        eager : bool
+            Whether to locally checkpoint this DataFrame immediately
+
+        Returns
+        -------
+        DataFrame
+
+        .. note:: Experimental
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        >>> kdf
+           a
+        0  a
+        1  b
+        2  c
+        >>> new_kdf = kdf.spark.local_checkpoint()
+        >>> new_kdf
+           a
+        0  a
+        1  b
+        2  c
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        checkpointed_sdf = internal.spark_frame.localCheckpoint(eager)
+        return DataFrame(internal.with_new_sdf(checkpointed_sdf))
 
     @property
     def analyzed(self) -> "ks.DataFrame":

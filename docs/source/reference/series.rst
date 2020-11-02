@@ -216,6 +216,7 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+   Series.compare
    Series.replace
    Series.update
 
