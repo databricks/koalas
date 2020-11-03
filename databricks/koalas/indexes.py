@@ -2587,7 +2587,7 @@ class MultiIndex(Index):
         return result  # type: ignore
 
     @property
-    def levshape(self) -> Tuple[Int, ...]:
+    def levshape(self) -> Tuple[int, ...]:
         """
         A tuple with the length of each level.
 
