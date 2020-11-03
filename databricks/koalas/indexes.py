@@ -115,6 +115,8 @@ class Index(IndexOpsMixin):
     def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
         assert data is not None
 
+        if not is_hashable(name):
+            raise TypeError("Index.name must be a hashable type")
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
