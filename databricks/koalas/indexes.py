@@ -2077,6 +2077,59 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
+    def intersection(self, other) -> "Index":
+        """
+        Form the intersection of two Index objects.
+
+        This returns a new Index with elements common to the index and `other`.
+
+        Parameters
+        ----------
+        other : Index or array-like
+
+        Returns
+        -------
+        intersection : Index
+
+        Examples
+        --------
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.intersection(idx2).sort_values()
+        Int64Index([3, 4], dtype='int64')
+        """
+        keep_name = True
+
+        if isinstance(other, DataFrame):
+            raise ValueError("Index data must be 1-dimensional")
+        elif isinstance(other, MultiIndex):
+            # Always returns an empty MultiIndex if `other` is MultiIndex.
+            return other.to_frame().head(0).index
+        elif isinstance(other, Index):
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = self.name == other.name
+        elif isinstance(other, Series):
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = self.name == other.name
+        elif is_list_like(other):
+            other = Index(other)
+            if isinstance(other, MultiIndex):
+                return other.to_frame().head(0).index
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = False
+        else:
+            raise TypeError("Input must be Index or array-like")
+
+        spark_frame_self = self.to_frame(name=SPARK_DEFAULT_INDEX_NAME).to_spark()
+        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
+        if keep_name:
+            index_map = self._internal.index_map
+        else:
+            index_map = OrderedDict([(SPARK_DEFAULT_INDEX_NAME, None)])
+        internal = InternalFrame(spark_frame=spark_frame_intersected, index_map=index_map)
+
+        return DataFrame(internal).index
+
     def item(self):
         """
         Return the first element of the underlying data as a python scalar.
@@ -3117,6 +3170,59 @@ class MultiIndex(Index):
         ('a', 'x')
         """
         return self._kdf.head(2)._to_internal_pandas().index.item()
+
+    def intersection(self, other):
+        """
+        Form the intersection of two Index objects.
+
+        This returns a new Index with elements common to the index and `other`.
+
+        Parameters
+        ----------
+        other : Index or array-like
+
+        Returns
+        -------
+        intersection : Index
+
+        Examples
+        --------
+        >>> midx1 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("c", "z"), ("d", "w")])
+        >>> midx1.intersection(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('c', 'z')],
+                   )
+        """
+        keep_name = True
+
+        if isinstance(other, Series) or not is_list_like(other):
+            raise TypeError("other must be a MultiIndex or a list of tuples")
+        elif isinstance(other, DataFrame):
+            raise ValueError("Index data must be 1-dimensional")
+        elif isinstance(other, MultiIndex):
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = self.names == other.names
+        elif isinstance(other, Index):
+            # Always returns an empty MultiIndex if `other` is Index.
+            return self.to_frame().head(0).index
+        elif not all(isinstance(item, tuple) for item in other):
+            raise TypeError("other must be a MultiIndex or a list of tuples")
+        else:
+            other = MultiIndex.from_tuples(list(other))
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = True
+
+        default_name = [SPARK_INDEX_NAME_FORMAT(i) for i in range(self.nlevels)]
+        spark_frame_self = self.to_frame(name=default_name).to_spark()
+        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
+        if keep_name:
+            index_map = self._internal.index_map
+        else:
+            index_map = OrderedDict(
+                [(SPARK_INDEX_NAME_FORMAT(i), None) for i in range(self.nlevels)]
+            )
+        internal = InternalFrame(spark_frame=spark_frame_intersected, index_map=index_map)
+        return DataFrame(internal).index
 
     @property
     def inferred_type(self):
