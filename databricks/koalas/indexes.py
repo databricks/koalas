@@ -1231,8 +1231,8 @@ class Index(IndexOpsMixin):
             )
 
         int_level = [n if isinstance(n, int) else names.index(n) for n in level]
-        index_map_list = list(self._internal.index_map.items())
-        index_map = OrderedDict(index_map_list[c] for c in range(0, nlevels) if c not in int_level)
+        index_map_items = list(self._internal.index_map.items())
+        index_map = OrderedDict(index_map_items[c] for c in range(0, nlevels) if c not in int_level)
         sdf = self._internal.spark_frame
         sdf = sdf.select(*index_map.keys())
         result = InternalFrame(spark_frame=sdf, index_map=index_map)
