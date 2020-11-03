@@ -3185,7 +3185,7 @@ class MultiIndex(Index):
         """
         return self._kdf.head(2)._to_internal_pandas().index.item()
 
-    def intersection(self, other):
+    def intersection(self, other) -> "MultiIndex":
         """
         Form the intersection of two Index objects.
 
@@ -3197,7 +3197,7 @@ class MultiIndex(Index):
 
         Returns
         -------
-        intersection : Index
+        intersection : MultiIndex
 
         Examples
         --------
@@ -3218,7 +3218,7 @@ class MultiIndex(Index):
             keep_name = self.names == other.names
         elif isinstance(other, Index):
             # Always returns an empty MultiIndex if `other` is Index.
-            return self.to_frame().head(0).index
+            return self.to_frame().head(0).index  # type: ignore
         elif not all(isinstance(item, tuple) for item in other):
             raise TypeError("other must be a MultiIndex or a list of tuples")
         else:
@@ -3236,7 +3236,7 @@ class MultiIndex(Index):
                 [(SPARK_INDEX_NAME_FORMAT(i), None) for i in range(self.nlevels)]
             )
         internal = InternalFrame(spark_frame=spark_frame_intersected, index_map=index_map)
-        return DataFrame(internal).index
+        return DataFrame(internal).index  # type: ignore
 
     @property
     def inferred_type(self) -> str:
