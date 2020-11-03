@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
-from pandas.api.types import is_list_like
+from pandas.api.types import is_list_like, is_hashable
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column, DataFrame as SparkDataFrame
@@ -1065,6 +1065,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     @name.setter
     def name(self, name: Union[Any, Tuple]):
+        if not is_hashable(name):
+            raise TypeError("Series.name must be a hashable type")
         self.rename(name, inplace=True)
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
