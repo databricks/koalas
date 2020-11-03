@@ -2514,25 +2514,25 @@ class Frame(object, metaclass=ABCMeta):
     pad = ffill
 
     @property
-    def at(self):
+    def at(self) -> AtIndexer:
         return AtIndexer(self)
 
     at.__doc__ = AtIndexer.__doc__
 
     @property
-    def iat(self):
+    def iat(self) -> iAtIndexer:
         return iAtIndexer(self)
 
     iat.__doc__ = iAtIndexer.__doc__
 
     @property
-    def iloc(self):
+    def iloc(self) -> iLocIndexer:
         return iLocIndexer(self)
 
     iloc.__doc__ = iLocIndexer.__doc__
 
     @property
-    def loc(self):
+    def loc(self) -> LocIndexer:
         return LocIndexer(self)
 
     loc.__doc__ = LocIndexer.__doc__
