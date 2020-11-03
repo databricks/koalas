@@ -42,7 +42,14 @@ from pandas._libs import lib
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
+from pyspark.sql.types import (
+    BooleanType,
+    DataType,
+    NumericType,
+    StringType,
+    TimestampType,
+    IntegralType,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -72,6 +79,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
 )
+from databricks.koalas.typedef import Scalar
 
 
 class Index(IndexOpsMixin):
@@ -164,7 +172,7 @@ class Index(IndexOpsMixin):
     spark = CachedAccessor("spark", SparkIndexMethods)
 
     # This method is used via `DataFrame.info` API internally.
-    def _summary(self, name=None):
+    def _summary(self, name=None) -> str:
         """
         Return a summarized representation.
 
@@ -232,7 +240,7 @@ class Index(IndexOpsMixin):
         """
         return (len(self._kdf),)
 
-    def identical(self, other):
+    def identical(self, other) -> bool:
         """
         Similar to equals, but check that other comparable attributes are
         also equal.
@@ -285,7 +293,7 @@ class Index(IndexOpsMixin):
             and self.equals(other)
         )
 
-    def equals(self, other):
+    def equals(self, other) -> bool:
         """
         Determine if two Index objects contain the same elements.
 
@@ -343,7 +351,7 @@ class Index(IndexOpsMixin):
                 ).all()
             )
 
-    def transpose(self):
+    def transpose(self) -> "Index":
         """
         Return the transpose, For index, It will be index itself.
 
@@ -392,7 +400,7 @@ class Index(IndexOpsMixin):
         """
         return self._internal.to_pandas_frame.index  # type: ignore
 
-    def toPandas(self):
+    def toPandas(self) -> pd.Index:
         warnings.warn(
             "Index.toPandas is deprecated as of Index.to_pandas. Please use the API instead.",
             FutureWarning,
@@ -401,7 +409,7 @@ class Index(IndexOpsMixin):
 
     toPandas.__doc__ = to_pandas.__doc__
 
-    def to_numpy(self, dtype=None, copy=False):
+    def to_numpy(self, dtype=None, copy=False) -> np.ndarray:
         """
         A NumPy ndarray representing the values in this Index or MultiIndex.
 
@@ -435,7 +443,7 @@ class Index(IndexOpsMixin):
         return result
 
     @property
-    def values(self):
+    def values(self) -> np.ndarray:
         """
         Return an array representing the data in the Index.
 
@@ -459,7 +467,7 @@ class Index(IndexOpsMixin):
         return self.to_numpy()
 
     @property
-    def asi8(self):
+    def asi8(self) -> np.ndarray:
         """
         Integer representation of the values.
 
@@ -492,7 +500,7 @@ class Index(IndexOpsMixin):
             return None
 
     @property
-    def spark_type(self):
+    def spark_type(self) -> DataType:
         """ Returns the data type as defined by Spark, as a Spark DataType object."""
         warnings.warn(
             "Index.spark_type is deprecated as of Index.spark.data_type. "
@@ -598,7 +606,9 @@ class Index(IndexOpsMixin):
         """
         return len(self._internal.index_spark_column_names)
 
-    def rename(self, name: Union[Any, Tuple, List[Union[Any, Tuple]]], inplace: bool = False):
+    def rename(
+        self, name: Union[Any, Tuple, List[Union[Any, Tuple]]], inplace: bool = False
+    ) -> Optional["Index"]:
         """
         Alter Index or MultiIndex name.
         Able to set new names without level. Defaults to returning new index.
@@ -657,6 +667,7 @@ class Index(IndexOpsMixin):
 
         if inplace:
             self._kdf._update_internal_frame(internal)
+            return None
         else:
             return DataFrame(internal).index
 
@@ -677,7 +688,7 @@ class Index(IndexOpsMixin):
             raise TypeError("name must be a hashable type")
 
     # TODO: add downcast parameter for fillna function
-    def fillna(self, value):
+    def fillna(self, value: Scalar) -> "Index":
         """
         Fill NA/NaN values with the specified value.
 
@@ -707,7 +718,7 @@ class Index(IndexOpsMixin):
         return result
 
     # TODO: ADD keep parameter
-    def drop_duplicates(self):
+    def drop_duplicates(self) -> "Index":
         """
         Return Index with duplicate values removed.
 
@@ -873,7 +884,7 @@ class Index(IndexOpsMixin):
         )
         return DataFrame(internal)
 
-    def is_boolean(self):
+    def is_boolean(self) -> bool:
         """
         Return if the current index type is a boolean type.
 
@@ -884,7 +895,7 @@ class Index(IndexOpsMixin):
         """
         return is_bool_dtype(self.dtype)
 
-    def is_categorical(self):
+    def is_categorical(self) -> bool:
         """
         Return if the current index type is a categorical type.
 
@@ -895,7 +906,7 @@ class Index(IndexOpsMixin):
         """
         return is_categorical_dtype(self.dtype)
 
-    def is_floating(self):
+    def is_floating(self) -> bool:
         """
         Return if the current index type is a floating type.
 
@@ -906,7 +917,7 @@ class Index(IndexOpsMixin):
         """
         return is_float_dtype(self.dtype)
 
-    def is_integer(self):
+    def is_integer(self) -> bool:
         """
         Return if the current index type is a integer type.
 
@@ -917,7 +928,7 @@ class Index(IndexOpsMixin):
         """
         return is_integer_dtype(self.dtype)
 
-    def is_interval(self):
+    def is_interval(self) -> bool:
         """
         Return if the current index type is an interval type.
 
@@ -928,7 +939,7 @@ class Index(IndexOpsMixin):
         """
         return is_interval_dtype(self.dtype)
 
-    def is_numeric(self):
+    def is_numeric(self) -> bool:
         """
         Return if the current index type is a numeric type.
 
@@ -939,7 +950,7 @@ class Index(IndexOpsMixin):
         """
         return is_numeric_dtype(self.dtype)
 
-    def is_object(self):
+    def is_object(self) -> bool:
         """
         Return if the current index type is a object type.
 
@@ -950,7 +961,7 @@ class Index(IndexOpsMixin):
         """
         return is_object_dtype(self.dtype)
 
-    def is_type_compatible(self, kind):
+    def is_type_compatible(self, kind) -> bool:
         """
         Whether the index type is compatible with the provided type.
 
@@ -968,7 +979,7 @@ class Index(IndexOpsMixin):
         """
         return kind == self.inferred_type
 
-    def dropna(self):
+    def dropna(self) -> "Index":
         """
         Return Index or MultiIndex without NA/NaN values
 
@@ -1026,7 +1037,7 @@ class Index(IndexOpsMixin):
         )
         return DataFrame(internal).index
 
-    def unique(self, level=None):
+    def unique(self, level=None) -> "Index":
         """
         Return unique values in the index.
 
@@ -1076,7 +1087,7 @@ class Index(IndexOpsMixin):
         ).index
 
     # TODO: add error parameter
-    def drop(self, labels):
+    def drop(self, labels) -> "Index":
         """
         Make new Index with passed list of labels deleted.
 
@@ -1127,7 +1138,7 @@ class Index(IndexOpsMixin):
                 "Requested level ({}) does not match index name ({})".format(level, self.name)
             )
 
-    def get_level_values(self, level):
+    def get_level_values(self, level) -> "Index":
         """
         Return Index if a valid level is given.
 
@@ -1143,7 +1154,7 @@ class Index(IndexOpsMixin):
         self._validate_index_level(level)
         return self
 
-    def copy(self, name=None, deep=None):
+    def copy(self, name=None, deep=None) -> "Index":
         """
         Make a copy of this object. name sets those attributes on the new object.
 
@@ -1182,7 +1193,7 @@ class Index(IndexOpsMixin):
             result.name = name
         return result
 
-    def droplevel(self, level):
+    def droplevel(self, level) -> "Index":
         """
         Return index with requested level(s) removed.
         If resulting index has only 1 level left, the result will be
@@ -1252,7 +1263,7 @@ class Index(IndexOpsMixin):
         )
         return DataFrame(result).index
 
-    def symmetric_difference(self, other, result_name=None, sort=None):
+    def symmetric_difference(self, other, result_name=None, sort=None) -> "Index":
         """
         Compute the symmetric difference of two Index objects.
 
@@ -1325,7 +1336,7 @@ class Index(IndexOpsMixin):
         return result
 
     # TODO: return_indexer
-    def sort_values(self, ascending=True):
+    def sort_values(self, ascending=True) -> "Index":
         """
         Return a sorted copy of the index.
 
@@ -1395,13 +1406,13 @@ class Index(IndexOpsMixin):
         )
         return DataFrame(internal).index
 
-    def sort(self, *args, **kwargs):
+    def sort(self, *args, **kwargs) -> None:
         """
         Use sort_values instead.
         """
         raise TypeError("cannot sort an Index object in-place, use sort_values instead")
 
-    def min(self):
+    def min(self) -> Union[Scalar, Tuple[Scalar, ...]]:
         """
         Return the minimum value of the Index.
 
@@ -1438,7 +1449,7 @@ class Index(IndexOpsMixin):
 
         return result if len(result) > 1 else result[0]
 
-    def max(self):
+    def max(self) -> Union[Scalar, Tuple[Scalar, ...]]:
         """
         Return the maximum value of the Index.
 
@@ -1475,7 +1486,7 @@ class Index(IndexOpsMixin):
 
         return result if len(result) > 1 else result[0]
 
-    def delete(self, loc):
+    def delete(self, loc) -> "Index":
         """
         Make new Index with passed location(-s) deleted.
 
@@ -1585,7 +1596,7 @@ class Index(IndexOpsMixin):
 
         return DataFrame(internal).index
 
-    def append(self, other):
+    def append(self, other: "Index") -> "Index":
         """
         Append a collection of Index options together.
 
@@ -1644,7 +1655,7 @@ class Index(IndexOpsMixin):
 
         return DataFrame(internal).index
 
-    def argmax(self):
+    def argmax(self) -> int:
         """
         Return a maximum argument indexer.
 
@@ -1692,7 +1703,7 @@ class Index(IndexOpsMixin):
             .first()[0]
         )
 
-    def argmin(self):
+    def argmin(self) -> int:
         """
         Return a minimum argument indexer.
 
@@ -1726,7 +1737,7 @@ class Index(IndexOpsMixin):
             .first()[0]
         )
 
-    def set_names(self, names, level=None, inplace=False):
+    def set_names(self, names, level=None, inplace=False) -> Optional["Index"]:
         """
         Set Index or MultiIndex name.
         Able to set new names partially and by level.
@@ -1786,7 +1797,7 @@ class Index(IndexOpsMixin):
                 names = self_names
         return self.rename(name=names, inplace=inplace)
 
-    def difference(self, other, sort=None):
+    def difference(self, other, sort=None) -> "Index":
         """
         Return a new Index with elements from the index that are not in
         `other`.
@@ -1860,7 +1871,7 @@ class Index(IndexOpsMixin):
         return result if sort is None else result.sort_values()
 
     @property
-    def is_all_dates(self):
+    def is_all_dates(self) -> bool:
         """
         Return if all data types of the index are datetime.
         remember that since Koalas does not support multiple data types in an index,
@@ -1962,7 +1973,7 @@ class Index(IndexOpsMixin):
         else:
             return ks.concat([kdf] * repeats).index
 
-    def asof(self, label):
+    def asof(self, label) -> Scalar:
         """
         Return the label from the index, or, if not present, the previous one.
 
@@ -2014,7 +2025,7 @@ class Index(IndexOpsMixin):
         result = sdf.head()[0]
         return result if result is not None else np.nan
 
-    def union(self, other, sort=None):
+    def union(self, other, sort=None) -> "Index":
         """
         Form the union of two Index objects.
 
@@ -2088,7 +2099,7 @@ class Index(IndexOpsMixin):
 
         return DataFrame(internal).index
 
-    def holds_integer(self):
+    def holds_integer(self) -> bool:
         """
         Whether the type is an integer type.
         Always return False for MultiIndex.
@@ -2121,7 +2132,66 @@ class Index(IndexOpsMixin):
         """
         return isinstance(self.spark.data_type, IntegralType)
 
-    def item(self):
+    def intersection(self, other) -> "Index":
+        """
+        Form the intersection of two Index objects.
+
+        This returns a new Index with elements common to the index and `other`.
+
+        Parameters
+        ----------
+        other : Index or array-like
+
+        Returns
+        -------
+        intersection : Index
+
+        Examples
+        --------
+        >>> idx1 = ks.Index([1, 2, 3, 4])
+        >>> idx2 = ks.Index([3, 4, 5, 6])
+        >>> idx1.intersection(idx2).sort_values()
+        Int64Index([3, 4], dtype='int64')
+        """
+        keep_name = True
+
+        if isinstance(other, DataFrame):
+            raise ValueError("Index data must be 1-dimensional")
+        elif isinstance(other, MultiIndex):
+            # Always returns an empty MultiIndex if `other` is MultiIndex.
+            return other.to_frame().head(0).index
+        elif isinstance(other, Index):
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = self.name == other.name
+        elif isinstance(other, Series):
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = self.name == other.name
+        elif is_list_like(other):
+            other = Index(other)
+            if isinstance(other, MultiIndex):
+                return other.to_frame().head(0).index
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = False
+        else:
+            raise TypeError("Input must be Index or array-like")
+
+        spark_frame_self = self.to_frame(name=SPARK_DEFAULT_INDEX_NAME).to_spark()
+        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
+        if keep_name:
+            index_spark_column_names = self._internal.index_spark_column_names
+            index_names = self._internal.index_names
+        else:
+            index_spark_column_names = [SPARK_DEFAULT_INDEX_NAME]
+            index_names = None
+        internal = InternalFrame(
+            spark_frame=spark_frame_intersected,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+        )
+
+        return DataFrame(internal).index
+
+    def item(self) -> Union[Scalar, Tuple[Scalar, ...]]:
         """
         Return the first element of the underlying data as a python scalar.
 
@@ -2143,7 +2213,7 @@ class Index(IndexOpsMixin):
         """
         return self.to_series().item()
 
-    def insert(self, loc: int, item):
+    def insert(self, loc: int, item) -> "Index":
         """
         Make new Index inserting new item at location.
 
@@ -2185,14 +2255,14 @@ class Index(IndexOpsMixin):
         internal = self._internal.with_new_sdf(sdf)
         return DataFrame(internal).index
 
-    def view(self):
+    def view(self) -> "Index":
         """
         this is defined as a copy with the same identity
         """
         return self.copy()
 
     @property
-    def inferred_type(self):
+    def inferred_type(self) -> str:
         """
         Return a string of the type inferred from the values.
 
@@ -2312,7 +2382,7 @@ class MultiIndex(Index):
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
     @staticmethod
-    def from_tuples(tuples, sortorder=None, names=None):
+    def from_tuples(tuples, sortorder=None, names=None) -> "MultiIndex":
         """
         Convert list of tuples to MultiIndex.
 
@@ -2341,12 +2411,12 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        return DataFrame(
+        return DataFrame(  # type: ignore
             index=pd.MultiIndex.from_tuples(tuples=tuples, sortorder=sortorder, names=names)
         ).index
 
     @staticmethod
-    def from_arrays(arrays, sortorder=None, names=None):
+    def from_arrays(arrays, sortorder=None, names=None) -> "MultiIndex":
         """
         Convert arrays to MultiIndex.
 
@@ -2375,12 +2445,12 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        return DataFrame(
+        return DataFrame(  # type: ignore
             index=pd.MultiIndex.from_arrays(arrays=arrays, sortorder=sortorder, names=names)
         ).index
 
     @staticmethod
-    def from_product(iterables, sortorder=None, names=None):
+    def from_product(iterables, sortorder=None, names=None) -> "MultiIndex":
         """
         Make a MultiIndex from the cartesian product of multiple iterables.
 
@@ -2417,12 +2487,12 @@ class MultiIndex(Index):
                     (2, 'purple')],
                    names=['number', 'color'])
         """
-        return DataFrame(
+        return DataFrame(  # type: ignore
             index=pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
         ).index
 
     @staticmethod
-    def from_frame(df, names=None):
+    def from_frame(df, names=None) -> "MultiIndex":
         """
         Make a MultiIndex from a DataFrame.
 
@@ -2489,7 +2559,7 @@ class MultiIndex(Index):
         internal = InternalFrame(
             spark_frame=sdf, index_spark_column_names=sdf.columns, index_names=names
         )
-        return DataFrame(internal).index
+        return DataFrame(internal).index  # type: ignore
 
     @property
     def name(self) -> str:
@@ -2511,7 +2581,7 @@ class MultiIndex(Index):
         else:
             raise TypeError("Must pass list-like as `names`.")
 
-    def swaplevel(self, i=-2, j=-1):
+    def swaplevel(self, i=-2, j=-1) -> "MultiIndex":
         """
         Swap level i with level j.
         Calling this method does not change the ordering of the values.
@@ -2570,10 +2640,10 @@ class MultiIndex(Index):
                 index_spark_column_names=list(index_spark_column_names),
                 index_names=list(index_names),
             )
-        ).index
+        ).index  # type: ignore
 
     @property
-    def levshape(self):
+    def levshape(self) -> Tuple[int, ...]:
         """
         A tuple with the length of each level.
 
@@ -2767,7 +2837,7 @@ class MultiIndex(Index):
         # series-like operations. In that case, it creates new Index object instead of MultiIndex.
         return self._kdf[[]]._to_internal_pandas().index
 
-    def toPandas(self):
+    def toPandas(self) -> pd.MultiIndex:
         warnings.warn(
             "MultiIndex.toPandas is deprecated as of MultiIndex.to_pandas. "
             "Please use the API instead.",
@@ -2778,10 +2848,10 @@ class MultiIndex(Index):
     toPandas.__doc__ = to_pandas.__doc__
 
     def nunique(self, dropna=True):
-        raise NotImplementedError("isna is not defined for MultiIndex")
+        raise NotImplementedError("nunique is not defined for MultiIndex")
 
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
-    def copy(self, deep=None):
+    def copy(self, deep=None) -> "MultiIndex":  # type: ignore
         """
         Make a copy of this object.
 
@@ -2811,9 +2881,9 @@ class MultiIndex(Index):
                     ('d', 'h')],
                    )
         """
-        return super().copy(deep=deep)
+        return super().copy(deep=deep)  # type: ignore
 
-    def symmetric_difference(self, other, result_name=None, sort=None):
+    def symmetric_difference(self, other, result_name=None, sort=None) -> "MultiIndex":
         """
         Compute the symmetric difference of two MultiIndex objects.
 
@@ -2904,7 +2974,7 @@ class MultiIndex(Index):
         return result
 
     # TODO: ADD error parameter
-    def drop(self, codes, level=None):
+    def drop(self, codes, level=None) -> "MultiIndex":
         """
         Make new MultiIndex with passed list of labels deleted
 
@@ -2969,7 +3039,9 @@ class MultiIndex(Index):
             )
         )
 
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+    def value_counts(
+        self, normalize=False, sort=True, ascending=False, bins=None, dropna=True
+    ) -> Series:
         if (
             LooseVersion(pyspark.__version__) < LooseVersion("2.4")
             and default_session().conf.get("spark.sql.execution.arrow.enabled") == "true"
@@ -2998,7 +3070,7 @@ class MultiIndex(Index):
         )
 
     @property
-    def is_all_dates(self):
+    def is_all_dates(self) -> bool:
         """
         is_all_dates always returns False for MultiIndex
 
@@ -3028,7 +3100,7 @@ class MultiIndex(Index):
                 return partial(property_or_func, self)
         raise AttributeError("'MultiIndex' object has no attribute '{}'".format(item))
 
-    def _get_level_number(self, level):
+    def _get_level_number(self, level) -> Optional[int]:
         """
         Return the level number if a valid level is given.
         """
@@ -3053,10 +3125,11 @@ class MultiIndex(Index):
                 level = level + nlevels
         else:
             raise KeyError("Level %s not found" % str(level))
+            return None
 
         return level
 
-    def get_level_values(self, level):
+    def get_level_values(self, level) -> Index:
         """
         Return vector of label values for requested level,
         equal to the length of the index.
@@ -3099,7 +3172,7 @@ class MultiIndex(Index):
         )
         return DataFrame(internal).index
 
-    def insert(self, loc: int, item):
+    def insert(self, loc: int, item) -> Index:
         """
         Make new MultiIndex inserting new item at location.
 
@@ -3162,7 +3235,7 @@ class MultiIndex(Index):
         )
         return DataFrame(internal).index
 
-    def item(self):
+    def item(self) -> Tuple[Scalar, ...]:
         """
         Return the first element of the underlying data as a python tuple.
 
@@ -3184,8 +3257,65 @@ class MultiIndex(Index):
         """
         return self._kdf.head(2)._to_internal_pandas().index.item()
 
+    def intersection(self, other) -> "MultiIndex":
+        """
+        Form the intersection of two Index objects.
+
+        This returns a new Index with elements common to the index and `other`.
+
+        Parameters
+        ----------
+        other : Index or array-like
+
+        Returns
+        -------
+        intersection : MultiIndex
+
+        Examples
+        --------
+        >>> midx1 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        >>> midx2 = ks.MultiIndex.from_tuples([("c", "z"), ("d", "w")])
+        >>> midx1.intersection(midx2).sort_values()  # doctest: +SKIP
+        MultiIndex([('c', 'z')],
+                   )
+        """
+        keep_name = True
+
+        if isinstance(other, Series) or not is_list_like(other):
+            raise TypeError("other must be a MultiIndex or a list of tuples")
+        elif isinstance(other, DataFrame):
+            raise ValueError("Index data must be 1-dimensional")
+        elif isinstance(other, MultiIndex):
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = self.names == other.names
+        elif isinstance(other, Index):
+            # Always returns an empty MultiIndex if `other` is Index.
+            return self.to_frame().head(0).index  # type: ignore
+        elif not all(isinstance(item, tuple) for item in other):
+            raise TypeError("other must be a MultiIndex or a list of tuples")
+        else:
+            other = MultiIndex.from_tuples(list(other))
+            spark_frame_other = other.to_frame().to_spark()
+            keep_name = True
+
+        default_name = [SPARK_INDEX_NAME_FORMAT(i) for i in range(self.nlevels)]
+        spark_frame_self = self.to_frame(name=default_name).to_spark()
+        spark_frame_intersected = spark_frame_self.intersect(spark_frame_other)
+        if keep_name:
+            index_spark_column_names = self._internal.index_spark_column_names
+            index_names = self._internal.index_names
+        else:
+            index_spark_column_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(self.nlevels)]
+            index_names = None
+        internal = InternalFrame(
+            spark_frame=spark_frame_intersected,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+        )
+        return DataFrame(internal).index  # type: ignore
+
     @property
-    def inferred_type(self):
+    def inferred_type(self) -> str:
         """
         Return a string of the type inferred from the values.
         """
@@ -3193,7 +3323,7 @@ class MultiIndex(Index):
         return "mixed"
 
     @property
-    def asi8(self):
+    def asi8(self) -> None:
         """
         Integer representation of the values.
         """
