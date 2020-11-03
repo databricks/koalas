@@ -17,7 +17,6 @@
 Koalas specific features.
 """
 import inspect
-from collections import OrderedDict
 from distutils.version import LooseVersion
 from typing import Any, Tuple, Union, TYPE_CHECKING
 import types
@@ -173,12 +172,11 @@ class KoalasFrameMethods(object):
         return DataFrame(
             InternalFrame(
                 spark_frame=sdf,
-                index_map=OrderedDict(
-                    [
-                        (SPARK_INDEX_NAME_FORMAT(i), name)
-                        for i, name in enumerate(internal.index_names)
-                    ]
-                ),
+                index_spark_column_names=[
+                    SPARK_INDEX_NAME_FORMAT(i)
+                    for i in range(len(internal.index_spark_column_names))
+                ],
+                index_names=internal.index_names,
                 column_labels=internal.column_labels + [column],
                 data_spark_columns=(
                     [scol_for(sdf, name_like_string(label)) for label in internal.column_labels]
@@ -388,7 +386,7 @@ class KoalasFrameMethods(object):
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_spark_column_names=None)
 
         return DataFrame(internal)
 
