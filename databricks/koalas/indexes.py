@@ -2635,12 +2635,10 @@ class MultiIndex(Index):
         index_map = list(self._internal.index_map.items())
         index_map[i], index_map[j], = index_map[j], index_map[i]
         index_spark_column_names, index_names = zip(*index_map)
-        return DataFrame(
-            self._kdf._internal.copy(
-                index_spark_column_names=list(index_spark_column_names),
-                index_names=list(index_names),
-            )
-        ).index  # type: ignore
+        internal = self._kdf._internal.copy(
+            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
+        )
+        return DataFrame(internal).index  # type: ignore
 
     @property
     def levshape(self) -> Tuple[int, ...]:
