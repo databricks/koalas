@@ -9988,9 +9988,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not is_list_like(indices) or isinstance(indices, (dict, set)):
             raise ValueError("`indices` must be a list-like except dict or set")
         if axis == 0:
-            return self.iloc[indices, :]
+            return self.iloc[indices, :]  # type: ignore
         else:
-            return self.iloc[:, indices]
+            return self.iloc[:, indices]  # type: ignore
 
     def eval(self, expr, inplace=False) -> Optional["DataFrame"]:
         """
