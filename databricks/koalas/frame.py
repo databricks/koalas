@@ -7992,9 +7992,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Return a DataFrame with matching indices as other object.
 
-        Conform the object to the same index on all axes. Optional
-        filling logic, placing NaN in locations having no value
-        in the previous index. A new object is produced unless the
+        Conform the object to the same index on all axes. Places NA/NaN in locations
+        having no value in the previous index. A new object is produced unless the
         new index is equivalent to the current one and copy=False.
 
         Parameters

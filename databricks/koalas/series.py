@@ -1752,9 +1752,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         Return a Series with matching indices as other object.
 
-        Conform the object to the same index on all axes. Optional
-        filling logic, placing NaN in locations having no value
-        in the previous index.
+        Conform the object to the same index on all axes. Places NA/NaN in locations
+         having no value in the previous index.
 
         Parameters
         ----------
@@ -1776,7 +1775,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Notes
         -----
         Same as calling
-        ``.reindex(index=other.index, columns=other.columns,...)``.
+        ``.reindex(index=other.index, ...)``.
 
         Examples
         --------

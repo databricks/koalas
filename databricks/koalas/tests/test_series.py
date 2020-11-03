@@ -371,6 +371,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
         )
 
+        self.assertRaises(TypeError, lambda: kser.reindex_like(index2))
+        self.assertRaises(AssertionError, lambda: kser2.reindex_like(kser))
+
         # Reindexing MultiIndex on MultiIndex
         index = pd.MultiIndex.from_tuples(
             [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
@@ -392,8 +395,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             pser.reindex_like(pdf).sort_index(), kser.reindex_like(kdf).sort_index(),
         )
-
-        self.assertRaises(TypeError, lambda: kser.reindex_like(index2))
 
     def test_fillna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})

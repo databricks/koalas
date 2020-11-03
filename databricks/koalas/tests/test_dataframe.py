@@ -3124,6 +3124,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
         )
 
+        self.assertRaises(TypeError, lambda: kdf.reindex_like(index2))
+        self.assertRaises(AssertionError, lambda: kdf2.reindex_like(kdf))
+
         # Reindexing MultiIndex on MultiIndex
         columns2 = pd.MultiIndex.from_tuples(
             [("numbers", "third"), ("values", "second")], names=["cols3", "cols4"]
@@ -3143,8 +3146,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
         )
-
-        self.assertRaises(TypeError, lambda: kdf.reindex_like(index2))
 
     def test_melt(self):
         pdf = pd.DataFrame(
