@@ -15,7 +15,7 @@
 #
 
 """
-A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+A base class of DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 from abc import ABCMeta, abstractmethod
 from collections import Counter
