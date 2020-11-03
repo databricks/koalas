@@ -1382,7 +1382,7 @@ class Index(IndexOpsMixin):
         """
         raise TypeError("cannot sort an Index object in-place, use sort_values instead")
 
-    def min(self) -> Union[Scalar, Tuple]:
+    def min(self) -> Union[Scalar, Tuple[Scalar, ...]]:
         """
         Return the minimum value of the Index.
 
@@ -1419,7 +1419,7 @@ class Index(IndexOpsMixin):
 
         return result if len(result) > 1 else result[0]
 
-    def max(self) -> Union[Scalar, Tuple]:
+    def max(self) -> Union[Scalar, Tuple[Scalar, ...]]:
         """
         Return the maximum value of the Index.
 
@@ -2141,7 +2141,7 @@ class Index(IndexOpsMixin):
 
         return DataFrame(internal).index
 
-    def item(self) -> Union[Scalar, Tuple]:
+    def item(self) -> Union[Scalar, Tuple[Scalar, ...]]:
         """
         Return the first element of the underlying data as a python scalar.
 
@@ -2587,7 +2587,7 @@ class MultiIndex(Index):
         return result  # type: ignore
 
     @property
-    def levshape(self) -> Tuple:
+    def levshape(self) -> Tuple[Int, ...]:
         """
         A tuple with the length of each level.
 
@@ -3163,7 +3163,7 @@ class MultiIndex(Index):
         internal = InternalFrame(spark_frame=sdf, index_map=self._internal.index_map,)
         return DataFrame(internal).index
 
-    def item(self) -> Tuple:
+    def item(self) -> Tuple[Scalar, ...]:
         """
         Return the first element of the underlying data as a python tuple.
 
