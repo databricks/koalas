@@ -18,10 +18,9 @@
 A loc indexer for Koalas DataFrame/Series.
 """
 from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 from collections.abc import Iterable
 from functools import reduce
-from typing import Any, Optional, List, Tuple, TYPE_CHECKING
+from typing import Any, Optional, List, Tuple, TYPE_CHECKING, Union
 
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
@@ -30,12 +29,14 @@ from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 import numpy as np
 
+from databricks import koalas as ks
 from databricks.koalas.internal import (
     InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.exceptions import SparkPandasIndexingError, SparkPandasNotImplementedError
+from databricks.koalas.typedef import Scalar
 from databricks.koalas.utils import (
     is_name_like_tuple,
     is_name_like_value,
@@ -123,7 +124,7 @@ class AtIndexer(IndexerLike):
     array([ 4, 20])
     """
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Union["ks.Series", "ks.DataFrame", Scalar]:
         if self._is_df:
             if not isinstance(key, tuple) or len(key) != 2:
                 raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
@@ -212,7 +213,7 @@ class iAtIndexer(IndexerLike):
     2
     """
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Union["ks.Series", "ks.DataFrame", Scalar]:
         if self._is_df:
             if not isinstance(key, tuple) or len(key) != 2:
                 raise TypeError(
@@ -387,7 +388,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
         """ Select columns by other type key. """
         pass
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Union["ks.Series", "ks.DataFrame"]:
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series, first_series
 
@@ -438,10 +439,12 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
         if remaining_index is not None:
             index_scols = self._internal.index_spark_columns[-remaining_index:]
-            index_map = OrderedDict(list(self._internal.index_map.items())[-remaining_index:])
+            index_spark_column_names = self._internal.index_spark_column_names[-remaining_index:]
+            index_names = self._internal.index_names[-remaining_index:]
         else:
             index_scols = self._internal.index_spark_columns
-            index_map = self._internal.index_map
+            index_spark_column_names = self._internal.index_spark_column_names
+            index_names = self._internal.index_names
 
         if len(column_labels) > 0:
             column_labels = column_labels.copy()
@@ -487,7 +490,8 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=index_map,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,

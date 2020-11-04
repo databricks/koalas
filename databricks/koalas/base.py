@@ -18,7 +18,6 @@
 Base and utility classes for Koalas objects.
 """
 from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 import datetime
 from functools import wraps, partial
 from typing import Any, Callable, Tuple, Union
@@ -1335,7 +1334,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict({index_name: None}),
+            index_spark_column_names=[index_name],
             column_labels=self._internal.column_labels,
             data_spark_columns=[scol_for(sdf, "count")],
             column_label_names=self._internal.column_label_names,

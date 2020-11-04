@@ -14,15 +14,16 @@
 # limitations under the License.
 #
 from distutils.version import LooseVersion
+import os
 
 import pandas as pd
 import pyspark
 
 from databricks import koalas as ks
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils, TestUtils
 
 
-class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
+class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
     def test_frame_apply_negative(self):
         with self.assertRaisesRegex(
             ValueError, "The output of the function.* pyspark.sql.DataFrame.*int"
@@ -127,3 +128,16 @@ class SparkFrameMethodsTest(ReusedSQLTestCase, SQLTestUtils):
         new_kdf = kdf.spark.coalesce(num_partitions)
         self.assertEqual(new_kdf.to_spark().rdd.getNumPartitions(), num_partitions)
         self.assert_eq(kdf.sort_index(), new_kdf.sort_index())
+
+    def test_checkpoint(self):
+        with self.temp_dir() as tmp:
+            self.spark.sparkContext.setCheckpointDir(tmp)
+            kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+            new_kdf = kdf.spark.checkpoint()
+            self.assertIsNotNone(os.listdir(tmp))
+            self.assert_eq(kdf, new_kdf)
+
+    def test_local_checkpoint(self):
+        kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        new_kdf = kdf.spark.local_checkpoint()
+        self.assert_eq(kdf, new_kdf)

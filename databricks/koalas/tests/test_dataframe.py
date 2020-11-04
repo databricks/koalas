@@ -2923,9 +2923,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_reindex(self):
         index = pd.Index(["A", "B", "C", "D", "E"])
-
-        pdf = pd.DataFrame({"numbers": [1.0, 2.0, 3.0, 4.0, None]}, index=index)
+        columns = pd.Index(["numbers"])
+        pdf = pd.DataFrame([1.0, 2.0, 3.0, 4.0, None], index=index, columns=columns)
         kdf = ks.from_pandas(pdf)
+
+        columns2 = pd.Index(["numbers", "2", "3"], name="cols2")
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
+        )
+
+        columns = pd.Index(["numbers"], name="cols")
+        pdf.columns = columns
+        kdf.columns = columns
 
         self.assert_eq(
             pdf.reindex(["A", "B", "C"], columns=["numbers", "2", "3"]).sort_index(),
@@ -2960,6 +2969,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             pdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
             kdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
+        )
+
+        columns2 = pd.Index(["numbers", "2", "3"])
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
+        )
+
+        columns2 = pd.Index(["numbers", "2", "3"], name="cols2")
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
         )
 
         # Reindexing single Index on single Index
@@ -3024,7 +3043,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
             )
 
-        columns = pd.MultiIndex.from_tuples([("X", "numbers")])
+        columns = pd.MultiIndex.from_tuples([("X", "numbers")], names=["cols1", "cols2"])
         pdf.columns = columns
         kdf.columns = columns
 
@@ -3057,6 +3076,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                     columns=[("X", "numbers"), ("Y", "2"), ("Y", "3")], fill_value=fill_value
                 ).sort_index(),
             )
+
+        columns2 = pd.MultiIndex.from_tuples(
+            [("X", "numbers"), ("Y", "2"), ("Y", "3")], names=["cols3", "cols4"]
+        )
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
+        )
 
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["X"]))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[("X",)]))

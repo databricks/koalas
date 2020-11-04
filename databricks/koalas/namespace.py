@@ -376,17 +376,20 @@ def read_csv(
         for col in index_col:
             if col not in column_labels:
                 raise KeyError(col)
-        index_map = OrderedDict((column_labels[col], (col,)) for col in index_col)
+        index_spark_column_names = [column_labels[col] for col in index_col]
+        index_names = [(col,) for col in index_col]
         column_labels = OrderedDict(
             (label, col) for label, col in column_labels.items() if label not in index_col
         )
     else:
-        index_map = None
+        index_spark_column_names = None
+        index_names = None
 
     kdf = DataFrame(
         InternalFrame(
             spark_frame=sdf,
-            index_map=index_map,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
             column_labels=[
                 label if is_name_like_tuple(label) else (label,) for label in column_labels
             ],
@@ -578,9 +581,15 @@ def read_table(name: str, index_col: Optional[Union[str, List[str]]] = None) -> 
     0       0
     """
     sdf = default_session().read.table(name)
-    index_map = _get_index_map(sdf, index_col)
+    index_spark_column_names, index_names = _get_index_map(sdf, index_col)
 
-    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(
+        InternalFrame(
+            spark_frame=sdf,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+        )
+    )
 
 
 def read_spark_io(
@@ -658,9 +667,15 @@ def read_spark_io(
         options = options.get("options")  # type: ignore
 
     sdf = default_session().read.load(path=path, format=format, schema=schema, **options)
-    index_map = _get_index_map(sdf, index_col)
+    index_spark_column_names, index_names = _get_index_map(sdf, index_col)
 
-    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+    return DataFrame(
+        InternalFrame(
+            spark_frame=sdf,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+        )
+    )
 
 
 def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **options) -> DataFrame:
@@ -758,8 +773,14 @@ def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **op
             kdf = kdf[new_columns]
         else:
             sdf = default_session().createDataFrame([], schema=StructType())
-            index_map = _get_index_map(sdf, index_col)
-            kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+            index_spark_column_names, index_names = _get_index_map(sdf, index_col)
+            kdf = DataFrame(
+                InternalFrame(
+                    spark_frame=sdf,
+                    index_spark_column_names=index_spark_column_names,
+                    index_names=index_names,
+                )
+            )
 
     if index_names is not None:
         kdf.index.names = index_names
@@ -1298,8 +1319,14 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
         reader.schema(schema)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
-    index_map = _get_index_map(sdf, index_col)
-    kdf = DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+    index_spark_column_names, index_names = _get_index_map(sdf, index_col)
+    kdf = DataFrame(
+        InternalFrame(
+            spark_frame=sdf,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+        )
+    )
     if columns is not None:
         if isinstance(columns, str):
             columns = [columns]
@@ -1352,8 +1379,14 @@ def read_sql_query(sql, con, index_col=None, **options):
     reader.option("url", con)
     reader.options(**options)
     sdf = reader.format("jdbc").load()
-    index_map = _get_index_map(sdf, index_col)
-    return DataFrame(InternalFrame(spark_frame=sdf, index_map=index_map))
+    index_spark_column_names, index_names = _get_index_map(sdf, index_col)
+    return DataFrame(
+        InternalFrame(
+            spark_frame=sdf,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+        )
+    )
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
@@ -2117,12 +2150,18 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
         ]
     concatenated = reduce(lambda x, y: x.union(y), sdfs)
 
-    index_map = None if ignore_index else kdfs[0]._internal.index_map
+    if ignore_index:
+        index_spark_column_names = None
+        index_names = None
+    else:
+        index_spark_column_names = kdfs[0]._internal.index_spark_column_names
+        index_names = kdfs[0]._internal.index_names
 
     result_kdf = DataFrame(
         kdfs[0]._internal.copy(
             spark_frame=concatenated,
-            index_map=index_map,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
             data_spark_columns=[
                 scol_for(concatenated, col) for col in kdfs[0]._internal.data_spark_column_names
             ],
@@ -2547,7 +2586,9 @@ def broadcast(obj):
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
 
 
-def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None):
+def _get_index_map(
+    sdf: spark.DataFrame, index_col: Optional[Union[str, List[str]]] = None
+) -> Tuple[Optional[List[str]], Optional[List[Tuple]]]:
     if index_col is not None:
         if isinstance(index_col, str):
             index_col = [index_col]
@@ -2555,11 +2596,13 @@ def _get_index_map(sdf: spark.DataFrame, index_col: Optional[Union[str, List[str
         for col in index_col:
             if col not in sdf_columns:
                 raise KeyError(col)
-        index_map = OrderedDict((col, (col,)) for col in index_col)
+        index_spark_column_names = index_col  # type: Optional[List[str]]
+        index_names = [(col,) for col in index_col]  # type: Optional[List[Tuple]]
     else:
-        index_map = None  # type: ignore
+        index_spark_column_names = None
+        index_names = None
 
-    return index_map
+    return index_spark_column_names, index_names
 
 
 _get_dummies_default_accept_types = (DecimalType, StringType, DateType)
