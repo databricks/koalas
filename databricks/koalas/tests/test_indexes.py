@@ -1045,8 +1045,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             with self.subTest(data=data):
                 pmidx = pd.MultiIndex.from_tuples(data)
                 kmidx = ks.from_pandas(pmidx)
-                self.assert_eq(kmidx.is_monotonic_increasing, False)
-                self.assert_eq(kmidx.is_monotonic_decreasing, False)
+                if LooseVersion(pd.__version__) < LooseVersion("1.1.4"):
+                    self.assert_eq(kmidx.is_monotonic_increasing, False)
+                    self.assert_eq(kmidx.is_monotonic_decreasing, False)
+                else:
+                    self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                    self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
     def test_difference(self):
         # Index
