@@ -8004,6 +8004,81 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
+    def reindex_like(self, other: "DataFrame", copy: bool = True) -> "DataFrame":
+        """
+        Return a DataFrame with matching indices as other object.
+
+        Conform the object to the same index on all axes. Places NA/NaN in locations
+        having no value in the previous index. A new object is produced unless the
+        new index is equivalent to the current one and copy=False.
+
+        Parameters
+        ----------
+        other : DataFrame
+            Its row and column indices are used to define the new indices
+            of this object.
+        copy : bool, default True
+            Return a new object, even if the passed indexes are the same.
+
+        Returns
+        -------
+        DataFrame
+            DataFrame with changed indices on each axis.
+
+        See Also
+        --------
+        DataFrame.set_index : Set row labels.
+        DataFrame.reset_index : Remove row labels or move them to new columns.
+        DataFrame.reindex : Change to new indices or expand indices.
+
+        Notes
+        -----
+        Same as calling
+        ``.reindex(index=other.index, columns=other.columns,...)``.
+
+        Examples
+        --------
+
+        >>> df1 = ks.DataFrame([[24.3, 75.7, 'high'],
+        ...                     [31, 87.8, 'high'],
+        ...                     [22, 71.6, 'medium'],
+        ...                     [35, 95, 'medium']],
+        ...                    columns=['temp_celsius', 'temp_fahrenheit',
+        ...                             'windspeed'],
+        ...                    index=pd.date_range(start='2014-02-12',
+        ...                                        end='2014-02-15', freq='D'))
+        >>> df1
+                    temp_celsius  temp_fahrenheit windspeed
+        2014-02-12          24.3             75.7      high
+        2014-02-13          31.0             87.8      high
+        2014-02-14          22.0             71.6    medium
+        2014-02-15          35.0             95.0    medium
+
+        >>> df2 = ks.DataFrame([[28, 'low'],
+        ...                     [30, 'low'],
+        ...                     [35.1, 'medium']],
+        ...                    columns=['temp_celsius', 'windspeed'],
+        ...                    index=pd.DatetimeIndex(['2014-02-12', '2014-02-13',
+        ...                                            '2014-02-15']))
+        >>> df2
+                    temp_celsius windspeed
+        2014-02-12          28.0       low
+        2014-02-13          30.0       low
+        2014-02-15          35.1    medium
+
+        >>> df2.reindex_like(df1).sort_index() # doctest: +NORMALIZE_WHITESPACE
+                    temp_celsius  temp_fahrenheit windspeed
+        2014-02-12          28.0              NaN       low
+        2014-02-13          30.0              NaN       low
+        2014-02-14           NaN              NaN       None
+        2014-02-15          35.1              NaN    medium
+        """
+
+        if isinstance(other, DataFrame):
+            return self.reindex(index=other.index, columns=other.columns, copy=copy)
+        else:
+            raise TypeError("other must be a Koalas DataFrame")
+
     def melt(self, id_vars=None, value_vars=None, var_name=None, value_name="value") -> "DataFrame":
         """
         Unpivot a DataFrame from wide format to long format, optionally

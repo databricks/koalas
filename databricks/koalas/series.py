@@ -1747,6 +1747,71 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             self.name
         )
 
+    def reindex_like(self, other: Union["Series", "DataFrame"]) -> "Series":
+        """
+        Return a Series with matching indices as other object.
+
+        Conform the object to the same index on all axes. Places NA/NaN in locations
+        having no value in the previous index.
+
+        Parameters
+        ----------
+        other : Series or DataFrame
+            Its row and column indices are used to define the new indices
+            of this object.
+
+        Returns
+        -------
+        Series
+            Series with changed indices on each axis.
+
+        See Also
+        --------
+        DataFrame.set_index : Set row labels.
+        DataFrame.reset_index : Remove row labels or move them to new columns.
+        DataFrame.reindex : Change to new indices or expand indices.
+
+        Notes
+        -----
+        Same as calling
+        ``.reindex(index=other.index, ...)``.
+
+        Examples
+        --------
+
+        >>> s1 = ks.Series([24.3, 31.0, 22.0, 35.0],
+        ...                index=pd.date_range(start='2014-02-12',
+        ...                                    end='2014-02-15', freq='D'),
+        ...                name="temp_celsius")
+        >>> s1
+        2014-02-12    24.3
+        2014-02-13    31.0
+        2014-02-14    22.0
+        2014-02-15    35.0
+        Name: temp_celsius, dtype: float64
+
+        >>> s2 = ks.Series(["low", "low", "medium"],
+        ...                index=pd.DatetimeIndex(['2014-02-12', '2014-02-13',
+        ...                                        '2014-02-15']),
+        ...                name="winspeed")
+        >>> s2
+        2014-02-12       low
+        2014-02-13       low
+        2014-02-15    medium
+        Name: winspeed, dtype: object
+
+        >>> s2.reindex_like(s1).sort_index()
+        2014-02-12       low
+        2014-02-13       low
+        2014-02-14      None
+        2014-02-15    medium
+        Name: winspeed, dtype: object
+        """
+        if isinstance(other, (Series, DataFrame)):
+            return self.reindex(index=other.index)
+        else:
+            raise TypeError("other must be a Koalas Series or DataFrame")
+
     def fillna(
         self, value=None, method=None, axis=None, inplace=False, limit=None
     ) -> Optional["Series"]:

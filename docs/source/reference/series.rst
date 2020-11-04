@@ -172,6 +172,7 @@ Reindexing / Selection / Label manipulation
    Series.rename
    Series.rename_axis
    Series.reindex
+   Series.reindex_like
    Series.reset_index
    Series.sample
    Series.take
