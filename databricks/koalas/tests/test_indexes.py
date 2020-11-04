@@ -977,46 +977,33 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([(False, True), (True, True)])
         datas.append([(False, True), (True, False)])
         datas.append([(False, False), (True, True)])
-        datas.append([(True, None), (True, True)])
-        datas.append([(None, True), (True, True)])
-        datas.append([(False, None), (True, True)])
-        datas.append([(None, False), (True, True)])
-        datas.append([(True, True), (None, True)])
-        datas.append([(True, True), (True, None)])
-        datas.append([(False, False), (True, None)])
-        datas.append([(False, False), (None, True)])
-
-        # None type tests (None type is treated as False from pandas >= 1.1.4)
-        # Refer https://github.com/pandas-dev/pandas/issues/37220
-        datas.append([(1, 100), (2, 200), (None, 300), (4, 400), (5, 500)])
-        datas.append([(1, 100), (2, 200), (3, None), (4, 400), (5, 500)])
-        datas.append([(1, None), (2, 200), (3, 300), (4, 400), (5, 500)])
-        datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (5, None)])
-        datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
-        datas.append([(5, None), (4, 200), (3, 300), (2, 400), (1, 500)])
-        datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
-        datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, None)])
-        datas.append([(1, 100), (2, 200), (None, None), (4, 400), (5, 500)])
-        # The datas below cannot be an arguments for `MultiIndex.from_tuples` in pandas >= 1.1.0.
-        # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560 for detail.
-        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
-            datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
-            datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
-            datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
 
         # duplicated index value tests
         datas.append([("x", "d"), ("y", "c"), ("y", "b"), ("z", "a")])
         datas.append([("x", "d"), ("y", "b"), ("y", "c"), ("z", "a")])
-        datas.append([("x", "d"), ("y", "c"), ("y", None), ("z", "a")])
-        datas.append([("x", "d"), ("y", None), ("y", None), ("z", "a")])
-        datas.append([("x", "d"), ("y", "c"), ("y", "b"), (None, "a")])
-        datas.append([("x", "d"), ("y", "b"), ("y", "c"), (None, "a")])
 
         # more depth tests
         datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", "q"), ("z", "a", "r")])
         datas.append([("x", "d", "o"), ("y", "c", "q"), ("y", "c", "p"), ("z", "a", "r")])
+
+        # None type tests (None type is treated as False from pandas >= 1.1.4)
+        # Refer https://github.com/pandas-dev/pandas/issues/37220
+        datas.append([(1, 100), (2, 200), (None, 300), (4, 400), (5, 500)])
+        datas.append([(1, 100), (2, 200), (None, None), (4, 400), (5, 500)])
+        datas.append([("x", "d"), ("y", "c"), ("y", None), ("z", "a")])
+        datas.append([("x", "d"), ("y", "c"), ("y", "b"), (None, "a")])
+        datas.append([("x", "d"), ("y", "b"), ("y", "c"), (None, "a")])
         datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", None), ("z", "a", "r")])
-        datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", None), ("z", "a", "r")])
+        datas.append([(None, 100), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([(None, None), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([("x", "d"), ("y", None), ("y", "c"), ("z", "a")])
+        datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
+
+        # The datas below cannot be an arguments for `MultiIndex.from_tuples` in pandas >= 1.1.0.
+        # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560 for detail.
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
+            datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
 
         for data in datas:
             with self.subTest(data=data):
@@ -1025,15 +1012,26 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
                 self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
-        # The datas below are showing different result depends on pandas version.
-        # Because the behavior of handling null values is changed in pandas >= 1.0.0.
+        # datas below return different result depends on pandas version for monotonic_increasing.
+        # Because the behavior of handling null values is changed in pandas >= 1.1.0.
         datas = []
-        datas.append([(None, 100), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([(1, 100), (2, 200), (3, None), (4, 400), (5, 500)])
+        datas.append([(1, None), (2, 200), (3, 300), (4, 400), (5, 500)])
+        datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (5, None)])
+
+        datas.append([(False, None), (True, True)])
+        datas.append([(None, False), (True, True)])
+        datas.append([(False, False), (True, None)])
+        datas.append([(False, False), (None, True)])
+        datas.append([("x", "d"), ("y", None), ("y", None), ("z", "a")])
+        datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", None), ("z", "a", "r")])
         datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (None, 500)])
-        datas.append([(None, None), (2, 200), (3, 300), (4, 400), (5, 500)])
         datas.append([(1, 100), (2, 200), (3, 300), (4, 400), (None, None)])
-        datas.append([("x", "d"), ("y", None), ("y", "c"), ("z", "a")])
-        datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
+
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            # datas below cannot be an arguments for `MultiIndex.from_tuples` in pandas >= 1.1.0.
+            # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560.
+            datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
 
         for data in datas:
             with self.subTest(data=data):
@@ -1044,6 +1042,45 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                     expected_increasing_result = not expected_increasing_result
                 self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
                 self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+
+        # datas below return different result depends on pandas version for monotonic_decreasing.
+        # Because the behavior of handling null values is changed in pandas >= 1.1.0.
+        datas = []
+        datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
+        datas.append([(5, None), (4, 200), (3, 300), (2, 400), (1, 500)])
+        datas.append([(5, 100), (4, 200), (3, None), (2, 400), (1, 500)])
+        datas.append([(5, 100), (4, 200), (3, 300), (2, 400), (1, None)])
+
+        for data in datas:
+            with self.subTest(data=data):
+                pmidx = pd.MultiIndex.from_tuples(data)
+                kmidx = ks.from_pandas(pmidx)
+                expected_decreasing_result = pmidx.is_monotonic_decreasing
+                if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+                    expected_decreasing_result = not expected_decreasing_result
+                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                self.assert_eq(kmidx.is_monotonic_decreasing, expected_decreasing_result)
+
+        # datas below return different result depends on pandas version for both
+        # monotonic_increasing and monotonic_decreasing.
+        # Because the behavior of handling null values is changed in pandas >= 1.1.0.
+        datas = []
+        datas.append([(True, None), (True, True)])
+        datas.append([(None, True), (True, True)])
+        datas.append([(True, True), (None, True)])
+        datas.append([(True, True), (True, None)])
+
+        for data in datas:
+            with self.subTest(data=data):
+                pmidx = pd.MultiIndex.from_tuples(data)
+                kmidx = ks.from_pandas(pmidx)
+                expected_increasing_result = pmidx.is_monotonic_increasing
+                expected_decreasing_result = pmidx.is_monotonic_decreasing
+                if LooseVersion(pd.__version__) < LooseVersion("1.0.0"):
+                    expected_increasing_result = not expected_increasing_result
+                    expected_decreasing_result = not expected_decreasing_result
+                self.assert_eq(kmidx.is_monotonic_increasing, expected_increasing_result)
+                self.assert_eq(kmidx.is_monotonic_decreasing, expected_decreasing_result)
 
     def test_difference(self):
         # Index
