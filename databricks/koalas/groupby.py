@@ -98,7 +98,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to pandas' for now.
-    def aggregate(self, func_or_funcs=None, *args, **kwargs):
+    def aggregate(self, func_or_funcs=None, *args, **kwargs) -> DataFrame:
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -303,7 +303,7 @@ class GroupBy(object, metaclass=ABCMeta):
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
 
-    def count(self):
+    def count(self) -> DataFrame:
         """
         Compute count of group, excluding missing values.
 
@@ -326,7 +326,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.count, only_numeric=False)
 
     # TODO: We should fix See Also when Series implementation is finished.
-    def first(self):
+    def first(self) -> Union[DataFrame, Series]:
         """
         Compute first of group values.
 
@@ -337,7 +337,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._reduce_for_stat_function(F.first, only_numeric=False)
 
-    def last(self):
+    def last(self) -> Union[DataFrame, Series]:
         """
         Compute last of group values.
 
@@ -350,7 +350,7 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda col: F.last(col, ignorenulls=True), only_numeric=False
         )
 
-    def max(self):
+    def max(self) -> Union[DataFrame, Series]:
         """
         Compute max of group values.
 
@@ -362,7 +362,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.max, only_numeric=False)
 
     # TODO: examples should be updated.
-    def mean(self):
+    def mean(self) -> Union[DataFrame, Series]:
         """
         Compute mean of groups, excluding missing values.
 
@@ -393,7 +393,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return self._reduce_for_stat_function(F.mean, only_numeric=True)
 
-    def min(self):
+    def min(self) -> Union[DataFrame, Series]:
         """
         Compute min of group values.
 
@@ -405,7 +405,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.min, only_numeric=False)
 
     # TODO: sync the doc and implement `ddof`.
-    def std(self):
+    def std(self) -> Union[DataFrame, Series]:
         """
         Compute standard deviation of groups, excluding missing values.
 
@@ -417,7 +417,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return self._reduce_for_stat_function(F.stddev, only_numeric=True)
 
-    def sum(self):
+    def sum(self) -> Union[DataFrame, Series]:
         """
         Compute sum of group values
 
@@ -429,7 +429,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.sum, only_numeric=True)
 
     # TODO: sync the doc and implement `ddof`.
-    def var(self):
+    def var(self) -> Union[DataFrame, Series]:
         """
         Compute variance of groups, excluding missing values.
 
@@ -441,7 +441,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.variance, only_numeric=True)
 
     # TODO: skipna should be implemented.
-    def all(self):
+    def all(self) -> Union[DataFrame, Series]:
         """
         Returns True if all values in the group are truthful, else False.
 
@@ -483,7 +483,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
     # TODO: skipna should be implemented.
-    def any(self):
+    def any(self) -> Union[DataFrame, Series]:
         """
         Returns True if any value in the group is truthful, else False.
 
@@ -525,7 +525,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
     # TODO: groupby multiply columns should be implemented.
-    def size(self):
+    def size(self) -> Series:
         """
         Compute group sizes.
 
@@ -595,7 +595,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
         return first_series(DataFrame(internal))
 
-    def diff(self, periods=1):
+    def diff(self, periods=1) -> Union[DataFrame, Series]:
         """
         First discrete difference of element.
 
@@ -654,7 +654,7 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
         )
 
-    def cumcount(self, ascending=True):
+    def cumcount(self, ascending=True) -> Series:
         """
         Number each item in each group from 0 to the length of that group - 1.
 
@@ -714,7 +714,7 @@ class GroupBy(object, metaclass=ABCMeta):
         internal = ret._internal.resolved_copy
         return first_series(DataFrame(internal))
 
-    def cummax(self):
+    def cummax(self) -> Union[DataFrame, Series]:
         """
         Cumulative max for each group.
 
@@ -763,7 +763,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def cummin(self):
+    def cummin(self) -> Union[DataFrame, Series]:
         """
         Cumulative min for each group.
 
@@ -812,7 +812,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def cumprod(self):
+    def cumprod(self) -> Union[DataFrame, Series]:
         """
         Cumulative product for each group.
 
@@ -861,7 +861,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def cumsum(self):
+    def cumsum(self) -> Union[DataFrame, Series]:
         """
         Cumulative sum for each group.
 
@@ -910,7 +910,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def apply(self, func, *args, **kwargs):
+    def apply(self, func, *args, **kwargs) -> Union[DataFrame, Series]:
         """
         Apply function `func` group-wise and combine the results together.
 
@@ -1193,7 +1193,7 @@ class GroupBy(object, metaclass=ABCMeta):
             return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
-    def filter(self, func):
+    def filter(self, func) -> Union[DataFrame, Series]:
         """
         Return a copy of a DataFrame excluding elements from groups that
         do not satisfy the boolean criterion specified by func.
@@ -1207,7 +1207,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         Returns
         -------
-        filtered : DataFrame
+        filtered : DataFrame or Series
 
         Notes
         -----
@@ -1370,7 +1370,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return rename_output
 
-    def rank(self, method="average", ascending=True):
+    def rank(self, method="average", ascending=True) -> Union[DataFrame, Series]:
         """
         Provide the rank of values within each group.
 
@@ -1437,7 +1437,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
     # TODO: add axis parameter
-    def idxmax(self, skipna=True):
+    def idxmax(self, skipna=True) -> Union[DataFrame, Series]:
         """
         Return index of first occurrence of maximum over requested axis in group.
         NA/null values are excluded.
@@ -1515,7 +1515,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return DataFrame(internal)
 
     # TODO: add axis parameter
-    def idxmin(self, skipna=True):
+    def idxmin(self, skipna=True) -> Union[DataFrame, Series]:
         """
         Return index of first occurrence of minimum over requested axis in group.
         NA/null values are excluded.
@@ -1592,7 +1592,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
         return DataFrame(internal)
 
-    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None) -> Union[DataFrame, Series]:
         """Fill NA/NaN values in group.
 
         Parameters
@@ -1660,7 +1660,7 @@ class GroupBy(object, metaclass=ABCMeta):
             should_resolve=(method is not None),
         )
 
-    def bfill(self, limit=None):
+    def bfill(self, limit=None) -> Union[DataFrame, Series]:
         """
         Synonym for `DataFrame.fillna()` with ``method=`bfill```.
 
@@ -1711,7 +1711,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
     backfill = bfill
 
-    def ffill(self, limit=None):
+    def ffill(self, limit=None) -> Union[DataFrame, Series]:
         """
         Synonym for `DataFrame.fillna()` with ``method=`ffill```.
 
@@ -1762,7 +1762,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
     pad = ffill
 
-    def head(self, n=5):
+    def head(self, n=5) -> DataFrame:
         """
         Return first n rows of each group.
 
@@ -1835,7 +1835,7 @@ class GroupBy(object, metaclass=ABCMeta):
         internal = kdf._internal.with_new_sdf(sdf)
         return DataFrame(internal).drop(groupkey_labels, axis=1)
 
-    def shift(self, periods=1, fill_value=None):
+    def shift(self, periods=1, fill_value=None) -> Union[DataFrame, Series]:
         """
         Shift each group by periods observations.
 
@@ -1896,7 +1896,7 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols)
         )
 
-    def transform(self, func, *args, **kwargs):
+    def transform(self, func, *args, **kwargs) -> DataFrame:
         """
         Apply function column-by-column to the GroupBy object.
 
@@ -2061,7 +2061,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return DataFrame(internal)
 
-    def nunique(self, dropna=True):
+    def nunique(self, dropna=True) -> DataFrame:
         """
         Return DataFrame with number of distinct observations per group for each column.
 
@@ -2114,7 +2114,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
-    def rolling(self, window, min_periods=None):
+    def rolling(self, window, min_periods=None) -> RollingGroupby:
         """
         Return an rolling grouper, providing rolling
         functionality per group.
@@ -2141,7 +2141,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return RollingGroupby(self, window, min_periods=min_periods)
 
-    def expanding(self, min_periods=1):
+    def expanding(self, min_periods=1) -> ExpandingGroupby:
         """
         Return an expanding grouper, providing expanding
         functionality per group.
@@ -2163,7 +2163,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return ExpandingGroupby(self, min_periods=min_periods)
 
-    def get_group(self, name):
+    def get_group(self, name) -> Union[DataFrame, Series]:
         """
         Construct DataFrame from group with provided name.
 
@@ -2497,7 +2497,7 @@ class DataFrameGroupBy(GroupBy):
     # TODO: Implement 'percentiles', 'include', and 'exclude' arguments.
     # TODO: Add ``DataFrame.select_dtypes`` to See Also when 'include'
     #   and 'exclude' arguments are implemented.
-    def describe(self):
+    def describe(self) -> DataFrame:
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2646,38 +2646,38 @@ class SeriesGroupBy(GroupBy):
     def aggregate(self, *args, **kwargs):
         return MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
-    def transform(self, func, *args, **kwargs):
+    def transform(self, func, *args, **kwargs) -> Series:
         return first_series(super().transform(func, *args, **kwargs)).rename(self._kser.name)
 
     transform.__doc__ = GroupBy.transform.__doc__
 
-    def idxmin(self, skipna=True):
+    def idxmin(self, skipna=True) -> Series:
         return first_series(super().idxmin(skipna))
 
     idxmin.__doc__ = GroupBy.idxmin.__doc__
 
-    def idxmax(self, skipna=True):
+    def idxmax(self, skipna=True) -> Series:
         return first_series(super().idxmax(skipna))
 
     idxmax.__doc__ = GroupBy.idxmax.__doc__
 
-    def head(self, n=5):
+    def head(self, n=5) -> Series:
         return first_series(super().head(n)).rename(self._kser.name)
 
     head.__doc__ = GroupBy.head.__doc__
 
-    def size(self):
+    def size(self) -> Series:
         return super().size().rename(self._kser.name)
 
     size.__doc__ = GroupBy.size.__doc__
 
-    def get_group(self, name):
+    def get_group(self, name) -> Series:
         return first_series(super().get_group(name))
 
     get_group.__doc__ = GroupBy.get_group.__doc__
 
     # TODO: add keep parameter
-    def nsmallest(self, n=5):
+    def nsmallest(self, n=5) -> Series:
         """
         Return the first n rows ordered by columns in ascending order in group.
 
@@ -2750,7 +2750,7 @@ class SeriesGroupBy(GroupBy):
         return first_series(DataFrame(internal))
 
     # TODO: add keep parameter
-    def nlargest(self, n=5):
+    def nlargest(self, n=5) -> Series:
         """
         Return the first n rows ordered by columns in descending order in group.
 
@@ -2823,7 +2823,7 @@ class SeriesGroupBy(GroupBy):
         return first_series(DataFrame(internal))
 
     # TODO: add bins, normalize parameter
-    def value_counts(self, sort=None, ascending=None, dropna=True):
+    def value_counts(self, sort=None, ascending=None, dropna=True) -> Series:
         """
         Compute group sizes.
 
@@ -2886,7 +2886,7 @@ class SeriesGroupBy(GroupBy):
         )
         return first_series(DataFrame(internal))
 
-    def unique(self):
+    def unique(self) -> Series:
         """
         Return unique values in group.
 
