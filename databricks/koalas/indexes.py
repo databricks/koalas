@@ -43,7 +43,7 @@ from pandas._libs import lib
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window
-from pyspark.sql.types import BooleanType, NumericType, StringType, TimestampType, IntegralType
+from pyspark.sql.types import TimestampType, IntegralType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
@@ -54,10 +54,7 @@ from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPan
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.spark.accessors import SparkIndexMethods
 from databricks.koalas.utils import (
-    compare_allow_null,
     compare_disallow_null,
-    compare_null_first,
-    compare_null_last,
     default_session,
     is_name_like_tuple,
     is_name_like_value,
