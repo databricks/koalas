@@ -1023,7 +1023,7 @@ class GroupBy(object, metaclass=ABCMeta):
         0    6
         1    3
         2    4
-        Name: B, dtype: int32
+        Name: B, dtype: int64
 
         >>> def plus_min(x):
         ...     return x + x.min()
@@ -1040,7 +1040,7 @@ class GroupBy(object, metaclass=ABCMeta):
         >>> df.B.groupby(df.A).apply(plus_length).sort_index()
         0    1
         1    2
-        Name: B, dtype: int32
+        Name: B, dtype: int64
 
         The extra arguments to the function can be passed as below.
 
@@ -1049,7 +1049,7 @@ class GroupBy(object, metaclass=ABCMeta):
         >>> df.B.groupby(df.A).apply(calculation, 5, z=10).sort_index()
         0    51
         1    52
-        Name: B, dtype: int32
+        Name: B, dtype: int64
         """
         from pandas.core.base import SelectionMixin
 
@@ -1989,7 +1989,7 @@ class GroupBy(object, metaclass=ABCMeta):
         0    3
         1    4
         2    6
-        Name: B, dtype: int32
+        Name: B, dtype: int64
 
         >>> (df * -1).B.groupby(df.A).transform(abs)
         0    1

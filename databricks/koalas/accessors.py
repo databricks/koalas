@@ -489,7 +489,7 @@ class KoalasFrameMethods(object):
         0    3
         1    5
         2    7
-        dtype: int32
+        dtype: int64
 
         You can also omit the type hints so Koalas infers the return schema as below:
 
