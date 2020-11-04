@@ -7988,7 +7988,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
-    def reindex_like(self: "DataFrame", other: "DataFrame", copy: bool = True) -> "DataFrame":
+    def reindex_like(self, other: "DataFrame", copy: bool = True) -> "DataFrame":
         """
         Return a DataFrame with matching indices as other object.
 

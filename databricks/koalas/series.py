@@ -1748,12 +1748,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             self.name
         )
 
-    def reindex_like(self: "Series", other: Union["Series", "DataFrame"]) -> "Series":
+    def reindex_like(self, other: Union["Series", "DataFrame"]) -> "Series":
         """
         Return a Series with matching indices as other object.
 
         Conform the object to the same index on all axes. Places NA/NaN in locations
-         having no value in the previous index.
+        having no value in the previous index.
 
         Parameters
         ----------
