@@ -780,6 +780,11 @@ class InternalFrame(object):
         """ Return the managed index names. """
         return self._index_names
 
+    @lazy_property
+    def index_level(self) -> int:
+        """ Return the level of the index. """
+        return len(self._index_names)
+
     @property
     def column_labels(self) -> List[Tuple]:
         """ Return the managed column index. """
