@@ -209,6 +209,7 @@ Reshaping, sorting, transposing
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
+   DataFrame.reindex_like
    DataFrame.rank
 
 Combining / joining / merging
