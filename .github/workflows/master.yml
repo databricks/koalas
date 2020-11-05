@@ -52,7 +52,6 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        sudo apt-get update
         sudo apt-get install xclip
         # It fails due to missing 'bdist_wheel' for some reasons. Explicitly installs it.
         # See also https://github.com/palantir/python-language-server/issues/524#issuecomment-477068693.
