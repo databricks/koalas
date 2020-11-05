@@ -52,7 +52,7 @@ from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, va
 from databricks.koalas.frame import DataFrame
 
 
-def booleanize_null(left_scol, scol, f):
+def booleanize_null(left_scol, scol, f) -> Column:
     """
     Booleanize Null in Spark Column
     """
