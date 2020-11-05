@@ -8644,6 +8644,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
 
+        Returns
+        -------
+        Series
+
         Examples
         --------
         Create a dataframe from a dictionary.
@@ -8667,10 +8671,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         col5     True
         col6    False
         dtype: bool
-
-        Returns
-        -------
-        Series
         """
         from databricks.koalas.series import first_series
 
@@ -8731,6 +8731,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
 
+        Returns
+        -------
+        Series
+
         Examples
         --------
         Create a dataframe from a dictionary.
@@ -8754,10 +8758,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         col5    False
         col6     True
         dtype: bool
-
-        Returns
-        -------
-        Series
         """
         from databricks.koalas.series import first_series
 
