@@ -53,6 +53,7 @@ if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
 else:
     from pandas.core.dtypes.common import _get_dtype_from_object as infer_dtype_from_object
 from pandas.core.accessor import CachedAccessor
+import pandas.core.common as com
 from pandas.core.dtypes.inference import is_sequence
 import pyspark
 from pyspark import StorageLevel
@@ -7194,7 +7195,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         n: Optional[int] = None,
         frac: Optional[float] = None,
         replace: bool = False,
+        weights: Optional[Any] = None,
         random_state: Optional[int] = None,
+        axis: Optional[Any] = None,
     ) -> "DataFrame":
         """
         Return a random sample of items from an axis of object.
@@ -7215,13 +7218,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Fraction of axis items to return.
         replace : bool, default False
             Sample with or without replacement.
+        weights : str or ndarray-like, optional
+            Default 'None' results in equal probability weighting.
+            If passed a Series, will align with target object on index. Index
+            values in weights not found in sampled object will be ignored and
+            index values in sampled object not in weights will be assigned
+            weights of zero.
+            If called on a DataFrame, will accept the name of a column
+            when axis = 0.
+            Unless weights are a Series, weights must be same length as axis
+            being sampled.
+            If weights do not sum to 1, they will be normalized to sum to 1.
+            Missing values in the weights column will be treated as zero.
+            Infinite values not allowed.
         random_state : int, optional
             Seed for the random number generator (if int).
+        axis : {0 or ‘index’, 1 or ‘columns’, None}, default None
+            Axis to sample. Accepts axis number or name. Default is stat axis
+            for given data type (0 for Series and DataFrames).
 
         Returns
         -------
         Series or DataFrame
             A new object of same type as caller containing the sampled items.
+
+        Notes
+        -----
+        If `frac` > 1, `replacement` should be set to `True`.
 
         Examples
         --------
@@ -7237,46 +7260,119 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spider         8          0                  1
         fish           0          0                  8
 
-        A random 25% sample of the ``DataFrame``.
+        Extract 3 random elements from the ``Series`` ``df['num_legs']``:
         Note that we use `random_state` to ensure the reproducibility of
         the examples.
 
-        >>> df.sample(frac=0.25, random_state=1)  # doctest: +SKIP
-                num_legs  num_wings  num_specimen_seen
-        falcon         2          2                 10
-        fish           0          0                  8
-
-        Extract 25% random elements from the ``Series`` ``df['num_legs']``, with replacement,
-        so the same items could appear more than once.
-
-        >>> df['num_legs'].sample(frac=0.4, replace=True, random_state=1)  # doctest: +SKIP
+        >>> df['num_legs'].sample(n=3, random_state=1).sort_index()
         falcon    2
-        spider    8
+        fish      0
         spider    8
         Name: num_legs, dtype: int64
 
-        Specifying the exact number of items to return is not supported at the moment.
+        A random 50% sample of the ``DataFrame`` with replacement:
 
-        >>> df.sample(n=5)  # doctest: +ELLIPSIS
-        Traceback (most recent call last):
-            ...
-        NotImplementedError: Function sample currently does not support specifying ...
+        >>> df.sample(frac=0.5, replace=True, random_state=1).sort_index()
+              num_legs  num_wings  num_specimen_seen
+        dog          4          0                  2
+        fish         0          0                  8
         """
-        # Note: we don't run any of the doctests because the result can change depending on the
-        # system's core count.
-        if n is not None:
-            raise NotImplementedError(
-                "Function sample currently does not support specifying "
-                "exact number of items to return. Use frac instead."
+        if axis in ("index", "rows", 0, None):
+            axis = 0
+        elif axis in ("columns", 1):
+            raise NotImplementedError("Function sample currently does not support axis=1.")
+        else:
+            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
+
+        axis_length = self.shape[axis]
+
+        # Process random_state argument
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            rs = com.random_state(random_state)
+        else:
+            rs = com._random_state(random_state)
+
+        # Check weights for compliance
+        if weights is not None:
+
+            # If a series, align with frame
+            if isinstance(weights, ks.Series):
+                weights = weights.reindex(self.axes[axis])
+
+            # Strings acceptable if a dataframe and axis = 0
+            if isinstance(weights, str):
+                if isinstance(self, ks.DataFrame):
+                    if axis == 0:
+                        try:
+                            weights = self[weights]
+                        except KeyError as err:
+                            raise KeyError("String passed to weights not a valid column") from err
+                    else:
+                        raise ValueError(
+                            "Strings can only be passed to "
+                            "weights when sampling from rows on "
+                            "a DataFrame"
+                        )
+                else:
+                    raise ValueError(
+                        "Strings cannot be passed as weights " "when sampling from a Series."
+                    )
+
+            # Because ks.Series currently does not support the Series.__iter__ method,
+            # It cannot be initialized to the pandas Series, so here is to_pandas.
+            if isinstance(weights, ks.Series):
+                weights = pd.Series(weights.to_pandas(), dtype="float64")
+            else:
+                weights = pd.Series(weights, dtype="float64")
+
+            if len(weights) != axis_length:
+                raise ValueError("Weights and axis to be sampled must be of same length")
+
+            if (weights == np.inf).any() or (weights == -np.inf).any():
+                raise ValueError("weight vector may not include `inf` values")
+
+            if (weights < 0).any():
+                raise ValueError("weight vector many not include negative values")
+
+            # If has nan, set to zero.
+            weights = weights.fillna(0)
+
+            # Renormalize if don't sum to 1
+            if weights.sum() != 1:
+                if weights.sum() != 0:
+                    weights = weights / weights.sum()
+                else:
+                    raise ValueError("Invalid weights: weights sum to zero")
+
+            weights = weights._values
+
+        # If no frac or n, default to n=1.
+        if n is None and frac is None:
+            n = 1
+        elif frac is not None and frac > 1 and not replace:
+            raise ValueError(
+                "Replace has to be set to `True` when " "upsampling the population `frac` > 1."
             )
+        elif n is not None and frac is None and n % 1 != 0:
+            raise ValueError("Only integers accepted as `n` values")
+        elif n is None and frac is not None:
+            n = int(round(frac * axis_length))
+        elif n is not None and frac is not None:
+            raise ValueError("Please enter a value for `frac` OR `n`, not both")
 
-        if frac is None:
-            raise ValueError("frac must be specified.")
+        # Check for negative sizes
+        if n < 0:
+            raise ValueError("A negative number of rows requested. Please provide positive value.")
 
-        sdf = self._internal.resolved_copy.spark_frame.sample(
-            withReplacement=replace, fraction=frac, seed=random_state
-        )
-        return DataFrame(self._internal.with_new_sdf(sdf))
+        # Because duplicated row selection is not currently supported.
+        # So if frac > 1, use the pyspark implementation.
+        if frac is not None and frac > 1:
+            sdf = self._internal.resolved_copy.spark_frame.sample(
+                withReplacement=replace, fraction=float(frac), seed=random_state
+            )
+            return DataFrame(self._internal.with_new_sdf(sdf))
+        locs = rs.choice(axis_length, size=n, replace=replace, p=weights)
+        return self.take(locs, axis=axis)
 
     def astype(self, dtype) -> "DataFrame":
         """
