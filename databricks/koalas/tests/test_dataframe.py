@@ -2046,6 +2046,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.sample(n=1, weights="easyweights"), pdf.sample(n=1, weights="easyweights"),
         )
 
+        # Weights for invalid key
+        with self.assertRaises(KeyError):
+            kdf.sample(1, weights="col3")
+
         # Test that function aligns weights with frame
         pdf = pd.DataFrame({"col1": [5, 6, 7], "col2": ["a", "b", "c"]}, index=[9, 5, 3])
         pser = pd.Series([1, 0, 0], index=[3, 5, 9])
@@ -2137,27 +2141,27 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Check won't accept negative weights
         with self.assertRaises(ValueError):
-            bad_weights = [-0.1] * 10
+            bad_weights = [-0.1] * 3
             kdf.sample(n=3, weights=bad_weights)
 
         # Check inf and -inf throw errors:
         with self.assertRaises(ValueError):
-            weights_with_inf = [0.1] * 10
+            weights_with_inf = [0.1] * 3
             weights_with_inf[0] = np.inf
             kdf.sample(n=3, weights=weights_with_inf)
 
         with self.assertRaises(ValueError):
-            weights_with_ninf = [0.1] * 10
+            weights_with_ninf = [0.1] * 3
             weights_with_ninf[0] = -np.inf
             kdf.sample(n=3, weights=weights_with_ninf)
 
         # All zeros raises errors
-        zero_weights = [0] * 10
+        zero_weights = [0] * 3
         with self.assertRaises(ValueError):
             kdf.sample(n=3, weights=zero_weights)
 
         # All missing weights
-        nan_weights = [np.nan] * 10
+        nan_weights = [np.nan] * 3
         with self.assertRaises(ValueError):
             kdf.sample(n=3, weights=nan_weights)
 

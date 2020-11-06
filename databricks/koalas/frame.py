@@ -7307,16 +7307,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                             weights = self[weights]
                         except KeyError as err:
                             raise KeyError("String passed to weights not a valid column") from err
-                    else:
-                        raise ValueError(
-                            "Strings can only be passed to "
-                            "weights when sampling from rows on "
-                            "a DataFrame"
-                        )
-                else:
-                    raise ValueError(
-                        "Strings cannot be passed as weights " "when sampling from a Series."
-                    )
 
             # Because ks.Series currently does not support the Series.__iter__ method,
             # It cannot be initialized to the pandas Series, so here is to_pandas.
