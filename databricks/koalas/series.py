@@ -5888,7 +5888,7 @@ def unpack_scalar(sdf):
     return l2[0]
 
 
-def first_series(df) -> "Series":
+def first_series(df) -> Union["Series", pd.Series]:
     """
     Takes a DataFrame and returns the first column of the DataFrame as a Series
     """
