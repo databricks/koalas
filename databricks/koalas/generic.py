@@ -402,7 +402,7 @@ class Frame(object, metaclass=ABCMeta):
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
-            dtypes = cast(list, self.dtypes)
+            dtypes = list(self.dtypes)
         return pd.Series(dict(Counter([d.name for d in list(dtypes)])))
 
     def pipe(self, func, *args, **kwargs):
@@ -613,7 +613,7 @@ class Frame(object, metaclass=ABCMeta):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ) -> None:
+    ) -> Optional[str]:
         r"""
         Write object to a comma-separated values (csv) file.
 
