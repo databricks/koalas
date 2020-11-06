@@ -20,7 +20,7 @@ Base and utility classes for Koalas objects.
 from abc import ABCMeta, abstractmethod
 import datetime
 from functools import wraps, partial
-from typing import Any, Callable, Tuple, Union
+from typing import Any, Callable, Tuple, Union, cast
 import warnings
 
 import numpy as np
@@ -1483,6 +1483,6 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if not is_list_like(indices) or isinstance(indices, (dict, set)):
             raise ValueError("`indices` must be a list-like except dict or set")
         if isinstance(self, ks.Series):
-            return self.iloc[indices]  # type: ignore
+            return cast(ks.Series, self.iloc[indices])
         else:
             return self._kdf.iloc[indices].index
