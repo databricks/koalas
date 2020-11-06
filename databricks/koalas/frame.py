@@ -3495,21 +3495,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol_for(sdf, column).alias(name_like_string(name)) for column, name in new_index_map
         ]
 
-        if len(index_map) > 0:  # type: ignore
-            index_scols = [scol_for(sdf, column) for column in index_map]
-            sdf = sdf.select(
-                index_scols
-                + new_data_scols
-                + self._internal.data_spark_columns
-                + list(HIDDEN_COLUMNS)
-            )
-        else:
-            sdf = sdf.select(
-                new_data_scols + self._internal.data_spark_columns + list(HIDDEN_COLUMNS)
-            )
-
-            sdf = InternalFrame.attach_default_index(sdf)
-            index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
+        index_scols = [scol_for(sdf, column) for column in index_map]
+        sdf = sdf.select(
+            index_scols + new_data_scols + self._internal.data_spark_columns + list(HIDDEN_COLUMNS)
+        )
 
         if self._internal.column_labels_level > 1:
             column_depth = len(self._internal.column_labels[0])

@@ -445,7 +445,7 @@ class InternalFrame(object):
         assert isinstance(spark_frame, spark.DataFrame)
         assert not spark_frame.isStreaming, "Koalas does not support Structured Streaming."
 
-        if index_spark_column_names is None:
+        if not index_spark_column_names:
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in spark_frame.columns), (
                 "Index columns should not appear in columns of the Spark DataFrame. Avoid "
                 "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
@@ -470,7 +470,7 @@ class InternalFrame(object):
                 NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id()
             )
 
-        if index_names is None:
+        if not index_names:
             index_names = [None] * len(index_spark_column_names)
 
         assert len(index_spark_column_names) == len(index_names), (
@@ -857,11 +857,10 @@ class InternalFrame(object):
                 name=names[0],
             )
 
-        index_names = self.index_names
-        if len(index_names) > 0:
-            pdf.index.names = [
-                name if name is None or len(name) > 1 else name[0] for name in index_names
-            ]
+        pdf.index.names = [
+            name if name is None or len(name) > 1 else name[0] for name in self.index_names
+        ]
+
         return pdf
 
     @lazy_property
