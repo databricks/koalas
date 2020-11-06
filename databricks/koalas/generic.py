@@ -667,6 +667,10 @@ class Frame(object, metaclass=ABCMeta):
             It has higher priority and overwrites all other options.
             This parameter only works when `path` is specified.
 
+        Returns
+        -------
+        str or None
+
         See Also
         --------
         read_csv
