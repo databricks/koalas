@@ -8629,7 +8629,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
     # TODO: axis, skipna, and many arguments should be implemented.
-    def all(self, axis: Union[int, str] = 0) -> bool:
+    def all(self, axis: Union[int, str] = 0) -> "ks.Series":
         """
         Return whether all elements are True.
 
@@ -8643,6 +8643,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
+
+        Returns
+        -------
+        Series
 
         Examples
         --------
@@ -8667,10 +8671,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         col5     True
         col6    False
         dtype: bool
-
-        Returns
-        -------
-        Series
         """
         from databricks.koalas.series import first_series
 
@@ -8716,7 +8716,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return first_series(DataFrame(internal))
 
     # TODO: axis, skipna, and many arguments should be implemented.
-    def any(self, axis: Union[int, str] = 0) -> bool:
+    def any(self, axis: Union[int, str] = 0) -> "ks.Series":
         """
         Return whether any element is True.
 
@@ -8730,6 +8730,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             * 0 / 'index' : reduce the index, return a Series whose index is the
               original column labels.
+
+        Returns
+        -------
+        Series
 
         Examples
         --------
@@ -8754,10 +8758,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         col5    False
         col6     True
         dtype: bool
-
-        Returns
-        -------
-        Series
         """
         from databricks.koalas.series import first_series
 
