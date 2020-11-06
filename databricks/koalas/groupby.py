@@ -307,7 +307,7 @@ class GroupBy(object, metaclass=ABCMeta):
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
 
-    def count(self) -> DataFrame:
+    def count(self) -> Union[DataFrame, Series]:
         """
         Compute count of group, excluding missing values.
 
@@ -1829,7 +1829,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 if label not in self._column_labels_to_exlcude  # type: ignore
             ]
 
-        kdf, groupkey_labels, _ = self._prepare_group_map_apply(
+        kdf, groupkey_labels, _ = GroupBy._prepare_group_map_apply(
             kdf,
             self._groupkeys,  # type: ignore
             agg_columns,
@@ -2075,7 +2075,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return DataFrame(internal)
 
-    def nunique(self, dropna=True) -> DataFrame:
+    def nunique(self, dropna=True) -> Union[DataFrame, Series]:
         """
         Return DataFrame with number of distinct observations per group for each column.
 
@@ -2086,7 +2086,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         Returns
         -------
-        nunique : DataFrame
+        nunique : DataFrame or Series
 
         Examples
         --------
