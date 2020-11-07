@@ -178,7 +178,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     # arithmetic operators
     __neg__ = column_op(Column.__neg__)
 
-    def __add__(self, other) -> "ks.Series":
+    def __add__(self, other) -> Union["ks.Series", "ks.Index"]:
         if not isinstance(self.spark.data_type, StringType) and (
             (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
             or isinstance(other, str)
@@ -196,7 +196,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             return column_op(Column.__add__)(self, other)
 
-    def __sub__(self, other) -> "ks.Series":
+    def __sub__(self, other) -> Union["ks.Series", "ks.Index"]:
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -240,7 +240,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__sub__)(self, other)
 
-    def __mul__(self, other) -> "ks.Series":
+    def __mul__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
@@ -263,7 +263,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(Column.__mul__)(self, other)
 
-    def __truediv__(self, other) -> "ks.Series":
+    def __truediv__(self, other) -> Union["ks.Series", "ks.Index"]:
         """
         __truediv__ has different behaviour between pandas and PySpark for several cases.
         1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
@@ -297,7 +297,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(truediv)(self, other)
 
-    def __mod__(self, other) -> "ks.Series":
+    def __mod__(self, other) -> Union["ks.Series", "ks.Index"]:
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -310,7 +310,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(mod)(self, other)
 
-    def __radd__(self, other) -> "ks.Series":
+    def __radd__(self, other) -> Union["ks.Series", "ks.Index"]:
         # Handle 'literal' + df['col']
         if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
             raise TypeError("string addition can only be applied to string series or literals.")
@@ -323,7 +323,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             return column_op(Column.__radd__)(self, other)
 
-    def __rsub__(self, other) -> "ks.Series":
+    def __rsub__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("substraction can not be applied to string series or literals.")
 
@@ -355,7 +355,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__rsub__)(self, other)
 
-    def __rmul__(self, other) -> "ks.Series":
+    def __rmul__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
@@ -369,7 +369,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(Column.__rmul__)(self, other)
 
-    def __rtruediv__(self, other) -> "ks.Series":
+    def __rtruediv__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -380,7 +380,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(rtruediv)(self, other)
 
-    def __floordiv__(self, other) -> "ks.Series":
+    def __floordiv__(self, other) -> Union["ks.Series", "ks.Index"]:
         """
         __floordiv__ has different behaviour between pandas and PySpark for several cases.
         1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
@@ -417,7 +417,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(floordiv)(self, other)
 
-    def __rfloordiv__(self, other) -> "ks.Series":
+    def __rfloordiv__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -428,7 +428,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(rfloordiv)(self, other)
 
-    def __rmod__(self, other) -> "ks.Series":
+    def __rmod__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("modulo can not be applied on string series or literals.")
 
