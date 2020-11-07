@@ -633,7 +633,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        is_monotonic : boolean
+        is_monotonic : bool
 
         Examples
         --------
