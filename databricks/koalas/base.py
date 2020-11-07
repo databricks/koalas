@@ -839,11 +839,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             raise ValueError("Type {} not understood".format(dtype))
         return self._with_new_scol(self.spark.column.cast(spark_type))
 
-    def isin(self, values) -> "ks.Series":
+    def isin(self, values) -> Union["ks.Series", "ks.Index"]:
         """
-        Check whether `values` are contained in Series.
+        Check whether `values` are contained in Series or Index.
 
-        Return a boolean Series showing whether each element in the Series
+        Return a boolean Series or Index showing whether each element in the Series
         matches an element in the passed sequence of `values` exactly.
 
         Parameters
@@ -853,7 +853,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        isin : Series (bool dtype)
+        isin : Series (bool dtype) or Index (bool dtype)
 
         Examples
         --------
@@ -891,7 +891,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return self._with_new_scol(self.spark.column.isin(list(values)))
 
-    def isnull(self) -> "ks.Series":
+    def isnull(self) -> Union["ks.Series", "ks.Index"]:
         """
         Detect existing (non-missing) values.
 
@@ -903,7 +903,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        Series : Mask of bool values for each element in Series
+        Series or Index : Mask of bool values for each element in Series
             that indicates whether an element is not an NA value.
 
         Examples
@@ -929,7 +929,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     isna = isnull
 
-    def notnull(self) -> "ks.Series":
+    def notnull(self) -> Union["ks.Series", "ks.Index"]:
         """
         Detect existing (non-missing) values.
         Return a boolean same-sized object indicating if the values are not NA.
@@ -940,7 +940,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        Series : Mask of bool values for each element in Series
+        Series or Index : Mask of bool values for each element in Series
             that indicates whether an element is not an NA value.
 
         Examples
