@@ -403,7 +403,7 @@ class Frame(object, metaclass=ABCMeta):
             dtypes = [self.dtypes]
         else:
             dtypes = list(self.dtypes)
-        return pd.Series(dict(Counter([d.name for d in list(dtypes)])))
+        return pd.Series(dict(Counter([d.name for d in dtypes])))
 
     def pipe(self, func, *args, **kwargs):
         r"""
