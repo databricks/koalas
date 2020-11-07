@@ -832,6 +832,7 @@ class Frame(object, metaclass=ABCMeta):
             charToEscapeQuoteEscaping=escapechar,
         )
         builder.options(**options).format("csv").save(path)
+        return None
 
     def to_json(
         self,
@@ -890,6 +891,10 @@ class Frame(object, metaclass=ABCMeta):
             the options in PySpark's API documentation for `spark.write.json(...)`.
             It has a higher priority and overwrites all other options.
             This parameter only works when `path` is specified.
+
+        Returns
+        --------
+        str or None
 
         Examples
         --------
