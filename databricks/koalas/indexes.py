@@ -115,8 +115,6 @@ class Index(IndexOpsMixin):
     def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
         assert data is not None
 
-        if not is_hashable(name):
-            raise TypeError("Index.name must be a hashable type")
         if isinstance(data, DataFrame):
             assert dtype is None
             assert name is None
@@ -567,8 +565,6 @@ class Index(IndexOpsMixin):
 
     @name.setter
     def name(self, name: Union[Any, Tuple]) -> None:
-        if not is_hashable(name):
-            raise TypeError("Index.name must be a hashable type")
         self.names = [name]
 
     @property
@@ -583,6 +579,8 @@ class Index(IndexOpsMixin):
     def names(self, names: List[Union[Any, Tuple]]) -> None:
         if not is_list_like(names):
             raise ValueError("Names must be a list-like")
+        if not is_hashable(names[0]):
+            raise TypeError("Index.name must be a hashable type")
         self.rename(names, inplace=True)
 
     @property

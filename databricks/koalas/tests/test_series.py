@@ -138,6 +138,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         expected_error_message = "Series.name must be a hashable type"
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kser.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Series([1, 2, 3], name=["0", "1"])
 
     def test_rename_method(self):
         # Series name
