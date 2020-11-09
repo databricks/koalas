@@ -2714,7 +2714,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return result
 
     # TODO: add axis parameter can work when '1' or 'columns'
-    def xs(self, key, axis=0, level=None) -> "DataFrame":
+    def xs(self, key, axis=0, level=None) -> Union["DataFrame", "ks.Series"]:
         """
         Return cross-section from the DataFrame.
 
@@ -2734,7 +2734,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        DataFrame
+        DataFrame or Series
             Cross-section from the original DataFrame
             corresponding to the selected index levels.
 
@@ -2778,6 +2778,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         locomotion
         walks              4          0
 
+        >>> df.xs(('mammal', 'dog', 'walks'))  # doctest: +NORMALIZE_WHITESPACE
+        num_legs     4
+        num_wings    0
+        Name: (mammal, dog, walks), dtype: int64
+
         Get values at specified index and level
 
         >>> df.xs('cat', level=1)  # doctest: +NORMALIZE_WHITESPACE
@@ -2808,30 +2813,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if level is None:
             level = 0
 
-        scols = (
-            self._internal.spark_columns[:level] + self._internal.spark_columns[level + len(key) :]
-        )
-        rows = [self._internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)]
-
-        sdf = self._internal.spark_frame.filter(reduce(lambda x, y: x & y, rows)).select(scols)
+        rows = [
+            self._internal.index_spark_columns[lvl] == index for lvl, index in enumerate(key, level)
+        ]
+        internal = self._internal.with_filter(reduce(lambda x, y: x & y, rows))
 
         if len(key) == len(self._internal.index_spark_columns):
-            result = first_series(
-                DataFrame(InternalFrame(spark_frame=sdf, index_spark_column_names=None)).T
-            ).rename(key)
+            kdf = DataFrame(internal)  # type: DataFrame
+            pdf = kdf.head(2)._to_internal_pandas()
+            if len(pdf) == 0:
+                raise KeyError(key)
+            elif len(pdf) > 1:
+                return kdf
+            else:
+                return first_series(DataFrame(pdf.transpose()))
         else:
-            new_index_map = OrderedDict(
-                list(self._internal.index_map.items())[:level]
-                + list(self._internal.index_map.items())[level + len(key) :]
+            index_spark_column_names = (
+                internal.index_spark_column_names[:level]
+                + internal.index_spark_column_names[level + len(key) :]
             )
-            internal = self._internal.copy(
-                spark_frame=sdf,
-                index_spark_column_names=list(new_index_map.keys()),
-                index_names=list(new_index_map.values()),
-            )
-            result = DataFrame(internal)
+            index_names = internal.index_names[:level] + internal.index_names[level + len(key) :]
 
-        return result
+            internal = internal.copy(
+                index_spark_column_names=index_spark_column_names, index_names=index_names
+            ).resolved_copy
+            return DataFrame(internal)
 
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
