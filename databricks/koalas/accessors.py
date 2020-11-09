@@ -26,7 +26,6 @@ import pandas as pd
 import pyspark
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StructType, StructField
 
 from databricks.koalas.internal import (
     InternalFrame,
@@ -34,6 +33,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.typedef import infer_return_type, DataFrameType, SeriesType
+from databricks.koalas.spark.utils import as_nullable_spark_type
 from databricks.koalas.utils import (
     is_name_like_value,
     is_name_like_tuple,
@@ -348,7 +348,7 @@ class KoalasFrameMethods(object):
             if len(pdf) <= limit:
                 return kdf
 
-            return_schema = kdf._internal.to_internal_spark_frame.schema
+            return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=True
@@ -575,7 +575,7 @@ class KoalasFrameMethods(object):
                 kser = kdf_or_kser
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
-                    returnType=kser.spark.data_type,
+                    returnType=as_nullable_spark_type(kser.spark.data_type),
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -597,11 +597,8 @@ class KoalasFrameMethods(object):
                     # operations on different dataframes in case of series.
                     return kdf
 
-                return_schema = kdf._internal.to_internal_spark_frame.schema
                 # Force nullability.
-                return_schema = StructType(
-                    [StructField(field.name, field.dataType) for field in return_schema.fields]
-                )
+                return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
 
                 self_applied = DataFrame(self._kdf._internal.resolved_copy)
 
@@ -839,7 +836,7 @@ class KoalasSeriesMethods(object):
             pser = self._kser.head(limit)._to_internal_pandas()
             transformed = pser.transform(func)
             kser = Series(transformed)
-            spark_return_type = kser.spark.data_type
+            spark_return_type = as_nullable_spark_type(kser.spark.data_type)
         else:
             spark_return_type = return_schema
 
