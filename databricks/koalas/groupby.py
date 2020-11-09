@@ -61,7 +61,6 @@ from databricks.koalas.series import Series, first_series
 from databricks.koalas.config import get_option
 from databricks.koalas.utils import (
     align_diff_frames,
-    column_labels_level,
     is_name_like_tuple,
     is_name_like_value,
     name_like_string,
@@ -1318,29 +1317,28 @@ class GroupBy(object, metaclass=ABCMeta):
         index_names = kdf._internal.index_names
         data_columns = kdf._internal.data_spark_column_names
         column_labels = kdf._internal.column_labels
+        column_labels_level = kdf._internal.column_labels_level
 
         def rename_output(pdf):
             # TODO: This logic below was borrowed from `DataFrame.to_pandas_frame` to set the index
             #   within each pdf properly. we might have to deduplicate it.
             import pandas as pd
 
-            if len(index_columns) > 0:
-                append = False
-                for index_field in index_columns:
-                    drop = index_field not in data_columns
-                    pdf = pdf.set_index(index_field, drop=drop, append=append)
-                    append = True
-                pdf = pdf[data_columns]
+            append = False
+            for index_field in index_columns:
+                drop = index_field not in data_columns
+                pdf = pdf.set_index(index_field, drop=drop, append=append)
+                append = True
+            pdf = pdf[data_columns]
 
-            if column_labels_level(column_labels) > 1:
+            if column_labels_level > 1:
                 pdf.columns = pd.MultiIndex.from_tuples(column_labels)
             else:
                 pdf.columns = [None if label is None else label[0] for label in column_labels]
 
-            if len(index_names) > 0:
-                pdf.index.names = [
-                    name if name is None or len(name) > 1 else name[0] for name in index_names
-                ]
+            pdf.index.names = [
+                name if name is None or len(name) > 1 else name[0] for name in index_names
+            ]
 
             pdf = func(pdf)
 
