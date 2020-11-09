@@ -68,6 +68,7 @@ from databricks.koalas.utils import (
     scol_for,
     verify_temp_column_name,
 )
+from databricks.koalas.spark.utils import as_nullable_spark_type
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 from databricks.koalas.exceptions import DataError
 
@@ -1116,7 +1117,9 @@ class GroupBy(object, metaclass=ABCMeta):
             else:
                 kdf_from_pandas = kser_or_kdf  # type: ignore
 
-            return_schema = kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            return_schema = as_nullable_spark_type(
+                kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            )
         else:
             return_type = infer_return_type(func)
             if not is_series_groupby and isinstance(return_type, SeriesType):
@@ -2041,7 +2044,9 @@ class GroupBy(object, metaclass=ABCMeta):
             pdf = kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(groupkey_names).transform(func, *args, **kwargs)
             kdf_from_pandas = DataFrame(pdf)  # type: DataFrame
-            return_schema = kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            return_schema = as_nullable_spark_type(
+                kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            )
             if len(pdf) <= limit:
                 return kdf_from_pandas
 
