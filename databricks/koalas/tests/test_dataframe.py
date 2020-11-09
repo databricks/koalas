@@ -207,6 +207,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index().index, pdf.reset_index().index)
         self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
 
         pdf.index.name = "a"
