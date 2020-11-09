@@ -17,7 +17,7 @@
 """
 Wrappers around spark that correspond to common pandas functions.
 """
-from typing import Any, Optional, Union, List, Tuple
+from typing import Any, Optional, Union, List, Tuple, Sized, cast
 from collections import OrderedDict
 from collections.abc import Iterable
 from distutils.version import LooseVersion
@@ -200,7 +200,7 @@ def read_csv(
     escapechar=None,
     comment=None,
     **options
-):
+) -> DataFrame:
     """Read CSV (comma-separated) file into DataFrame.
 
     Parameters
@@ -389,13 +389,13 @@ def read_csv(
         InternalFrame(
             spark_frame=sdf,
             index_spark_column_names=index_spark_column_names,
-            index_names=index_names,
+            index_names=cast(Optional[List[Optional[Tuple[Any, ...]]]], index_names),
             column_labels=[
                 label if is_name_like_tuple(label) else (label,) for label in column_labels
             ],
             data_spark_columns=[scol_for(sdf, col) for col in column_labels.values()],
         )
-    )
+    )  # type: DataFrame
 
     if dtype is not None:
         if isinstance(dtype, dict):
@@ -406,11 +406,12 @@ def read_csv(
                 kdf[col] = kdf[col].astype(dtype)
 
     if squeeze and len(kdf.columns) == 1:
-        return first_series(kdf)
-    return kdf
+        return cast(DataFrame, first_series(kdf))
+    else:
+        return kdf
 
 
-def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options):
+def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options) -> DataFrame:
     """
     Convert a JSON string to DataFrame.
 
@@ -788,7 +789,7 @@ def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **op
     return kdf
 
 
-def read_clipboard(sep=r"\s+", **kwargs):
+def read_clipboard(sep=r"\s+", **kwargs) -> DataFrame:
     r"""
     Read text from clipboard and pass to read_csv. See read_csv for the
     full argument list
@@ -807,7 +808,7 @@ def read_clipboard(sep=r"\s+", **kwargs):
     -------
     parsed : DataFrame
     """
-    return from_pandas(pd.read_clipboard(sep, **kwargs))
+    return cast(DataFrame, from_pandas(pd.read_clipboard(sep, **kwargs)))
 
 
 def read_excel(
@@ -836,7 +837,7 @@ def read_excel(
     convert_float=True,
     mangle_dupe_cols=True,
     **kwds
-):
+) -> Union[DataFrame, OrderedDict]:
     """
     Read an Excel file into a Koalas DataFrame.
 
@@ -1086,7 +1087,7 @@ def read_excel(
         if isinstance(pdfs, dict):
             return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
         else:
-            return from_pandas(pdfs)
+            return cast(DataFrame, from_pandas(pdfs))
     else:
 
         def read_excel_on_spark(pdf, sn):
@@ -1148,7 +1149,7 @@ def read_html(
     na_values=None,
     keep_default_na=True,
     displayed_only=True,
-):
+) -> List[DataFrame]:
     r"""Read HTML tables into a ``list`` of ``DataFrame`` objects.
 
     Parameters
@@ -1265,11 +1266,13 @@ def read_html(
         keep_default_na=keep_default_na,
         displayed_only=displayed_only,
     )
-    return [from_pandas(pdf) for pdf in pdfs]
+    return cast(List[DataFrame], [from_pandas(pdf) for pdf in pdfs])
 
 
 # TODO: add `coerce_float` and 'parse_dates' parameters
-def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, **options):
+def read_sql_table(
+    table_name, con, schema=None, index_col=None, columns=None, **options
+) -> DataFrame:
     """
     Read SQL database table into a DataFrame.
 
@@ -1326,7 +1329,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
             index_spark_column_names=index_spark_column_names,
             index_names=index_names,
         )
-    )
+    )  # type: DataFrame
     if columns is not None:
         if isinstance(columns, str):
             columns = [columns]
@@ -1335,7 +1338,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, columns=None, *
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
-def read_sql_query(sql, con, index_col=None, **options):
+def read_sql_query(sql, con, index_col=None, **options) -> DataFrame:
     """Read SQL query into a DataFrame.
 
     Returns a DataFrame corresponding to the result set of the query
@@ -1390,7 +1393,7 @@ def read_sql_query(sql, con, index_col=None, **options):
 
 
 # TODO: add `coerce_float`, `params`, and 'parse_dates' parameters
-def read_sql(sql, con, index_col=None, columns=None, **options):
+def read_sql(sql, con, index_col=None, columns=None, **options) -> DataFrame:
     """
     Read SQL query or database table into a DataFrame.
 
@@ -1446,7 +1449,7 @@ def read_sql(sql, con, index_col=None, columns=None, **options):
 
 def to_datetime(
     arg, errors="raise", format=None, unit=None, infer_datetime_format=False, origin="unix"
-):
+) -> Union[DataFrame, Series, pd.Timestamp, pd.DatetimeIndex]:
     """
     Convert argument to datetime.
 
@@ -1597,7 +1600,7 @@ def get_dummies(
     sparse=False,
     drop_first=False,
     dtype=None,
-):
+) -> DataFrame:
     """
     Convert categorical variable into dummy/indicator variables, also
     known as one hot encoding.
@@ -1809,7 +1812,7 @@ def get_dummies(
 
 
 # TODO: there are many parameters to implement and support. See pandas's pd.concat.
-def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
+def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[Series, DataFrame]:
     """
     Concatenate Koalas objects along a particular axis with optional set logic
     along the other axes.
@@ -1957,7 +1960,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
             '"{name}"'.format(name=type(objs).__name__)
         )
 
-    if len(objs) == 0:
+    if len(cast(Sized, objs)) == 0:
         raise ValueError("No objects to concatenate")
     objs = list(filter(lambda obj: obj is not None, objs))
     if len(objs) == 0:
@@ -2074,7 +2077,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
 
     column_labels_of_kdfs = [kdf._internal.column_labels for kdf in objs]
     if ignore_index:
-        index_names_of_kdfs = [[] for _ in objs]
+        index_names_of_kdfs = [[] for _ in objs]  # type: List
     else:
         index_names_of_kdfs = [kdf._internal.index_names for kdf in objs]
 
@@ -2166,7 +2169,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
                 scol_for(concatenated, col) for col in kdfs[0]._internal.data_spark_column_names
             ],
         )
-    )
+    )  # type: DataFrame
 
     if should_return_series:
         # If all input were Series, we should return Series.
@@ -2179,14 +2182,14 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False):
         return result_kdf
 
 
-def melt(frame, id_vars=None, value_vars=None, var_name=None, value_name="value"):
+def melt(frame, id_vars=None, value_vars=None, var_name=None, value_name="value") -> DataFrame:
     return DataFrame.melt(frame, id_vars, value_vars, var_name, value_name)
 
 
 melt.__doc__ = DataFrame.melt.__doc__
 
 
-def isna(obj):
+def isna(obj) -> Union[DataFrame, Series, bool, np.ndarray]:
     """
     Detect missing values for an array-like object.
 
@@ -2268,7 +2271,7 @@ def isna(obj):
 isnull = isna
 
 
-def notna(obj):
+def notna(obj) -> Union[DataFrame, Series, bool, np.ndarray]:
     """
     Detect existing (non-missing) values.
 
@@ -2475,7 +2478,7 @@ def merge(
     )
 
 
-def to_numeric(arg):
+def to_numeric(arg) -> Union[DataFrame, Series, int, float, np.ndarray]:
     """
     Convert argument to a numeric type.
 
@@ -2547,7 +2550,7 @@ def to_numeric(arg):
         return pd.to_numeric(arg)
 
 
-def broadcast(obj):
+def broadcast(obj) -> DataFrame:
     """
     Marks a DataFrame as small enough for use in broadcast joins.
 
