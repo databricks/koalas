@@ -136,7 +136,7 @@ class AtIndexer(IndexerLike):
             row_sel = key
             col_sel = self._kdf_or_kser._column_label
 
-        if len(self._internal.index_map) == 1:
+        if self._internal.index_level == 1:
             if not is_name_like_value(row_sel, allow_none=False, allow_tuple=False):
                 raise ValueError("At based indexing on a single index can only have a single value")
             row_sel = (row_sel,)
@@ -166,9 +166,7 @@ class AtIndexer(IndexerLike):
 
         values = pdf.iloc[:, 0].values
         return (
-            values
-            if (len(row_sel) < len(self._internal.index_map) or len(values) > 1)
-            else values[0]
+            values if (len(row_sel) < self._internal.index_level or len(values) > 1) else values[0]
         )
 
 
@@ -910,7 +908,7 @@ class LocIndexer(LocIndexerLike):
 
         if rows_sel.step is not None:
             raise LocIndexer._NotImplemented("Cannot use step with Spark.")
-        elif len(self._internal.index_spark_column_names) == 1:
+        elif self._internal.index_level == 1:
             sdf = self._internal.spark_frame
             index = self._kdf_or_kser.index
             index_column = index.to_series()
@@ -992,10 +990,8 @@ class LocIndexer(LocIndexerLike):
             if depth == 0:
                 return None, None, None
             elif (
-                depth > len(self._internal.index_map)
-                or not index.droplevel(
-                    list(range(len(self._internal.index_map))[depth:])
-                ).is_monotonic
+                depth > self._internal.index_level
+                or not index.droplevel(list(range(self._internal.index_level)[depth:])).is_monotonic
             ):
                 raise KeyError(
                     "Key length ({}) was greater than MultiIndex sort depth".format(depth)
@@ -1031,7 +1027,7 @@ class LocIndexer(LocIndexerLike):
         rows_sel = list(rows_sel)
         if len(rows_sel) == 0:
             return F.lit(False), None, None
-        elif len(self._internal.index_spark_column_names) == 1:
+        elif self._internal.index_level == 1:
             index_column = self._kdf_or_kser.index.to_series()
             index_data_type = index_column.spark.data_type
             if len(rows_sel) == 1:
@@ -1056,14 +1052,14 @@ class LocIndexer(LocIndexerLike):
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
         if not isinstance(rows_sel, tuple):
             rows_sel = (rows_sel,)
-        if len(rows_sel) > len(self._internal.index_map):
+        if len(rows_sel) > self._internal.index_level:
             raise SparkPandasIndexingError("Too many indexers")
 
         rows = [scol == value for scol, value in zip(self._internal.index_spark_columns, rows_sel)]
         return (
             reduce(lambda x, y: x & y, rows),
             None,
-            len(self._internal.index_map) - len(rows_sel),
+            self._internal.index_level - len(rows_sel),
         )
 
     def _get_from_multiindex_column(

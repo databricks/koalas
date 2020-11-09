@@ -1479,7 +1479,7 @@ class GroupBy(object, metaclass=ABCMeta):
         2  3  2
         3  4  4
         """
-        if len(self._kdf._internal.index_names) != 1:  # type: ignore
+        if self._kdf._internal.index_level != 1:  # type: ignore
             raise ValueError("idxmax only support one-level index now")
 
         groupkey_names = [
@@ -1559,7 +1559,7 @@ class GroupBy(object, metaclass=ABCMeta):
         2  2  3
         3  4  4
         """
-        if len(self._kdf._internal.index_names) != 1:  # type: ignore
+        if self._kdf._internal.index_level != 1:  # type: ignore
             raise ValueError("idxmin only support one-level index now")
 
         groupkey_names = [
@@ -2725,7 +2725,7 @@ class SeriesGroupBy(GroupBy):
         3  6    3
         Name: b, dtype: int64
         """
-        if len(self._kser._internal.index_names) > 1:
+        if self._kser._internal.index_level > 1:
             raise ValueError("nsmallest do not support multi-index now")
 
         groupkey_col_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
@@ -2757,7 +2757,7 @@ class SeriesGroupBy(GroupBy):
                 groupkey_col_names
                 + [
                     SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys))
-                    for i in range(len(self._kdf._internal.index_spark_column_names))
+                    for i in range(self._kdf._internal.index_level)
                 ]
             ),
             index_names=(
@@ -2798,7 +2798,7 @@ class SeriesGroupBy(GroupBy):
         3  7    4
         Name: b, dtype: int64
         """
-        if len(self._kser._internal.index_names) > 1:
+        if self._kser._internal.index_level > 1:
             raise ValueError("nlargest do not support multi-index now")
 
         groupkey_col_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
@@ -2830,7 +2830,7 @@ class SeriesGroupBy(GroupBy):
                 groupkey_col_names
                 + [
                     SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys))
-                    for i in range(len(self._kdf._internal.index_spark_column_names))
+                    for i in range(self._kdf._internal.index_level)
                 ]
             ),
             index_names=(
