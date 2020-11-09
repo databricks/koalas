@@ -339,6 +339,63 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(TypeError, lambda: kser.reindex(index=123))
 
+    def test_reindex_like(self):
+        data = [1.0, 2.0, None]
+        index = pd.Index(["A", "B", "C"], name="index1")
+        pser = pd.Series(data=data, index=index, name="name1")
+        kser = ks.from_pandas(pser)
+
+        # Reindexing single Index on single Index
+        data2 = [3.0, None, 4.0]
+        index2 = pd.Index(["A", "C", "D"], name="index2")
+        pser2 = pd.Series(data=data2, index=index2, name="name2")
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        self.assert_eq(
+            (pser + 1).reindex_like(pser2).sort_index(),
+            (kser + 1).reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing MultiIndex on single Index
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "G"), ("C", "D"), ("I", "J")], names=["index3", "index4"]
+        )
+        pser2 = pd.Series(data=data2, index=index2, name="name2")
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kser.reindex_like(index2))
+        self.assertRaises(AssertionError, lambda: kser2.reindex_like(kser))
+
+        # Reindexing MultiIndex on MultiIndex
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+        pser = pd.Series(data=data, index=index, name="name1")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing with DataFrame
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["name3", "name4"]
+        )
+        pdf = pd.DataFrame(data=data, index=index2)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pser.reindex_like(pdf).sort_index(), kser.reindex_like(kdf).sort_index(),
+        )
+
     def test_fillna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)
@@ -1196,8 +1253,37 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
 
+        self.assert_eq(kser.astype(int), pser.astype(int))
+        self.assert_eq(kser.astype(np.int), pser.astype(np.int))
+        self.assert_eq(kser.astype(np.int8), pser.astype(np.int8))
+        self.assert_eq(kser.astype(np.int16), pser.astype(np.int16))
         self.assert_eq(kser.astype(np.int32), pser.astype(np.int32))
+        self.assert_eq(kser.astype(np.int64), pser.astype(np.int64))
+        self.assert_eq(kser.astype(np.byte), pser.astype(np.byte))
+        self.assert_eq(kser.astype("int"), pser.astype("int"))
+        self.assert_eq(kser.astype("int8"), pser.astype("int8"))
+        self.assert_eq(kser.astype("int16"), pser.astype("int16"))
+        self.assert_eq(kser.astype("int32"), pser.astype("int32"))
+        self.assert_eq(kser.astype("int64"), pser.astype("int64"))
+        self.assert_eq(kser.astype("b"), pser.astype("b"))
+        self.assert_eq(kser.astype("byte"), pser.astype("byte"))
+        self.assert_eq(kser.astype("i"), pser.astype("i"))
+        self.assert_eq(kser.astype("long"), pser.astype("long"))
+        self.assert_eq(kser.astype("short"), pser.astype("short"))
+        self.assert_eq(kser.astype(np.float), pser.astype(np.float))
+        self.assert_eq(kser.astype(np.float32), pser.astype(np.float32))
+        self.assert_eq(kser.astype(np.float64), pser.astype(np.float64))
+        self.assert_eq(kser.astype("float"), pser.astype("float"))
+        self.assert_eq(kser.astype("float32"), pser.astype("float32"))
+        self.assert_eq(kser.astype("float64"), pser.astype("float64"))
+        self.assert_eq(kser.astype("double"), pser.astype("double"))
+        self.assert_eq(kser.astype("f"), pser.astype("f"))
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype("bool"), pser.astype("bool"))
+        self.assert_eq(kser.astype("?"), pser.astype("?"))
+        self.assert_eq(kser.astype(np.unicode_), pser.astype(np.unicode_))
+        self.assert_eq(kser.astype("str"), pser.astype("str"))
+        self.assert_eq(kser.astype("U"), pser.astype("U"))
 
         pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
         kser = ks.Series(pser)
@@ -1217,6 +1303,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series(["2020-10-27"], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(np.datetime64), pser.astype(np.datetime64))
+        self.assert_eq(kser.astype("datetime64[ns]"), pser.astype("datetime64[ns]"))
+        self.assert_eq(kser.astype("M"), pser.astype("M"))
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")

@@ -976,7 +976,7 @@ class StringMethods(object):
         3    2
         4    2
         5    0
-        dtype: int32
+        dtype: int64
         """
 
         def pandas_count(s) -> "ks.Series[int]":
@@ -1037,25 +1037,25 @@ class StringMethods(object):
         0    0
         1    2
         2    1
-        dtype: int32
+        dtype: int64
 
         >>> s.str.find('a', start=2)
         0   -1
         1    2
         2    3
-        dtype: int32
+        dtype: int64
 
         >>> s.str.find('a', end=1)
         0    0
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
 
         >>> s.str.find('a', start=2, end=2)
         0   -1
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
         """
 
         def pandas_find(s) -> "ks.Series[int]":
@@ -1614,25 +1614,25 @@ class StringMethods(object):
         0    0
         1    2
         2    5
-        dtype: int32
+        dtype: int64
 
         >>> s.str.rfind('a', start=2)
         0   -1
         1    2
         2    5
-        dtype: int32
+        dtype: int64
 
         >>> s.str.rfind('a', end=1)
         0    0
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
 
         >>> s.str.rfind('a', start=2, end=2)
         0   -1
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
         """
 
         def pandas_rfind(s) -> "ks.Series[int]":
