@@ -1449,7 +1449,7 @@ def read_sql(sql, con, index_col=None, columns=None, **options) -> DataFrame:
 
 def to_datetime(
     arg, errors="raise", format=None, unit=None, infer_datetime_format=False, origin="unix"
-) -> Union[DataFrame, Series, pd.Timestamp, pd.DatetimeIndex]:
+):
     """
     Convert argument to datetime.
 
@@ -2189,7 +2189,7 @@ def melt(frame, id_vars=None, value_vars=None, var_name=None, value_name="value"
 melt.__doc__ = DataFrame.melt.__doc__
 
 
-def isna(obj) -> Union[DataFrame, Series, bool, np.ndarray]:
+def isna(obj):
     """
     Detect missing values for an array-like object.
 
@@ -2271,7 +2271,7 @@ def isna(obj) -> Union[DataFrame, Series, bool, np.ndarray]:
 isnull = isna
 
 
-def notna(obj) -> Union[DataFrame, Series, bool, np.ndarray]:
+def notna(obj):
     """
     Detect existing (non-missing) values.
 
@@ -2478,7 +2478,7 @@ def merge(
     )
 
 
-def to_numeric(arg) -> Union[DataFrame, Series, int, float, np.ndarray]:
+def to_numeric(arg):
     """
     Convert argument to a numeric type.
 
