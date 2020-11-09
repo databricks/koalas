@@ -200,8 +200,8 @@ def read_csv(
     escapechar=None,
     comment=None,
     **options
-) -> DataFrame:
-    """Read CSV (comma-separated) file into DataFrame.
+) -> Union[DataFrame, Series]:
+    """Read CSV (comma-separated) file into DataFrame or Series.
 
     Parameters
     ----------
@@ -256,7 +256,7 @@ def read_csv(
 
     Returns
     -------
-    DataFrame
+    DataFrame or Series
 
     See Also
     --------
@@ -406,7 +406,7 @@ def read_csv(
                 kdf[col] = kdf[col].astype(dtype)
 
     if squeeze and len(kdf.columns) == 1:
-        return cast(DataFrame, first_series(kdf))
+        return first_series(kdf)
     else:
         return kdf
 
@@ -837,9 +837,9 @@ def read_excel(
     convert_float=True,
     mangle_dupe_cols=True,
     **kwds
-) -> Union[DataFrame, OrderedDict]:
+) -> Union[DataFrame, Series, OrderedDict]:
     """
-    Read an Excel file into a Koalas DataFrame.
+    Read an Excel file into a Koalas DataFrame or Series.
 
     Support both `xls` and `xlsx` file extensions from a local filesystem or URL.
     Support an option to read a single sheet or a list of sheets.
