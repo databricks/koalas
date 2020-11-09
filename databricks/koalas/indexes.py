@@ -604,7 +604,7 @@ class Index(IndexOpsMixin):
         >>> kdf.index.nlevels
         2
         """
-        return len(self._internal.index_spark_column_names)
+        return self._internal.index_level
 
     def rename(
         self, name: Union[Any, Tuple, List[Union[Any, Tuple]]], inplace: bool = False
@@ -677,10 +677,10 @@ class Index(IndexOpsMixin):
         elif is_name_like_value(name):
             return [(name,)]
         elif is_list_like(name):
-            if len(self._internal.index_map) != len(name):
+            if self._internal.index_level != len(name):
                 raise ValueError(
                     "Length of new names must be {}, got {}".format(
-                        len(self._internal.index_map), len(name)
+                        self._internal.index_level, len(name)
                     )
                 )
             return [n if is_name_like_tuple(n) else (n,) for n in name]
@@ -783,7 +783,7 @@ class Index(IndexOpsMixin):
         scol = self.spark.column
         if name is not None:
             scol = scol.alias(name_like_string(name))
-        elif len(kdf._internal.index_map) == 1:
+        elif kdf._internal.index_level == 1:
             name = self.name
         column_labels = [
             name if is_name_like_tuple(name) else (name,)
@@ -1552,7 +1552,7 @@ class Index(IndexOpsMixin):
         sdf = self._internal._sdf
         index_value_column_names = [
             verify_temp_column_name(sdf, index_value_column_format.format(i))
-            for i in range(len(self._internal.index_spark_columns))
+            for i in range(self._internal.index_level)
         ]
         index_value_columns = [
             index_scol.alias(index_vcol_name)
@@ -2353,7 +2353,7 @@ class MultiIndex(Index):
     """
 
     def __new__(cls, kdf: DataFrame):
-        assert len(kdf._internal.index_map) > 1
+        assert kdf._internal.index_level > 1
 
         return super().__new__(cls, data=kdf)
 
@@ -2571,10 +2571,10 @@ class MultiIndex(Index):
 
     def _verify_for_rename(self, name):
         if is_list_like(name):
-            if len(self._internal.index_map) != len(name):
+            if self._internal.index_level != len(name):
                 raise ValueError(
                     "Length of new names must be {}, got {}".format(
-                        len(self._internal.index_map), len(name)
+                        self._internal.index_level, len(name)
                     )
                 )
             return [n if is_name_like_tuple(n) else (n,) for n in name]
@@ -2803,7 +2803,7 @@ class MultiIndex(Index):
                 for i, name in enumerate(self._internal.index_names)
             ]
         elif is_list_like(name):
-            if len(name) != len(self._internal.index_map):
+            if len(name) != self._internal.index_level:
                 raise ValueError("'name' should have same length as number of levels on index.")
             name = [n if is_name_like_tuple(n) else (n,) for n in name]
         else:

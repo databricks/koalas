@@ -2180,7 +2180,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             internal = self._internal
             if level is None:
                 level = 0
-            if level >= len(internal.index_spark_columns):
+            if level >= internal.index_level:
                 raise ValueError("'level' should be less than the number of indexes")
 
             if is_name_like_tuple(index):  # type: ignore
@@ -2206,7 +2206,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 except IndexError:
                     raise KeyError(
                         "Key length ({}) exceeds index depth ({})".format(
-                            len(internal.index_spark_columns), len(idxes)
+                            internal.index_level, len(idxes)
                         )
                     )
                 drop_index_scols.append(reduce(lambda x, y: x & y, index_scols))
@@ -3419,7 +3419,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
 
-        if len(self._internal.index_spark_column_names) > 1:
+        if self._internal.index_level > 1:
             raise ValueError("rank do not support index now")
 
         if ascending:
@@ -3895,10 +3895,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             raise ValueError("'key' should be string or tuple that contains strings")
         if not is_name_like_tuple(item):
             item = (item,)
-        if len(self._internal.index_map) < len(item):
+        if self._internal.index_level < len(item):
             raise KeyError(
                 "Key length ({}) exceeds index depth ({})".format(
-                    len(item), len(self._internal.index_map)
+                    len(item), self._internal.index_level
                 )
             )
 
@@ -3910,7 +3910,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = self._drop(item)
         self._update_anchor(kdf)
 
-        if len(self._internal.index_map) == len(item):
+        if self._internal.index_level == len(item):
             # if spark_frame has one column and one data, return data only without frame
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
@@ -4596,7 +4596,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         rows = [internal.spark_columns[lvl] == index for lvl, index in enumerate(key, level)]
         sdf = internal.spark_frame.filter(reduce(lambda x, y: x & y, rows)).select(scols)
 
-        if len(internal.index_map) == len(key):
+        if internal.index_level == len(key):
             # if spark_frame has one column and one data, return data only without frame
             pdf = sdf.limit(2).toPandas()
             length = len(pdf)
@@ -5807,7 +5807,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         except SparkPandasIndexingError:
             raise KeyError(
                 "Key length ({}) exceeds index depth ({})".format(
-                    len(key), len(self._internal.index_map)
+                    len(key), self._internal.index_level
                 )
             )
 

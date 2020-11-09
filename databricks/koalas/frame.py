@@ -2805,10 +2805,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if not is_name_like_tuple(key):
             key = (key,)
-        if len(key) > len(self._internal.index_spark_columns):
+        if len(key) > self._internal.index_level:
             raise KeyError(
                 "Key length ({}) exceeds index depth ({})".format(
-                    len(key), len(self._internal.index_spark_columns)
+                    len(key), self._internal.index_level
                 )
             )
         if level is None:
@@ -2819,7 +2819,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ]
         internal = self._internal.with_filter(reduce(lambda x, y: x & y, rows))
 
-        if len(key) == len(self._internal.index_spark_columns):
+        if len(key) == self._internal.index_level:
             kdf = DataFrame(internal)  # type: DataFrame
             pdf = kdf.head(2)._to_internal_pandas()
             if len(pdf) == 0:
@@ -3123,7 +3123,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.indexes import Index, MultiIndex
 
-        if len(self._internal.index_map) == 1:
+        if self._internal.index_level == 1:
             return Index(self)
         else:
             return MultiIndex(self)
@@ -3419,7 +3419,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         monkey         mammal    NaN    jump
         """
         inplace = validate_bool_kwarg(inplace, "inplace")
-        multi_index = len(self._internal.index_map) > 1
+        multi_index = self._internal.index_level > 1
 
         def rename(index):
             if multi_index:
@@ -3451,10 +3451,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             if all(isinstance(l, int) for l in level):
                 for lev in level:
-                    if lev >= len(self._internal.index_map):
+                    if lev >= self._internal.index_level:
                         raise IndexError(
                             "Too many levels: Index has only {} level, not {}".format(
-                                len(self._internal.index_map), lev + 1
+                                self._internal.index_level, lev + 1
                             )
                         )
                 idx = level
@@ -4744,7 +4744,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = self._internal.resolved_copy
 
             if labels is not None:
-                if any(len(lbl) != len(internal.index_map) for lbl in labels):
+                if any(len(lbl) != internal.index_level for lbl in labels):
                     raise ValueError(
                         "The length of each subset must be the same as the index size."
                     )
@@ -5556,7 +5556,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             # as a dummy to avoid overhead.
             with option_context("compute.default_index_type", "distributed"):
                 df = self.reset_index()
-            index = df._internal.column_labels[: len(self._internal.index_spark_column_names)]
+            index = df._internal.column_labels[: self._internal.index_level]
 
         df = df.pivot_table(index=index, columns=columns, values=values, aggfunc="first")
 
@@ -6992,7 +6992,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if on:
             if not is_list_like(on):
                 on = [on]  # type: ignore
-            if len(on) != right.index.nlevels:
+            if len(on) != right._internal.index_level:
                 raise ValueError(
                     'len(left_on) must equal the number of levels in the index of "right"'
                 )
@@ -7060,7 +7060,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if not ignore_index:
             index_scols = self._internal.index_spark_columns
-            if len(index_scols) != len(other._internal.index_spark_columns):
+            if len(index_scols) != other._internal.index_level:
                 raise ValueError("Both DataFrames have to have the same number of index levels")
 
             if verify_integrity and len(index_scols) > 0:
@@ -7886,7 +7886,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _reindex_index(self, index, fill_value):
         # When axis is index, we can mimic pandas' by a right outer join.
-        nlevels = len(self._internal.index_spark_column_names)
+        nlevels = self._internal.index_level
         assert nlevels <= 1 or (
             isinstance(index, ks.MultiIndex) and nlevels == index.nlevels
         ), "MultiIndex DataFrame can only be reindexed with a similar Koalas MultiIndex."
@@ -8426,7 +8426,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if len(column_label_names) == 0:
             column_label_names = [None]
 
-        index_column = SPARK_INDEX_NAME_FORMAT(len(self._internal.index_map))
+        index_column = SPARK_INDEX_NAME_FORMAT(self._internal.index_level)
         data_columns = [name_like_string(label) for label in column_labels]
 
         structs = [
@@ -8548,13 +8548,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.series import first_series
 
-        if len(self._internal.index_spark_column_names) > 1:
+        if self._internal.index_level > 1:
             # The index after `reset_index()` will never be used, so use "distributed" index
             # as a dummy to avoid overhead.
             with option_context("compute.default_index_type", "distributed"):
                 df = self.reset_index()
-            index = df._internal.column_labels[: len(self._internal.index_spark_column_names) - 1]
-            columns = df.columns[len(self._internal.index_spark_column_names) - 1]
+            index = df._internal.column_labels[: self._internal.index_level - 1]
+            columns = df.columns[self._internal.index_level - 1]
             df = df.pivot_table(
                 index=index, columns=columns, values=self._internal.column_labels, aggfunc="first"
             )
@@ -10690,7 +10690,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ):
                 kdf = self.reset_index()
                 kdf[key] = ks.DataFrame(value)
-                kdf = kdf.set_index(kdf.columns[: len(self._internal.index_map)])
+                kdf = kdf.set_index(kdf.columns[: self._internal.index_level])
                 kdf.index.names = self.index.names
 
         elif isinstance(key, list):

@@ -173,8 +173,7 @@ class KoalasFrameMethods(object):
             InternalFrame(
                 spark_frame=sdf,
                 index_spark_column_names=[
-                    SPARK_INDEX_NAME_FORMAT(i)
-                    for i in range(len(internal.index_spark_column_names))
+                    SPARK_INDEX_NAME_FORMAT(i) for i in range(internal.index_level)
                 ],
                 index_names=internal.index_names,
                 column_labels=internal.column_labels + [column],
