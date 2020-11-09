@@ -26,6 +26,7 @@ from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
 
+import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
@@ -445,7 +446,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     spark_type.__doc__ = SparkSeriesMethods.data_type.__doc__
 
     # Arithmetic Operators
-    def add(self, other):
+    def add(self, other) -> "Series":
         return self + other
 
     add.__doc__ = _flex_doc_SERIES.format(
@@ -456,7 +457,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_add_example_SERIES,
     )
 
-    def radd(self, other):
+    def radd(self, other) -> "Series":
         return other + self
 
     radd.__doc__ = _flex_doc_SERIES.format(
@@ -467,7 +468,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_add_example_SERIES,
     )
 
-    def div(self, other):
+    def div(self, other) -> "Series":
         return self / other
 
     div.__doc__ = _flex_doc_SERIES.format(
@@ -480,7 +481,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     divide = div
 
-    def rdiv(self, other):
+    def rdiv(self, other) -> "Series":
         return other / self
 
     rdiv.__doc__ = _flex_doc_SERIES.format(
@@ -491,7 +492,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_div_example_SERIES,
     )
 
-    def truediv(self, other):
+    def truediv(self, other) -> "Series":
         return self / other
 
     truediv.__doc__ = _flex_doc_SERIES.format(
@@ -502,7 +503,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_div_example_SERIES,
     )
 
-    def rtruediv(self, other):
+    def rtruediv(self, other) -> "Series":
         return other / self
 
     rtruediv.__doc__ = _flex_doc_SERIES.format(
@@ -513,7 +514,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_div_example_SERIES,
     )
 
-    def mul(self, other):
+    def mul(self, other) -> "Series":
         return self * other
 
     mul.__doc__ = _flex_doc_SERIES.format(
@@ -526,7 +527,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     multiply = mul
 
-    def rmul(self, other):
+    def rmul(self, other) -> "Series":
         return other * self
 
     rmul.__doc__ = _flex_doc_SERIES.format(
@@ -537,7 +538,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_mul_example_SERIES,
     )
 
-    def sub(self, other):
+    def sub(self, other) -> "Series":
         return self - other
 
     sub.__doc__ = _flex_doc_SERIES.format(
@@ -550,7 +551,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     subtract = sub
 
-    def rsub(self, other):
+    def rsub(self, other) -> "Series":
         return other - self
 
     rsub.__doc__ = _flex_doc_SERIES.format(
@@ -561,7 +562,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_sub_example_SERIES,
     )
 
-    def mod(self, other):
+    def mod(self, other) -> "Series":
         return self % other
 
     mod.__doc__ = _flex_doc_SERIES.format(
@@ -572,7 +573,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_mod_example_SERIES,
     )
 
-    def rmod(self, other):
+    def rmod(self, other) -> "Series":
         return other % self
 
     rmod.__doc__ = _flex_doc_SERIES.format(
@@ -583,7 +584,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_mod_example_SERIES,
     )
 
-    def pow(self, other):
+    def pow(self, other) -> "Series":
         return self ** other
 
     pow.__doc__ = _flex_doc_SERIES.format(
@@ -594,7 +595,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_pow_example_SERIES,
     )
 
-    def rpow(self, other):
+    def rpow(self, other) -> "Series":
         return other ** self
 
     rpow.__doc__ = _flex_doc_SERIES.format(
@@ -605,7 +606,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_pow_example_SERIES,
     )
 
-    def floordiv(self, other):
+    def floordiv(self, other) -> "Series":
         return self // other
 
     floordiv.__doc__ = _flex_doc_SERIES.format(
@@ -616,7 +617,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         series_examples=_floordiv_example_SERIES,
     )
 
-    def rfloordiv(self, other):
+    def rfloordiv(self, other) -> "Series":
         return other // self
 
     rfloordiv.__doc__ = _flex_doc_SERIES.format(
@@ -631,7 +632,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     koalas = CachedAccessor("koalas", KoalasSeriesMethods)
 
     # Comparison Operators
-    def eq(self, other):
+    def eq(self, other) -> bool:
         """
         Compare if the current value is equal to the other.
 
@@ -657,7 +658,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     equals = eq
 
-    def gt(self, other):
+    def gt(self, other) -> "Series":
         """
         Compare if the current value is greater than the other.
 
@@ -681,7 +682,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self > other
 
-    def ge(self, other):
+    def ge(self, other) -> "Series":
         """
         Compare if the current value is greater than or equal to the other.
 
@@ -705,7 +706,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self >= other
 
-    def lt(self, other):
+    def lt(self, other) -> "Series":
         """
         Compare if the current value is less than the other.
 
@@ -729,7 +730,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self < other
 
-    def le(self, other):
+    def le(self, other) -> "Series":
         """
         Compare if the current value is less than or equal to the other.
 
@@ -753,7 +754,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self <= other
 
-    def ne(self, other):
+    def ne(self, other) -> "Series":
         """
         Compare if the current value is not equal to the other.
 
@@ -893,7 +894,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: arg should support Series
     # TODO: NaN and None
-    def map(self, arg):
+    def map(self, arg) -> "Series":
         """
         Map values of Series according to input correspondence.
 
@@ -1040,7 +1041,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol = self.spark.column.cast(spark_type)
         return self._with_new_scol(scol)
 
-    def alias(self, name):
+    def alias(self, name) -> "Series":
         """An alias for :meth:`Series.rename`."""
         warnings.warn(
             "Series.alias is deprecated as of Series.rename. Please use the API instead.",
@@ -1068,7 +1069,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
     # taking dictionary and function to change index are not supported.
-    def rename(self, index=None, **kwargs):
+    def rename(self, index=None, **kwargs) -> "Series":
         """
         Alter Series name.
 
@@ -1956,7 +1957,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
         )._kser_for(self._column_label)
 
-    def dropna(self, axis=0, inplace=False, **kwargs):
+    def dropna(self, axis=0, inplace=False, **kwargs) -> Optional["Series"]:
         """
         Return a new Series with missing values removed.
 
@@ -2003,6 +2004,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         kdf = self._kdf[[self.name]].dropna(axis=axis, inplace=False)
         if inplace:
             self._update_anchor(kdf)
+            return None
         else:
             return first_series(kdf)
 
@@ -2863,7 +2865,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     sample.__doc__ = DataFrame.sample.__doc__
 
-    def hist(self, bins=10, **kwds):
+    def hist(self, bins=10, **kwds) -> matplotlib.axes.Axes:
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__
@@ -3767,7 +3769,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return tuple(values)
 
-    def pop(self, item):
+    def pop(self, item) -> Union["Series", Scalar]:
         """
         Return item and drop from series.
 
@@ -5066,7 +5068,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         return DataFrame(internal)
 
-    def item(self):
+    def item(self) -> Scalar:
         """
         Return the first element of the underlying data as a Python scalar.
 
@@ -5440,7 +5442,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
 
-    def argmax(self):
+    def argmax(self) -> int:
         """
         Return int position of the largest value in the Series.
 
@@ -5487,7 +5489,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol_for(sdf, self._internal.data_spark_column_names[0]) == max_value[0]
         ).head()[0]
 
-    def argmin(self):
+    def argmin(self) -> int:
         """
         Return int position of the smallest value in the Series.
 

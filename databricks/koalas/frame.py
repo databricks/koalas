@@ -42,6 +42,7 @@ from typing import (
     Callable,
 )
 
+import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
@@ -841,12 +842,12 @@ class DataFrame(Frame, Generic[T]):
     # create accessor for Koalas specific methods.
     koalas = CachedAccessor("koalas", KoalasFrameMethods)
 
-    def hist(self, bins=10, **kwds):
+    def hist(self, bins=10, **kwds) -> matplotlib.axes.Axes:
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
-    def kde(self, bw_method=None, ind=None, **kwds):
+    def kde(self, bw_method=None, ind=None, **kwds) -> matplotlib.axes.Axes:
         return self.plot.kde(bw_method, ind, **kwds)
 
     kde.__doc__ = KoalasPlotAccessor.kde.__doc__
@@ -1430,7 +1431,7 @@ class DataFrame(Frame, Generic[T]):
         """This is an alias of ``iteritems``."""
         return self.iteritems()
 
-    def to_clipboard(self, excel=True, sep=None, **kwargs):
+    def to_clipboard(self, excel=True, sep=None, **kwargs) -> None:
         """
         Copy object to the system clipboard.
 
@@ -3810,7 +3811,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             return first_series(DataFrame(internal).transpose())
 
-    def round(self, decimals=0):
+    def round(self, decimals=0) -> "DataFrame":
         """
         Round a DataFrame to a variable number of decimal places.
 
@@ -8467,7 +8468,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
-    def unstack(self):
+    def unstack(self) -> Union["DataFrame", "ks.Series"]:
         """
         Pivot the (necessarily hierarchical) index labels.
 
@@ -9644,7 +9645,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return ks.from_pandas(kdf._to_internal_pandas().idxmin())  # type: ignore
 
-    def info(self, verbose=None, buf=None, max_cols=None, null_counts=None):
+    def info(self, verbose=None, buf=None, max_cols=None, null_counts=None) -> None:
         """
         Print a concise summary of a DataFrame.
 
@@ -9745,7 +9746,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 # hack to use pandas' info as is.
                 self._data = self
                 count_func = self.count
-                self.count = lambda: count_func().to_pandas()
+                self.count = lambda: count_func().to_pandas()  # type: ignore
                 return pd.DataFrame.info(
                     self,
                     verbose=verbose,
@@ -9756,7 +9757,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
             finally:
                 del self._data
-                self.count = count_func
+                self.count = count_func  # type: ignore
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(
@@ -10078,7 +10079,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return self.iloc[:, indices]  # type: ignore
 
-    def eval(self, expr, inplace=False) -> Optional["DataFrame"]:
+    def eval(self, expr, inplace=False) -> Optional[Union["DataFrame", "ks.Series"]]:
         """
         Evaluate a string describing operations on DataFrame columns.
 

@@ -2375,10 +2375,10 @@ class MultiIndex(Index):
     def _with_new_scol(self, scol: spark.Column):
         raise NotImplementedError("Not supported for type MultiIndex")
 
-    def any(self, *args, **kwargs):
+    def any(self, *args, **kwargs) -> None:
         raise TypeError("cannot perform any with this index type: MultiIndex")
 
-    def all(self, *args, **kwargs):
+    def all(self, *args, **kwargs) -> None:
         raise TypeError("cannot perform all with this index type: MultiIndex")
 
     @staticmethod
@@ -2845,7 +2845,7 @@ class MultiIndex(Index):
 
     toPandas.__doc__ = to_pandas.__doc__
 
-    def nunique(self, dropna=True):
+    def nunique(self, dropna=True) -> None:  # type: ignore
         raise NotImplementedError("nunique is not defined for MultiIndex")
 
     # TODO: add 'name' parameter after pd.MultiIndex.name is implemented
@@ -3056,13 +3056,13 @@ class MultiIndex(Index):
 
     value_counts.__doc__ = IndexOpsMixin.value_counts.__doc__
 
-    def argmax(self):
+    def argmax(self) -> None:
         raise TypeError("reduction operation 'argmax' not allowed for this dtype")
 
-    def argmin(self):
+    def argmin(self) -> None:
         raise TypeError("reduction operation 'argmin' not allowed for this dtype")
 
-    def asof(self, label):
+    def asof(self, label) -> None:
         raise NotImplementedError(
             "only the default get_loc method is currently supported for MultiIndex"
         )
