@@ -3432,11 +3432,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     return ("level_{}".format(index),)
 
         if level is None:
-            new_index_map = [
-                (column, name if name is not None else rename(i))
-                for i, (column, name) in enumerate(self._internal.index_map.items())
+            new_column_labels = [
+                name if name is not None else rename(i)
+                for i, name in enumerate(self._internal.index_names)
             ]
-            index_map = {}  # type: Dict
+            new_data_spark_columns = [
+                scol.alias(name_like_string(label))
+                for scol, label in zip(self._internal.index_spark_columns, new_column_labels)
+            ]
+
+            index_spark_column_names = []
+            index_names = []
         else:
             if is_list_like(level):
                 level = list(level)
@@ -3478,35 +3484,29 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError("Level should be all int or all string.")
             idx.sort()
 
-            new_index_map = []
-            index_map_items = list(self._internal.index_map.items())
-            new_index_map_items = index_map_items.copy()
-            for i in idx:
-                info = index_map_items[i]
-                index_column, index_name = info
-                new_index_map.append(
-                    (index_column, index_name if index_name is not None else rename(i))
-                )
-                new_index_map_items.remove(info)
+            new_column_labels = []
+            new_data_spark_columns = []
 
-            index_map = OrderedDict(new_index_map_items)
+            index_spark_column_names = self._internal.index_spark_column_names.copy()
+            index_spark_columns = self._internal.index_spark_columns.copy()
+            index_names = self._internal.index_names.copy()
+
+            for i in idx[::-1]:
+                index_spark_column_names.pop(i)
+
+                name = index_names.pop(i)
+                new_column_labels.insert(0, name if name is not None else rename(i))
+
+                scol = index_spark_columns.pop(i)
+                new_data_spark_columns.insert(0, scol.alias(name_like_string(name)))
 
         if drop:
-            new_index_map = []
+            new_data_spark_columns = []
+            new_column_labels = []
 
-        for _, name in new_index_map:
-            if name in self._internal.column_labels:
-                raise ValueError("cannot insert {}, already exists".format(name_like_string(name)))
-
-        sdf = self._internal.spark_frame
-        new_data_scols = [
-            scol_for(sdf, column).alias(name_like_string(name)) for column, name in new_index_map
-        ]
-
-        index_scols = [scol_for(sdf, column) for column in index_map]
-        sdf = sdf.select(
-            index_scols + new_data_scols + self._internal.data_spark_columns + list(HIDDEN_COLUMNS)
-        )
+        for label in new_column_labels:
+            if label in self._internal.column_labels:
+                raise ValueError("cannot insert {}, already exists".format(name_like_string(label)))
 
         if self._internal.column_labels_level > 1:
             column_depth = len(self._internal.column_labels[0])
@@ -3516,28 +3516,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         column_depth, col_level + 1
                     )
                 )
-            if any(col_level + len(name) > column_depth for _, name in new_index_map):
+            if any(col_level + len(label) > column_depth for label in new_column_labels):
                 raise ValueError("Item must have length equal to number of levels.")
-            column_labels = [
+            new_column_labels = [
                 tuple(
                     ([col_fill] * col_level)
-                    + list(name)
-                    + ([col_fill] * (column_depth - (len(name) + col_level)))
+                    + list(label)
+                    + ([col_fill] * (column_depth - (len(label) + col_level)))
                 )
-                for _, name in new_index_map
-            ] + self._internal.column_labels
-        else:
-            column_labels = [name for _, name in new_index_map] + self._internal.column_labels
+                for label in new_column_labels
+            ]
 
         internal = self._internal.copy(
-            spark_frame=sdf,
-            index_spark_column_names=list(index_map.keys()),
-            index_names=list(index_map.values()),
-            column_labels=column_labels,
-            data_spark_columns=(
-                [scol_for(sdf, name_like_string(name)) for _, name in new_index_map]
-                + [scol_for(sdf, col) for col in self._internal.data_spark_column_names]
-            ),
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
+            column_labels=new_column_labels + self._internal.column_labels,
+            data_spark_columns=new_data_spark_columns + self._internal.data_spark_columns,
         )
 
         if inplace:
@@ -5957,11 +5951,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if not isinstance(level, (tuple, list)):  # huh?
                 level = [level]
 
-            spark_frame = self._internal.spark_frame
-            index_map = self._internal.index_map.copy()
             index_names = self.index.names
-            nlevels = self.index.nlevels
-            int_levels = list()
+            nlevels = self._internal.index_level
+
+            int_level = set()
             for n in level:
                 if isinstance(n, int):
                     if n < 0:
@@ -5981,22 +5974,27 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     if n not in index_names:
                         raise KeyError("Level {} not found".format(n))
                     n = index_names.index(n)
-                int_levels.append(n)
+                int_level.add(n)
 
-            if len(int_levels) >= nlevels:
+            if len(level) >= nlevels:
                 raise ValueError(
                     "Cannot remove {} levels from an index with {} levels: "
-                    "at least one level must be left.".format(len(int_levels), nlevels)
+                    "at least one level must be left.".format(len(level), nlevels)
                 )
 
-            for int_level in int_levels:
-                index_spark_column = self._internal.index_spark_column_names[int_level]
-                spark_frame = spark_frame.drop(index_spark_column)
-                index_map.pop(index_spark_column)
+            index_spark_column_names, index_names = zip(
+                *[
+                    item
+                    for i, item in enumerate(
+                        zip(self._internal.index_spark_column_names, self._internal.index_names)
+                    )
+                    if i not in int_level
+                ]
+            )
+
             internal = self._internal.copy(
-                spark_frame=spark_frame,
-                index_spark_column_names=list(index_map.keys()),
-                index_names=list(index_map.values()),
+                index_spark_column_names=list(index_spark_column_names),
+                index_names=list(index_names),
             )
             return DataFrame(internal)
         else:
@@ -6845,33 +6843,38 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if right_index:
                 if how in ("inner", "left"):
                     exprs.extend(left_index_scols)
-                    index_map = self._internal.index_map
+                    index_spark_column_names = self._internal.index_spark_column_names
+                    index_names = self._internal.index_names
                 elif how == "right":
                     exprs.extend(right_index_scols)
-                    index_map = right._internal.index_map
+                    index_spark_column_names = right._internal.index_spark_column_names
+                    index_names = right._internal.index_names
                 else:
-                    index_map = OrderedDict()
-                    for (col, name), left_scol, right_scol in zip(
-                        self._internal.index_map.items(), left_index_scols, right_index_scols
+                    index_spark_column_names = self._internal.index_spark_column_names
+                    index_names = self._internal.index_names
+                    for col, left_scol, right_scol in zip(
+                        index_spark_column_names, left_index_scols, right_index_scols
                     ):
                         scol = F.when(left_scol.isNotNull(), left_scol).otherwise(right_scol)
                         exprs.append(scol.alias(col))
-                        index_map[col] = name
             else:
                 exprs.extend(right_index_scols)
-                index_map = right._internal.index_map
+                index_spark_column_names = right._internal.index_spark_column_names
+                index_names = right._internal.index_names
         elif right_index:
             exprs.extend(left_index_scols)
-            index_map = self._internal.index_map
+            index_spark_column_names = self._internal.index_spark_column_names
+            index_names = self._internal.index_names
         else:
-            index_map = OrderedDict()
+            index_spark_column_names = None
+            index_names = None
 
         selected_columns = joined_table.select(*exprs)
 
         internal = InternalFrame(
             spark_frame=selected_columns,
-            index_spark_column_names=list(index_map.keys()) if index_map else None,
-            index_names=list(index_map.values()) if index_map else None,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=[scol_for(selected_columns, col) for col in data_columns],
         )

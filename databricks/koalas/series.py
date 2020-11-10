@@ -5048,21 +5048,20 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 )
             )
 
-        sdf = self._internal.spark_frame
-        index_scol_names = self._internal.index_spark_column_names.copy()
-        pivot_col = index_scol_names.pop(level)
-        scol = self.spark.column
-        index_names = [
-            self._internal.index_map[index_scol_name] for index_scol_name in index_scol_names
-        ]
-        column_label_names = [self._internal.index_map[pivot_col]]
+        internal = self._internal.resolved_copy
 
-        sdf = sdf.groupby(index_scol_names).pivot(pivot_col).agg(F.first(scol))
+        index_map = list(zip(internal.index_spark_column_names, internal.index_names))
+        pivot_col, column_label_names = index_map.pop(level)
+        index_scol_names, index_names = zip(*index_map)
+        col = internal.data_spark_column_names[0]
+
+        sdf = internal.spark_frame
+        sdf = sdf.groupby(list(index_scol_names)).pivot(pivot_col).agg(F.first(scol_for(sdf, col)))
         internal = InternalFrame(
             spark_frame=sdf,
-            index_spark_column_names=index_scol_names,
-            index_names=index_names,
-            column_label_names=column_label_names,
+            index_spark_column_names=list(index_scol_names),
+            index_names=list(index_names),
+            column_label_names=[column_label_names],
         )
         return DataFrame(internal)
 

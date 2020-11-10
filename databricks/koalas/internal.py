@@ -18,9 +18,8 @@
 An internal immutable DataFrame with some metadata to manage indexes.
 """
 import re
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
-from collections import OrderedDict
 import py4j
 
 import numpy as np
@@ -129,8 +128,6 @@ class InternalFrame(object):
 
     * `index_names` represents the external index name as a label
 
-    * `index_map` is zipped pairs of `index_spark_column_names` and `index_names`
-
     * `to_internal_spark_frame` represents Spark DataFrame derived by the metadata. Includes index.
 
     * `to_pandas_frame` represents pandas DataFrame derived by the metadata
@@ -153,8 +150,6 @@ class InternalFrame(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [None]
-    >>> internal.index_map
-    OrderedDict([('__index_level_0__', None)])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
@@ -210,8 +205,6 @@ class InternalFrame(object):
     ['A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [('A',)]
-    >>> internal.index_map
-    OrderedDict([('A', ('A',))])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
@@ -268,8 +261,6 @@ class InternalFrame(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [None, ('A',)]
-    >>> internal.index_map
-    OrderedDict([('__index_level_0__', None), ('A', ('A',))])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
@@ -351,8 +342,6 @@ class InternalFrame(object):
     ['A', 'B']
     >>> internal.index_names
     [('A',)]
-    >>> internal.index_map
-    OrderedDict([('A', ('A',))])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+
     |  A|  B|
@@ -446,13 +435,13 @@ class InternalFrame(object):
         assert not spark_frame.isStreaming, "Koalas does not support Structured Streaming."
 
         if not index_spark_column_names:
+            if data_spark_columns is not None:
+                spark_frame = spark_frame.select(data_spark_columns)
+
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in spark_frame.columns), (
                 "Index columns should not appear in columns of the Spark DataFrame. Avoid "
                 "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
             )
-
-            if data_spark_columns is not None:
-                spark_frame = spark_frame.select(data_spark_columns)
 
             # Create default index.
             spark_frame = InternalFrame.attach_default_index(spark_frame)
@@ -769,11 +758,6 @@ class InternalFrame(object):
             for spark_column in self.data_spark_columns
             if all(not spark_column._jc.equals(scol._jc) for scol in index_spark_columns)
         ]
-
-    @lazy_property
-    def index_map(self) -> Dict[str, Optional[Tuple]]:
-        """ Return the managed index information. """
-        return OrderedDict(zip(self.index_spark_column_names, self.index_names))
 
     @property
     def index_names(self) -> List[Optional[Tuple]]:

@@ -1233,14 +1233,25 @@ class Index(IndexOpsMixin):
         if not is_list_like(level):
             level = [level]
 
+        int_level = set()
         for n in level:
             if isinstance(n, int):
-                if n > nlevels - 1:
+                if n < 0:
+                    n = n + nlevels
+                    if n < 0:
+                        raise IndexError(
+                            "Too many levels: Index has only {} levels, "
+                            "{} is not a valid level number".format(nlevels, (n - nlevels))
+                        )
+                if n >= nlevels:
                     raise IndexError(
                         "Too many levels: Index has only {} levels, not {}".format(nlevels, n + 1)
                     )
-            elif n not in names:
-                raise KeyError("Level {} not found".format(n))
+            else:
+                if n not in names:
+                    raise KeyError("Level {} not found".format(n))
+                n = names.index(n)
+            int_level.add(n)
 
         if len(level) >= nlevels:
             raise ValueError(
@@ -1249,19 +1260,24 @@ class Index(IndexOpsMixin):
                 "left.".format(len(level), nlevels)
             )
 
-        int_level = set(n if isinstance(n, int) else names.index(n) for n in level)
         index_spark_column_names, index_names = zip(
-            *[item for i, item in enumerate(self._internal.index_map.items()) if i not in int_level]
+            *[
+                item
+                for i, item in enumerate(
+                    zip(self._internal.index_spark_column_names, self._internal.index_names)
+                )
+                if i not in int_level
+            ]
         )
 
         sdf = self._internal.spark_frame
         sdf = sdf.select(*index_spark_column_names)
-        result = InternalFrame(
+        internal = InternalFrame(
             spark_frame=sdf,
             index_spark_column_names=list(index_spark_column_names),
             index_names=list(index_names),
         )
-        return DataFrame(result).index
+        return DataFrame(internal).index
 
     def symmetric_difference(self, other, result_name=None, sort=None) -> "Index":
         """
@@ -2632,7 +2648,7 @@ class MultiIndex(Index):
                     "%s is not a valid level number" % (len(self.names), index)
                 )
 
-        index_map = list(self._internal.index_map.items())
+        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
         index_map[i], index_map[j], = index_map[j], index_map[i]
         index_spark_column_names, index_names = zip(*index_map)
         internal = self._kdf._internal.copy(
@@ -3011,22 +3027,24 @@ class MultiIndex(Index):
         elif isinstance(level, int):
             scol = index_scols[level]
         else:
-            spark_column_name = None
-            for index_spark_column_name, index_name in self._internal.index_map.items():
+            scol = None
+            for index_spark_column, index_name in zip(
+                self._internal.index_spark_columns, self._internal.index_names
+            ):
                 if not isinstance(level, tuple):
                     level = (level,)
                 if level == index_name:
-                    if spark_column_name is not None:
+                    if scol is not None:
                         raise ValueError(
                             "The name {} occurs multiple times, use a level number".format(
                                 name_like_string(level)
                             )
                         )
-                    spark_column_name = index_spark_column_name
-            if spark_column_name is None:
+                    scol = index_spark_column
+            if scol is None:
                 raise KeyError("Level {} not found".format(name_like_string(level)))
-            scol = scol_for(sdf, spark_column_name)
         sdf = sdf[~scol.isin(codes)]
+
         return MultiIndex(
             DataFrame(
                 InternalFrame(
@@ -3220,7 +3238,6 @@ class MultiIndex(Index):
                 )
 
         index_name = self._internal.index_spark_column_names
-        sdf = self._internal.spark_frame
         sdf_before = self.to_frame(name=index_name)[:loc].to_spark()
         sdf_middle = Index([item]).to_frame(name=index_name).to_spark()
         sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
@@ -3277,8 +3294,6 @@ class MultiIndex(Index):
         MultiIndex([('c', 'z')],
                    )
         """
-        keep_name = True
-
         if isinstance(other, Series) or not is_list_like(other):
             raise TypeError("other must be a MultiIndex or a list of tuples")
         elif isinstance(other, DataFrame):
