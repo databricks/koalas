@@ -133,8 +133,12 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         this_internal = resolve(this._internal, "this")
         that_internal = resolve(that._internal, "that")
 
-        this_index_map = this_internal.index_map
-        that_index_map = that_internal.index_map
+        this_index_map = list(
+            zip(this_internal.index_spark_column_names, this_internal.index_names)
+        )
+        that_index_map = list(
+            zip(that_internal.index_spark_column_names, that_internal.index_names)
+        )
         assert len(this_index_map) == len(that_index_map)
 
         join_scols = []
@@ -142,7 +146,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
         # Note that the order of each element in index_map is guaranteed according to the index
         # level.
-        this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
+        this_and_that_index_map = list(zip(this_index_map, that_index_map))
 
         this_sdf = this_internal.spark_frame.alias("this")
         that_sdf = that_internal.spark_frame.alias("that")
