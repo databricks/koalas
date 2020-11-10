@@ -40,6 +40,7 @@ from typing import (
     Iterator,
     Dict,
     Callable,
+    cast,
 )
 
 import numpy as np
@@ -7076,7 +7077,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Lazy import to avoid circular dependency issues
         from databricks.koalas.namespace import concat
 
-        return concat([self, other], ignore_index=ignore_index)
+        return cast(DataFrame, concat([self, other], ignore_index=ignore_index))
 
     # TODO: add 'filter_func' and 'errors' parameter
     def update(self, other: "DataFrame", join: str = "left", overwrite: bool = True) -> None:
