@@ -185,7 +185,7 @@ class KoalasFrameMethods(object):
             ).resolved_copy
         )
 
-    def apply_batch(self, func, args=(), **kwds):
+    def apply_batch(self, func, args=(), **kwds) -> "DataFrame":
         """
         Apply a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
         DataFrame given to the function is of a batch used internally.
@@ -200,7 +200,7 @@ class KoalasFrameMethods(object):
 
             >>> # This case does not return the length of whole frame but of the batch internally
             ... # used.
-            ... def length(pdf) -> ks.DataFrame[int]:
+            ... def length(pdf) -> pd.DataFrame[int]:
             ...     return pd.DataFrame([len(pdf)])
             ...
             >>> df = ks.DataFrame({'A': range(1000)})
@@ -389,7 +389,7 @@ class KoalasFrameMethods(object):
 
         return DataFrame(internal)
 
-    def transform_batch(self, func, *args, **kwargs):
+    def transform_batch(self, func, *args, **kwargs) -> "DataFrame":
         """
         Transform chunks with a function that takes pandas DataFrame and outputs pandas DataFrame.
         The pandas DataFrame given to the function is of a batch used internally. The length of
