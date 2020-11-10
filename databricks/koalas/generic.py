@@ -22,7 +22,7 @@ from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
-from typing import List, Optional, Tuple, Union, TYPE_CHECKING, cast
+from typing import Any, List, Optional, Tuple, Union, TYPE_CHECKING, cast
 import warnings
 
 import numpy as np  # noqa: F401
@@ -57,6 +57,10 @@ class Frame(object, metaclass=ABCMeta):
     """
     The base class for both DataFrame and Series.
     """
+
+    @abstractmethod
+    def __getitem__(self, key):
+        pass
 
     @property
     @abstractmethod
@@ -405,7 +409,7 @@ class Frame(object, metaclass=ABCMeta):
             dtypes = list(self.dtypes)
         return pd.Series(dict(Counter([d.name for d in dtypes])))
 
-    def pipe(self, func, *args, **kwargs):
+    def pipe(self, func, *args, **kwargs) -> Any:
         r"""
         Apply func(self, \*args, \*\*kwargs).
 
@@ -1683,7 +1687,7 @@ class Frame(object, metaclass=ABCMeta):
             raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
-    def first_valid_index(self):
+    def first_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
         """
         Retrieves the index of the first valid value.
 
@@ -1778,7 +1782,7 @@ class Frame(object, metaclass=ABCMeta):
 
         return first_valid_idx
 
-    def last_valid_index(self):
+    def last_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
         """
         Return index for last non-NA/null value.
 
@@ -2024,7 +2028,7 @@ class Frame(object, metaclass=ABCMeta):
         """
         return Expanding(self, min_periods=min_periods)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None) -> Any:
         """
         Get item from object for given key (DataFrame column, Panel slice,
         etc.). Returns default value if not found.

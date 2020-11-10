@@ -2657,10 +2657,10 @@ class SeriesGroupBy(GroupBy):
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return first_series(super()._reduce_for_stat_function(sfun, only_numeric))
 
-    def agg(self, *args, **kwargs):
+    def agg(self, *args, **kwargs) -> None:
         return MissingPandasLikeSeriesGroupBy.agg(self, *args, **kwargs)
 
-    def aggregate(self, *args, **kwargs):
+    def aggregate(self, *args, **kwargs) -> None:
         return MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
     def transform(self, func, *args, **kwargs) -> Series:
