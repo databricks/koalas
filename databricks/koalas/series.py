@@ -24,7 +24,7 @@ import warnings
 from collections.abc import Iterable, Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
-from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -1325,7 +1325,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[str, Tuple] = None) -> SparkDataFrame:
+    def to_frame(self, name: Union[Any, Tuple] = None) -> SparkDataFrame:
         """
         Convert Series to DataFrame.
 
@@ -5438,7 +5438,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         kser = first_series(DataFrame(internal))
 
-        return ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
+        return cast(
+            Series, ks.concat([kser, self.loc[self.isnull()].spark.transform(lambda _: F.lit(-1))])
+        )
 
     def argmax(self):
         """
