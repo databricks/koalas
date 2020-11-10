@@ -2677,10 +2677,10 @@ class MultiIndex(Index):
             # Therefore, we should check `has_not_null` over the all levels.
             has_not_null = has_not_null & left.isNotNull() & right.isNotNull()
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
-                has_not_null & compare(left, right, spark.Column.__gt__)
+                compare(left, right, spark.Column.__gt__)
             )
 
-        cond = prev.isNull() | cond
+        cond = prev.isNull() | (has_not_null & cond)
 
         internal = InternalFrame(
             spark_frame=self._internal.spark_frame.select(
@@ -2711,10 +2711,10 @@ class MultiIndex(Index):
             # Therefore, we should check `has_not_null` over the all levels.
             has_not_null = has_not_null & left.isNotNull() & right.isNotNull()
             cond = F.when(left.eqNullSafe(right), cond).otherwise(
-                has_not_null & compare(left, right, spark.Column.__lt__)
+                compare(left, right, spark.Column.__lt__)
             )
 
-        cond = prev.isNull() | cond
+        cond = prev.isNull() | (has_not_null & cond)
 
         internal = InternalFrame(
             spark_frame=self._internal.spark_frame.select(

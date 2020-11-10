@@ -995,11 +995,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([("x", "d"), ("y", "b"), ("y", "c"), (None, "a")])
         datas.append([("x", "d", "o"), ("y", "c", "p"), ("y", "c", None), ("z", "a", "r")])
 
-        # The datas below cannot be an arguments for `MultiIndex.from_tuples` in pandas >= 1.1.0.
-        # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560 for detail.
-        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
-            datas.append([(None, None), (None, None), (None, None), (None, None), (None, None)])
-
         for data in datas:
             with self.subTest(data=data):
                 pmidx = pd.MultiIndex.from_tuples(data)
@@ -1035,12 +1030,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         datas.append([("x", "d"), ("y", None), ("y", "c"), ("z", "a")])
         datas.append([("x", "d", "o"), ("y", "c", None), ("y", "c", "q"), ("z", "a", "r")])
 
-        # The datas below cannot be an arguments for `MultiIndex.from_tuples` in pandas >= 1.1.0.
-        # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560 for detail.
-        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
-            datas.append([(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")])
-            datas.append([(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)])
-
         for data in datas:
             with self.subTest(data=data):
                 pmidx = pd.MultiIndex.from_tuples(data)
@@ -1051,6 +1040,64 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 else:
                     self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
                     self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+
+        # The datas below are tested another way since they cannot be an arguments for
+        # `MultiIndex.from_tuples` in pandas >= 1.1.0.
+        # Refer https://github.com/databricks/koalas/pull/1688#issuecomment-667156560 for detail.
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            pmidx = pd.MultiIndex.from_tuples(
+                [(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)]
+            )
+            kmidx = ks.from_pandas(pmidx)
+            if LooseVersion(pd.__version__) < LooseVersion("1.1.4"):
+                self.assert_eq(kmidx.is_monotonic_increasing, False)
+                self.assert_eq(kmidx.is_monotonic_decreasing, False)
+            else:
+                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            pmidx = pd.MultiIndex.from_tuples(
+                [(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")]
+            )
+            kmidx = ks.from_pandas(pmidx)
+            if LooseVersion(pd.__version__) < LooseVersion("1.1.4"):
+                self.assert_eq(kmidx.is_monotonic_increasing, False)
+                self.assert_eq(kmidx.is_monotonic_decreasing, False)
+            else:
+                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            pmidx = pd.MultiIndex.from_tuples(
+                [(None, None), (None, None), (None, None), (None, None), (None, None)]
+            )
+            kmidx = ks.from_pandas(pmidx)
+            if LooseVersion(pd.__version__) < LooseVersion("1.1.4"):
+                self.assert_eq(kmidx.is_monotonic_increasing, False)
+                self.assert_eq(kmidx.is_monotonic_decreasing, False)
+            else:
+                self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+                self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+        else:
+            # [(-5, None), (-4, None), (-3, None), (-2, None), (-1, None)]
+            kdf = ks.DataFrame({"a": [-5, -4, -3, -2, -1], "b": [1, 1, 1, 1, 1]})
+            kdf["b"] = None
+            kmidx = kdf.set_index(["a", "b"]).index
+            pmidx = kmidx.to_pandas()
+            self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            # [(None, "e"), (None, "c"), (None, "b"), (None, "d"), (None, "a")]
+            kdf = ks.DataFrame({"a": [1, 1, 1, 1, 1], "b": ["e", "c", "b", "d", "a"]})
+            kdf["a"] = None
+            kmidx = kdf.set_index(["a", "b"]).index
+            pmidx = kmidx.to_pandas()
+            self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
+            # [(None, None), (None, None), (None, None), (None, None), (None, None)]
+            kdf = ks.DataFrame({"a": [1, 1, 1, 1, 1], "b": [1, 1, 1, 1, 1]})
+            kdf["a"] = None
+            kdf["b"] = None
+            kmidx = kdf.set_index(["a", "b"]).index
+            pmidx = kmidx.to_pandas()
+            self.assert_eq(kmidx.is_monotonic_increasing, pmidx.is_monotonic_increasing)
+            self.assert_eq(kmidx.is_monotonic_decreasing, pmidx.is_monotonic_decreasing)
 
     def test_difference(self):
         # Index
