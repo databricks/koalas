@@ -200,7 +200,7 @@ class KoalasFrameMethods(object):
 
             >>> # This case does not return the length of whole frame but of the batch internally
             ... # used.
-            ... def length(pdf) -> pd.DataFrame[int]:
+            ... def length(pdf) -> ks.DataFrame[int]:
             ...     return pd.DataFrame([len(pdf)])
             ...
             >>> df = ks.DataFrame({'A': range(1000)})
