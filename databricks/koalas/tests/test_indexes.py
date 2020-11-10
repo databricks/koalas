@@ -204,6 +204,8 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             ks.Index([1, 2, 3], name=["0", "1"])
         with self.assertRaisesRegex(TypeError, expected_error_message):
             kidx.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Index([(1, 2), (3, 4)], names=["a", ["b"]])
 
     def test_multi_index_names(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]

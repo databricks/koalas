@@ -122,6 +122,9 @@ class Index(IndexOpsMixin):
             if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
                 return MultiIndex.from_tuples(data, names=names)
 
+            if not is_hashable(name):
+                raise TypeError("Index.name must be a hashable type")
+
             index = pd.Index(data=data, dtype=dtype, name=name)
             data = DataFrame(index=index)
 
@@ -579,7 +582,7 @@ class Index(IndexOpsMixin):
     def names(self, names: List[Union[Any, Tuple]]) -> None:
         if not is_list_like(names):
             raise ValueError("Names must be a list-like")
-        if not is_hashable(names[0]):
+        if not all(is_hashable(name) for name in names):
             raise TypeError("Index.name must be a hashable type")
         self.rename(names, inplace=True)
 
