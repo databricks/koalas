@@ -676,11 +676,7 @@ class Index(IndexOpsMixin):
             return [(name,)]
         elif is_list_like(name):
             if len(self._internal.index_map) != len(name):
-                raise ValueError(
-                    "Length of new names must be {}, got {}".format(
-                        len(self._internal.index_map), len(name)
-                    )
-                )
+                raise TypeError("name must be a hashable type")
             return [n if is_name_like_tuple(n) else (n,) for n in name]
         else:
             raise TypeError("name must be a hashable type")
