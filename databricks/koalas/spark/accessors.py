@@ -19,7 +19,7 @@ Spark related features. Usually, the features here are missing in pandas
 but Spark has it.
 """
 from distutils.version import LooseVersion
-from typing import TYPE_CHECKING, Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List, cast
 
 import pyspark
 from pyspark import StorageLevel
@@ -59,7 +59,7 @@ class SparkIndexOpsMethods(object):
         """
         return self._data._internal.spark_column_for(self._data._column_label)
 
-    def transform(self, func):
+    def transform(self, func) -> Union["ks.Series", "ks.Index"]:
         """
         Applies a function that takes and returns a Spark column. It allows to natively
         apply a Spark function and column APIs with the Spark column internally used
@@ -126,7 +126,7 @@ class SparkIndexOpsMethods(object):
 
 class SparkSeriesMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Series":
-        return super().transform(func)
+        return cast("ks.Series", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
 
@@ -252,7 +252,7 @@ class SparkSeriesMethods(SparkIndexOpsMethods):
 
 class SparkIndexMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Index":
-        return super().transform(func)
+        return cast("ks.Index", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
 
@@ -295,7 +295,7 @@ class SparkFrameMethods(object):
         """
         return self.frame(index_col).schema
 
-    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None):
+    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None) -> None:
         """
         Prints out the underlying Spark schema in the tree format.
 
@@ -304,6 +304,10 @@ class SparkFrameMethods(object):
         index_col: str or list of str, optional, default: None
             Column names to be used in Spark to represent Koalas' index. The index name
             in Koalas is ignored. By default, the index is always lost.
+
+        Returns
+        -------
+        None
 
         Examples
         --------
@@ -634,7 +638,7 @@ class SparkFrameMethods(object):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         """
         Write the DataFrame into a Spark table. :meth:`DataFrame.spark.to_table`
         is an alias of :meth:`DataFrame.to_table`.
@@ -668,6 +672,10 @@ class SparkFrameMethods(object):
             in Koalas is ignored. By default, the index is always lost.
         options
             Additional options passed directly to Spark.
+
+        Returns
+        -------
+        None
 
         See Also
         --------
@@ -705,7 +713,7 @@ class SparkFrameMethods(object):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         """Write the DataFrame out to a Spark data source. :meth:`DataFrame.spark.to_spark_io`
         is an alias of :meth:`DataFrame.to_spark_io`.
 
@@ -735,6 +743,10 @@ class SparkFrameMethods(object):
             in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Spark's data source.
+
+        Returns
+        -------
+        None
 
         See Also
         --------
@@ -766,7 +778,7 @@ class SparkFrameMethods(object):
             path=path, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
-    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None):
+    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None) -> None:
         """
         Prints the underlying (logical and physical) Spark plans to the console for debugging
         purpose.
@@ -777,6 +789,10 @@ class SparkFrameMethods(object):
             If ``False``, prints only the physical plan.
         mode : string, default ``None``.
             The expected output format of plans.
+
+        Returns
+        -------
+        None
 
         Examples
         --------
@@ -939,10 +955,138 @@ class SparkFrameMethods(object):
         from databricks.koalas.frame import DataFrame
 
         internal = self._kdf._internal.resolved_copy
-
         repartitioned_sdf = internal.spark_frame.repartition(num_partitions)
-
         return DataFrame(internal.with_new_sdf(repartitioned_sdf))
+
+    def coalesce(self, num_partitions: int) -> "ks.DataFrame":
+        """
+        Returns a new DataFrame that has exactly `num_partitions` partitions.
+
+        .. note:: This operation results in a narrow dependency, e.g. if you go from 1000
+            partitions to 100 partitions, there will not be a shuffle, instead each of the 100 new
+            partitions will claim 10 of the current partitions. If a larger number of partitions is
+            requested, it will stay at the current number of partitions. However, if you're doing a
+            drastic coalesce, e.g. to num_partitions = 1, this may result in your computation taking
+            place on fewer nodes than you like (e.g. one node in the case of num_partitions = 1). To
+            avoid this, you can call repartition(). This will add a shuffle step, but means the
+            current upstream partitions will be executed in parallel (per whatever the current
+            partitioning is).
+
+        Parameters
+        ----------
+        num_partitions : int
+            The target number of partitions.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"age": [5, 5, 2, 2],
+        ...         "name": ["Bob", "Bob", "Alice", "Alice"]}).set_index("age")
+        >>> kdf.sort_index()  # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        >>> new_kdf = kdf.spark.coalesce(1)
+        >>> new_kdf.to_spark().rdd.getNumPartitions()
+        1
+        >>> new_kdf.sort_index()   # doctest: +NORMALIZE_WHITESPACE
+              name
+        age
+        2    Alice
+        2    Alice
+        5      Bob
+        5      Bob
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        coalesced_sdf = internal.spark_frame.coalesce(num_partitions)
+        return DataFrame(internal.with_new_sdf(coalesced_sdf))
+
+    def checkpoint(self, eager: bool = True) -> "ks.DataFrame":
+        """Returns a checkpointed version of this DataFrame.
+
+        Checkpointing can be used to truncate the logical plan of this DataFrame, which is
+        especially useful in iterative algorithms where the plan may grow exponentially. It will be
+        saved to files inside the checkpoint directory set with `SparkContext.setCheckpointDir`.
+
+        Parameters
+        ----------
+        eager : bool
+            Whether to checkpoint this DataFrame immediately
+
+        Returns
+        -------
+        DataFrame
+
+        .. note:: Experimental
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        >>> kdf
+           a
+        0  a
+        1  b
+        2  c
+        >>> new_kdf = kdf.spark.checkpoint()  # doctest: +SKIP
+        >>> new_kdf  # doctest: +SKIP
+           a
+        0  a
+        1  b
+        2  c
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        checkpointed_sdf = internal.spark_frame.checkpoint(eager)
+        return DataFrame(internal.with_new_sdf(checkpointed_sdf))
+
+    def local_checkpoint(self, eager: bool = True) -> "ks.DataFrame":
+        """Returns a locally checkpointed version of this DataFrame.
+
+        Checkpointing can be used to truncate the logical plan of this DataFrame, which is
+        especially useful in iterative algorithms where the plan may grow exponentially. Local
+        checkpoints are stored in the executors using the caching subsystem and therefore they are
+        not reliable.
+
+        Parameters
+        ----------
+        eager : bool
+            Whether to locally checkpoint this DataFrame immediately
+
+        Returns
+        -------
+        DataFrame
+
+        .. note:: Experimental
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
+        >>> kdf
+           a
+        0  a
+        1  b
+        2  c
+        >>> new_kdf = kdf.spark.local_checkpoint()
+        >>> new_kdf
+           a
+        0  a
+        1  b
+        2  c
+        """
+        from databricks.koalas.frame import DataFrame
+
+        internal = self._kdf._internal.resolved_copy
+        checkpointed_sdf = internal.spark_frame.localCheckpoint(eager)
+        return DataFrame(internal.with_new_sdf(checkpointed_sdf))
 
     @property
     def analyzed(self) -> "ks.DataFrame":
@@ -1036,10 +1180,14 @@ class CachedSparkFrameMethods(SparkFrameMethods):
         """
         return self._kdf._cached.storageLevel
 
-    def unpersist(self):
+    def unpersist(self) -> None:
         """
         The `unpersist` function is used to uncache the Koalas DataFrame when it
         is not used with `with` statement.
+
+        Returns
+        -------
+        None
 
         Examples
         --------

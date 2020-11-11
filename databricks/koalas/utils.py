@@ -124,12 +124,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             )
             return internal.copy(
                 spark_frame=sdf,
-                index_map=OrderedDict(
-                    zip(
-                        [rename(col) for col in internal.index_spark_column_names],
-                        internal.index_names,
-                    )
-                ),
+                index_spark_column_names=[rename(col) for col in internal.index_spark_column_names],
                 data_spark_columns=[
                     scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
                 ],
@@ -138,8 +133,12 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         this_internal = resolve(this._internal, "this")
         that_internal = resolve(that._internal, "that")
 
-        this_index_map = this_internal.index_map
-        that_index_map = that_internal.index_map
+        this_index_map = list(
+            zip(this_internal.index_spark_column_names, this_internal.index_names)
+        )
+        that_index_map = list(
+            zip(that_internal.index_spark_column_names, that_internal.index_names)
+        )
         assert len(this_index_map) == len(that_index_map)
 
         join_scols = []
@@ -147,7 +146,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
         # Note that the order of each element in index_map is guaranteed according to the index
         # level.
-        this_and_that_index_map = zip(this_index_map.items(), that_index_map.items())
+        this_and_that_index_map = list(zip(this_index_map, that_index_map))
 
         this_sdf = this_internal.spark_frame.alias("this")
         that_sdf = that_internal.spark_frame.alias("that")
@@ -218,7 +217,8 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         return DataFrame(
             InternalFrame(
                 spark_frame=joined_df,
-                index_map=OrderedDict(zip(index_column_names, this_internal.index_names)),
+                index_spark_column_names=index_column_names,
+                index_names=this_internal.index_names,
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
                 column_label_names=column_label_names,

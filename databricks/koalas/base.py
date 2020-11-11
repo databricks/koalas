@@ -18,10 +18,9 @@
 Base and utility classes for Koalas objects.
 """
 from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 import datetime
 from functools import wraps, partial
-from typing import Any, Callable, Tuple, Union
+from typing import Any, Callable, Tuple, Union, cast
 import warnings
 
 import numpy as np
@@ -53,7 +52,7 @@ from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, va
 from databricks.koalas.frame import DataFrame
 
 
-def booleanize_null(left_scol, scol, f):
+def booleanize_null(left_scol, scol, f) -> Column:
     """
     Booleanize Null in Spark Column
     """
@@ -179,7 +178,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     # arithmetic operators
     __neg__ = column_op(Column.__neg__)
 
-    def __add__(self, other):
+    def __add__(self, other) -> Union["ks.Series", "ks.Index"]:
         if not isinstance(self.spark.data_type, StringType) and (
             (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
             or isinstance(other, str)
@@ -197,7 +196,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             return column_op(Column.__add__)(self, other)
 
-    def __sub__(self, other):
+    def __sub__(self, other) -> Union["ks.Series", "ks.Index"]:
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -241,7 +240,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__sub__)(self, other)
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
@@ -264,7 +263,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(Column.__mul__)(self, other)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> Union["ks.Series", "ks.Index"]:
         """
         __truediv__ has different behaviour between pandas and PySpark for several cases.
         1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
@@ -298,7 +297,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(truediv)(self, other)
 
-    def __mod__(self, other):
+    def __mod__(self, other) -> Union["ks.Series", "ks.Index"]:
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -311,7 +310,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(mod)(self, other)
 
-    def __radd__(self, other):
+    def __radd__(self, other) -> Union["ks.Series", "ks.Index"]:
         # Handle 'literal' + df['col']
         if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
             raise TypeError("string addition can only be applied to string series or literals.")
@@ -324,7 +323,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         else:
             return column_op(Column.__radd__)(self, other)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("substraction can not be applied to string series or literals.")
 
@@ -356,7 +355,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 raise TypeError("date subtraction can only be applied to date series.")
         return column_op(Column.__rsub__)(self, other)
 
-    def __rmul__(self, other):
+    def __rmul__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
@@ -370,7 +369,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(Column.__rmul__)(self, other)
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -381,7 +380,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(rtruediv)(self, other)
 
-    def __floordiv__(self, other):
+    def __floordiv__(self, other) -> Union["ks.Series", "ks.Index"]:
         """
         __floordiv__ has different behaviour between pandas and PySpark for several cases.
         1. When divide np.inf by zero, PySpark returns null whereas pandas returns np.inf
@@ -418,7 +417,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(floordiv)(self, other)
 
-    def __rfloordiv__(self, other):
+    def __rfloordiv__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -429,7 +428,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return numpy_column_op(rfloordiv)(self, other)
 
-    def __rmod__(self, other):
+    def __rmod__(self, other) -> Union["ks.Series", "ks.Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("modulo can not be applied on string series or literals.")
 
@@ -478,7 +477,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             raise NotImplementedError("Koalas objects currently do not support %s." % ufunc)
 
     @property
-    def dtype(self):
+    def dtype(self) -> np.dtype:
         """Return the dtype object of the underlying data.
 
         Examples
@@ -501,7 +500,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return spark_type_to_pandas_dtype(self.spark.data_type)
 
     @property
-    def empty(self):
+    def empty(self) -> bool:
         """
         Returns true if the current object is empty. Otherwise, returns false.
 
@@ -517,7 +516,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._internal.resolved_copy.spark_frame.rdd.isEmpty()
 
     @property
-    def hasnans(self):
+    def hasnans(self) -> bool:
         """
         Return True if it has any missing values. Otherwise, it returns False.
 
@@ -548,7 +547,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return sdf.select(F.max(scol.isNull())).collect()[0][0]
 
     @property
-    def is_monotonic(self):
+    def is_monotonic(self) -> bool:
         """
         Return boolean if values in the object are monotonically increasing.
 
@@ -559,7 +558,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        is_monotonic : boolean
+        is_monotonic : bool
 
         Examples
         --------
@@ -623,7 +622,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     is_monotonic_increasing = is_monotonic
 
     @property
-    def is_monotonic_decreasing(self):
+    def is_monotonic_decreasing(self) -> bool:
         """
         Return boolean if values in the object are monotonically decreasing.
 
@@ -634,7 +633,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        is_monotonic : boolean
+        is_monotonic : bool
 
         Examples
         --------
@@ -769,7 +768,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return ret
 
     @property
-    def ndim(self):
+    def ndim(self) -> int:
         """
         Return an int representing the number of array dimensions.
 
@@ -801,7 +800,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         """
         return 1
 
-    def astype(self, dtype):
+    def astype(self, dtype) -> Union["ks.Index", "ks.Series"]:
         """
         Cast a Koalas object to a specified dtype ``dtype``.
 
@@ -840,11 +839,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             raise ValueError("Type {} not understood".format(dtype))
         return self._with_new_scol(self.spark.column.cast(spark_type))
 
-    def isin(self, values):
+    def isin(self, values) -> Union["ks.Series", "ks.Index"]:
         """
-        Check whether `values` are contained in Series.
+        Check whether `values` are contained in Series or Index.
 
-        Return a boolean Series showing whether each element in the Series
+        Return a boolean Series or Index showing whether each element in the Series
         matches an element in the passed sequence of `values` exactly.
 
         Parameters
@@ -854,7 +853,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        isin : Series (bool dtype)
+        isin : Series (bool dtype) or Index (bool dtype)
 
         Examples
         --------
@@ -892,7 +891,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return self._with_new_scol(self.spark.column.isin(list(values)))
 
-    def isnull(self):
+    def isnull(self) -> Union["ks.Series", "ks.Index"]:
         """
         Detect existing (non-missing) values.
 
@@ -904,7 +903,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        Series : Mask of bool values for each element in Series
+        Series or Index : Mask of bool values for each element in Series
             that indicates whether an element is not an NA value.
 
         Examples
@@ -930,7 +929,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     isna = isnull
 
-    def notnull(self):
+    def notnull(self) -> Union["ks.Series", "ks.Index"]:
         """
         Detect existing (non-missing) values.
         Return a boolean same-sized object indicating if the values are not NA.
@@ -941,7 +940,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Returns
         -------
-        Series : Mask of bool values for each element in Series
+        Series or Index : Mask of bool values for each element in Series
             that indicates whether an element is not an NA value.
 
         Examples
@@ -968,7 +967,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         if isinstance(self, MultiIndex):
             raise NotImplementedError("notna is not defined for MultiIndex")
-        return (~self.isnull()).rename(self.name)
+        return (~self.isnull()).rename(
+            self.name  # type: ignore
+        )
 
     notna = notnull
 
@@ -1099,7 +1100,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return ret
 
     # TODO: add frep and axis parameter
-    def shift(self, periods=1, fill_value=None):
+    def shift(self, periods=1, fill_value=None) -> Union["ks.Series", "ks.Index"]:
         """
         Shift Series/Index by desired number of periods.
 
@@ -1163,7 +1164,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._with_new_scol(col)
 
     # TODO: Update Documentation for Bins Parameter when its supported
-    def value_counts(self, normalize=False, sort=True, ascending=False, bins=None, dropna=True):
+    def value_counts(
+        self, normalize=False, sort=True, ascending=False, bins=None, dropna=True
+    ) -> "ks.Series":
         """
         Return a Series containing counts of unique values.
         The resulting object will be in descending order so that the
@@ -1335,7 +1338,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict({index_name: None}),
+            index_spark_column_names=[index_name],
             column_labels=self._internal.column_labels,
             data_spark_columns=[scol_for(sdf, "count")],
             column_label_names=self._internal.column_label_names,
@@ -1410,7 +1413,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 ).otherwise(0)
             ).alias(colname)
 
-    def take(self, indices):
+    def take(self, indices) -> Union["ks.Series", "ks.Index"]:
         """
         Return the elements in the given *positional* indices along an axis.
 
@@ -1480,7 +1483,6 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if not is_list_like(indices) or isinstance(indices, (dict, set)):
             raise ValueError("`indices` must be a list-like except dict or set")
         if isinstance(self, ks.Series):
-            result = self.iloc[indices]
-        elif isinstance(self, ks.Index):
-            result = self._kdf.iloc[indices].index
-        return result
+            return cast(ks.Series, self.iloc[indices])
+        else:
+            return self._kdf.iloc[indices].index

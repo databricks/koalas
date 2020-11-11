@@ -70,6 +70,26 @@ elif "ARROW_PRE_0_15_IPC_FORMAT" in os.environ:
         "when you use pyarrow>=0.15 and pyspark<3.0."
     )
 
+if (
+    LooseVersion(pyarrow.__version__) >= LooseVersion("2.0.0")
+    and "PYARROW_IGNORE_TIMEZONE" not in os.environ
+):
+    import logging
+
+    logging.warning(
+        "'PYARROW_IGNORE_TIMEZONE' environment variable was not set. It is required to "
+        "set this environment variable to '1' in both driver and executor sides if you use "
+        "pyarrow>=2.0.0."
+        "Koalas will set it for you but it does not work if there is a Spark context already "
+        "launched."
+    )
+    os.environ["PYARROW_IGNORE_TIMEZONE"] == "1"
+elif "PYARROW_IGNORE_TIMEZONE" in os.environ:
+    raise RuntimeError(
+        "Please explicitly unset 'PYARROW_IGNORE_TIMEZONE' environment variable in both "
+        "driver and executor sides. It is required to set this environment variable only "
+        "when you use pyarrow>=2.0.0."
+    )
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex

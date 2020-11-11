@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from collections import OrderedDict
-
 import pandas as pd
 
 from databricks.koalas.internal import (
@@ -32,7 +30,8 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         internal = InternalFrame.from_pandas(pdf)
         sdf = internal.spark_frame
 
-        self.assert_eq(internal.index_map, OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}))
+        self.assert_eq(internal.index_spark_column_names, [SPARK_DEFAULT_INDEX_NAME])
+        self.assert_eq(internal.index_names, [None])
         self.assert_eq(internal.column_labels, [("a",), ("b",)])
         self.assert_eq(internal.data_spark_column_names, ["a", "b"])
         self.assertTrue(internal.spark_column_for(("a",))._jc.equals(sdf["a"]._jc))
@@ -46,7 +45,8 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         internal = InternalFrame.from_pandas(pdf1)
         sdf = internal.spark_frame
 
-        self.assert_eq(internal.index_map, OrderedDict({SPARK_DEFAULT_INDEX_NAME: None}))
+        self.assert_eq(internal.index_spark_column_names, [SPARK_DEFAULT_INDEX_NAME])
+        self.assert_eq(internal.index_names, [None])
         self.assert_eq(internal.column_labels, [(0,), (1,)])
         self.assert_eq(internal.data_spark_column_names, ["0", "1"])
         self.assertTrue(internal.spark_column_for((0,))._jc.equals(sdf["0"]._jc))
@@ -61,9 +61,10 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         sdf = internal.spark_frame
 
         self.assert_eq(
-            internal.index_map,
-            OrderedDict([(SPARK_INDEX_NAME_FORMAT(0), None), (SPARK_INDEX_NAME_FORMAT(1), ("a",))]),
+            internal.index_spark_column_names,
+            [SPARK_INDEX_NAME_FORMAT(0), SPARK_INDEX_NAME_FORMAT(1)],
         )
+        self.assert_eq(internal.index_names, [None, ("a",)])
         self.assert_eq(internal.column_labels, [("b",)])
         self.assert_eq(internal.data_spark_column_names, ["b"])
         self.assertTrue(internal.spark_column_for(("b",))._jc.equals(sdf["b"]._jc))
@@ -77,9 +78,10 @@ class InternalFrameTest(ReusedSQLTestCase, SQLTestUtils):
         sdf = internal.spark_frame
 
         self.assert_eq(
-            internal.index_map,
-            OrderedDict([(SPARK_INDEX_NAME_FORMAT(0), None), (SPARK_INDEX_NAME_FORMAT(1), ("a",))]),
+            internal.index_spark_column_names,
+            [SPARK_INDEX_NAME_FORMAT(0), SPARK_INDEX_NAME_FORMAT(1)],
         )
+        self.assert_eq(internal.index_names, [None, ("a",)])
         self.assert_eq(internal.column_labels, [("x", "b")])
         self.assert_eq(internal.data_spark_column_names, ["(x, b)"])
         self.assertTrue(internal.spark_column_for(("x", "b"))._jc.equals(sdf["(x, b)"]._jc))

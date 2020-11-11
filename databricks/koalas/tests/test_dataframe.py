@@ -207,6 +207,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.reset_index(), pdf.reset_index())
+        self.assert_eq(kdf.reset_index().index, pdf.reset_index().index)
         self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
 
         pdf.index.name = "a"
@@ -1399,14 +1400,25 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.xs("mammal"), pdf.xs("mammal"))
         self.assert_eq(kdf.xs(("mammal",)), pdf.xs(("mammal",)))
         self.assert_eq(kdf.xs(("mammal", "dog", "walks")), pdf.xs(("mammal", "dog", "walks")))
+        self.assert_eq(
+            ks.concat([kdf, kdf]).xs(("mammal", "dog", "walks")),
+            pd.concat([pdf, pdf]).xs(("mammal", "dog", "walks")),
+        )
         self.assert_eq(kdf.xs("cat", level=1), pdf.xs("cat", level=1))
+        self.assert_eq(kdf.xs("flies", level=2), pdf.xs("flies", level=2))
+        self.assert_eq(kdf.xs("mammal", level=-3), pdf.xs("mammal", level=-3))
 
         msg = 'axis should be either 0 or "index" currently.'
         with self.assertRaisesRegex(NotImplementedError, msg):
             kdf.xs("num_wings", axis=1)
+        with self.assertRaises(KeyError):
+            kdf.xs(("mammal", "dog", "walk"))
         msg = r"'Key length \(4\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kdf.xs(("mammal", "dog", "walks", "foo"))
+
+        self.assertRaises(IndexError, lambda: kdf.xs("foo", level=-4))
+        self.assertRaises(IndexError, lambda: kdf.xs("foo", level=3))
 
         self.assertRaises(KeyError, lambda: kdf.xs(("dog", "walks"), level=1))
 
@@ -1417,6 +1429,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.xs(("mammal", "dog", 4)), pdf.xs(("mammal", "dog", 4)))
         self.assert_eq(kdf.xs(2, level=2), pdf.xs(2, level=2))
+
+        self.assert_eq((kdf + "a").xs(("mammal", "dog", 4)), (pdf + "a").xs(("mammal", "dog", 4)))
+        self.assert_eq((kdf + "a").xs(2, level=2), (pdf + "a").xs(2, level=2))
 
     def test_missing(self):
         kdf = self.kdf
@@ -2923,9 +2938,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_reindex(self):
         index = pd.Index(["A", "B", "C", "D", "E"])
-
-        pdf = pd.DataFrame({"numbers": [1.0, 2.0, 3.0, 4.0, None]}, index=index)
+        columns = pd.Index(["numbers"])
+        pdf = pd.DataFrame([1.0, 2.0, 3.0, 4.0, None], index=index, columns=columns)
         kdf = ks.from_pandas(pdf)
+
+        columns2 = pd.Index(["numbers", "2", "3"], name="cols2")
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
+        )
+
+        columns = pd.Index(["numbers"], name="cols")
+        pdf.columns = columns
+        kdf.columns = columns
 
         self.assert_eq(
             pdf.reindex(["A", "B", "C"], columns=["numbers", "2", "3"]).sort_index(),
@@ -2960,6 +2984,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             pdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
             kdf.reindex(columns=["numbers", "2", "3"], fill_value=0.0).sort_index(),
+        )
+
+        columns2 = pd.Index(["numbers", "2", "3"])
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
+        )
+
+        columns2 = pd.Index(["numbers", "2", "3"], name="cols2")
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
         )
 
         # Reindexing single Index on single Index
@@ -3024,7 +3058,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 kdf.reindex(index=kindex2, fill_value=fill_value).sort_index(),
             )
 
-        columns = pd.MultiIndex.from_tuples([("X", "numbers")])
+        columns = pd.MultiIndex.from_tuples([("X", "numbers")], names=["cols1", "cols2"])
         pdf.columns = columns
         kdf.columns = columns
 
@@ -3058,8 +3092,75 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
                 ).sort_index(),
             )
 
+        columns2 = pd.MultiIndex.from_tuples(
+            [("X", "numbers"), ("Y", "2"), ("Y", "3")], names=["cols3", "cols4"]
+        )
+        self.assert_eq(
+            pdf.reindex(columns=columns2).sort_index(), kdf.reindex(columns=columns2).sort_index(),
+        )
+
         self.assertRaises(TypeError, lambda: kdf.reindex(columns=["X"]))
         self.assertRaises(ValueError, lambda: kdf.reindex(columns=[("X",)]))
+
+    def test_reindex_like(self):
+        data = [[1.0, 2.0], [3.0, None], [None, 4.0]]
+        index = pd.Index(["A", "B", "C"], name="index")
+        columns = pd.Index(["numbers", "values"], name="cols")
+        pdf = pd.DataFrame(data=data, index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        # Reindexing single Index on single Index
+        data2 = [[5.0, None], [6.0, 7.0], [8.0, None]]
+        index2 = pd.Index(["A", "C", "D"], name="index2")
+        columns2 = pd.Index(["numbers", "F"], name="cols2")
+        pdf2 = pd.DataFrame(data=data2, index=index2, columns=columns2)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
+        )
+
+        pdf2 = pd.DataFrame({"index_level_1": ["A", "C", "I"]})
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2.set_index(["index_level_1"])).sort_index(),
+            kdf.reindex_like(kdf2.set_index(["index_level_1"])).sort_index(),
+        )
+
+        # Reindexing MultiIndex on single Index
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "G"), ("C", "D"), ("I", "J")], names=["name3", "name4"]
+        )
+        pdf2 = pd.DataFrame(data=data2, index=index2)
+        kdf2 = ks.from_pandas(pdf2)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kdf.reindex_like(index2))
+        self.assertRaises(AssertionError, lambda: kdf2.reindex_like(kdf))
+
+        # Reindexing MultiIndex on MultiIndex
+        columns2 = pd.MultiIndex.from_tuples(
+            [("numbers", "third"), ("values", "second")], names=["cols3", "cols4"]
+        )
+        pdf2.columns = columns2
+        kdf2.columns = columns2
+
+        columns = pd.MultiIndex.from_tuples(
+            [("numbers", "first"), ("values", "second")], names=["cols1", "cols2"]
+        )
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["name1", "name2"]
+        )
+        pdf = pd.DataFrame(data=data, index=index, columns=columns)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pdf.reindex_like(pdf2).sort_index(), kdf.reindex_like(kdf2).sort_index(),
+        )
 
     def test_melt(self):
         pdf = pd.DataFrame(
