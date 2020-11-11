@@ -252,7 +252,7 @@ class SparkSeriesMethods(SparkIndexOpsMethods):
 
 class SparkIndexMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Index":
-        return cast(ks.Index, super().transform(func))
+        return cast("ks.Index", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
 
