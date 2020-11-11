@@ -1065,8 +1065,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     @name.setter
     def name(self, name: Union[Any, Tuple]):
-        if not is_hashable(name):
-            raise TypeError("Series.name must be a hashable type")
         self.rename(name, inplace=True)
 
     # TODO: Functionality and documentation should be matched. Currently, changing index labels
