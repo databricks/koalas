@@ -19,6 +19,7 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.namespace import _get_index_map
 
 
 class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
@@ -43,7 +44,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kmidx, pmidx)
 
-        expected_error_message = "Unknown data type: {}".format(type(kidx))
+        expected_error_message = "Unknown data type: {}".format(type(kidx).__name__)
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(kidx)
 
@@ -254,6 +255,18 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, ks.broadcast(kdf))
 
         kser = ks.Series([1, 2, 3])
-        expected_error_message = "Invalid type : expected DataFrame got {}".format(type(kser))
+        expected_error_message = "Invalid type : expected DataFrame got {}".format(
+            type(kser).__name__
+        )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.broadcast(kser)
+
+    def test_get_index_map(self):
+        kdf = ks.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
+        sdf = kdf.to_spark()
+        self.assertEqual(_get_index_map(sdf), (None, None))
+        self.assertEqual(_get_index_map(sdf, "year"), (["year"], [("year",)]))
+        self.assertEqual(
+            _get_index_map(sdf, ["year", "month"]), (["year", "month"], [("year",), ("month",)])
+        )
+        self.assertRaises(KeyError, lambda: _get_index_map(sdf, ["year", "hour"]))

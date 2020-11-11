@@ -17,9 +17,8 @@
 Koalas specific features.
 """
 import inspect
-from collections import OrderedDict
 from distutils.version import LooseVersion
-from typing import Tuple, Union, TYPE_CHECKING
+from typing import Any, Tuple, Union, TYPE_CHECKING, cast
 import types
 
 import numpy as np  # noqa: F401
@@ -27,7 +26,6 @@ import pandas as pd
 import pyspark
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StructType, StructField
 
 from databricks.koalas.internal import (
     InternalFrame,
@@ -35,7 +33,14 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.typedef import infer_return_type, DataFrameType, SeriesType
-from databricks.koalas.utils import name_like_string, scol_for, verify_temp_column_name
+from databricks.koalas.spark.utils import as_nullable_spark_type
+from databricks.koalas.utils import (
+    is_name_like_value,
+    is_name_like_tuple,
+    name_like_string,
+    scol_for,
+    verify_temp_column_name,
+)
 
 if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
@@ -49,7 +54,7 @@ class KoalasFrameMethods(object):
     def __init__(self, frame: "DataFrame"):
         self._kdf = frame
 
-    def attach_id_column(self, id_type: str, column: Union[str, Tuple[str, ...]]) -> "DataFrame":
+    def attach_id_column(self, id_type: str, column: Union[Any, Tuple]) -> "DataFrame":
         """
         Attach a column to be used as identifier of rows similar to the default index.
 
@@ -90,15 +95,15 @@ class KoalasFrameMethods(object):
         1  b   1
         2  c   2
 
-        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column="id")
-           x  id
-        0  a   0
-        1  b   1
-        2  c   2
+        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column=0)
+           x  0
+        0  a  0
+        1  b  1
+        2  c  2
 
-        >>> df.koalas.attach_id_column(id_type="distributed", column="id")
+        >>> df.koalas.attach_id_column(id_type="distributed", column=0.0)
         ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-           x   id
+           x  0.0
         0  a  ...
         1  b  ...
         2  c  ...
@@ -112,6 +117,13 @@ class KoalasFrameMethods(object):
         0  a    0
         1  b    1
         2  c    2
+
+        >>> df.koalas.attach_id_column(id_type="distributed-sequence", column=(0, 1.0))
+           x   0
+           y 1.0
+        0  a   0
+        1  b   1
+        2  c   2
         """
         from databricks.koalas.frame import DataFrame
 
@@ -126,10 +138,9 @@ class KoalasFrameMethods(object):
                 "id_type should be one of 'sequence', 'distributed-sequence' and 'distributed'"
             )
 
-        if isinstance(column, str):
+        assert is_name_like_value(column, allow_none=False), column
+        if not is_name_like_tuple(column):
             column = (column,)
-        else:
-            assert isinstance(column, tuple), type(column)
 
         internal = self._kdf._internal
 
@@ -161,12 +172,10 @@ class KoalasFrameMethods(object):
         return DataFrame(
             InternalFrame(
                 spark_frame=sdf,
-                index_map=OrderedDict(
-                    [
-                        (SPARK_INDEX_NAME_FORMAT(i), name)
-                        for i, name in enumerate(internal.index_names)
-                    ]
-                ),
+                index_spark_column_names=[
+                    SPARK_INDEX_NAME_FORMAT(i) for i in range(internal.index_level)
+                ],
+                index_names=internal.index_names,
                 column_labels=internal.column_labels + [column],
                 data_spark_columns=(
                     [scol_for(sdf, name_like_string(label)) for label in internal.column_labels]
@@ -176,7 +185,7 @@ class KoalasFrameMethods(object):
             ).resolved_copy
         )
 
-    def apply_batch(self, func, args=(), **kwds):
+    def apply_batch(self, func, args=(), **kwds) -> "DataFrame":
         """
         Apply a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
         DataFrame given to the function is of a batch used internally.
@@ -321,7 +330,7 @@ class KoalasFrameMethods(object):
         original_func = func
         func = lambda o: original_func(o, *args, **kwds)
 
-        self_applied = DataFrame(self._kdf._internal.resolved_copy)
+        self_applied = DataFrame(self._kdf._internal.resolved_copy)  # type: DataFrame
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -334,11 +343,11 @@ class KoalasFrameMethods(object):
                     "The given function should return a frame; however, "
                     "the return type was %s." % type(applied)
                 )
-            kdf = ks.DataFrame(applied)
+            kdf = ks.DataFrame(applied)  # type: DataFrame
             if len(pdf) <= limit:
                 return kdf
 
-            return_schema = kdf._internal.to_internal_spark_frame.schema
+            return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=True
@@ -376,11 +385,11 @@ class KoalasFrameMethods(object):
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_spark_column_names=None)
 
         return DataFrame(internal)
 
-    def transform_batch(self, func, *args, **kwargs):
+    def transform_batch(self, func, *args, **kwargs) -> Union["DataFrame", "Series"]:
         """
         Transform chunks with a function that takes pandas DataFrame and outputs pandas DataFrame.
         The pandas DataFrame given to the function is of a batch used internally. The length of
@@ -441,7 +450,7 @@ class KoalasFrameMethods(object):
 
         Returns
         -------
-        DataFrame
+        DataFrame or Series
 
         See Also
         --------
@@ -479,7 +488,7 @@ class KoalasFrameMethods(object):
         0    3
         1    5
         2    7
-        dtype: int32
+        dtype: int64
 
         You can also omit the type hints so Koalas infers the return schema as below:
 
@@ -565,7 +574,7 @@ class KoalasFrameMethods(object):
                 kser = kdf_or_kser
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
-                    returnType=kser.spark.data_type,
+                    returnType=as_nullable_spark_type(kser.spark.data_type),
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -585,15 +594,12 @@ class KoalasFrameMethods(object):
                 if len(pdf) <= limit:
                     # only do the short cut when it returns a frame to avoid
                     # operations on different dataframes in case of series.
-                    return kdf
+                    return cast(ks.DataFrame, kdf)
 
-                return_schema = kdf._internal.to_internal_spark_frame.schema
                 # Force nullability.
-                return_schema = StructType(
-                    [StructField(field.name, field.dataType) for field in return_schema.fields]
-                )
+                return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
 
-                self_applied = DataFrame(self._kdf._internal.resolved_copy)
+                self_applied = DataFrame(self._kdf._internal.resolved_copy)  # type: DataFrame
 
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=True
@@ -829,7 +835,7 @@ class KoalasSeriesMethods(object):
             pser = self._kser.head(limit)._to_internal_pandas()
             transformed = pser.transform(func)
             kser = Series(transformed)
-            spark_return_type = kser.spark.data_type
+            spark_return_type = as_nullable_spark_type(kser.spark.data_type)
         else:
             spark_return_type = return_schema
 

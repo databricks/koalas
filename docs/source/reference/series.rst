@@ -170,7 +170,9 @@ Reindexing / Selection / Label manipulation
    Series.idxmin
    Series.isin
    Series.rename
+   Series.rename_axis
    Series.reindex
+   Series.reindex_like
    Series.reset_index
    Series.sample
    Series.take
@@ -215,6 +217,7 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+   Series.compare
    Series.replace
    Series.update
 

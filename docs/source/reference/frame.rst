@@ -168,6 +168,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.filter
    DataFrame.head
    DataFrame.rename
+   DataFrame.rename_axis
    DataFrame.reset_index
    DataFrame.set_index
    DataFrame.take
@@ -208,6 +209,7 @@ Reshaping, sorting, transposing
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
+   DataFrame.reindex_like
    DataFrame.rank
 
 Combining / joining / merging
@@ -275,6 +277,10 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.to_spark_io
    DataFrame.spark.explain
    DataFrame.spark.apply
+   DataFrame.spark.repartition
+   DataFrame.spark.coalesce
+   DataFrame.spark.checkpoint
+   DataFrame.spark.local_checkpoint
 
 .. _api.dataframe.plot:
 
