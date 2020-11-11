@@ -18,7 +18,7 @@ Koalas specific features.
 """
 import inspect
 from distutils.version import LooseVersion
-from typing import Any, Tuple, Union, TYPE_CHECKING
+from typing import Any, Tuple, Union, TYPE_CHECKING, cast
 import types
 
 import numpy as np  # noqa: F401
@@ -185,7 +185,7 @@ class KoalasFrameMethods(object):
             ).resolved_copy
         )
 
-    def apply_batch(self, func, args=(), **kwds):
+    def apply_batch(self, func, args=(), **kwds) -> "DataFrame":
         """
         Apply a function that takes pandas DataFrame and outputs pandas DataFrame. The pandas
         DataFrame given to the function is of a batch used internally.
@@ -330,7 +330,7 @@ class KoalasFrameMethods(object):
         original_func = func
         func = lambda o: original_func(o, *args, **kwds)
 
-        self_applied = DataFrame(self._kdf._internal.resolved_copy)
+        self_applied = DataFrame(self._kdf._internal.resolved_copy)  # type: DataFrame
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -343,7 +343,7 @@ class KoalasFrameMethods(object):
                     "The given function should return a frame; however, "
                     "the return type was %s." % type(applied)
                 )
-            kdf = ks.DataFrame(applied)
+            kdf = ks.DataFrame(applied)  # type: DataFrame
             if len(pdf) <= limit:
                 return kdf
 
@@ -389,7 +389,7 @@ class KoalasFrameMethods(object):
 
         return DataFrame(internal)
 
-    def transform_batch(self, func, *args, **kwargs):
+    def transform_batch(self, func, *args, **kwargs) -> Union["DataFrame", "Series"]:
         """
         Transform chunks with a function that takes pandas DataFrame and outputs pandas DataFrame.
         The pandas DataFrame given to the function is of a batch used internally. The length of
@@ -450,7 +450,7 @@ class KoalasFrameMethods(object):
 
         Returns
         -------
-        DataFrame
+        DataFrame or Series
 
         See Also
         --------
@@ -594,12 +594,12 @@ class KoalasFrameMethods(object):
                 if len(pdf) <= limit:
                     # only do the short cut when it returns a frame to avoid
                     # operations on different dataframes in case of series.
-                    return kdf
+                    return cast(ks.DataFrame, kdf)
 
                 # Force nullability.
                 return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
 
-                self_applied = DataFrame(self._kdf._internal.resolved_copy)
+                self_applied = DataFrame(self._kdf._internal.resolved_copy)  # type: DataFrame
 
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=True
