@@ -1066,9 +1066,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kmidx.is_monotonic_increasing, False)
             self.assert_eq(kmidx.is_monotonic_decreasing, False)
 
-            pmidx = pd.MultiIndex.from_tuples(
-                [(None, None)]
-            )
+            pmidx = pd.MultiIndex.from_tuples([(None, None)])
             kmidx = ks.from_pandas(pmidx)
             self.assert_eq(kmidx.is_monotonic_increasing, False)
             self.assert_eq(kmidx.is_monotonic_decreasing, False)
