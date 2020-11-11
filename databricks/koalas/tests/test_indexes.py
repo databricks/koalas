@@ -261,7 +261,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.rename(None), pidx.rename(None))
         self.assert_eq(kdf.index.names, pdf.index.names)
 
-        self.assertRaises(ValueError, lambda: kidx.rename(["x", "y"]))
+        self.assertRaises(TypeError, lambda: kidx.rename(["x", "y"]))
 
     def test_multi_index_rename(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]

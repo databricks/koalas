@@ -157,6 +157,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kser.name, "z")
         self.assert_eq(kser, pser)
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.rename(["0", "1"])
+
         # Series index
         # pser = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
         # kser = ks.from_pandas(s)

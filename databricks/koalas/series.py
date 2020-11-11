@@ -1107,6 +1107,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if index is None:
             pass
+        elif not is_hashable(index):
+            raise TypeError("Series.name must be a hashable type")
         elif not isinstance(index, tuple):
             index = (index,)
         scol = self.spark.column.alias(name_like_string(index))
