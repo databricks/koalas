@@ -126,7 +126,7 @@ class SparkIndexOpsMethods(object):
 
 class SparkSeriesMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Series":
-        return cast(ks.Series, super().transform(func))
+        return cast("ks.Series", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
 
