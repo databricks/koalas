@@ -22,6 +22,11 @@ import datetime
 import decimal
 from inspect import getfullargspec, isclass
 
+try:
+    from typing import _GenericAlias  # type: ignore
+except ImportError:
+    from typing import GenericMeta as _GenericAlias  # type: ignore
+
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
@@ -104,8 +109,9 @@ def as_spark_type(tpe) -> types.DataType:
     # TODO: Add "boolean" and "string" types.
     # ArrayType
     if tpe in (np.ndarray,):
-        # TODO: support other child types
         return types.ArrayType(types.StringType())
+    elif isinstance(tpe, _GenericAlias) and (tpe.__origin__ in (list, typing.List)):
+        return types.ArrayType(as_spark_type(tpe.__args__[0]))
     # BinaryType
     elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()
