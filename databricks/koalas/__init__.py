@@ -84,12 +84,6 @@ if (
         "launched."
     )
     os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
-elif "PYARROW_IGNORE_TIMEZONE" in os.environ:
-    raise RuntimeError(
-        "Please explicitly unset 'PYARROW_IGNORE_TIMEZONE' environment variable in both "
-        "driver and executor sides. It is required to set this environment variable only "
-        "when you use pyarrow>=2.0.0."
-    )
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
