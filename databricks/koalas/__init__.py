@@ -83,7 +83,7 @@ if (
         "Koalas will set it for you but it does not work if there is a Spark context already "
         "launched."
     )
-    os.environ["PYARROW_IGNORE_TIMEZONE"] == "1"
+    os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
 elif "PYARROW_IGNORE_TIMEZONE" in os.environ:
     raise RuntimeError(
         "Please explicitly unset 'PYARROW_IGNORE_TIMEZONE' environment variable in both "
