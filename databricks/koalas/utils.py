@@ -652,7 +652,7 @@ def is_name_like_value(
 def validate_axis(axis=0, none_axis=0):
     """ Check the given axis is valid. """
     # convert to numeric axis
-    axis = {None: none_axis, "index": 0, "columns": 1}.get(axis, axis)
+    axis = {None: none_axis, "index": 0, "rows": 0, "columns": 1}.get(axis, axis)
     if axis not in (none_axis, 0, 1):
         raise ValueError("No axis named {0}".format(axis))
     return axis

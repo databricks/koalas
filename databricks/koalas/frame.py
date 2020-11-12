@@ -7218,7 +7218,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Fraction of axis items to return.
         replace : bool, default False
             Sample with or without replacement.
-        weights : str or ndarray-like, optional
+        weights : ndarray-like, optional
+            Currently does not support Series and str.
             Default 'None' results in equal probability weighting.
             If passed a Series, will align with target object on index. Index
             values in weights not found in sampled object will be ignored and
@@ -7277,12 +7278,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dog          4          0                  2
         fish         0          0                  8
         """
-        if axis in ("index", "rows", 0, None):
-            axis = 0
-        elif axis in ("columns", 1):
+        axis = validate_axis(axis)
+        if axis == 1:
             raise NotImplementedError("Function sample currently does not support axis=1.")
-        else:
-            raise ValueError("No axis named %s for object type %s." % (axis, type(axis)))
 
         axis_length = self.shape[axis]
 
@@ -7295,25 +7293,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # Check weights for compliance
         if weights is not None:
 
-            # If a series, align with frame
-            if isinstance(weights, ks.Series):
-                weights = weights.reindex(self.axes[axis])
-
-            # Strings acceptable if a dataframe and axis = 0
-            if isinstance(weights, str):
-                if isinstance(self, ks.DataFrame):
-                    if axis == 0:
-                        try:
-                            weights = self[weights]
-                        except KeyError as err:
-                            raise KeyError("String passed to weights not a valid column") from err
-
-            # Because ks.Series currently does not support the Series.__iter__ method,
+            # If a series or str, ks.Series currently does not support the Series.__iter__ method,
             # It cannot be initialized to the pandas Series, so here is to_pandas.
-            if isinstance(weights, ks.Series):
-                weights = pd.Series(weights.to_pandas(), dtype="float64")
-            else:
-                weights = pd.Series(weights, dtype="float64")
+            # Don't support weights as Series for now since it could occur performance degradation.
+            if isinstance(weights, (ks.Series, str)):
+                raise NotImplementedError(
+                    "The weights parameter does not currently support the Series and str."
+                )
+
+            weights = pd.Series(weights, dtype="float64")
 
             if len(weights) != axis_length:
                 raise ValueError("Weights and axis to be sampled must be of same length")
@@ -7322,15 +7310,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError("weight vector may not include `inf` values")
 
             if (weights < 0).any():
-                raise ValueError("weight vector many not include negative values")
+                raise ValueError("weight vector may not include negative values")
 
             # If has nan, set to zero.
             weights = weights.fillna(0)
 
             # Renormalize if don't sum to 1
-            if weights.sum() != 1:
-                if weights.sum() != 0:
-                    weights = weights / weights.sum()
+            weights_sum = weights.sum()
+            if weights_sum != 1:
+                if weights_sum != 0:
+                    weights = weights / weights_sum
                 else:
                     raise ValueError("Invalid weights: weights sum to zero")
 

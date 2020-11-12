@@ -2028,52 +2028,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 0.1 * kdf["a"])
 
     def test_sample(self):
-        # A few dataframe test with degenerate weights.
-        easy_weight_list = [0] * 10
-        easy_weight_list[5] = 1
-
-        pdf = pd.DataFrame(
-            {
-                "col1": range(10, 20),
-                "col2": range(20, 30),
-                "colString": ["a"] * 10,
-                "easyweights": easy_weight_list,
-            }
-        )
-        kdf = ks.from_pandas(pdf)
-
-        self.assert_eq(
-            kdf.sample(n=1, weights="easyweights"), pdf.sample(n=1, weights="easyweights"),
-        )
-
-        # Weights for invalid key
-        with self.assertRaises(KeyError):
-            kdf.sample(1, weights="col3")
-
-        # Test that function aligns weights with frame
         pdf = pd.DataFrame({"col1": [5, 6, 7], "col2": ["a", "b", "c"]}, index=[9, 5, 3])
-        pser = pd.Series([1, 0, 0], index=[3, 5, 9])
-
         kdf = ks.from_pandas(pdf)
-        kser = ks.from_pandas(pser)
-        self.assert_eq(kdf.sample(1, weights=kser), pdf.sample(1, weights=pser))
-
-        # Weights have index values to be dropped because not in
-        # sampled DataFrame
-        pser2 = pd.Series([0.001, 0, 10000], index=[3, 5, 10])
-        kser2 = ks.from_pandas(pser2)
-        self.assert_eq(kdf.sample(1, weights=kser2), pdf.sample(1, weights=pser2))
-
-        # Weights have empty values to be filed with zeros
-        pser3 = pd.Series([0.01, 0], index=[3, 5])
-        kser3 = ks.from_pandas(pser3)
-        self.assert_eq(kdf.sample(1, weights=kser3), pdf.sample(1, weights=pser3))
-
-        # No overlap in weight and sampled DataFrame indices
-        pser4 = pd.Series([1, 0], index=[1, 2])
-        kser4 = ks.from_pandas(pser4)
-        with self.assertRaises(ValueError):
-            kdf.sample(1, weights=kser4)
 
         ###
         # Check behavior of random_state argument
@@ -2135,9 +2091,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             bad_weights = [0.5] * 11
             kdf.sample(n=3, weights=bad_weights)
 
-        with self.assertRaises(ValueError):
-            bad_weight_series = ks.Series([0, 0, 0.2])
-            kdf.sample(n=4, weights=bad_weight_series)
+        # Weight do not support a Series or str
+        with self.assertRaises(NotImplementedError):
+            weight_series = ks.Series([0, 0.2])
+            kdf.sample(n=4, weights=weight_series)
+
+        with self.assertRaises(NotImplementedError):
+            kdf.sample(n=4, weights="col1")
 
         # Check won't accept negative weights
         with self.assertRaises(ValueError):
