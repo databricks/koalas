@@ -67,6 +67,7 @@ from databricks.koalas.internal import (
     HIDDEN_COLUMNS,
 )
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.indexes import Index
 
 
@@ -1095,7 +1096,9 @@ def read_excel(
             if isinstance(pdf, pd.Series):
                 pdf = pdf.to_frame()
             kdf = from_pandas(pdf)
-            return_schema = kdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            return_schema = force_decimal_precision_scale(
+                as_nullable_spark_type(kdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema)
+            )
 
             def output_func(pdf):
                 pdf = pd.concat(
