@@ -104,8 +104,9 @@ def as_spark_type(tpe) -> types.DataType:
     # TODO: Add "boolean" and "string" types.
     # ArrayType
     if tpe in (np.ndarray,):
-        # TODO: support other child types
         return types.ArrayType(types.StringType())
+    elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):
+        return types.ArrayType(as_spark_type(tpe.__args__[0]))
     # BinaryType
     elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()

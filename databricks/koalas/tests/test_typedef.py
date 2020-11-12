@@ -16,11 +16,14 @@
 import sys
 import unittest
 import datetime
+import decimal
+from typing import List
 
 import pandas
 import pandas as pd
 import numpy as np
 from pyspark.sql.types import (
+    ArrayType,
     BinaryType,
     BooleanType,
     FloatType,
@@ -31,6 +34,8 @@ from pyspark.sql.types import (
     StructType,
     ByteType,
     ShortType,
+    DateType,
+    DecimalType,
     DoubleType,
     TimestampType,
 )
@@ -236,6 +241,35 @@ class TypeHintTests(unittest.TestCase):
             # datetime
             np.datetime64: TimestampType(),
             datetime.datetime: TimestampType(),
+            # DateType
+            datetime.date: DateType(),
+            # DecimalType
+            decimal.Decimal: DecimalType(38, 18),
+            # ArrayType
+            np.ndarray: ArrayType(StringType()),
+            List[bytes]: ArrayType(BinaryType()),
+            List[np.character]: ArrayType(BinaryType()),
+            List[np.bytes_]: ArrayType(BinaryType()),
+            List[np.string_]: ArrayType(BinaryType()),
+            List[bool]: ArrayType(BooleanType()),
+            List[np.bool]: ArrayType(BooleanType()),
+            List[datetime.date]: ArrayType(DateType()),
+            List[np.int8]: ArrayType(ByteType()),
+            List[np.byte]: ArrayType(ByteType()),
+            List[decimal.Decimal]: ArrayType(DecimalType(38, 18)),
+            List[float]: ArrayType(DoubleType()),
+            List[np.float]: ArrayType(DoubleType()),
+            List[np.float64]: ArrayType(DoubleType()),
+            List[np.float32]: ArrayType(FloatType()),
+            List[np.int32]: ArrayType(IntegerType()),
+            List[int]: ArrayType(LongType()),
+            List[np.int]: ArrayType(LongType()),
+            List[np.int64]: ArrayType(LongType()),
+            List[np.int16]: ArrayType(ShortType()),
+            List[str]: ArrayType(StringType()),
+            List[np.unicode_]: ArrayType(StringType()),
+            List[datetime.datetime]: ArrayType(TimestampType()),
+            List[np.datetime64]: ArrayType(TimestampType()),
         }
 
         for numpy_or_python_type, spark_type in type_mapper.items():
