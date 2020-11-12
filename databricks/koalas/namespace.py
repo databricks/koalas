@@ -67,6 +67,7 @@ from databricks.koalas.internal import (
     SPARK_INDEX_NAME_FORMAT,
 )
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.indexes import Index
 
 
@@ -1093,7 +1094,9 @@ def read_excel(
         def read_excel_on_spark(pdf, sn):
 
             kdf = from_pandas(pdf)
-            return_schema = kdf._internal.to_internal_spark_frame.schema
+            return_schema = force_decimal_precision_scale(
+                as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+            )
 
             def output_func(pdf):
                 pdf = pd.concat([pd_read_excel(bin, sn=sn) for bin in pdf[pdf.columns[0]]])
