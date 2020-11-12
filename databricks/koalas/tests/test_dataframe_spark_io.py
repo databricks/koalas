@@ -14,7 +14,6 @@
 # limitations under the License.
 #
 
-from decimal import Decimal
 from distutils.version import LooseVersion
 import unittest
 

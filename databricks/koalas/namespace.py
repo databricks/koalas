@@ -65,7 +65,6 @@ from databricks.koalas.internal import (
     InternalFrame,
     DEFAULT_SERIES_NAME,
     HIDDEN_COLUMNS,
-    SPARK_INDEX_NAME_FORMAT,
 )
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.indexes import Index
