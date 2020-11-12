@@ -22,11 +22,6 @@ import datetime
 import decimal
 from inspect import getfullargspec, isclass
 
-try:
-    from typing import _GenericAlias  # type: ignore
-except ImportError:
-    from typing import GenericMeta as _GenericAlias  # type: ignore
-
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
