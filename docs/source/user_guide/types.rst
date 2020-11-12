@@ -4,139 +4,97 @@ Type Support In Koalas
 
 .. currentmodule:: databricks.koalas
 
-
-This is based on Koalas 1.1.4.
-
-Koalas supports various of types by mapping them to specific types in PySpark internally.
-
-This chapter gives you an information of what types are supported and which types are not.
+In this chapter, we will briefly show you how data types change when converting Koalas DataFrame from/to PySpark DataFrame or pandas DataFrame.
 
 
-Types supported in Koalas
--------------------------
+Type casting between PySpark and Koalas
+---------------------------------------
 
-A table below shows which NumPy types are matched to which PySpark types internally in Koalas.
+When converting the Koalas DataFrame from/to PySpark DataFrame, the data types automatically casted to the appropriate type.
 
-============= =======================
-NumPy         PySpark
-============= =======================
-np.character  BinaryType
-np.bytes\_    BinaryType
-np.string\_   BinaryType
-np.int8       ByteType
-np.byte       ByteType
-np.int16      ShortType
-np.int32      IntegerType
-np.int64      LongType
-np.int        LongType
-np.float32    FloatType
-np.float      DoubleType
-np.float64    DoubleType
-np.str        StringType
-np.unicode\_  StringType
-np.bool       BooleanType
-np.datetime64 TimestampType
-np.ndarray    ArrayType(StringType())
-============= =======================
-
-
-For `np.ndarray`, it's casted to `ArrayType(StringType())`.
-
-If you want to use `ArrayType` contains another types, use Python typing system as below.
-
-======================= ==============================
-Python typing           PySpark ArrayType
-======================= ==============================
-List[bytes]             ArrayType(BinaryType())
-List[np.character]      ArrayType(BinaryType())
-List[np.bytes\_]        ArrayType(BinaryType())
-List[np.string\_]       ArrayType(BinaryType())
-List[bool]              ArrayType(BooleanType())
-List[np.bool]           ArrayType(BooleanType())
-List[datetime.date]     ArrayType(DateType())
-List[np.int8]           ArrayType(ByteType())
-List[np.byte]           ArrayType(ByteType())
-List[decimal.Decimal]   ArrayType(DecimalType(38, 18))
-List[float]             ArrayType(DoubleType())
-List[np.float]          ArrayType(DoubleType())
-List[np.float64]        ArrayType(DoubleType())
-List[np.float32]        ArrayType(FloatType())
-List[np.int32]          ArrayType(IntegerType())
-List[int]               ArrayType(LongType())
-List[np.int]            ArrayType(LongType())
-List[np.int64]          ArrayType(LongType())
-List[np.int16]          ArrayType(ShortType())
-List[str]               ArrayType(StringType())
-List[np.unicode\_]      ArrayType(StringType())
-List[datetime.datetime] ArrayType(TimestampType())
-List[np.datetime64]     ArrayType(TimestampType())
-======================= ==============================
-
-
-A table below shows which Python types are matched to which PySpark types internally in Koalas.
-
-================= ===================
-Python            PySpark
-================= ===================
-bytes             BinaryType
-int               LongType
-float             DoubleType
-str               StringType
-bool              BooleanType
-datetime.datetime TimestampType
-datetime.date     DateType
-decimal.Decimal   DecimalType(38, 18)
-================= ===================
-
-For decimal type, Koalas uses Spark's system default precision and scale.
-
-
-You can easily check this mapping by using `as_spark_type` function.
+The example below shows how types are casted between PySpark DataFrame and Koalas DataFrame.
 
 .. code-block:: python
 
-    >>> import typing
-    >>> import numpy as np
-    >>> from databricks.koalas.typedef import as_spark_type
+    # 1. Create PySpark DataFrame
+    >>> sdf = spark.createDataFrame([
+    ...     (1, Decimal(1.0), 1., 1., 1, 1, 1, datetime(2020, 10, 27), "1", True),
+    ... ], 'tinyint tinyint, decimal decimal, float float, double double, integer integer, long long, short short, timestamp timestamp, string string, boolean boolean')
 
-    >>> as_spark_type(int)
-    LongType
+    # 2. Check the PySpark data types
+    >>> sdf
+    DataFrame[tinyint: tinyint, decimal: decimal(10,0), float: float, double: double, integer: int, long: bigint, short: smallint, timestamp: timestamp, string: string]
 
-    >>> as_spark_type(np.int32)
-    IntegerType
+    # 3. Convert PySpark DataFrame to Koalas DataFrame
+    >>> kdf = sdf.to_koalas()
 
-    >>> as_spark_type(typing.List[float])
-    ArrayType(DoubleType,true)
+    # 4. Check the Koalas data types
+    >>> kdf.dtypes
+    tinyint                int8
+    decimal              object
+    float               float32
+    double              float64
+    integer               int32
+    long                  int64
+    short                 int16
+    timestamp    datetime64[ns]
+    string               object
+    boolean                bool
+    dtype: object
 
-You can also easily check the underlying PySpark type of `Series` by using Spark accessor.
+    # 5. Easily go back to the PySpark DataFrame
+    >>> sdf = kdf.to_spark()
+
+    # 6. Check the PySpark data types again
+    >>> sdf
+    DataFrame[tinyint: tinyint, decimal: decimal(10,0), float: float, double: double, integer: int, long: bigint, short: smallint, timestamp: timestamp, string: string]
+
+
+Type casting between pandas and Koalas
+--------------------------------------
+
+We can easily convert Koalas DataFrame to pandas DataFrame, and the data types are basically same as pandas.
 
 .. code-block:: python
 
-    >>> ks.Series([0.3, 0.1, 0.8]).spark.data_type
-    DoubleType
+    # Convert Koalas DataFrame to pandas DataFrame
+    >>> pdf = kdf.to_pandas()
 
-    >>> ks.Series(["welcome", "to", "Koalas"]).spark.data_type
-    StringType
+    # Check the pandas data types
+    >>> pdf.dtypes
+    tinyint                int8
+    decimal              object
+    float               float32
+    double              float64
+    integer               int32
+    long                  int64
+    short                 int16
+    timestamp    datetime64[ns]
+    string               object
+    boolean                bool
+    dtype: object
 
-    >>> ks.Series([[False, True, False]]).spark.data_type
-    ArrayType(BooleanType,true)
+
+However, there are several types only provided by pandas.
+
+.. code-block:: python
+
+    # pd.Catrgorical type is not supported in Koalas yet.
+    >>> ks.Series([pd.Categorical([1, 2, 3])])
+    Traceback (most recent call last):
+    ...
+    pyarrow.lib.ArrowInvalid: Could not convert [1, 2, 3]
+    Categories (3, int64): [1, 2, 3] with type Categorical: did not recognize Python value type when inferring an Arrow data type
 
 
-pandas types not supported in Koalas
-------------------------------------
-
-For reference, this is based on pandas 1.1.4.
-
-There are several types that are only provided by pandas.
-
-The pandas specific types below are not currently supported in Koalas, but planned to be supported in the future.
+These kind of pandas specific types below are not currently supported in Koalas, but planned to be supported in the future.
 
 * pd.Timedelta
 * pd.Categorical
 * pd.CategoricalDtype
 
 
-The pandas specific types below are not planned to be supported in Koalas yet.
+However, note that the pandas specific types below are not planned to be supported in Koalas yet.
 
 * pd.SparseDtype
 * pd.DatetimeTZDtype
