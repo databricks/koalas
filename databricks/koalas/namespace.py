@@ -1082,19 +1082,24 @@ def read_excel(
         io_or_bin = io
         single_file = True
 
-    pdfs = pd_read_excel(io_or_bin, sn=sheet_name, sq=squeeze)
+    pdf_or_psers = pd_read_excel(io_or_bin, sn=sheet_name, sq=squeeze)
 
     if single_file:
-        if isinstance(pdfs, dict):
-            return OrderedDict([(key, from_pandas(value)) for key, value in pdfs.items()])
+        if isinstance(pdf_or_psers, dict):
+            return OrderedDict(
+                [(sn, from_pandas(pdf_or_pser)) for sn, pdf_or_pser in pdf_or_psers.items()]
+            )
         else:
-            return cast(DataFrame, from_pandas(pdfs))
+            return cast(Union[DataFrame, Series], from_pandas(pdf_or_psers))
     else:
 
-        def read_excel_on_spark(pdf, sn):
+        def read_excel_on_spark(pdf_or_pser, sn):
 
-            if isinstance(pdf, pd.Series):
-                pdf = pdf.to_frame()
+            if isinstance(pdf_or_pser, pd.Series):
+                pdf = pdf_or_pser.to_frame()
+            else:
+                pdf = pdf_or_pser
+
             kdf = from_pandas(pdf)
             return_schema = force_decimal_precision_scale(
                 as_nullable_spark_type(kdf._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema)
@@ -1130,10 +1135,15 @@ def read_excel(
             else:
                 return kdf
 
-        if isinstance(pdfs, dict):
-            return OrderedDict([(sn, read_excel_on_spark(pdf, sn)) for sn, pdf in pdfs.items()])
+        if isinstance(pdf_or_psers, dict):
+            return OrderedDict(
+                [
+                    (sn, read_excel_on_spark(pdf_or_pser, sn))
+                    for sn, pdf_or_pser in pdf_or_psers.items()
+                ]
+            )
         else:
-            return read_excel_on_spark(pdfs, sheet_name)
+            return read_excel_on_spark(pdf_or_psers, sheet_name)
 
 
 def read_html(
