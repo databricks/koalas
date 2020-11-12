@@ -94,7 +94,7 @@ from databricks.koalas.utils import (
     validate_bool_kwarg,
     verify_temp_column_name,
 )
-from databricks.koalas.spark.utils import as_nullable_spark_type
+from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.generic import Frame
 from databricks.koalas.internal import (
     InternalFrame,
@@ -2401,7 +2401,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 should_return_series = True
                 kdf = kser_or_kdf._kdf
 
-            return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+            return_schema = force_decimal_precision_scale(
+                as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+            )
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
@@ -2615,7 +2617,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ):
                 pudf = pandas_udf(
                     lambda c: func(c, *args, **kwargs),
-                    returnType=as_nullable_spark_type(kdf._internal.spark_type_for(output_label)),
+                    returnType=force_decimal_precision_scale(
+                        as_nullable_spark_type(kdf._internal.spark_type_for(output_label))
+                    ),
                     functionType=PandasUDFType.SCALAR,
                 )
                 kser = self._kser_for(input_label)
