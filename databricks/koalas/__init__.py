@@ -79,7 +79,7 @@ if (
     logging.warning(
         "'PYARROW_IGNORE_TIMEZONE' environment variable was not set. It is required to "
         "set this environment variable to '1' in both driver and executor sides if you use "
-        "pyarrow>=2.0.0."
+        "pyarrow>=2.0.0. "
         "Koalas will set it for you but it does not work if there is a Spark context already "
         "launched."
     )
