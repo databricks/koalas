@@ -12,7 +12,7 @@ Type casting between PySpark and Koalas
 
 When converting a Koalas DataFrame from/to PySpark DataFrame, the data types are automatically casted to the appropriate type.
 
-The example below shows how types are casted from PySpark DataFrame to Koalas DataFrame.
+The example below shows how data types are casted from PySpark DataFrame to Koalas DataFrame.
 
 .. code-block:: python
 
@@ -44,7 +44,7 @@ The example below shows how types are casted from PySpark DataFrame to Koalas Da
     dtype: object
 
 
-The example below shows how types are casted from Koalas DataFrame to PySpark DataFrame.
+The example below shows how data types are casted from Koalas DataFrame to PySpark DataFrame.
 
 .. code-block:: python
 
@@ -106,7 +106,7 @@ When converting Koalas DataFrame to pandas DataFrame, and the data types are bas
     dtype: object
 
 
-However, there are several types only provided by pandas.
+However, there are several data types only provided by pandas.
 
 .. code-block:: python
 
@@ -118,14 +118,14 @@ However, there are several types only provided by pandas.
     Categories (3, int64): [1, 2, 3] with type Categorical: did not recognize Python value type when inferring an Arrow data type
 
 
-These kind of pandas specific types below are not currently supported in Koalas but planned to be supported.
+These kind of pandas specific data types below are not currently supported in Koalas but planned to be supported.
 
 * pd.Timedelta
 * pd.Categorical
 * pd.CategoricalDtype
 
 
-The pandas specific types below are not planned to be supported in Koalas yet.
+The pandas specific data types below are not planned to be supported in Koalas yet.
 
 * pd.SparseDtype
 * pd.DatetimeTZDtype
@@ -137,7 +137,7 @@ The pandas specific types below are not planned to be supported in Koalas yet.
 Internal type mapping
 ---------------------
 
-The table below shows which NumPy types are matched to which PySpark types internally in Koalas.
+The table below shows which NumPy data types are matched to which PySpark data types internally in Koalas.
 
 ============= =======================
 NumPy         PySpark
@@ -162,7 +162,7 @@ np.ndarray    ArrayType(StringType())
 ============= =======================
 
 
-The table below shows which Python types are matched to which PySpark types internally in Koalas.
+The table below shows which Python data types are matched to which PySpark data types internally in Koalas.
 
 ================= ===================
 Python            PySpark
@@ -197,7 +197,7 @@ You can check this mapping by using `as_spark_type` function.
     ArrayType(DoubleType,true)
 
 
-You can also check the underlying PySpark type of `Series` or schema of `DataFrame` by using Spark accessor.
+You can also check the underlying PySpark data type of `Series` or schema of `DataFrame` by using Spark accessor.
 
 .. code-block:: python
 
