@@ -41,14 +41,16 @@ from typing import (
     Dict,
     Callable,
     cast,
+    TYPE_CHECKING,
 )
 
 import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
-from pandas.io.formats.style import Styler
 
+if TYPE_CHECKING:
+    from pandas.io.formats.style import Styler
 
 if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
     from pandas.core.dtypes.common import infer_dtype_from_object
@@ -114,6 +116,11 @@ from databricks.koalas.typedef import (
     SeriesType,
 )
 from databricks.koalas.plot import KoalasPlotAccessor
+
+if TYPE_CHECKING:
+    from databricks.koalas.indexes import Index
+    from databricks.koalas.series import Series
+
 
 # These regular expression patterns are complied and defined here to avoid to compile the same
 # pattern every time it is used in _repr_ and _repr_html_ in DataFrame.
@@ -1157,7 +1164,7 @@ class DataFrame(Frame, Generic[T]):
     # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(
         self, func: Union[List[str], Dict[Any, List[str]]]
-    ) -> Union["ks.Series", "DataFrame", "ks.Index"]:
+    ) -> Union["Series", "DataFrame", "Index"]:
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -1280,7 +1287,7 @@ class DataFrame(Frame, Generic[T]):
 
     agg = aggregate
 
-    def corr(self, method="pearson") -> Union["ks.Series", "DataFrame", "ks.Index"]:
+    def corr(self, method="pearson") -> Union["Series", "DataFrame", "Index"]:
         """
         Compute pairwise correlation of columns, excluding NA/null values.
 
@@ -2181,7 +2188,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     map_in_pandas.__doc__ = KoalasFrameMethods.apply_batch.__doc__
 
-    def apply(self, func, axis=0, args=(), **kwds) -> Union["ks.Series", "DataFrame", "ks.Index"]:
+    def apply(self, func, axis=0, args=(), **kwds) -> Union["Series", "DataFrame", "Index"]:
         """
         Apply a function along an axis of the DataFrame.
 
@@ -2721,7 +2728,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return result
 
     # TODO: add axis parameter can work when '1' or 'columns'
-    def xs(self, key, axis=0, level=None) -> Union["DataFrame", "ks.Series"]:
+    def xs(self, key, axis=0, level=None) -> Union["DataFrame", "Series"]:
         """
         Return cross-section from the DataFrame.
 
@@ -3118,7 +3125,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self.where(cond_inversed, other)
 
     @property
-    def index(self) -> "ks.Index":
+    def index(self) -> "Index":
         """The index (row labels) Column of the DataFrame.
 
         Currently not supported when the DataFrame has no index.
@@ -3156,7 +3163,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
     @property
-    def style(self) -> Styler:
+    def style(self) -> "Styler":
         """
         Property returning a Styler object containing methods for
         building a styled HTML representation for the DataFrame.
@@ -3739,7 +3746,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         dropna: bool = True,
         approx: bool = False,
         rsd: float = 0.05,
-    ) -> "ks.Series":
+    ) -> "Series":
         """
         Return number of unique elements in the object.
 
@@ -3932,7 +3939,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("'keep' only supports 'first', 'last' and False")
         return sdf, column
 
-    def duplicated(self, subset=None, keep="first") -> "ks.Series":
+    def duplicated(self, subset=None, keep="first") -> "Series":
         """
         Return boolean Series denoting duplicate rows, optionally only considering certain columns.
 
@@ -8298,7 +8305,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
-    def stack(self) -> Union["DataFrame", "ks.Series"]:
+    def stack(self) -> Union["DataFrame", "Series"]:
         """
         Stack the prescribed level(s) from columns to index.
 
@@ -8477,7 +8484,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return kdf
 
-    def unstack(self) -> Union["DataFrame", "ks.Series"]:
+    def unstack(self) -> Union["DataFrame", "Series"]:
         """
         Pivot the (necessarily hierarchical) index labels.
 
@@ -8634,7 +8641,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
     # TODO: axis, skipna, and many arguments should be implemented.
-    def all(self, axis: Union[int, str] = 0) -> "ks.Series":
+    def all(self, axis: Union[int, str] = 0) -> "Series":
         """
         Return whether all elements are True.
 
@@ -8721,7 +8728,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return first_series(DataFrame(internal))
 
     # TODO: axis, skipna, and many arguments should be implemented.
-    def any(self, axis: Union[int, str] = 0) -> "ks.Series":
+    def any(self, axis: Union[int, str] = 0) -> "Series":
         """
         Return whether any element is True.
 
@@ -9505,7 +9512,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(op)
 
     # TODO: axis = 1
-    def idxmax(self, axis=0) -> "ks.Series":
+    def idxmax(self, axis=0) -> "Series":
         """
         Return index of first occurrence of maximum over requested axis.
         NA/null values are excluded.
@@ -9583,7 +9590,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return ks.from_pandas(kdf._to_internal_pandas().idxmax())  # type: ignore
 
     # TODO: axis = 1
-    def idxmin(self, axis=0) -> "ks.Series":
+    def idxmin(self, axis=0) -> "Series":
         """
         Return index of first occurrence of minimum over requested axis.
         NA/null values are excluded.
@@ -9771,7 +9778,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(
         self, q=0.5, axis=0, numeric_only=True, accuracy=10000
-    ) -> Union["DataFrame", "ks.Series"]:
+    ) -> Union["DataFrame", "Series"]:
         """
         Return value at the given quantile.
 
@@ -10088,7 +10095,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             return self.iloc[:, indices]  # type: ignore
 
-    def eval(self, expr, inplace=False) -> Optional[Union["DataFrame", "ks.Series"]]:
+    def eval(self, expr, inplace=False) -> Optional[Union["DataFrame", "Series"]]:
         """
         Evaluate a string describing operations on DataFrame columns.
 
@@ -10268,7 +10275,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         internal = kdf._internal.with_new_sdf(sdf)
         return DataFrame(internal)
 
-    def mad(self, axis=0) -> "ks.Series":
+    def mad(self, axis=0) -> "Series":
         """
         Return the mean absolute deviation of values.
 
@@ -10445,7 +10452,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
 
-    def product(self) -> "ks.Series":
+    def product(self) -> "Series":
         """
         Return the product of the values as Series.
 

@@ -48,9 +48,10 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.window import Rolling, Expanding
 
-
 if TYPE_CHECKING:
+    from databricks.koalas.frame import DataFrame
     from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
+    from databricks.koalas.series import Series
 
 
 class Frame(object, metaclass=ABCMeta):
@@ -102,7 +103,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     # TODO: add 'axis' parameter
-    def cummin(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cummin(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative minimum over a DataFrame or Series axis.
 
@@ -164,7 +165,7 @@ class Frame(object, metaclass=ABCMeta):
         )  # type: ignore
 
     # TODO: add 'axis' parameter
-    def cummax(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cummax(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative maximum over a DataFrame or Series axis.
 
@@ -227,7 +228,7 @@ class Frame(object, metaclass=ABCMeta):
         )  # type: ignore
 
     # TODO: add 'axis' parameter
-    def cumsum(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cumsum(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative sum over a DataFrame or Series axis.
 
@@ -292,7 +293,7 @@ class Frame(object, metaclass=ABCMeta):
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
     #  other window except unbounded ones is supported as of Spark 3.0.
-    def cumprod(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cumprod(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative product over a DataFrame or Series axis.
 
@@ -1087,7 +1088,7 @@ class Frame(object, metaclass=ABCMeta):
             kdf._to_internal_pandas(), self.to_excel, f, args
         )
 
-    def mean(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def mean(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return the mean of the values.
 
@@ -1132,7 +1133,7 @@ class Frame(object, metaclass=ABCMeta):
             F.mean, name="mean", numeric_only=numeric_only, axis=axis
         )
 
-    def sum(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def sum(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
 
@@ -1177,7 +1178,7 @@ class Frame(object, metaclass=ABCMeta):
             F.sum, name="sum", numeric_only=numeric_only, axis=axis
         )
 
-    def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased skew normalized by N-1.
 
@@ -1215,7 +1216,7 @@ class Frame(object, metaclass=ABCMeta):
             F.skewness, name="skew", numeric_only=numeric_only, axis=axis
         )
 
-    def kurtosis(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def kurtosis(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
@@ -1256,7 +1257,7 @@ class Frame(object, metaclass=ABCMeta):
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=None) -> Union[Scalar, "ks.Series"]:
+    def min(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
         """
         Return the minimum of the values.
 
@@ -1302,7 +1303,7 @@ class Frame(object, metaclass=ABCMeta):
             F.min, name="min", numeric_only=numeric_only, axis=axis
         )
 
-    def max(self, axis=None, numeric_only=None) -> Union[Scalar, "ks.Series"]:
+    def max(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
         """
         Return the maximum of the values.
 
@@ -1348,7 +1349,7 @@ class Frame(object, metaclass=ABCMeta):
             F.max, name="max", numeric_only=numeric_only, axis=axis
         )
 
-    def std(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def std(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
 
@@ -1393,7 +1394,7 @@ class Frame(object, metaclass=ABCMeta):
             F.stddev, name="std", numeric_only=numeric_only, axis=axis
         )
 
-    def var(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def var(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
 
@@ -1466,7 +1467,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             return len(self) * num_columns  # type: ignore
 
-    def abs(self) -> Union["ks.DataFrame", "ks.Series"]:
+    def abs(self) -> Union["DataFrame", "Series"]:
         """
         Return a Series/DataFrame with absolute numeric value of each element.
 
@@ -1883,7 +1884,7 @@ class Frame(object, metaclass=ABCMeta):
 
         return last_valid_idx
 
-    def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "ks.Series"]:
+    def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "Series"]:
         """
         Return the median of the values for the requested axis.
 
@@ -2079,7 +2080,7 @@ class Frame(object, metaclass=ABCMeta):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def squeeze(self, axis=None) -> Union[Scalar, "ks.DataFrame", "ks.Series"]:
+    def squeeze(self, axis=None) -> Union[Scalar, "DataFrame", "Series"]:
         """
         Squeeze 1 dimensional axis objects into scalars.
 
@@ -2213,7 +2214,7 @@ class Frame(object, metaclass=ABCMeta):
 
     def truncate(
         self, before=None, after=None, axis=None, copy=True
-    ) -> Union["ks.DataFrame", "ks.Series"]:
+    ) -> Union["DataFrame", "Series"]:
         """
         Truncate a Series or DataFrame before and after some index value.
 
@@ -2413,7 +2414,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     # TODO: add 'downcast' when value parameter exists
-    def bfill(self, axis=None, inplace=False, limit=None) -> Union["ks.DataFrame", "ks.Series"]:
+    def bfill(self, axis=None, inplace=False, limit=None) -> Union["DataFrame", "Series"]:
         """
         Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`bfill```.
 
@@ -2487,7 +2488,7 @@ class Frame(object, metaclass=ABCMeta):
     backfill = bfill
 
     # TODO: add 'downcast' when value parameter exists
-    def ffill(self, axis=None, inplace=False, limit=None) -> Union["ks.DataFrame", "ks.Series"]:
+    def ffill(self, axis=None, inplace=False, limit=None) -> Union["DataFrame", "Series"]:
         """
         Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`ffill```.
 

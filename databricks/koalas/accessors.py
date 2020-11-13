@@ -45,7 +45,6 @@ from databricks.koalas.utils import (
 if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.series import Series
-    from databricks import koalas as ks
 
 
 class KoalasFrameMethods(object):
@@ -698,7 +697,7 @@ class KoalasSeriesMethods(object):
     def __init__(self, series: "Series"):
         self._kser = series
 
-    def transform_batch(self, func, *args, **kwargs) -> "ks.Series":
+    def transform_batch(self, func, *args, **kwargs) -> "Series":
         """
         Transform the data with the function that takes pandas Series and outputs pandas Series.
         The pandas Series given to the function is of a batch used internally.

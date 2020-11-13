@@ -15,7 +15,7 @@
 #
 from collections import OrderedDict
 from functools import partial
-from typing import Any, Union
+from typing import Any, Union, TYPE_CHECKING
 
 from pyspark.sql import Window
 from pyspark.sql import functions as F
@@ -31,6 +31,10 @@ from databricks import koalas as ks  # noqa: F401
 
 from databricks.koalas.internal import NATURAL_ORDER_COLUMN_NAME, SPARK_INDEX_NAME_FORMAT
 from databricks.koalas.utils import scol_for
+
+if TYPE_CHECKING:
+    from databricks.koalas.frame import DataFrame
+    from databricks.koalas.series import Series
 
 
 class RollingAndExpanding(object):
@@ -54,13 +58,13 @@ class RollingAndExpanding(object):
             "to handle the index and columns of output."
         )
 
-    def count(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def count(self) -> Union["Series", "DataFrame"]:
         def count(scol):
             return F.count(scol).over(self._window)
 
         return self._apply_as_series_or_frame(count).astype("float64")
 
-    def sum(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def sum(self) -> Union["Series", "DataFrame"]:
         def sum(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
@@ -69,7 +73,7 @@ class RollingAndExpanding(object):
 
         return self._apply_as_series_or_frame(sum)
 
-    def min(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def min(self) -> Union["Series", "DataFrame"]:
         def min(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
@@ -78,7 +82,7 @@ class RollingAndExpanding(object):
 
         return self._apply_as_series_or_frame(min)
 
-    def max(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def max(self) -> Union["Series", "DataFrame"]:
         def max(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
@@ -87,7 +91,7 @@ class RollingAndExpanding(object):
 
         return self._apply_as_series_or_frame(max)
 
-    def mean(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def mean(self) -> Union["Series", "DataFrame"]:
         def mean(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
@@ -96,7 +100,7 @@ class RollingAndExpanding(object):
 
         return self._apply_as_series_or_frame(mean)
 
-    def std(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def std(self) -> Union["Series", "DataFrame"]:
         def std(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
@@ -105,7 +109,7 @@ class RollingAndExpanding(object):
 
         return self._apply_as_series_or_frame(std)
 
-    def var(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def var(self) -> Union["Series", "DataFrame"]:
         def var(scol):
             return F.when(
                 F.row_number().over(self._unbounded_window) >= self._min_periods,
@@ -153,7 +157,7 @@ class Rolling(RollingAndExpanding):
             lambda kser: kser._with_new_scol(func(kser.spark.column)), should_resolve=True
         )
 
-    def count(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def count(self) -> Union["Series", "DataFrame"]:
         """
         The rolling count of any non-NaN observations inside the window.
 
@@ -202,7 +206,7 @@ class Rolling(RollingAndExpanding):
         """
         return super().count()
 
-    def sum(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def sum(self) -> Union["Series", "DataFrame"]:
         """
         Calculate rolling summation of given DataFrame or Series.
 
@@ -280,7 +284,7 @@ class Rolling(RollingAndExpanding):
         """
         return super().sum()
 
-    def min(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def min(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the rolling minimum.
 
@@ -358,7 +362,7 @@ class Rolling(RollingAndExpanding):
         """
         return super().min()
 
-    def max(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def max(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the rolling maximum.
 
@@ -435,7 +439,7 @@ class Rolling(RollingAndExpanding):
         """
         return super().max()
 
-    def mean(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def mean(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the rolling mean of the values.
 
@@ -513,7 +517,7 @@ class Rolling(RollingAndExpanding):
         """
         return super().mean()
 
-    def std(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def std(self) -> Union["Series", "DataFrame"]:
         """
         Calculate rolling standard deviation.
 
@@ -563,7 +567,7 @@ class Rolling(RollingAndExpanding):
         """
         return super().std()
 
-    def var(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def var(self) -> Union["Series", "DataFrame"]:
         """
         Calculate unbiased rolling variance.
 
@@ -713,7 +717,7 @@ class RollingGroupby(Rolling):
         else:
             return ret
 
-    def count(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def count(self) -> Union["Series", "DataFrame"]:
         """
         The rolling count of any non-NaN observations inside the window.
 
@@ -767,7 +771,7 @@ class RollingGroupby(Rolling):
         """
         return super().count()
 
-    def sum(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def sum(self) -> Union["Series", "DataFrame"]:
         """
         The rolling summation of any non-NaN observations inside the window.
 
@@ -821,7 +825,7 @@ class RollingGroupby(Rolling):
         """
         return super().sum()
 
-    def min(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def min(self) -> Union["Series", "DataFrame"]:
         """
         The rolling minimum of any non-NaN observations inside the window.
 
@@ -875,7 +879,7 @@ class RollingGroupby(Rolling):
         """
         return super().min()
 
-    def max(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def max(self) -> Union["Series", "DataFrame"]:
         """
         The rolling maximum of any non-NaN observations inside the window.
 
@@ -929,7 +933,7 @@ class RollingGroupby(Rolling):
         """
         return super().max()
 
-    def mean(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def mean(self) -> Union["Series", "DataFrame"]:
         """
         The rolling mean of any non-NaN observations inside the window.
 
@@ -983,7 +987,7 @@ class RollingGroupby(Rolling):
         """
         return super().mean()
 
-    def std(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def std(self) -> Union["Series", "DataFrame"]:
         """
         Calculate rolling standard deviation.
 
@@ -1002,7 +1006,7 @@ class RollingGroupby(Rolling):
         """
         return super().std()
 
-    def var(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def var(self) -> Union["Series", "DataFrame"]:
         """
         Calculate unbiased rolling variance.
 
@@ -1055,7 +1059,7 @@ class Expanding(RollingAndExpanding):
 
     _apply_as_series_or_frame = Rolling._apply_as_series_or_frame
 
-    def count(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def count(self) -> Union["Series", "DataFrame"]:
         """
         The expanding count of any non-NaN observations inside the window.
 
@@ -1103,7 +1107,7 @@ class Expanding(RollingAndExpanding):
 
         return self._apply_as_series_or_frame(count).astype("float64")  # type: ignore
 
-    def sum(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def sum(self) -> Union["Series", "DataFrame"]:
         """
         Calculate expanding summation of given DataFrame or Series.
 
@@ -1165,7 +1169,7 @@ class Expanding(RollingAndExpanding):
         """
         return super().sum()
 
-    def min(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def min(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the expanding minimum.
 
@@ -1202,7 +1206,7 @@ class Expanding(RollingAndExpanding):
         """
         return super().min()
 
-    def max(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def max(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the expanding maximum.
 
@@ -1238,7 +1242,7 @@ class Expanding(RollingAndExpanding):
         """
         return super().max()
 
-    def mean(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def mean(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the expanding mean of the values.
 
@@ -1282,7 +1286,7 @@ class Expanding(RollingAndExpanding):
         """
         return super().mean()
 
-    def std(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def std(self) -> Union["Series", "DataFrame"]:
         """
         Calculate expanding standard deviation.
 
@@ -1332,7 +1336,7 @@ class Expanding(RollingAndExpanding):
         """
         return super().std()
 
-    def var(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def var(self) -> Union["Series", "DataFrame"]:
         """
         Calculate unbiased expanding variance.
 
@@ -1417,7 +1421,7 @@ class ExpandingGroupby(Expanding):
 
     _apply_as_series_or_frame = RollingGroupby._apply_as_series_or_frame  # type: ignore
 
-    def count(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def count(self) -> Union["Series", "DataFrame"]:
         """
         The expanding count of any non-NaN observations inside the window.
 
@@ -1471,7 +1475,7 @@ class ExpandingGroupby(Expanding):
         """
         return super().count()
 
-    def sum(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def sum(self) -> Union["Series", "DataFrame"]:
         """
         Calculate expanding summation of given DataFrame or Series.
 
@@ -1525,7 +1529,7 @@ class ExpandingGroupby(Expanding):
         """
         return super().sum()
 
-    def min(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def min(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the expanding minimum.
 
@@ -1579,7 +1583,7 @@ class ExpandingGroupby(Expanding):
         """
         return super().min()
 
-    def max(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def max(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the expanding maximum.
 
@@ -1632,7 +1636,7 @@ class ExpandingGroupby(Expanding):
         """
         return super().max()
 
-    def mean(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def mean(self) -> Union["Series", "DataFrame"]:
         """
         Calculate the expanding mean of the values.
 
@@ -1686,7 +1690,7 @@ class ExpandingGroupby(Expanding):
         """
         return super().mean()
 
-    def std(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def std(self) -> Union["Series", "DataFrame"]:
         """
         Calculate expanding standard deviation.
 
@@ -1706,7 +1710,7 @@ class ExpandingGroupby(Expanding):
         """
         return super().std()
 
-    def var(self) -> Union["ks.Series", "ks.DataFrame"]:
+    def var(self) -> Union["Series", "DataFrame"]:
         """
         Calculate unbiased expanding variance.
 
