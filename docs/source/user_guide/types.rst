@@ -43,12 +43,13 @@ The example below shows how types are casted from PySpark DataFrame to Koalas Da
     date                 object
     dtype: object
 
+
 The example below shows how types are casted from Koalas DataFrame to PySpark DataFrame.
 
 .. code-block:: python
 
     # 1. Create a Koalas DataFrame
-    >>> kdf = ks.DataFrame({"int8": [1], "bool": [True], "float32": [1.0], "float64": [1.0], "int32": [1], "int64": [1], "int16": [1], "datetime": [datetime.datetime(2020, 10, 27)], "object_string": ["1"], "object_decimal": [decimal.Decimal(1.0)], "object_date": [datetime.date(2020, 10, 27)]})
+    >>> kdf = ks.DataFrame({"int8": [1], "bool": [True], "float32": [1.0], "float64": [1.0], "int32": [1], "int64": [1], "int16": [1], "datetime": [datetime.datetime(2020, 10, 27)], "object_string": ["1"], "object_decimal": [decimal.Decimal("1.1")], "object_date": [datetime.date(2020, 10, 27)]})
 
     # 2. Type casting by using `astype`
     >>> kdf['int8'] = kdf['int8'].astype('int8')
@@ -76,13 +77,13 @@ The example below shows how types are casted from Koalas DataFrame to PySpark Da
 
     # 5. Check the PySpark data types
     >>> sdf
-    DataFrame[int8: tinyint, bool: boolean, float32: float, float64: double, int32: int, int64: bigint, int16: smallint, datetime: timestamp, object_string: string, object_decimal: decimal(1,0), object_date: date]
+    DataFrame[int8: tinyint, bool: boolean, float32: float, float64: double, int32: int, int64: bigint, int16: smallint, datetime: timestamp, object_string: string, object_decimal: decimal(2,1), object_date: date]
 
 
 Type casting between pandas and Koalas
 --------------------------------------
 
-We can easily convert Koalas DataFrame to pandas DataFrame, and the data types are basically same as pandas.
+When converting Koalas DataFrame to pandas DataFrame, and the data types are basically same as pandas.
 
 .. code-block:: python
 
@@ -117,14 +118,14 @@ However, there are several types only provided by pandas.
     Categories (3, int64): [1, 2, 3] with type Categorical: did not recognize Python value type when inferring an Arrow data type
 
 
-These kind of pandas specific types below are not currently supported in Koalas, but planned to be supported in the future.
+These kind of pandas specific types below are not currently supported in Koalas but planned to be supported.
 
 * pd.Timedelta
 * pd.Categorical
 * pd.CategoricalDtype
 
 
-However, note that the pandas specific types below are not planned to be supported in Koalas yet.
+The pandas specific types below are not planned to be supported in Koalas yet.
 
 * pd.SparseDtype
 * pd.DatetimeTZDtype
@@ -136,7 +137,7 @@ However, note that the pandas specific types below are not planned to be support
 Internal type mapping
 ---------------------
 
-A table below shows which NumPy types are matched to which PySpark types internally in Koalas.
+The table below shows which NumPy types are matched to which PySpark types internally in Koalas.
 
 ============= =======================
 NumPy         PySpark
@@ -161,7 +162,7 @@ np.ndarray    ArrayType(StringType())
 ============= =======================
 
 
-A table below shows which Python types are matched to which PySpark types internally in Koalas.
+The table below shows which Python types are matched to which PySpark types internally in Koalas.
 
 ================= ===================
 Python            PySpark
@@ -178,7 +179,7 @@ decimal.Decimal   DecimalType(38, 18)
 
 For decimal type, Koalas uses Spark's system default precision and scale.
 
-You can easily check this mapping by using `as_spark_type` function.
+You can check this mapping by using `as_spark_type` function.
 
 .. code-block:: python
 
@@ -196,7 +197,7 @@ You can easily check this mapping by using `as_spark_type` function.
     ArrayType(DoubleType,true)
 
 
-You can also easily check the underlying PySpark type of `Series` by using Spark accessor.
+You can also check the underlying PySpark type of `Series` or schema of `DataFrame` by using Spark accessor.
 
 .. code-block:: python
 
@@ -208,3 +209,9 @@ You can also easily check the underlying PySpark type of `Series` by using Spark
 
     >>> ks.Series([[False, True, False]]).spark.data_type
     ArrayType(BooleanType,true)
+
+    >>> ks.DataFrame({"d": [0.3, 0.1, 0.8], "s": ["welcome", "to", "Koalas"], "b": [False, True, False]}).spark.print_schema()
+    root
+     |-- d: double (nullable = false)
+     |-- s: string (nullable = false)
+     |-- b: boolean (nullable = false)
