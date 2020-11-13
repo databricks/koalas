@@ -828,7 +828,6 @@ class Frame(object, metaclass=ABCMeta):
         if partition_cols is not None:
             builder.partitionBy(partition_cols)
         builder._set_opts(
-            path=path,
             sep=sep,
             nullValue=na_rep,
             header=header,
