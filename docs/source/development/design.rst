@@ -73,7 +73,9 @@ Note that it is clear from the names that these functions return some local data
 Be a lean API layer and move fast
 ---------------------------------
 
-Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers around Spark or pandas. Koalas does not accept heavyweight implementations, e.g. execution engine changes.
+Koalas is designed as an API overlay layer on top of Spark. The project should be lightweight, and most functions should be implemented as wrappers
+around Spark or pandas - the Koalas library is designed to be used only in the Spark's driver side in general.
+Koalas does not accept heavyweight implementations, e.g. execution engine changes.
 
 This approach enables us to move fast. For the considerable future, we aim to be making monthly releases. If we find a critical bug, we will be making a new release as soon as the bug fix is available.
 
