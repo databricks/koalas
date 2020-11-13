@@ -17,9 +17,6 @@ To install PySpark, you can use:
 - `PyPI <https://pypi.org/project/pyspark>`__
 - `Installation from source <https://github.com/apache/spark#building-spark>`__
 
-Note that Koalas should be used *only* in the Spark's driver side, meaning that you can just install it in your driver side only
-and run it out of the box in the existing Spark cluster.
-
 
 Python version support
 ----------------------
