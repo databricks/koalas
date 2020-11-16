@@ -568,8 +568,6 @@ class Index(IndexOpsMixin):
 
     @name.setter
     def name(self, name: Union[Any, Tuple]) -> None:
-        if not is_hashable(name):
-            raise TypeError("Index.name must be a hashable type")
         self.names = [name]
 
     @property
