@@ -29,6 +29,7 @@ from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window, Column
 from pyspark.sql.types import (
+    BooleanType,
     DateType,
     DoubleType,
     FloatType,
@@ -841,7 +842,26 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
-        return self._with_new_scol(self.spark.column.cast(spark_type))
+        if isinstance(spark_type, BooleanType):
+            if isinstance(self.spark.data_type, StringType):
+                scol = F.when(self.spark.column.isNull(), F.lit(False)).otherwise(
+                    F.length(self.spark.column) > 0
+                )
+            elif isinstance(self.spark.data_type, (FloatType, DoubleType)):
+                scol = F.when(
+                    self.spark.column.isNull() | F.isnan(self.spark.column), F.lit(True)
+                ).otherwise(self.spark.column.cast(spark_type))
+            else:
+                scol = F.when(self.spark.column.isNull(), F.lit(False)).otherwise(
+                    self.spark.column.cast(spark_type)
+                )
+        elif isinstance(spark_type, StringType):
+            scol = F.when(self.spark.column.isNull(), str(None)).otherwise(
+                self.spark.column.cast(spark_type)
+            )
+        else:
+            scol = self.spark.column.cast(spark_type)
+        return self._with_new_scol(scol)
 
     def isin(self, values) -> Union["Series", "Index"]:
         """
