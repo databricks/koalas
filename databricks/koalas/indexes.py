@@ -19,7 +19,7 @@ Wrappers for Indexes to behave similar to pandas Index, MultiIndex.
 """
 from distutils.version import LooseVersion
 from functools import partial
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, cast
 import warnings
 
 import pandas as pd
@@ -2417,9 +2417,12 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        return DataFrame(  # type: ignore
-            index=pd.MultiIndex.from_tuples(tuples=tuples, sortorder=sortorder, names=names)
-        ).index
+        return cast(
+            MultiIndex,
+            DataFrame(
+                index=pd.MultiIndex.from_tuples(tuples=tuples, sortorder=sortorder, names=names)
+            ).index,
+        )
 
     @staticmethod
     def from_arrays(arrays, sortorder=None, names=None) -> "MultiIndex":
@@ -2451,9 +2454,12 @@ class MultiIndex(Index):
                     (2, 'blue')],
                    names=['number', 'color'])
         """
-        return DataFrame(  # type: ignore
-            index=pd.MultiIndex.from_arrays(arrays=arrays, sortorder=sortorder, names=names)
-        ).index
+        return cast(
+            MultiIndex,
+            DataFrame(
+                index=pd.MultiIndex.from_arrays(arrays=arrays, sortorder=sortorder, names=names)
+            ).index,
+        )
 
     @staticmethod
     def from_product(iterables, sortorder=None, names=None) -> "MultiIndex":
@@ -2493,9 +2499,14 @@ class MultiIndex(Index):
                     (2, 'purple')],
                    names=['number', 'color'])
         """
-        return DataFrame(  # type: ignore
-            index=pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
-        ).index
+        return cast(
+            MultiIndex,
+            DataFrame(
+                index=pd.MultiIndex.from_product(
+                    iterables=iterables, sortorder=sortorder, names=names
+                )
+            ).index,
+        )
 
     @staticmethod
     def from_frame(df, names=None) -> "MultiIndex":
@@ -2565,7 +2576,7 @@ class MultiIndex(Index):
         internal = InternalFrame(
             spark_frame=sdf, index_spark_column_names=sdf.columns, index_names=names
         )
-        return DataFrame(internal).index  # type: ignore
+        return cast(MultiIndex, DataFrame(internal).index)
 
     @property
     def name(self) -> str:
@@ -2644,7 +2655,7 @@ class MultiIndex(Index):
         internal = self._kdf._internal.copy(
             index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
         )
-        return DataFrame(internal).index  # type: ignore
+        return cast(MultiIndex, DataFrame(internal).index)
 
     @property
     def levshape(self) -> Tuple[int, ...]:
@@ -3313,7 +3324,7 @@ class MultiIndex(Index):
             index_spark_column_names=index_spark_column_names,
             index_names=index_names,
         )
-        return DataFrame(internal).index  # type: ignore
+        return cast(MultiIndex, DataFrame(internal).index)
 
     @property
     def inferred_type(self) -> str:
