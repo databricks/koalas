@@ -85,6 +85,7 @@ class GroupBy(object, metaclass=ABCMeta):
     """
 
     def __init__(self):
+        """A constructor for attribute type hints."""
         self._kser = cast(Series, None)
         self._kdf = cast(DataFrame, None)
         self._groupkeys = cast(List[Series], None)
