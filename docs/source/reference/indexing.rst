@@ -139,6 +139,7 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.intersection
    Index.union
    Index.difference
    Index.symmetric_difference
@@ -236,6 +237,7 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.intersection
    MultiIndex.union
    MultiIndex.difference
    MultiIndex.symmetric_difference

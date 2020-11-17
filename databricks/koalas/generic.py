@@ -15,14 +15,14 @@
 #
 
 """
-A base class to be monkey-patched to DataFrame/Column to behave similar to pandas DataFrame/Series.
+A base class of DataFrame/Column to behave similar to pandas DataFrame/Series.
 """
 from abc import ABCMeta, abstractmethod
 from collections import Counter
 from collections.abc import Iterable
 from distutils.version import LooseVersion
 from functools import reduce
-from typing import List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, List, Optional, Tuple, Union, TYPE_CHECKING, cast
 import warnings
 
 import numpy as np  # noqa: F401
@@ -37,6 +37,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
 from databricks.koalas.spark import functions as SF
+from databricks.koalas.typedef import Scalar
 from databricks.koalas.utils import (
     is_name_like_tuple,
     is_name_like_value,
@@ -47,15 +48,20 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.window import Rolling, Expanding
 
-
 if TYPE_CHECKING:
+    from databricks.koalas.frame import DataFrame
     from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
+    from databricks.koalas.series import Series
 
 
 class Frame(object, metaclass=ABCMeta):
     """
     The base class for both DataFrame and Series.
     """
+
+    @abstractmethod
+    def __getitem__(self, key):
+        pass
 
     @property
     @abstractmethod
@@ -70,8 +76,34 @@ class Frame(object, metaclass=ABCMeta):
     def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
         pass
 
+    @property
+    @abstractmethod
+    def dtypes(self):
+        pass
+
+    @abstractmethod
+    def to_pandas(self):
+        pass
+
+    @property
+    @abstractmethod
+    def index(self):
+        pass
+
+    @abstractmethod
+    def copy(self):
+        pass
+
+    @abstractmethod
+    def _to_internal_pandas(self):
+        pass
+
+    @abstractmethod
+    def head(self, n: int = 5):
+        pass
+
     # TODO: add 'axis' parameter
-    def cummin(self, skipna: bool = True):
+    def cummin(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative minimum over a DataFrame or Series axis.
 
@@ -133,7 +165,7 @@ class Frame(object, metaclass=ABCMeta):
         )  # type: ignore
 
     # TODO: add 'axis' parameter
-    def cummax(self, skipna: bool = True):
+    def cummax(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative maximum over a DataFrame or Series axis.
 
@@ -196,7 +228,7 @@ class Frame(object, metaclass=ABCMeta):
         )  # type: ignore
 
     # TODO: add 'axis' parameter
-    def cumsum(self, skipna: bool = True):
+    def cumsum(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative sum over a DataFrame or Series axis.
 
@@ -261,7 +293,7 @@ class Frame(object, metaclass=ABCMeta):
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
     #  other window except unbounded ones is supported as of Spark 3.0.
-    def cumprod(self, skipna: bool = True):
+    def cumprod(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative product over a DataFrame or Series axis.
 
@@ -332,7 +364,7 @@ class Frame(object, metaclass=ABCMeta):
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
     # We can drop it once our minimal pandas version becomes 1.0.0.
-    def get_dtype_counts(self):
+    def get_dtype_counts(self) -> pd.Series:
         """
         Return counts of unique dtypes in this object.
 
@@ -375,10 +407,10 @@ class Frame(object, metaclass=ABCMeta):
         if not isinstance(self.dtypes, Iterable):
             dtypes = [self.dtypes]
         else:
-            dtypes = self.dtypes
-        return pd.Series(dict(Counter([d.name for d in list(dtypes)])))
+            dtypes = list(self.dtypes)
+        return pd.Series(dict(Counter([d.name for d in dtypes])))
 
-    def pipe(self, func, *args, **kwargs):
+    def pipe(self, func, *args, **kwargs) -> Any:
         r"""
         Apply func(self, \*args, \*\*kwargs).
 
@@ -471,7 +503,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             return func(self, *args, **kwargs)
 
-    def to_numpy(self):
+    def to_numpy(self) -> np.ndarray:
         """
         A NumPy ndarray representing the values in this DataFrame or Series.
 
@@ -509,7 +541,7 @@ class Frame(object, metaclass=ABCMeta):
         return self.to_pandas().values
 
     @property
-    def values(self):
+    def values(self) -> np.ndarray:
         """
         Return a Numpy representation of the DataFrame or the Series.
 
@@ -586,7 +618,7 @@ class Frame(object, metaclass=ABCMeta):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> Optional[str]:
         r"""
         Write object to a comma-separated values (csv) file.
 
@@ -639,6 +671,10 @@ class Frame(object, metaclass=ABCMeta):
             the options in PySpark's API documentation for spark.write.csv(...).
             It has higher priority and overwrites all other options.
             This parameter only works when `path` is specified.
+
+        Returns
+        -------
+        str or None
 
         See Also
         --------
@@ -792,7 +828,6 @@ class Frame(object, metaclass=ABCMeta):
         if partition_cols is not None:
             builder.partitionBy(partition_cols)
         builder._set_opts(
-            path=path,
             sep=sep,
             nullValue=na_rep,
             header=header,
@@ -801,6 +836,7 @@ class Frame(object, metaclass=ABCMeta):
             charToEscapeQuoteEscaping=escapechar,
         )
         builder.options(**options).format("csv").save(path)
+        return None
 
     def to_json(
         self,
@@ -811,7 +847,7 @@ class Frame(object, metaclass=ABCMeta):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> Optional[str]:
         """
         Convert the object to a JSON string.
 
@@ -859,6 +895,10 @@ class Frame(object, metaclass=ABCMeta):
             the options in PySpark's API documentation for `spark.write.json(...)`.
             It has a higher priority and overwrites all other options.
             This parameter only works when `path` is specified.
+
+        Returns
+        --------
+        str or None
 
         Examples
         --------
@@ -913,6 +953,7 @@ class Frame(object, metaclass=ABCMeta):
             builder.partitionBy(partition_cols)
         builder._set_opts(compression=compression)
         builder.options(**options).format("json").save(path)
+        return None
 
     def to_excel(
         self,
@@ -932,7 +973,7 @@ class Frame(object, metaclass=ABCMeta):
         inf_rep="inf",
         verbose=True,
         freeze_panes=None,
-    ):
+    ) -> None:
         """
         Write object to an Excel sheet.
 
@@ -1046,7 +1087,7 @@ class Frame(object, metaclass=ABCMeta):
             kdf._to_internal_pandas(), self.to_excel, f, args
         )
 
-    def mean(self, axis=None, numeric_only=True):
+    def mean(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return the mean of the values.
 
@@ -1091,7 +1132,7 @@ class Frame(object, metaclass=ABCMeta):
             F.mean, name="mean", numeric_only=numeric_only, axis=axis
         )
 
-    def sum(self, axis=None, numeric_only=True):
+    def sum(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
 
@@ -1136,7 +1177,7 @@ class Frame(object, metaclass=ABCMeta):
             F.sum, name="sum", numeric_only=numeric_only, axis=axis
         )
 
-    def skew(self, axis=None, numeric_only=True):
+    def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased skew normalized by N-1.
 
@@ -1174,7 +1215,7 @@ class Frame(object, metaclass=ABCMeta):
             F.skewness, name="skew", numeric_only=numeric_only, axis=axis
         )
 
-    def kurtosis(self, axis=None, numeric_only=True):
+    def kurtosis(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
@@ -1215,7 +1256,7 @@ class Frame(object, metaclass=ABCMeta):
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=None):
+    def min(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
         """
         Return the minimum of the values.
 
@@ -1261,7 +1302,7 @@ class Frame(object, metaclass=ABCMeta):
             F.min, name="min", numeric_only=numeric_only, axis=axis
         )
 
-    def max(self, axis=None, numeric_only=None):
+    def max(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
         """
         Return the maximum of the values.
 
@@ -1307,7 +1348,7 @@ class Frame(object, metaclass=ABCMeta):
             F.max, name="max", numeric_only=numeric_only, axis=axis
         )
 
-    def std(self, axis=None, numeric_only=True):
+    def std(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
 
@@ -1352,7 +1393,7 @@ class Frame(object, metaclass=ABCMeta):
             F.stddev, name="std", numeric_only=numeric_only, axis=axis
         )
 
-    def var(self, axis=None, numeric_only=True):
+    def var(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
 
@@ -1425,7 +1466,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             return len(self) * num_columns  # type: ignore
 
-    def abs(self):
+    def abs(self) -> Union["DataFrame", "Series"]:
         """
         Return a Series/DataFrame with absolute numeric value of each element.
 
@@ -1600,12 +1641,16 @@ class Frame(object, metaclass=ABCMeta):
                 "Constructor expects DataFrame or Series; however, " "got [%s]" % (self,)
             )
 
-    def bool(self):
+    def bool(self) -> bool:
         """
         Return the bool of a single element in the current object.
 
         This must be a boolean scalar value, either True or False. Raise a ValueError if
         the object does not have exactly 1 element, or that element is not boolean
+
+        Returns
+        --------
+        bool
 
         Examples
         --------
@@ -1642,7 +1687,7 @@ class Frame(object, metaclass=ABCMeta):
             raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
-    def first_valid_index(self):
+    def first_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
         """
         Retrieves the index of the first valid value.
 
@@ -1737,7 +1782,7 @@ class Frame(object, metaclass=ABCMeta):
 
         return first_valid_idx
 
-    def last_valid_index(self):
+    def last_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
         """
         Return index for last non-NA/null value.
 
@@ -1838,7 +1883,7 @@ class Frame(object, metaclass=ABCMeta):
 
         return last_valid_idx
 
-    def median(self, axis=None, numeric_only=True, accuracy=10000):
+    def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "Series"]:
         """
         Return the median of the values for the requested axis.
 
@@ -1934,7 +1979,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
-    def rolling(self, window, min_periods=None):
+    def rolling(self, window, min_periods=None) -> Rolling:
         """
         Provide rolling transformations.
 
@@ -1963,7 +2008,7 @@ class Frame(object, metaclass=ABCMeta):
 
     # TODO: 'center' and 'axis' parameter should be implemented.
     #   'axis' implementation, refer https://github.com/databricks/koalas/pull/607
-    def expanding(self, min_periods=1):
+    def expanding(self, min_periods=1) -> Expanding:
         """
         Provide expanding transformations.
 
@@ -1983,7 +2028,7 @@ class Frame(object, metaclass=ABCMeta):
         """
         return Expanding(self, min_periods=min_periods)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None) -> Any:
         """
         Get item from object for given key (DataFrame column, Panel slice,
         etc.). Returns default value if not found.
@@ -2034,7 +2079,7 @@ class Frame(object, metaclass=ABCMeta):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def squeeze(self, axis=None):
+    def squeeze(self, axis=None) -> Union[Scalar, "DataFrame", "Series"]:
         """
         Squeeze 1 dimensional axis objects into scalars.
 
@@ -2158,15 +2203,17 @@ class Frame(object, metaclass=ABCMeta):
                 return self
             else:
                 return series_from_column
-        elif isinstance(self, ks.Series):
+        else:
             # The case of Series is simple.
             # If Series has only a single value, just return it as a scalar.
             # Otherwise, there is no change.
             self_top_two = self.head(2)
             has_single_value = len(self_top_two) == 1
-            return self_top_two[0] if has_single_value else self
+            return cast(Union[Scalar, ks.Series], self_top_two[0] if has_single_value else self)
 
-    def truncate(self, before=None, after=None, axis=None, copy=True):
+    def truncate(
+        self, before=None, after=None, axis=None, copy=True
+    ) -> Union["DataFrame", "Series"]:
         """
         Truncate a Series or DataFrame before and after some index value.
 
@@ -2285,7 +2332,7 @@ class Frame(object, metaclass=ABCMeta):
         if not indexes_increasing and not indexes.is_monotonic_decreasing:
             raise ValueError("truncate requires a sorted index")
         if (before is None) and (after is None):
-            return self.copy() if copy else self
+            return cast(Union[ks.DataFrame, ks.Series], self.copy() if copy else self)
         if (before is not None and after is not None) and before > after:
             raise ValueError("Truncate: %s must be after %s" % (after, before))
 
@@ -2303,9 +2350,9 @@ class Frame(object, metaclass=ABCMeta):
             elif axis == 1:
                 result = self.loc[:, before:after]
 
-        return result.copy() if copy else result
+        return cast(Union[ks.DataFrame, ks.Series], result.copy() if copy else result)
 
-    def to_markdown(self, buf=None, mode=None):
+    def to_markdown(self, buf=None, mode=None) -> str:
         """
         Print Series or DataFrame in Markdown-friendly format.
 
@@ -2366,7 +2413,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     # TODO: add 'downcast' when value parameter exists
-    def bfill(self, axis=None, inplace=False, limit=None):
+    def bfill(self, axis=None, inplace=False, limit=None) -> Union["DataFrame", "Series"]:
         """
         Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`bfill```.
 
@@ -2440,7 +2487,7 @@ class Frame(object, metaclass=ABCMeta):
     backfill = bfill
 
     # TODO: add 'downcast' when value parameter exists
-    def ffill(self, axis=None, inplace=False, limit=None):
+    def ffill(self, axis=None, inplace=False, limit=None) -> Union["DataFrame", "Series"]:
         """
         Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`ffill```.
 
@@ -2514,25 +2561,25 @@ class Frame(object, metaclass=ABCMeta):
     pad = ffill
 
     @property
-    def at(self):
+    def at(self) -> AtIndexer:
         return AtIndexer(self)
 
     at.__doc__ = AtIndexer.__doc__
 
     @property
-    def iat(self):
+    def iat(self) -> iAtIndexer:
         return iAtIndexer(self)
 
     iat.__doc__ = iAtIndexer.__doc__
 
     @property
-    def iloc(self):
+    def iloc(self) -> iLocIndexer:
         return iLocIndexer(self)
 
     iloc.__doc__ = iLocIndexer.__doc__
 
     @property
-    def loc(self):
+    def loc(self) -> LocIndexer:
         return LocIndexer(self)
 
     loc.__doc__ = LocIndexer.__doc__

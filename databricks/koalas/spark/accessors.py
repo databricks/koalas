@@ -19,7 +19,7 @@ Spark related features. Usually, the features here are missing in pandas
 but Spark has it.
 """
 from distutils.version import LooseVersion
-from typing import TYPE_CHECKING, Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List, cast
 
 import pyspark
 from pyspark import StorageLevel
@@ -59,7 +59,7 @@ class SparkIndexOpsMethods(object):
         """
         return self._data._internal.spark_column_for(self._data._column_label)
 
-    def transform(self, func):
+    def transform(self, func) -> Union["ks.Series", "ks.Index"]:
         """
         Applies a function that takes and returns a Spark column. It allows to natively
         apply a Spark function and column APIs with the Spark column internally used
@@ -126,7 +126,7 @@ class SparkIndexOpsMethods(object):
 
 class SparkSeriesMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Series":
-        return super().transform(func)
+        return cast("ks.Series", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
 
@@ -252,7 +252,7 @@ class SparkSeriesMethods(SparkIndexOpsMethods):
 
 class SparkIndexMethods(SparkIndexOpsMethods):
     def transform(self, func) -> "ks.Index":
-        return super().transform(func)
+        return cast("ks.Index", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
 
@@ -295,7 +295,7 @@ class SparkFrameMethods(object):
         """
         return self.frame(index_col).schema
 
-    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None):
+    def print_schema(self, index_col: Optional[Union[str, List[str]]] = None) -> None:
         """
         Prints out the underlying Spark schema in the tree format.
 
@@ -304,6 +304,10 @@ class SparkFrameMethods(object):
         index_col: str or list of str, optional, default: None
             Column names to be used in Spark to represent Koalas' index. The index name
             in Koalas is ignored. By default, the index is always lost.
+
+        Returns
+        -------
+        None
 
         Examples
         --------
@@ -634,7 +638,7 @@ class SparkFrameMethods(object):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         """
         Write the DataFrame into a Spark table. :meth:`DataFrame.spark.to_table`
         is an alias of :meth:`DataFrame.to_table`.
@@ -668,6 +672,10 @@ class SparkFrameMethods(object):
             in Koalas is ignored. By default, the index is always lost.
         options
             Additional options passed directly to Spark.
+
+        Returns
+        -------
+        None
 
         See Also
         --------
@@ -705,7 +713,7 @@ class SparkFrameMethods(object):
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
-    ):
+    ) -> None:
         """Write the DataFrame out to a Spark data source. :meth:`DataFrame.spark.to_spark_io`
         is an alias of :meth:`DataFrame.to_spark_io`.
 
@@ -735,6 +743,10 @@ class SparkFrameMethods(object):
             in Koalas is ignored. By default, the index is always lost.
         options : dict
             All other options passed directly into Spark's data source.
+
+        Returns
+        -------
+        None
 
         See Also
         --------
@@ -766,7 +778,7 @@ class SparkFrameMethods(object):
             path=path, format=format, mode=mode, partitionBy=partition_cols, **options
         )
 
-    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None):
+    def explain(self, extended: Optional[bool] = None, mode: Optional[str] = None) -> None:
         """
         Prints the underlying (logical and physical) Spark plans to the console for debugging
         purpose.
@@ -777,6 +789,10 @@ class SparkFrameMethods(object):
             If ``False``, prints only the physical plan.
         mode : string, default ``None``.
             The expected output format of plans.
+
+        Returns
+        -------
+        None
 
         Examples
         --------
@@ -1164,10 +1180,14 @@ class CachedSparkFrameMethods(SparkFrameMethods):
         """
         return self._kdf._cached.storageLevel
 
-    def unpersist(self):
+    def unpersist(self) -> None:
         """
         The `unpersist` function is used to uncache the Koalas DataFrame when it
         is not used with `with` statement.
+
+        Returns
+        -------
+        None
 
         Examples
         --------

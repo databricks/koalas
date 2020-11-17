@@ -93,41 +93,51 @@ class NameTypeHolder(object):
 
 def as_spark_type(tpe) -> types.DataType:
     """
-    Given a python type, returns the equivalent spark type.
+    Given a Python type, returns the equivalent spark type.
     Accepts:
-    - the built-in types in python
+    - the built-in types in Python
     - the built-in types in numpy
     - list of pairs of (field_name, type)
     - dictionaries of field_name -> type
-    - python3's typing system
+    - Python3's typing system
     """
-    if tpe in (str, "str", "string"):
-        return types.StringType()
-    elif tpe in (bytes,):
+    # TODO: Add "boolean" and "string" types.
+    # ArrayType
+    if tpe in (np.ndarray,):
+        return types.ArrayType(types.StringType())
+    elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):
+        return types.ArrayType(as_spark_type(tpe.__args__[0]))
+    # BinaryType
+    elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()
-    elif tpe in (np.int8, "int8", "byte"):
-        return types.ByteType()
-    elif tpe in (np.int16, "int16", "short"):
-        return types.ShortType()
-    elif tpe in (int, "int", np.int, np.int32):
-        return types.IntegerType()
-    elif tpe in (np.int64, "int64", "long", "bigint"):
-        return types.LongType()
-    elif tpe in (float, "float", np.float):
-        return types.FloatType()
-    elif tpe in (np.float64, "float64", "double"):
-        return types.DoubleType()
-    elif tpe in (decimal.Decimal,):
-        return types.DecimalType(38, 18)
-    elif tpe in (datetime.datetime, np.datetime64):
-        return types.TimestampType()
+    # BooleanType
+    elif tpe in (bool, np.bool, "bool", "?"):
+        return types.BooleanType()
+    # DateType
     elif tpe in (datetime.date,):
         return types.DateType()
-    elif tpe in (bool, "boolean", "bool", np.bool):
-        return types.BooleanType()
-    elif tpe in (np.ndarray,):
-        # TODO: support other child types
-        return types.ArrayType(types.StringType())
+    # NumericType
+    elif tpe in (np.int8, np.byte, "int8", "byte", "b"):
+        return types.ByteType()
+    elif tpe in (decimal.Decimal,):
+        # TODO: considering about the precision & scale for decimal type.
+        return types.DecimalType(38, 18)
+    elif tpe in (float, np.float, np.float64, "float", "float64", "double"):
+        return types.DoubleType()
+    elif tpe in (np.float32, "float32", "f"):
+        return types.FloatType()
+    elif tpe in (np.int32, "int32", "i"):
+        return types.IntegerType()
+    elif tpe in (int, np.int, np.int64, "int", "int64", "long", "bigint"):
+        return types.LongType()
+    elif tpe in (np.int16, "int16", "short"):
+        return types.ShortType()
+    # StringType
+    elif tpe in (str, np.unicode_, "str", "U"):
+        return types.StringType()
+    # TimestampType
+    elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]", "M"):
+        return types.TimestampType()
     else:
         raise TypeError("Type %s was not understood." % tpe)
 
@@ -167,52 +177,52 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     >>> def func() -> int:
     ...    pass
     >>> infer_return_type(func).tpe
-    IntegerType
+    LongType
 
     >>> def func() -> ks.Series[int]:
     ...    pass
     >>> infer_return_type(func).tpe
-    IntegerType
+    LongType
 
     >>> def func() -> ks.DataFrame[np.float, str]:
     ...    pass
     >>> infer_return_type(func).tpe
-    StructType(List(StructField(c0,FloatType,true),StructField(c1,StringType,true)))
+    StructType(List(StructField(c0,DoubleType,true),StructField(c1,StringType,true)))
 
     >>> def func() -> ks.DataFrame[np.float]:
     ...    pass
     >>> infer_return_type(func).tpe
-    StructType(List(StructField(c0,FloatType,true)))
+    StructType(List(StructField(c0,DoubleType,true)))
 
     >>> def func() -> 'int':
     ...    pass
     >>> infer_return_type(func).tpe
-    IntegerType
+    LongType
 
     >>> def func() -> 'ks.Series[int]':
     ...    pass
     >>> infer_return_type(func).tpe
-    IntegerType
+    LongType
 
     >>> def func() -> 'ks.DataFrame[np.float, str]':
     ...    pass
     >>> infer_return_type(func).tpe
-    StructType(List(StructField(c0,FloatType,true),StructField(c1,StringType,true)))
+    StructType(List(StructField(c0,DoubleType,true),StructField(c1,StringType,true)))
 
     >>> def func() -> 'ks.DataFrame[np.float]':
     ...    pass
     >>> infer_return_type(func).tpe
-    StructType(List(StructField(c0,FloatType,true)))
+    StructType(List(StructField(c0,DoubleType,true)))
 
     >>> def func() -> ks.DataFrame['a': np.float, 'b': int]:
     ...     pass
     >>> infer_return_type(func).tpe
-    StructType(List(StructField(a,FloatType,true),StructField(b,IntegerType,true)))
+    StructType(List(StructField(a,DoubleType,true),StructField(b,LongType,true)))
 
     >>> def func() -> "ks.DataFrame['a': np.float, 'b': int]":
     ...     pass
     >>> infer_return_type(func).tpe
-    StructType(List(StructField(a,FloatType,true),StructField(b,IntegerType,true)))
+    StructType(List(StructField(a,DoubleType,true),StructField(b,LongType,true)))
 
     >>> pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
     >>> def func() -> ks.DataFrame[pdf.dtypes]:

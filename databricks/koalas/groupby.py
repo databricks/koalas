@@ -61,7 +61,6 @@ from databricks.koalas.series import Series, first_series
 from databricks.koalas.config import get_option
 from databricks.koalas.utils import (
     align_diff_frames,
-    column_labels_level,
     is_name_like_tuple,
     is_name_like_value,
     name_like_string,
@@ -69,6 +68,7 @@ from databricks.koalas.utils import (
     scol_for,
     verify_temp_column_name,
 )
+from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 from databricks.koalas.exceptions import DataError
 
@@ -98,7 +98,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
     # TODO: Series support is not implemented yet.
     # TODO: not all arguments are implemented comparing to pandas' for now.
-    def aggregate(self, func_or_funcs=None, *args, **kwargs):
+    def aggregate(self, func_or_funcs=None, *args, **kwargs) -> DataFrame:
         """Aggregate using one or more operations over the specified axis.
 
         Parameters
@@ -223,25 +223,29 @@ class GroupBy(object, metaclass=ABCMeta):
                 )
 
         else:
-            agg_cols = [col.name for col in self._agg_columns]
+            agg_cols = [col.name for col in self._agg_columns]  # type: ignore
             func_or_funcs = OrderedDict([(col, func_or_funcs) for col in agg_cols])
 
-        kdf = DataFrame(GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys))
+        kdf = DataFrame(
+            GroupBy._spark_groupby(self._kdf, func_or_funcs, self._groupkeys)  # type: ignore
+        )  # type: DataFrame
 
-        if self._dropna:
+        if self._dropna:  # type: ignore
             kdf = DataFrame(
                 kdf._internal.with_new_sdf(
                     kdf._internal.spark_frame.dropna(subset=kdf._internal.index_spark_column_names)
                 )
             )
 
-        if not self._as_index:
+        if not self._as_index:  # type: ignore
             should_drop_index = set(
-                i for i, gkey in enumerate(self._groupkeys) if gkey._kdf is not self._kdf
+                i
+                for i, gkey in enumerate(self._groupkeys)  # type: ignore
+                if gkey._kdf is not self._kdf  # type: ignore
             )
             if len(should_drop_index) > 0:
                 kdf = kdf.reset_index(level=should_drop_index, drop=True)
-            if len(should_drop_index) < len(self._groupkeys):
+            if len(should_drop_index) < len(self._groupkeys):  # type: ignore
                 kdf = kdf.reset_index()
 
         if relabeling:
@@ -290,17 +294,20 @@ class GroupBy(object, metaclass=ABCMeta):
         sdf = kdf._internal.spark_frame.select(groupkey_scols + kdf._internal.data_spark_columns)
         sdf = sdf.groupby(*groupkey_names).agg(*reordered)
         if len(groupkeys) > 0:
-            index_map = OrderedDict(zip(groupkey_names, [kser._column_label for kser in groupkeys]))
+            index_spark_column_names = groupkey_names
+            index_names = [kser._column_label for kser in groupkeys]
         else:
-            index_map = None
+            index_spark_column_names = None
+            index_names = None
         return InternalFrame(
             spark_frame=sdf,
+            index_spark_column_names=index_spark_column_names,
+            index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
-            index_map=index_map,
         )
 
-    def count(self):
+    def count(self) -> Union[DataFrame, Series]:
         """
         Compute count of group, excluding missing values.
 
@@ -323,7 +330,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.count, only_numeric=False)
 
     # TODO: We should fix See Also when Series implementation is finished.
-    def first(self):
+    def first(self) -> Union[DataFrame, Series]:
         """
         Compute first of group values.
 
@@ -334,7 +341,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._reduce_for_stat_function(F.first, only_numeric=False)
 
-    def last(self):
+    def last(self) -> Union[DataFrame, Series]:
         """
         Compute last of group values.
 
@@ -347,7 +354,7 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda col: F.last(col, ignorenulls=True), only_numeric=False
         )
 
-    def max(self):
+    def max(self) -> Union[DataFrame, Series]:
         """
         Compute max of group values.
 
@@ -359,7 +366,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.max, only_numeric=False)
 
     # TODO: examples should be updated.
-    def mean(self):
+    def mean(self) -> Union[DataFrame, Series]:
         """
         Compute mean of groups, excluding missing values.
 
@@ -390,7 +397,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return self._reduce_for_stat_function(F.mean, only_numeric=True)
 
-    def min(self):
+    def min(self) -> Union[DataFrame, Series]:
         """
         Compute min of group values.
 
@@ -402,7 +409,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.min, only_numeric=False)
 
     # TODO: sync the doc and implement `ddof`.
-    def std(self):
+    def std(self) -> Union[DataFrame, Series]:
         """
         Compute standard deviation of groups, excluding missing values.
 
@@ -414,7 +421,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return self._reduce_for_stat_function(F.stddev, only_numeric=True)
 
-    def sum(self):
+    def sum(self) -> Union[DataFrame, Series]:
         """
         Compute sum of group values
 
@@ -426,7 +433,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.sum, only_numeric=True)
 
     # TODO: sync the doc and implement `ddof`.
-    def var(self):
+    def var(self) -> Union[DataFrame, Series]:
         """
         Compute variance of groups, excluding missing values.
 
@@ -438,7 +445,7 @@ class GroupBy(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(F.variance, only_numeric=True)
 
     # TODO: skipna should be implemented.
-    def all(self):
+    def all(self) -> Union[DataFrame, Series]:
         """
         Returns True if all values in the group are truthful, else False.
 
@@ -480,7 +487,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
     # TODO: skipna should be implemented.
-    def any(self):
+    def any(self) -> Union[DataFrame, Series]:
         """
         Returns True if any value in the group is truthful, else False.
 
@@ -522,7 +529,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
     # TODO: groupby multiply columns should be implemented.
-    def size(self):
+    def size(self) -> Series:
         """
         Compute group sizes.
 
@@ -576,22 +583,23 @@ class GroupBy(object, metaclass=ABCMeta):
         3    3
         Name: B, dtype: int64
         """
-        groupkeys = self._groupkeys
+        groupkeys = self._groupkeys  # type: ignore
         groupkey_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(groupkeys))]
         groupkey_scols = [s.spark.column.alias(name) for s, name in zip(groupkeys, groupkey_names)]
-        sdf = self._kdf._internal.spark_frame.select(
-            groupkey_scols + self._kdf._internal.data_spark_columns
+        sdf = self._kdf._internal.spark_frame.select(  # type: ignore
+            groupkey_scols + self._kdf._internal.data_spark_columns  # type: ignore
         )
         sdf = sdf.groupby(*groupkey_names).count()
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(zip(groupkey_names, [kser._column_label for kser in groupkeys])),
+            index_spark_column_names=groupkey_names,
+            index_names=[kser._column_label for kser in groupkeys],
             column_labels=[None],
             data_spark_columns=[scol_for(sdf, "count")],
         )
         return first_series(DataFrame(internal))
 
-    def diff(self, periods=1):
+    def diff(self, periods=1) -> Union[DataFrame, Series]:
         """
         First discrete difference of element.
 
@@ -650,7 +658,7 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
         )
 
-    def cumcount(self, ascending=True):
+    def cumcount(self, ascending=True) -> Series:
         """
         Number each item in each group from 0 to the length of that group - 1.
 
@@ -701,7 +709,7 @@ class GroupBy(object, metaclass=ABCMeta):
         dtype: int64
         """
         ret = (
-            self._groupkeys[0]
+            self._groupkeys[0]  # type: ignore
             .rename()
             .spark.transform(lambda _: F.lit(0))
             ._cum(F.count, True, part_cols=self._groupkeys_scols, ascending=ascending)
@@ -710,7 +718,7 @@ class GroupBy(object, metaclass=ABCMeta):
         internal = ret._internal.resolved_copy
         return first_series(DataFrame(internal))
 
-    def cummax(self):
+    def cummax(self) -> Union[DataFrame, Series]:
         """
         Cumulative max for each group.
 
@@ -759,7 +767,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def cummin(self):
+    def cummin(self) -> Union[DataFrame, Series]:
         """
         Cumulative min for each group.
 
@@ -808,7 +816,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def cumprod(self):
+    def cumprod(self) -> Union[DataFrame, Series]:
         """
         Cumulative product for each group.
 
@@ -857,7 +865,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def cumsum(self):
+    def cumsum(self) -> Union[DataFrame, Series]:
         """
         Cumulative sum for each group.
 
@@ -906,7 +914,7 @@ class GroupBy(object, metaclass=ABCMeta):
             numeric_only=True,
         )
 
-    def apply(self, func, *args, **kwargs):
+    def apply(self, func, *args, **kwargs) -> Union[DataFrame, Series]:
         """
         Apply function `func` group-wise and combine the results together.
 
@@ -1019,7 +1027,7 @@ class GroupBy(object, metaclass=ABCMeta):
         0    6
         1    3
         2    4
-        Name: B, dtype: int32
+        Name: B, dtype: int64
 
         >>> def plus_min(x):
         ...     return x + x.min()
@@ -1036,7 +1044,7 @@ class GroupBy(object, metaclass=ABCMeta):
         >>> df.B.groupby(df.A).apply(plus_length).sort_index()
         0    1
         1    2
-        Name: B, dtype: int32
+        Name: B, dtype: int64
 
         The extra arguments to the function can be passed as below.
 
@@ -1045,11 +1053,11 @@ class GroupBy(object, metaclass=ABCMeta):
         >>> df.B.groupby(df.A).apply(calculation, 5, z=10).sort_index()
         0    51
         1    52
-        Name: B, dtype: int32
+        Name: B, dtype: int64
         """
         from pandas.core.base import SelectionMixin
 
-        if not isinstance(func, Callable):
+        if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
 
         spec = inspect.getfullargspec(func)
@@ -1058,19 +1066,19 @@ class GroupBy(object, metaclass=ABCMeta):
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
 
-        kdf = self._kdf
+        kdf = self._kdf  # type: ignore
 
-        if self._agg_columns_selected:
-            agg_columns = self._agg_columns
+        if self._agg_columns_selected:  # type: ignore
+            agg_columns = self._agg_columns  # type: ignore
         else:
             agg_columns = [
                 kdf._kser_for(label)
                 for label in kdf._internal.column_labels
-                if label not in self._column_labels_to_exlcude
+                if label not in self._column_labels_to_exlcude  # type: ignore
             ]
 
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
-            kdf, self._groupkeys, agg_columns
+            kdf, self._groupkeys, agg_columns  # type: ignore
         )
 
         if is_series_groupby:
@@ -1090,7 +1098,7 @@ class GroupBy(object, metaclass=ABCMeta):
             pdf = kdf.head(limit + 1)._to_internal_pandas()
             groupkeys = [
                 pdf[groupkey_name].rename(kser.name)
-                for groupkey_name, kser in zip(groupkey_names, self._groupkeys)
+                for groupkey_name, kser in zip(groupkey_names, self._groupkeys)  # type: ignore
             ]
             if is_series_groupby:
                 pser_or_pdf = pdf.groupby(groupkeys)[name].apply(pandas_apply, *args, **kwargs)
@@ -1100,16 +1108,20 @@ class GroupBy(object, metaclass=ABCMeta):
 
             if len(pdf) <= limit:
                 if isinstance(kser_or_kdf, ks.Series) and is_series_groupby:
-                    kser_or_kdf = kser_or_kdf.rename(self._kser.name)
-                return kser_or_kdf
+                    kser_or_kdf = kser_or_kdf.rename(self._kser.name)  # type: ignore
+                return kser_or_kdf  # type: ignore
 
             if isinstance(kser_or_kdf, Series):
                 should_return_series = True
                 kdf_from_pandas = kser_or_kdf._kdf
             else:
-                kdf_from_pandas = kser_or_kdf
+                kdf_from_pandas = kser_or_kdf  # type: ignore
 
-            return_schema = kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            return_schema = force_decimal_precision_scale(
+                as_nullable_spark_type(
+                    kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+                )
+            )
         else:
             return_type = infer_return_type(func)
             if not is_series_groupby and isinstance(return_type, SeriesType):
@@ -1173,29 +1185,23 @@ class GroupBy(object, metaclass=ABCMeta):
             internal = kdf_from_pandas._internal.with_new_sdf(sdf)
             if should_return_series and not is_series_groupby:
                 # Restore grouping names as the index name
-                groupkey_scol_name = zip(self._groupkeys, internal.index_map.items())
                 internal = internal.copy(
-                    index_map=OrderedDict(
-                        zip(
-                            internal.index_spark_column_names,
-                            [kser._column_label for kser in self._groupkeys],
-                        )
-                    )
+                    index_names=[kser._column_label for kser in self._groupkeys]  # type: ignore
                 )
         else:
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_spark_column_names=None)
 
         if should_return_series:
             kser = first_series(DataFrame(internal))
             if is_series_groupby:
-                kser = kser.rename(self._kser.name)
+                kser = kser.rename(self._kser.name)  # type: ignore
             return kser
         else:
             return DataFrame(internal)
 
     # TODO: implement 'dropna' parameter
-    def filter(self, func):
+    def filter(self, func) -> Union[DataFrame, Series]:
         """
         Return a copy of a DataFrame excluding elements from groups that
         do not satisfy the boolean criterion specified by func.
@@ -1209,7 +1215,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         Returns
         -------
-        filtered : DataFrame
+        filtered : DataFrame or Series
 
         Notes
         -----
@@ -1237,20 +1243,20 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         from pandas.core.base import SelectionMixin
 
-        if not isinstance(func, Callable):
+        if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
 
         is_series_groupby = isinstance(self, SeriesGroupBy)
 
-        kdf = self._kdf
+        kdf = self._kdf  # type: ignore
 
-        if self._agg_columns_selected:
-            agg_columns = self._agg_columns
+        if self._agg_columns_selected:  # type: ignore
+            agg_columns = self._agg_columns  # type: ignore
         else:
             agg_columns = [
                 kdf._kser_for(label)
                 for label in kdf._internal.column_labels
-                if label not in self._column_labels_to_exlcude
+                if label not in self._column_labels_to_exlcude  # type: ignore
             ]
 
         data_schema = (
@@ -1258,7 +1264,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
-            kdf, self._groupkeys, agg_columns
+            kdf, self._groupkeys, agg_columns  # type: ignore
         )
 
         if is_series_groupby:
@@ -1283,7 +1289,7 @@ class GroupBy(object, metaclass=ABCMeta):
             retain_index=True,
         )
 
-        kdf = DataFrame(self._kdf[agg_columns]._internal.with_new_sdf(sdf))
+        kdf = DataFrame(self._kdf[agg_columns]._internal.with_new_sdf(sdf))  # type: ignore
         if is_series_groupby:
             return first_series(kdf)
         else:
@@ -1316,29 +1322,28 @@ class GroupBy(object, metaclass=ABCMeta):
         index_names = kdf._internal.index_names
         data_columns = kdf._internal.data_spark_column_names
         column_labels = kdf._internal.column_labels
+        column_labels_level = kdf._internal.column_labels_level
 
         def rename_output(pdf):
             # TODO: This logic below was borrowed from `DataFrame.to_pandas_frame` to set the index
             #   within each pdf properly. we might have to deduplicate it.
             import pandas as pd
 
-            if len(index_columns) > 0:
-                append = False
-                for index_field in index_columns:
-                    drop = index_field not in data_columns
-                    pdf = pdf.set_index(index_field, drop=drop, append=append)
-                    append = True
-                pdf = pdf[data_columns]
+            append = False
+            for index_field in index_columns:
+                drop = index_field not in data_columns
+                pdf = pdf.set_index(index_field, drop=drop, append=append)
+                append = True
+            pdf = pdf[data_columns]
 
-            if column_labels_level(column_labels) > 1:
+            if column_labels_level > 1:
                 pdf.columns = pd.MultiIndex.from_tuples(column_labels)
             else:
                 pdf.columns = [None if label is None else label[0] for label in column_labels]
 
-            if len(index_names) > 0:
-                pdf.index.names = [
-                    name if name is None or len(name) > 1 else name[0] for name in index_names
-                ]
+            pdf.index.names = [
+                name if name is None or len(name) > 1 else name[0] for name in index_names
+            ]
 
             pdf = func(pdf)
 
@@ -1372,7 +1377,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return rename_output
 
-    def rank(self, method="average", ascending=True):
+    def rank(self, method="average", ascending=True) -> Union[DataFrame, Series]:
         """
         Provide the rank of values within each group.
 
@@ -1439,7 +1444,7 @@ class GroupBy(object, metaclass=ABCMeta):
         )
 
     # TODO: add axis parameter
-    def idxmax(self, skipna=True):
+    def idxmax(self, skipna=True) -> Union[DataFrame, Series]:
         """
         Return index of first occurrence of maximum over requested axis in group.
         NA/null values are excluded.
@@ -1476,18 +1481,20 @@ class GroupBy(object, metaclass=ABCMeta):
         2  3  2
         3  4  4
         """
-        if len(self._kdf._internal.index_names) != 1:
+        if self._kdf._internal.index_level != 1:  # type: ignore
             raise ValueError("idxmax only support one-level index now")
 
-        groupkey_names = ["__groupkey_{}__".format(i) for i in range(len(self._groupkeys))]
+        groupkey_names = [
+            "__groupkey_{}__".format(i) for i in range(len(self._groupkeys))  # type: ignore
+        ]
 
-        sdf = self._kdf._internal.spark_frame
-        for s, name in zip(self._groupkeys, groupkey_names):
+        sdf = self._kdf._internal.spark_frame  # type: ignore
+        for s, name in zip(self._groupkeys, groupkey_names):  # type: ignore
             sdf = sdf.withColumn(name, s.spark.column)
-        index = self._kdf._internal.index_spark_column_names[0]
+        index = self._kdf._internal.index_spark_column_names[0]  # type: ignore
 
         stat_exprs = []
-        for kser, c in zip(self._agg_columns, self._agg_columns_scols):
+        for kser, c in zip(self._agg_columns, self._agg_columns_scols):  # type: ignore
             name = kser._internal.data_spark_column_names[0]
 
             if skipna:
@@ -1506,19 +1513,18 @@ class GroupBy(object, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(
-                zip(groupkey_names, [kser._column_label for kser in self._groupkeys])
-            ),
-            column_labels=[kser._column_label for kser in self._agg_columns],
+            index_spark_column_names=groupkey_names,
+            index_names=[kser._column_label for kser in self._groupkeys],  # type: ignore
+            column_labels=[kser._column_label for kser in self._agg_columns],  # type: ignore
             data_spark_columns=[
                 scol_for(sdf, kser._internal.data_spark_column_names[0])
-                for kser in self._agg_columns
+                for kser in self._agg_columns  # type: ignore
             ],
         )
         return DataFrame(internal)
 
     # TODO: add axis parameter
-    def idxmin(self, skipna=True):
+    def idxmin(self, skipna=True) -> Union[DataFrame, Series]:
         """
         Return index of first occurrence of minimum over requested axis in group.
         NA/null values are excluded.
@@ -1555,18 +1561,20 @@ class GroupBy(object, metaclass=ABCMeta):
         2  2  3
         3  4  4
         """
-        if len(self._kdf._internal.index_names) != 1:
+        if self._kdf._internal.index_level != 1:  # type: ignore
             raise ValueError("idxmin only support one-level index now")
 
-        groupkey_names = ["__groupkey_{}__".format(i) for i in range(len(self._groupkeys))]
+        groupkey_names = [
+            "__groupkey_{}__".format(i) for i in range(len(self._groupkeys))  # type: ignore
+        ]
 
-        sdf = self._kdf._internal.spark_frame
-        for s, name in zip(self._groupkeys, groupkey_names):
+        sdf = self._kdf._internal.spark_frame  # type: ignore
+        for s, name in zip(self._groupkeys, groupkey_names):  # type: ignore
             sdf = sdf.withColumn(name, s.spark.column)
-        index = self._kdf._internal.index_spark_column_names[0]
+        index = self._kdf._internal.index_spark_column_names[0]  # type: ignore
 
         stat_exprs = []
-        for kser, c in zip(self._agg_columns, self._agg_columns_scols):
+        for kser, c in zip(self._agg_columns, self._agg_columns_scols):  # type: ignore
             name = kser._internal.data_spark_column_names[0]
 
             if skipna:
@@ -1585,18 +1593,19 @@ class GroupBy(object, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(
-                zip(groupkey_names, [kser._column_label for kser in self._groupkeys])
-            ),
-            column_labels=[kser._column_label for kser in self._agg_columns],
+            index_spark_column_names=groupkey_names,
+            index_names=[kser._column_label for kser in self._groupkeys],  # type: ignore
+            column_labels=[kser._column_label for kser in self._agg_columns],  # type: ignore
             data_spark_columns=[
                 scol_for(sdf, kser._internal.data_spark_column_names[0])
-                for kser in self._agg_columns
+                for kser in self._agg_columns  # type: ignore
             ],
         )
         return DataFrame(internal)
 
-    def fillna(self, value=None, method=None, axis=None, inplace=False, limit=None):
+    def fillna(
+        self, value=None, method=None, axis=None, inplace=False, limit=None
+    ) -> Union[DataFrame, Series]:
         """Fill NA/NaN values in group.
 
         Parameters
@@ -1664,7 +1673,7 @@ class GroupBy(object, metaclass=ABCMeta):
             should_resolve=(method is not None),
         )
 
-    def bfill(self, limit=None):
+    def bfill(self, limit=None) -> Union[DataFrame, Series]:
         """
         Synonym for `DataFrame.fillna()` with ``method=`bfill```.
 
@@ -1715,7 +1724,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
     backfill = bfill
 
-    def ffill(self, limit=None):
+    def ffill(self, limit=None) -> Union[DataFrame, Series]:
         """
         Synonym for `DataFrame.fillna()` with ``method=`ffill```.
 
@@ -1766,7 +1775,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
     pad = ffill
 
-    def head(self, n=5):
+    def head(self, n=5) -> Union[DataFrame, Series]:
         """
         Return first n rows of each group.
 
@@ -1812,18 +1821,22 @@ class GroupBy(object, metaclass=ABCMeta):
         10    10
         Name: b, dtype: int64
         """
-        kdf = self._kdf
+        kdf = self._kdf  # type: ignore
 
-        if self._agg_columns_selected:
-            agg_columns = self._agg_columns
+        if self._agg_columns_selected:  # type: ignore
+            agg_columns = self._agg_columns  # type: ignore
         else:
             agg_columns = [
                 kdf._kser_for(label)
                 for label in kdf._internal.column_labels
-                if label not in self._column_labels_to_exlcude
+                if label not in self._column_labels_to_exlcude  # type: ignore
             ]
 
-        kdf, groupkey_labels, _ = self._prepare_group_map_apply(kdf, self._groupkeys, agg_columns)
+        kdf, groupkey_labels, _ = GroupBy._prepare_group_map_apply(
+            kdf,
+            self._groupkeys,  # type: ignore
+            agg_columns,
+        )
 
         groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
 
@@ -1839,7 +1852,7 @@ class GroupBy(object, metaclass=ABCMeta):
         internal = kdf._internal.with_new_sdf(sdf)
         return DataFrame(internal).drop(groupkey_labels, axis=1)
 
-    def shift(self, periods=1, fill_value=None):
+    def shift(self, periods=1, fill_value=None) -> Union[DataFrame, Series]:
         """
         Shift each group by periods observations.
 
@@ -1900,7 +1913,7 @@ class GroupBy(object, metaclass=ABCMeta):
             lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols)
         )
 
-    def transform(self, func, *args, **kwargs):
+    def transform(self, func, *args, **kwargs) -> Union[DataFrame, Series]:
         """
         Apply function column-by-column to the GroupBy object.
 
@@ -1993,7 +2006,7 @@ class GroupBy(object, metaclass=ABCMeta):
         0    3
         1    4
         2    6
-        Name: B, dtype: int32
+        Name: B, dtype: int64
 
         >>> (df * -1).B.groupby(df.A).transform(abs)
         0    1
@@ -2011,14 +2024,14 @@ class GroupBy(object, metaclass=ABCMeta):
         1  28  35
         2  31  35
         """
-        if not isinstance(func, Callable):
+        if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
 
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
 
         kdf, groupkey_labels, groupkey_names = GroupBy._prepare_group_map_apply(
-            self._kdf, self._groupkeys, agg_columns=self._agg_columns
+            self._kdf, self._groupkeys, agg_columns=self._agg_columns  # type: ignore
         )
 
         def pandas_transform(pdf):
@@ -2032,8 +2045,12 @@ class GroupBy(object, metaclass=ABCMeta):
             limit = get_option("compute.shortcut_limit")
             pdf = kdf.head(limit + 1)._to_internal_pandas()
             pdf = pdf.groupby(groupkey_names).transform(func, *args, **kwargs)
-            kdf_from_pandas = DataFrame(pdf)
-            return_schema = kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+            kdf_from_pandas = DataFrame(pdf)  # type: DataFrame
+            return_schema = force_decimal_precision_scale(
+                as_nullable_spark_type(
+                    kdf_from_pandas._internal.spark_frame.drop(*HIDDEN_COLUMNS).schema
+                )
+            )
             if len(pdf) <= limit:
                 return kdf_from_pandas
 
@@ -2061,11 +2078,11 @@ class GroupBy(object, metaclass=ABCMeta):
                 retain_index=False,
             )
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_map=None)
+            internal = InternalFrame(spark_frame=sdf, index_spark_column_names=None)
 
         return DataFrame(internal)
 
-    def nunique(self, dropna=True):
+    def nunique(self, dropna=True) -> Union[DataFrame, Series]:
         """
         Return DataFrame with number of distinct observations per group for each column.
 
@@ -2076,7 +2093,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         Returns
         -------
-        nunique : DataFrame
+        nunique : DataFrame or Series
 
         Examples
         --------
@@ -2118,7 +2135,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         return self._reduce_for_stat_function(stat_function, only_numeric=False)
 
-    def rolling(self, window, min_periods=None):
+    def rolling(self, window, min_periods=None) -> RollingGroupby:
         """
         Return an rolling grouper, providing rolling
         functionality per group.
@@ -2145,7 +2162,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return RollingGroupby(self, window, min_periods=min_periods)
 
-    def expanding(self, min_periods=1):
+    def expanding(self, min_periods=1) -> ExpandingGroupby:
         """
         Return an expanding grouper, providing expanding
         functionality per group.
@@ -2167,7 +2184,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return ExpandingGroupby(self, min_periods=min_periods)
 
-    def get_group(self, name):
+    def get_group(self, name) -> Union[DataFrame, Series]:
         """
         Construct DataFrame from group with provided name.
 
@@ -2205,7 +2222,7 @@ class GroupBy(object, metaclass=ABCMeta):
         1  monkey  mammal        NaN
         3    lion  mammal       80.5
         """
-        groupkeys = self._groupkeys
+        groupkeys = self._groupkeys  # type: ignore
         if not is_hashable(name):
             raise TypeError("unhashable type: '{}'".format(type(name).__name__))
         elif len(groupkeys) > 1:
@@ -2221,20 +2238,22 @@ class GroupBy(object, metaclass=ABCMeta):
         for groupkey, item in zip(groupkeys, name):
             scol = groupkey.spark.column
             cond = cond & (scol == item)
-        if self._agg_columns_selected:
-            internal = self._kdf._internal
+        if self._agg_columns_selected:  # type: ignore
+            internal = self._kdf._internal  # type: ignore
             spark_frame = internal.spark_frame.select(
                 internal.index_spark_columns + self._agg_columns_scols
             ).filter(cond)
 
-            internal = InternalFrame(
+            internal = internal.copy(
                 spark_frame=spark_frame,
-                index_map=internal.index_map,
-                column_labels=[s._column_label for s in self._agg_columns],
-                column_label_names=internal.column_label_names,
+                column_labels=[s._column_label for s in self._agg_columns],  # type: ignore
+                data_spark_columns=[
+                    scol_for(spark_frame, s._internal.data_spark_column_names[0])
+                    for s in self._agg_columns  # type: ignore
+                ],
             )
         else:
-            internal = self._kdf._internal.with_filter(cond)
+            internal = self._kdf._internal.with_filter(cond)  # type: ignore
         if internal.spark_frame.head() is None:
             raise KeyError(name)
 
@@ -2276,9 +2295,8 @@ class GroupBy(object, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(
-                zip(groupkey_names, [kser._column_label for kser in self._groupkeys])
-            ),
+            index_spark_column_names=groupkey_names,
+            index_names=[kser._column_label for kser in self._groupkeys],
             column_labels=column_labels,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             column_label_names=self._kdf._internal.column_label_names,
@@ -2500,7 +2518,7 @@ class DataFrameGroupBy(GroupBy):
     # TODO: Implement 'percentiles', 'include', and 'exclude' arguments.
     # TODO: Add ``DataFrame.select_dtypes`` to See Also when 'include'
     #   and 'exclude' arguments are implemented.
-    def describe(self):
+    def describe(self) -> DataFrame:
         """
         Generate descriptive statistics that summarize the central tendency,
         dispersion and shape of a dataset's distribution, excluding
@@ -2575,10 +2593,10 @@ class DataFrameGroupBy(GroupBy):
         # Reindex the DataFrame to reflect initial grouping and agg columns.
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(
-                (kser._internal.data_spark_column_names[0], kser._column_label)
-                for kser in self._groupkeys
-            ),
+            index_spark_column_names=[
+                kser._internal.data_spark_column_names[0] for kser in self._groupkeys
+            ],
+            index_names=[kser._column_label for kser in self._groupkeys],
             column_labels=column_labels,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
@@ -2643,44 +2661,46 @@ class SeriesGroupBy(GroupBy):
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return first_series(super()._reduce_for_stat_function(sfun, only_numeric))
 
-    def agg(self, *args, **kwargs):
+    def agg(self, *args, **kwargs) -> None:
         return MissingPandasLikeSeriesGroupBy.agg(self, *args, **kwargs)
 
-    def aggregate(self, *args, **kwargs):
+    def aggregate(self, *args, **kwargs) -> None:
         return MissingPandasLikeSeriesGroupBy.aggregate(self, *args, **kwargs)
 
-    def transform(self, func, *args, **kwargs):
-        return first_series(super().transform(func, *args, **kwargs)).rename(self._kser.name)
+    def transform(self, func, *args, **kwargs) -> Series:
+        return first_series(super().transform(func, *args, **kwargs)).rename(
+            self._kser.name  # type: ignore
+        )
 
     transform.__doc__ = GroupBy.transform.__doc__
 
-    def idxmin(self, skipna=True):
+    def idxmin(self, skipna=True) -> Series:
         return first_series(super().idxmin(skipna))
 
     idxmin.__doc__ = GroupBy.idxmin.__doc__
 
-    def idxmax(self, skipna=True):
+    def idxmax(self, skipna=True) -> Series:
         return first_series(super().idxmax(skipna))
 
     idxmax.__doc__ = GroupBy.idxmax.__doc__
 
-    def head(self, n=5):
+    def head(self, n=5) -> Series:
         return first_series(super().head(n)).rename(self._kser.name)
 
     head.__doc__ = GroupBy.head.__doc__
 
-    def size(self):
+    def size(self) -> Series:
         return super().size().rename(self._kser.name)
 
     size.__doc__ = GroupBy.size.__doc__
 
-    def get_group(self, name):
-        return first_series(super().get_group(name))
+    def get_group(self, name) -> Series:
+        return first_series(super().get_group(name))  # type: ignore
 
     get_group.__doc__ = GroupBy.get_group.__doc__
 
     # TODO: add keep parameter
-    def nsmallest(self, n=5):
+    def nsmallest(self, n=5) -> Series:
         """
         Return the first n rows ordered by columns in ascending order in group.
 
@@ -2709,7 +2729,7 @@ class SeriesGroupBy(GroupBy):
         3  6    3
         Name: b, dtype: int64
         """
-        if len(self._kser._internal.index_names) > 1:
+        if self._kser._internal.index_level > 1:
             raise ValueError("nsmallest do not support multi-index now")
 
         groupkey_col_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
@@ -2737,12 +2757,15 @@ class SeriesGroupBy(GroupBy):
 
         internal = InternalFrame(
             spark_frame=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
-            index_map=OrderedDict(
-                list(zip(groupkey_col_names, [kser._column_label for kser in self._groupkeys]))
+            index_spark_column_names=(
+                groupkey_col_names
                 + [
-                    (SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys)), name)
-                    for i, name in enumerate(self._kdf._internal.index_names)
+                    SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys))
+                    for i in range(self._kdf._internal.index_level)
                 ]
+            ),
+            index_names=(
+                [kser._column_label for kser in self._groupkeys] + self._kdf._internal.index_names
             ),
             column_labels=[self._kser._column_label],
             data_spark_columns=[scol_for(sdf, self._kser._internal.data_spark_column_names[0])],
@@ -2750,7 +2773,7 @@ class SeriesGroupBy(GroupBy):
         return first_series(DataFrame(internal))
 
     # TODO: add keep parameter
-    def nlargest(self, n=5):
+    def nlargest(self, n=5) -> Series:
         """
         Return the first n rows ordered by columns in descending order in group.
 
@@ -2779,7 +2802,7 @@ class SeriesGroupBy(GroupBy):
         3  7    4
         Name: b, dtype: int64
         """
-        if len(self._kser._internal.index_names) > 1:
+        if self._kser._internal.index_level > 1:
             raise ValueError("nlargest do not support multi-index now")
 
         groupkey_col_names = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(self._groupkeys))]
@@ -2807,12 +2830,15 @@ class SeriesGroupBy(GroupBy):
 
         internal = InternalFrame(
             spark_frame=sdf.drop(NATURAL_ORDER_COLUMN_NAME),
-            index_map=OrderedDict(
-                list(zip(groupkey_col_names, [kser._column_label for kser in self._groupkeys]))
+            index_spark_column_names=(
+                groupkey_col_names
                 + [
-                    (SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys)), name)
-                    for i, name in enumerate(self._kdf._internal.index_names)
+                    SPARK_INDEX_NAME_FORMAT(i + len(self._groupkeys))
+                    for i in range(self._kdf._internal.index_level)
                 ]
+            ),
+            index_names=(
+                [kser._column_label for kser in self._groupkeys] + self._kdf._internal.index_names
             ),
             column_labels=[self._kser._column_label],
             data_spark_columns=[scol_for(sdf, self._kser._internal.data_spark_column_names[0])],
@@ -2820,7 +2846,7 @@ class SeriesGroupBy(GroupBy):
         return first_series(DataFrame(internal))
 
     # TODO: add bins, normalize parameter
-    def value_counts(self, sort=None, ascending=None, dropna=True):
+    def value_counts(self, sort=None, ascending=None, dropna=True) -> Series:
         """
         Compute group sizes.
 
@@ -2876,13 +2902,14 @@ class SeriesGroupBy(GroupBy):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(zip(groupkey_names, [kser._column_label for kser in groupkeys])),
+            index_spark_column_names=groupkey_names,
+            index_names=[kser._column_label for kser in groupkeys],
             column_labels=[self._agg_columns[0]._column_label],
             data_spark_columns=[scol_for(sdf, agg_column)],
         )
         return first_series(DataFrame(internal))
 
-    def unique(self):
+    def unique(self) -> Series:
         """
         Return unique values in group.
 
