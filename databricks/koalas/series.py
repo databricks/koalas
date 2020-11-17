@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
-from pandas.api.types import is_list_like
+from pandas.api.types import is_list_like, is_hashable
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column, DataFrame as SparkDataFrame
@@ -1047,6 +1047,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if index is None:
             pass
+        elif not is_hashable(index):
+            raise TypeError("Series.name must be a hashable type")
         elif not isinstance(index, tuple):
             index = (index,)
         scol = self.spark.column.alias(name_like_string(index))

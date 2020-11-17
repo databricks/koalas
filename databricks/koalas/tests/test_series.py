@@ -135,6 +135,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kidx.name, "renamed")
         self.assert_eq(kidx, pidx)
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.name = ["renamed"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Series([1, 2, 3], name=["0", "1"])
+
     def test_rename_method(self):
         # Series name
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -150,6 +158,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.rename("z", inplace=True)
         self.assertEqual(kser.name, "z")
         self.assert_eq(kser, pser)
+
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.rename(["0", "1"])
 
         # Series index
         # pser = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
