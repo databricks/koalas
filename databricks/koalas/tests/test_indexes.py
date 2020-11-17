@@ -199,6 +199,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kidx.names = ["0", "1"]
 
+        expected_error_message = "Index.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Index([1, 2, 3], name=["0", "1"])
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.name = ["renamed"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Index([(1, 2), (3, 4)], names=["a", ["b"]])
+
     def test_multi_index_names(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
         idx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
@@ -253,7 +263,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.rename(None), pidx.rename(None))
         self.assert_eq(kdf.index.names, pdf.index.names)
 
-        self.assertRaises(ValueError, lambda: kidx.rename(["x", "y"]))
+        self.assertRaises(TypeError, lambda: kidx.rename(["x", "y"]))
 
     def test_multi_index_rename(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
