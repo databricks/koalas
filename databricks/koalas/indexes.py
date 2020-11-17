@@ -580,9 +580,16 @@ class Index(IndexOpsMixin):
     def names(self, names: List[Union[Any, Tuple]]) -> None:
         if not is_list_like(names):
             raise ValueError("Names must be a list-like")
-        if not all(is_hashable(name) for name in names):
-            raise TypeError("Index.name must be a hashable type")
-        self.rename(names, inplace=True)
+        if self._internal.index_level != len(names):
+            raise ValueError(
+                "Length of new names must be {}, got {}".format(
+                    self._internal.index_level, len(names)
+                )
+            )
+        if self._internal.index_level == 1:
+            self.rename(names[0], inplace=True)
+        else:
+            self.rename(names, inplace=True)
 
     @property
     def nlevels(self) -> int:
@@ -667,20 +674,12 @@ class Index(IndexOpsMixin):
             return DataFrame(internal).index
 
     def _verify_for_rename(self, name):
-        if is_name_like_tuple(name):
-            return [name]
-        elif is_name_like_value(name):
-            return [(name,)]
-        elif is_list_like(name):
-            if self._internal.index_level != len(name):
-                raise ValueError(
-                    "Length of new names must be {}, got {}".format(
-                        self._internal.index_level, len(name)
-                    )
-                )
-            return [n if is_name_like_tuple(n) else (n,) for n in name]
-        else:
-            raise TypeError("name must be a hashable type")
+        if is_hashable(name):
+            if is_name_like_tuple(name):
+                return [name]
+            elif is_name_like_value(name):
+                return [(name,)]
+        raise TypeError("Index.name must be a hashable type")
 
     # TODO: add downcast parameter for fillna function
     def fillna(self, value: Scalar) -> "Index":
@@ -2588,6 +2587,8 @@ class MultiIndex(Index):
                         self._internal.index_level, len(name)
                     )
                 )
+            if any(not is_hashable(n) for n in name):
+                raise TypeError("MultiIndex.name must be a hashable type")
             return [n if is_name_like_tuple(n) else (n,) for n in name]
         else:
             raise TypeError("Must pass list-like as `names`.")
