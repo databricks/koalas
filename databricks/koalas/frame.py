@@ -9587,7 +9587,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return cast(Series, ks.from_pandas(kdf._to_internal_pandas().idxmax()))
+        return cast(ks.Series, ks.from_pandas(kdf._to_internal_pandas().idxmax()))
 
     # TODO: axis = 1
     def idxmin(self, axis=0) -> "Series":
@@ -9659,7 +9659,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return cast(Series, ks.from_pandas(kdf._to_internal_pandas().idxmin()))
+        return cast(ks.Series, ks.from_pandas(kdf._to_internal_pandas().idxmin()))
 
     def info(self, verbose=None, buf=None, max_cols=None, null_counts=None) -> None:
         """
