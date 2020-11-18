@@ -1541,6 +1541,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
 
+        # Not supported for MultiIndex
+        kmidx = ks.Index([("a", 1), ("b", 2)])
+        self.assertRaises(NotImplementedError, lambda: kmidx.hasnans())
+
     def test_intersection(self):
         pidx = pd.Index([1, 2, 3, 4], name="Koalas")
         kidx = ks.from_pandas(pidx)

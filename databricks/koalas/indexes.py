@@ -3333,6 +3333,10 @@ class MultiIndex(Index):
         return cast(MultiIndex, DataFrame(internal).index)
 
     @property
+    def hasnans(self):
+        raise NotImplementedError("hasnans is not defined for MultiIndex")
+
+    @property
     def inferred_type(self) -> str:
         """
         Return a string of the type inferred from the values.
