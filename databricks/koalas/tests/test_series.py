@@ -1824,6 +1824,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
+    def test_swaplevel(self):
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
+        pser = pd.Series(["a", "b", "c", "d"], index=pidx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.swaplevel(), kser.swaplevel())
+        self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
+        self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
+
+        self.assertRaises(IndexError, lambda: kser.swaplevel(0, 3))
+        self.assertRaises(KeyError, lambda: kser.swaplevel("not_number", "color"))
+
+        self.assert_eq(pser.swaplevel(copy=False), kser.swaplevel(copy=False))
+        self.assert_eq(pser.swaplevel(0, 1, copy=False), kser.swaplevel(0, 1, copy=False))
+        self.assert_eq(
+            pser.swaplevel("number", "color", copy=False),
+            kser.swaplevel("number", "color", copy=False),
+        )
+
     def test_div_zero_and_nan(self):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
         kser = ks.from_pandas(pser)

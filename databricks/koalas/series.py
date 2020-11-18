@@ -2440,6 +2440,45 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return first_series(kdf)
 
+    def swaplevel(self, i=-2, j=-1, copy=True) -> "Series":
+        """
+        Swap levels i and j in a MultiIndex.
+        Default is to swap the two innermost levels of the index.
+
+        Parameters
+        ----------
+        i, j : int, str
+            Level of the indices to be swapped. Can pass level name as string.
+        copy : bool, default True
+            Whether to copy underlying data.
+
+        Returns
+        -------
+        Series
+            Series with levels swapped in MultiIndex.
+        """
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.index.names:
+                raise KeyError("Level %s not found" % index)
+
+        i = i if isinstance(i, int) else self.index.names.index(i)
+        j = j if isinstance(j, int) else self.index.names.index(j)
+
+        for index in (i, j):
+            if index >= len(self.index.names) or index < -len(self.index.names):
+                raise IndexError(
+                    "Too many levels: Index has only %s levels, "
+                    "%s is not a valid level number" % (len(self.index.names), index)
+                )
+
+        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        index_spark_column_names, index_names = zip(*index_map)
+        internal = self._kdf._internal.copy(
+            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
+        )
+        return first_series(DataFrame(internal))
+
     def add_prefix(self, prefix) -> "Series":
         """
         Prefix labels with string `prefix`.
