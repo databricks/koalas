@@ -9587,7 +9587,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return ks.from_pandas(kdf._to_internal_pandas().idxmax())  # type: ignore
+        return cast(ks.Series, ks.from_pandas(kdf._to_internal_pandas().idxmax()))
 
     # TODO: axis = 1
     def idxmin(self, axis=0) -> "Series":
@@ -9659,7 +9659,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         kdf = DataFrame(self._internal.with_filter(cond))  # type: "DataFrame"
 
-        return ks.from_pandas(kdf._to_internal_pandas().idxmin())  # type: ignore
+        return cast(ks.Series, ks.from_pandas(kdf._to_internal_pandas().idxmin()))
 
     def info(self, verbose=None, buf=None, max_cols=None, null_counts=None) -> None:
         """
@@ -10091,9 +10091,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not is_list_like(indices) or isinstance(indices, (dict, set)):
             raise ValueError("`indices` must be a list-like except dict or set")
         if axis == 0:
-            return self.iloc[indices, :]  # type: ignore
+            return cast(DataFrame, self.iloc[indices, :])
         else:
-            return self.iloc[:, indices]  # type: ignore
+            return cast(DataFrame, self.iloc[:, indices])
 
     def eval(self, expr, inplace=False) -> Optional[Union["DataFrame", "Series"]]:
         """
