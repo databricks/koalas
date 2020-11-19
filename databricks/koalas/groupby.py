@@ -86,23 +86,23 @@ class GroupBy(object, metaclass=ABCMeta):
 
     def __init__(
         self,
-        _kser: Series = None,
-        _kdf: DataFrame = None,
-        _groupkeys: List[Series] = None,
-        _as_index: bool = False,
-        _dropna: bool = False,
-        _column_labels_to_exlcude: Set[Tuple] = None,
-        _agg_columns_selected: bool = False,
-        _agg_columns: List = None,
+        kser: Series = None,
+        kdf: DataFrame = None,
+        groupkeys: List[Series] = None,
+        as_index: bool = False,
+        dropna: bool = False,
+        column_labels_to_exlcude: Set[Tuple] = None,
+        agg_columns_selected: bool = False,
+        agg_columns: List = None,
     ):
-        self._kser = _kser
-        self._kdf = _kdf
-        self._groupkeys = _groupkeys
-        self._as_index = _as_index
-        self._dropna = _dropna
-        self._column_labels_to_exlcude = _column_labels_to_exlcude
-        self._agg_columns_selected = _agg_columns_selected
-        self._agg_columns = _agg_columns
+        self._kser = kser
+        self._kdf = kdf
+        self._groupkeys = groupkeys
+        self._as_index = as_index
+        self._dropna = dropna
+        self._column_labels_to_exlcude = column_labels_to_exlcude
+        self._agg_columns_selected = agg_columns_selected
+        self._agg_columns = agg_columns
 
     @property
     def _groupkeys_scols(self):
@@ -2469,13 +2469,13 @@ class DataFrameGroupBy(GroupBy):
         _agg_columns = [kdf[label] for label in agg_columns]
 
         super().__init__(
-            _kdf=kdf,
-            _groupkeys=by,
-            _as_index=as_index,
-            _dropna=dropna,
-            _column_labels_to_exlcude=column_labels_to_exlcude,
-            _agg_columns_selected=_agg_columns_selected,
-            _agg_columns=_agg_columns,
+            kdf=kdf,
+            groupkeys=by,
+            as_index=as_index,
+            dropna=dropna,
+            column_labels_to_exlcude=column_labels_to_exlcude,
+            agg_columns_selected=_agg_columns_selected,
+            agg_columns=_agg_columns,
         )
 
     def __getattr__(self, item: str) -> Any:
@@ -2640,11 +2640,11 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         super().__init__(
-            _kser=kser,
-            _groupkeys=by,
-            _as_index=as_index,
-            _dropna=dropna,
-            _agg_columns_selected=True,
+            kser=kser,
+            groupkeys=by,
+            as_index=as_index,
+            dropna=dropna,
+            agg_columns_selected=True,
         )
 
     def __getattr__(self, item: str) -> Any:
