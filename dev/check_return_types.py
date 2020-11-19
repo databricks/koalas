@@ -64,7 +64,7 @@ def inspect_functions_missing_return_types(inspect_obj):
         return None, None
 
 
-def _main():
+def _main_major_objs():
     for inspect_type in [
         DataFrame,
         Series,
@@ -85,18 +85,15 @@ def _main():
             print(f"name = {name}    signature = {signature}")
 
 
-def _main2():
+def _main_all_classes():
     inspect_modules = [
         module for module in sys.modules if module.startswith("databricks")
     ]
 
-    # class_name_to_missing_rate = defaultdict()
-    # class_name_to_missing_funcs = defaultdict()
     for inspect_module in inspect_modules:
         for name, clss in inspect.getmembers(sys.modules[inspect_module], inspect.isclass):
             if clss.__module__ == inspect_module:
                 # Gets only classes defined in inspect_module
-
                 missing_funcs, missing_rate = inspect_functions_missing_return_types(clss)
                 if missing_rate is not None:
                     class_name_to_missing_rate[name] = missing_rate
@@ -111,9 +108,10 @@ def print_per_class_coverage():
 
 
 if __name__ == '__main__':
+    _main_major_objs()
+
     class_name_to_missing_rate = defaultdict()
     class_name_to_missing_funcs = defaultdict()
-    _main2()
+    _main_all_classes()
     print_per_class_coverage()
-    # pprint(class_name_to_missing_funcs)
-    pprint(class_name_to_missing_funcs["KoalasSeriesMethods"])
+    pprint(class_name_to_missing_funcs)
