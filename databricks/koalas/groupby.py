@@ -2640,11 +2640,7 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         super().__init__(
-            kser=kser,
-            groupkeys=by,
-            as_index=as_index,
-            dropna=dropna,
-            agg_columns_selected=True,
+            kser=kser, groupkeys=by, as_index=as_index, dropna=dropna, agg_columns_selected=True,
         )
 
     def __getattr__(self, item: str) -> Any:
@@ -2667,7 +2663,7 @@ class SeriesGroupBy(GroupBy):
             return kser
 
     @property
-    def _kdf(self) -> DataFrame:  # type: ignore
+    def _kdf(self) -> DataFrame:  # type: ignore[override]
         return self._kser._kdf
 
     @property
