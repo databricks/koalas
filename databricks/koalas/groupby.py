@@ -84,16 +84,25 @@ class GroupBy(object, metaclass=ABCMeta):
     :type _groupkeys: List[Series]
     """
 
-    def __init__(self):
-        """A constructor for attribute type hints."""
-        self._kser = cast(Series, None)
-        self._kdf = cast(DataFrame, None)
-        self._groupkeys = cast(List[Series], None)
-        self._as_index = cast(bool, None)
-        self._dropna = cast(bool, None)
-        self._column_labels_to_exlcude = cast(Set[Tuple], None)
-        self._agg_columns_selected = cast(bool, None)
-        self._agg_columns = cast(List, None)
+    def __init__(
+        self,
+        _kser: Series = None,
+        _kdf: DataFrame = None,
+        _groupkeys: List[Series] = None,
+        _as_index: bool = False,
+        _dropna: bool = False,
+        _column_labels_to_exlcude: Set[Tuple] = None,
+        _agg_columns_selected: bool = False,
+        _agg_columns: List = None,
+    ):
+        self._kser = _kser
+        self._kdf = _kdf
+        self._groupkeys = _groupkeys
+        self._as_index = _as_index
+        self._dropna = _dropna
+        self._column_labels_to_exlcude = _column_labels_to_exlcude
+        self._agg_columns_selected = _agg_columns_selected
+        self._agg_columns = _agg_columns
 
     @property
     def _groupkeys_scols(self):
@@ -2444,14 +2453,9 @@ class DataFrameGroupBy(GroupBy):
         column_labels_to_exlcude: Set[Tuple],
         agg_columns: List[Tuple] = None,
     ):
-        self._kdf = kdf
-        self._groupkeys = by
-        self._as_index = as_index
-        self._dropna = dropna
-        self._column_labels_to_exlcude = column_labels_to_exlcude
 
-        self._agg_columns_selected = agg_columns is not None
-        if self._agg_columns_selected:
+        _agg_columns_selected = agg_columns is not None
+        if _agg_columns_selected:
             for label in agg_columns:
                 if label in column_labels_to_exlcude:
                     raise KeyError(label)
@@ -2462,7 +2466,17 @@ class DataFrameGroupBy(GroupBy):
                 if not any(label == key._column_label and key._kdf is kdf for key in by)
                 and label not in column_labels_to_exlcude
             ]
-        self._agg_columns = [kdf[label] for label in agg_columns]
+        _agg_columns = [kdf[label] for label in agg_columns]
+
+        super().__init__(
+            _kdf=kdf,
+            _groupkeys=by,
+            _as_index=as_index,
+            _dropna=dropna,
+            _column_labels_to_exlcude=column_labels_to_exlcude,
+            _agg_columns_selected=_agg_columns_selected,
+            _agg_columns=_agg_columns,
+        )
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeDataFrameGroupBy, item):
@@ -2623,14 +2637,15 @@ class SeriesGroupBy(GroupBy):
             return SeriesGroupBy(kser, new_by_series, as_index=as_index, dropna=dropna)
 
     def __init__(self, kser: Series, by: List[Series], as_index: bool = True, dropna: bool = True):
-        self._kser = kser
-        self._groupkeys = by
-
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
-        self._as_index = True
-        self._dropna = dropna
-        self._agg_columns_selected = True
+        super().__init__(
+            _kser=kser,
+            _groupkeys=by,
+            _as_index=as_index,
+            _dropna=dropna,
+            _agg_columns_selected=True,
+        )
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeSeriesGroupBy, item):
@@ -2652,7 +2667,7 @@ class SeriesGroupBy(GroupBy):
             return kser
 
     @property
-    def _kdf(self) -> DataFrame:
+    def _kdf(self) -> DataFrame:  # type: ignore
         return self._kser._kdf
 
     @property
