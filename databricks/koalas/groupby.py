@@ -2452,8 +2452,8 @@ class DataFrameGroupBy(GroupBy):
         agg_columns: List[Tuple] = None,
     ):
 
-        _agg_columns_selected = agg_columns is not None
-        if _agg_columns_selected:
+        agg_columns_selected = agg_columns is not None
+        if agg_columns_selected:
             for label in agg_columns:
                 if label in column_labels_to_exlcude:
                     raise KeyError(label)
@@ -2471,7 +2471,7 @@ class DataFrameGroupBy(GroupBy):
             as_index=as_index,
             dropna=dropna,
             column_labels_to_exlcude=column_labels_to_exlcude,
-            agg_columns_selected=_agg_columns_selected,
+            agg_columns_selected=agg_columns_selected,
             agg_columns=[kdf[label] for label in agg_columns],
         )
 
