@@ -1124,7 +1124,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
             if len(pdf) <= limit:
                 if isinstance(kser_or_kdf, ks.Series) and is_series_groupby:
-                    kser_or_kdf = kser_or_kdf.rename(self._kser.name)
+                    kser_or_kdf = kser_or_kdf.rename(cast(SeriesGroupBy, self)._kser.name)
                 return cast(Union[Series, DataFrame], kser_or_kdf)
 
             if isinstance(kser_or_kdf, Series):
@@ -1211,7 +1211,7 @@ class GroupBy(object, metaclass=ABCMeta):
         if should_return_series:
             kser = first_series(DataFrame(internal))
             if is_series_groupby:
-                kser = kser.rename(self._kser.name)
+                kser = kser.rename(cast(SeriesGroupBy, self)._kser.name)
             return kser
         else:
             return DataFrame(internal)
@@ -2591,10 +2591,10 @@ class DataFrameGroupBy(GroupBy):
         formatted_percentiles = ["25%", "50%", "75%"]
 
         # Split "quartiles" columns into first, second, and third quartiles.
-        for col in agg_cols:
-            quartiles_col = str((col, "quartiles"))
+        for col_name in agg_cols:
+            quartiles_col = str((col_name, "quartiles"))
             for i, percentile in enumerate(formatted_percentiles):
-                sdf = sdf.withColumn(str((col, percentile)), F.col(quartiles_col)[i])
+                sdf = sdf.withColumn(str((col_name, percentile)), F.col(quartiles_col)[i])
             sdf = sdf.drop(quartiles_col)
 
         # Reorder columns lexicographically by agg column followed by stats.
