@@ -2450,13 +2450,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         i, j : int, str
             Level of the indices to be swapped. Can pass level name as string.
         copy : bool, default True
-            Whether to copy underlying data.
+            Whether to copy underlying data. Must be True.
 
         Returns
         -------
         Series
             Series with levels swapped in MultiIndex.
         """
+        assert copy
+
         for index in (i, j):
             if not isinstance(index, int) and index not in self.index.names:
                 raise KeyError("Level %s not found" % index)
