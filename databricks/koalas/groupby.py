@@ -84,16 +84,23 @@ class GroupBy(object, metaclass=ABCMeta):
     :type _groupkeys: List[Series]
     """
 
-    def __init__(self):
-        """A constructor for attribute type hints."""
-        self._kser = cast(Series, None)
-        self._kdf = cast(DataFrame, None)
-        self._groupkeys = cast(List[Series], None)
-        self._as_index = cast(bool, None)
-        self._dropna = cast(bool, None)
-        self._column_labels_to_exlcude = cast(Set[Tuple], None)
-        self._agg_columns_selected = cast(bool, None)
-        self._agg_columns = cast(List, None)
+    def __init__(
+        self,
+        kdf: DataFrame,
+        groupkeys: List[Series],
+        as_index: bool,
+        dropna: bool,
+        column_labels_to_exlcude: Set[Tuple],
+        agg_columns_selected: bool,
+        agg_columns: List[Series],
+    ):
+        self._kdf = kdf
+        self._groupkeys = groupkeys
+        self._as_index = as_index
+        self._dropna = dropna
+        self._column_labels_to_exlcude = column_labels_to_exlcude
+        self._agg_columns_selected = agg_columns_selected
+        self._agg_columns = agg_columns
 
     @property
     def _groupkeys_scols(self):
@@ -1117,7 +1124,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
             if len(pdf) <= limit:
                 if isinstance(kser_or_kdf, ks.Series) and is_series_groupby:
-                    kser_or_kdf = kser_or_kdf.rename(self._kser.name)
+                    kser_or_kdf = kser_or_kdf.rename(cast(SeriesGroupBy, self)._kser.name)
                 return cast(Union[Series, DataFrame], kser_or_kdf)
 
             if isinstance(kser_or_kdf, Series):
@@ -1204,7 +1211,7 @@ class GroupBy(object, metaclass=ABCMeta):
         if should_return_series:
             kser = first_series(DataFrame(internal))
             if is_series_groupby:
-                kser = kser.rename(self._kser.name)
+                kser = kser.rename(cast(SeriesGroupBy, self)._kser.name)
             return kser
         else:
             return DataFrame(internal)
@@ -2444,14 +2451,9 @@ class DataFrameGroupBy(GroupBy):
         column_labels_to_exlcude: Set[Tuple],
         agg_columns: List[Tuple] = None,
     ):
-        self._kdf = kdf
-        self._groupkeys = by
-        self._as_index = as_index
-        self._dropna = dropna
-        self._column_labels_to_exlcude = column_labels_to_exlcude
 
-        self._agg_columns_selected = agg_columns is not None
-        if self._agg_columns_selected:
+        agg_columns_selected = agg_columns is not None
+        if agg_columns_selected:
             for label in agg_columns:
                 if label in column_labels_to_exlcude:
                     raise KeyError(label)
@@ -2462,7 +2464,16 @@ class DataFrameGroupBy(GroupBy):
                 if not any(label == key._column_label and key._kdf is kdf for key in by)
                 and label not in column_labels_to_exlcude
             ]
-        self._agg_columns = [kdf[label] for label in agg_columns]
+
+        super().__init__(
+            kdf=kdf,
+            groupkeys=by,
+            as_index=as_index,
+            dropna=dropna,
+            column_labels_to_exlcude=column_labels_to_exlcude,
+            agg_columns_selected=agg_columns_selected,
+            agg_columns=[kdf[label] for label in agg_columns],
+        )
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeDataFrameGroupBy, item):
@@ -2580,10 +2591,10 @@ class DataFrameGroupBy(GroupBy):
         formatted_percentiles = ["25%", "50%", "75%"]
 
         # Split "quartiles" columns into first, second, and third quartiles.
-        for col in agg_cols:
-            quartiles_col = str((col, "quartiles"))
+        for col_name in agg_cols:
+            quartiles_col = str((col_name, "quartiles"))
             for i, percentile in enumerate(formatted_percentiles):
-                sdf = sdf.withColumn(str((col, percentile)), F.col(quartiles_col)[i])
+                sdf = sdf.withColumn(str((col_name, percentile)), F.col(quartiles_col)[i])
             sdf = sdf.drop(quartiles_col)
 
         # Reorder columns lexicographically by agg column followed by stats.
@@ -2623,14 +2634,18 @@ class SeriesGroupBy(GroupBy):
             return SeriesGroupBy(kser, new_by_series, as_index=as_index, dropna=dropna)
 
     def __init__(self, kser: Series, by: List[Series], as_index: bool = True, dropna: bool = True):
-        self._kser = kser
-        self._groupkeys = by
-
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
-        self._as_index = True
-        self._dropna = dropna
-        self._agg_columns_selected = True
+        super().__init__(
+            kdf=kser._kdf,
+            groupkeys=by,
+            as_index=True,
+            dropna=dropna,
+            column_labels_to_exlcude=set(),
+            agg_columns_selected=True,
+            agg_columns=[kser],
+        )
+        self._kser = kser
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeSeriesGroupBy, item):
@@ -2650,14 +2665,6 @@ class SeriesGroupBy(GroupBy):
             return first_series(DataFrame(internal))
         else:
             return kser
-
-    @property
-    def _kdf(self) -> DataFrame:
-        return self._kser._kdf
-
-    @property
-    def _agg_columns(self):
-        return [self._kser]
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return first_series(super()._reduce_for_stat_function(sfun, only_numeric))
