@@ -86,16 +86,14 @@ class GroupBy(object, metaclass=ABCMeta):
 
     def __init__(
         self,
-        kser: Series = None,
-        kdf: DataFrame = None,
-        groupkeys: List[Series] = None,
-        as_index: bool = False,
-        dropna: bool = False,
-        column_labels_to_exlcude: Set[Tuple] = None,
-        agg_columns_selected: bool = False,
-        agg_columns: List = None,
+        kdf: DataFrame,
+        groupkeys: List[Series],
+        as_index: bool,
+        dropna: bool,
+        column_labels_to_exlcude: Set[Tuple],
+        agg_columns_selected: bool,
+        agg_columns: List,
     ):
-        self._kser = kser
         self._kdf = kdf
         self._groupkeys = groupkeys
         self._as_index = as_index
@@ -2466,7 +2464,6 @@ class DataFrameGroupBy(GroupBy):
                 if not any(label == key._column_label and key._kdf is kdf for key in by)
                 and label not in column_labels_to_exlcude
             ]
-        _agg_columns = [kdf[label] for label in agg_columns]
 
         super().__init__(
             kdf=kdf,
@@ -2475,7 +2472,7 @@ class DataFrameGroupBy(GroupBy):
             dropna=dropna,
             column_labels_to_exlcude=column_labels_to_exlcude,
             agg_columns_selected=_agg_columns_selected,
-            agg_columns=_agg_columns,
+            agg_columns=[kdf[label] for label in agg_columns],
         )
 
     def __getattr__(self, item: str) -> Any:
@@ -2640,8 +2637,15 @@ class SeriesGroupBy(GroupBy):
         if not as_index:
             raise TypeError("as_index=False only valid with DataFrame")
         super().__init__(
-            kser=kser, groupkeys=by, as_index=as_index, dropna=dropna, agg_columns_selected=True,
+            kdf=kser._kdf,
+            groupkeys=by,
+            as_index=True,
+            dropna=dropna,
+            column_labels_to_exlcude=set(),
+            agg_columns_selected=True,
+            agg_columns=[kser],
         )
+        self._kser = kser
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeSeriesGroupBy, item):
@@ -2661,14 +2665,6 @@ class SeriesGroupBy(GroupBy):
             return first_series(DataFrame(internal))
         else:
             return kser
-
-    @property
-    def _kdf(self) -> DataFrame:  # type: ignore[override]
-        return self._kser._kdf
-
-    @property
-    def _agg_columns(self):
-        return [self._kser]
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         return first_series(super()._reduce_for_stat_function(sfun, only_numeric))
