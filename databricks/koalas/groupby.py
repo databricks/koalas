@@ -92,7 +92,7 @@ class GroupBy(object, metaclass=ABCMeta):
         dropna: bool,
         column_labels_to_exlcude: Set[Tuple],
         agg_columns_selected: bool,
-        agg_columns: List,
+        agg_columns: List[Series],
     ):
         self._kdf = kdf
         self._groupkeys = groupkeys
