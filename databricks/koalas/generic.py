@@ -29,13 +29,14 @@ import numpy as np  # noqa: F401
 import pandas as pd
 from pandas.api.types import is_list_like
 
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
-from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import InternalFrame
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.typedef import Scalar
 from databricks.koalas.utils import (
@@ -1764,23 +1765,27 @@ class Frame(object, metaclass=ABCMeta):
         >>> s.first_valid_index()
         ('cow', 'weight')
         """
-        sdf = self._internal.spark_frame
         data_spark_columns = self._internal.data_spark_columns
+
+        if len(data_spark_columns) == 0:
+            return None
+
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
-        first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
+        first_valid_row = (
+            self._internal.spark_frame.filter(cond)
+            .select(self._internal.index_spark_columns)
+            .first()
+        )
+
         # For Empty Series or DataFrame, returns None.
         if first_valid_row is None:
             return None
 
-        first_valid_idx = tuple(
-            first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
-        )
-
-        if len(first_valid_idx) == 1:
-            first_valid_idx = first_valid_idx[0]
-
-        return first_valid_idx
+        if len(first_valid_row) == 1:
+            return first_valid_row[0]
+        else:
+            return tuple(first_valid_row)
 
     def last_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
         """
@@ -1863,25 +1868,32 @@ class Frame(object, metaclass=ABCMeta):
         >>> s.last_valid_index()  # doctest: +SKIP
         ('cow', 'weight')
         """
-        sdf = self._internal.spark_frame
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            raise RuntimeError("last_valid_index can be used in PySpark >= 3.0")
+
         data_spark_columns = self._internal.data_spark_columns
+
+        if len(data_spark_columns) == 0:
+            return None
+
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
-        last_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).tail(1)
-        # For Empty Series or DataFrame, returns None.
-        if len(last_valid_row) == 0:
-            return None
-        else:
-            last_valid_row = last_valid_row[0]
-
-        last_valid_idx = tuple(
-            last_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        last_valid_rows = (
+            self._internal.spark_frame.filter(cond)
+            .select(self._internal.index_spark_columns)
+            .tail(1)
         )
 
-        if len(last_valid_idx) == 1:
-            last_valid_idx = last_valid_idx[0]
+        # For Empty Series or DataFrame, returns None.
+        if len(last_valid_rows) == 0:
+            return None
 
-        return last_valid_idx
+        last_valid_row = last_valid_rows[0]
+
+        if len(last_valid_row) == 1:
+            return last_valid_row[0]
+        else:
+            return tuple(last_valid_row)
 
     def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "Series"]:
         """
