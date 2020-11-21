@@ -2456,6 +2456,35 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         -------
         Series
             Series with levels swapped in MultiIndex.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
+        >>> midx
+        MultiIndex([('a', 1),
+                    ('b', 2)],
+                   names=['word', 'number'])
+        >>> kser = ks.Series(['x', 'y'], index=midx)
+        >>> kser
+        word  number
+        a     1         x
+        b     2         y
+        dtype: object
+        >>> kser.swaplevel()
+        number  word
+        1       a       x
+        2       b       y
+        dtype: object
+        >>> kser.swaplevel(0, 1)
+        number  word
+        1       a       x
+        2       b       y
+        dtype: object
+        >>> kser.swaplevel('number', 'word')
+        number  word
+        1       a       x
+        2       b       y
+        dtype: object
         """
         assert copy
 
@@ -2469,7 +2498,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         for index in (i, j):
             if index >= len(self.index.names) or index < -len(self.index.names):
                 raise IndexError(
-                    "Too many levels: Index has only %s levels, "
+                    "Too many levels: Index of the series has only %s levels, "
                     "%s is not a valid level number" % (len(self.index.names), index)
                 )
 
