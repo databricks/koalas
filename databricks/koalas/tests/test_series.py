@@ -1832,6 +1832,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.swaplevel(), kser.swaplevel())
         self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
+        self.assert_eq(pser.swaplevel(1, 1), kser.swaplevel(1, 1))
         self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
 
         # MultiIndex with more than two levels
@@ -1843,6 +1844,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
         self.assert_eq(pser.swaplevel(0, 2), kser.swaplevel(0, 2))
         self.assert_eq(pser.swaplevel(1, 2), kser.swaplevel(1, 2))
+        self.assert_eq(pser.swaplevel(1, 1), kser.swaplevel(1, 1))
         self.assert_eq(pser.swaplevel(-1, -2), kser.swaplevel(-1, -2))
         self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
         self.assert_eq(pser.swaplevel("number", "size"), kser.swaplevel("number", "size"))
