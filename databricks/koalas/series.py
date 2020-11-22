@@ -2460,7 +2460,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> midx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
-        >>> midx
+        >>> midx  # doctest: +SKIP
         MultiIndex([('a', 1),
                     ('b', 2)],
                    names=['word', 'number'])
