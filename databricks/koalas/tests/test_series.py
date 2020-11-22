@@ -1849,6 +1849,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.swaplevel("color", "size"), kser.swaplevel("color", "size"))
 
         # Error conditions
+        self.assertRaises(IndexError, lambda: ks.Series([1, 2]).swaplevel())
         self.assertRaises(IndexError, lambda: kser.swaplevel(0, 9))
         self.assertRaises(KeyError, lambda: kser.swaplevel("not_number", "color"))
         self.assertRaises(AssertionError, lambda: kser.swaplevel(copy=False))
