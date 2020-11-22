@@ -2440,7 +2440,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return first_series(kdf)
 
-    def swaplevel(self, i=-2, j=-1, copy=True) -> "Series":
+    def swaplevel(self, i=-2, j=-1, copy: bool = True) -> "Series":
         """
         Swap levels i and j in a MultiIndex.
         Default is to swap the two innermost levels of the index.
