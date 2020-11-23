@@ -2440,6 +2440,77 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return first_series(kdf)
 
+    def swaplevel(self, i=-2, j=-1, copy: bool = True) -> "Series":
+        """
+        Swap levels i and j in a MultiIndex.
+        Default is to swap the two innermost levels of the index.
+
+        Parameters
+        ----------
+        i, j : int, str
+            Level of the indices to be swapped. Can pass level name as string.
+        copy : bool, default True
+            Whether to copy underlying data. Must be True.
+
+        Returns
+        -------
+        Series
+            Series with levels swapped in MultiIndex.
+
+        Examples
+        --------
+        >>> midx = pd.MultiIndex.from_arrays([['a', 'b'], [1, 2]], names = ['word', 'number'])
+        >>> midx  # doctest: +SKIP
+        MultiIndex([('a', 1),
+                    ('b', 2)],
+                   names=['word', 'number'])
+        >>> kser = ks.Series(['x', 'y'], index=midx)
+        >>> kser
+        word  number
+        a     1         x
+        b     2         y
+        dtype: object
+        >>> kser.swaplevel()
+        number  word
+        1       a       x
+        2       b       y
+        dtype: object
+        >>> kser.swaplevel(0, 1)
+        number  word
+        1       a       x
+        2       b       y
+        dtype: object
+        >>> kser.swaplevel('number', 'word')
+        number  word
+        1       a       x
+        2       b       y
+        dtype: object
+        """
+        assert isinstance(self.index, ks.MultiIndex)
+        assert copy is True
+
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.index.names:
+                raise KeyError("Level %s not found" % index)
+
+        i = i if isinstance(i, int) else self.index.names.index(i)
+        j = j if isinstance(j, int) else self.index.names.index(j)
+
+        for index in (i, j):
+            if index >= self._internal.index_level or index < -self._internal.index_level:
+                raise IndexError(
+                    "Too many levels: Index of the series has only %s levels, "
+                    "%s is not a valid level number" % (self._internal.index_level, index)
+                )
+
+        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        index_spark_column_names, index_names = zip(*index_map)
+        internal = self._internal.copy(
+            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
+        )
+        return first_series(DataFrame(internal))
+
     def add_prefix(self, prefix) -> "Series":
         """
         Prefix labels with string `prefix`.
