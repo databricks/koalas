@@ -1369,6 +1369,38 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+    def test_swaplevel(self):
+        # MultiIndex with two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
+        pdf =  pd.DataFrame({"x1": ["a", "b", "c", "d"], "x2": ["a", "b", "c", "d"]}, index=pidx)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.swaplevel(), kdf.swaplevel())
+        self.assert_eq(pdf.swaplevel(0, 1), kdf.swaplevel(0, 1))
+        self.assert_eq(pdf.swaplevel(1, 1), kdf.swaplevel(1, 1))
+        self.assert_eq(pdf.swaplevel("number", "color"), kdf.swaplevel("number", "color"))
+
+        # MultiIndex with more than two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"], ["l", "m", "s", "xs"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color", "size"))
+        pdf = pd.DataFrame({"x1": ["a", "b", "c", "d"], "x2": ["a", "b", "c", "d"]}, index=pidx)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.swaplevel(), kdf.swaplevel())
+        self.assert_eq(pdf.swaplevel(0, 1), kdf.swaplevel(0, 1))
+        self.assert_eq(pdf.swaplevel(0, 2), kdf.swaplevel(0, 2))
+        self.assert_eq(pdf.swaplevel(1, 2), kdf.swaplevel(1, 2))
+        self.assert_eq(pdf.swaplevel(1, 1), kdf.swaplevel(1, 1))
+        self.assert_eq(pdf.swaplevel(-1, -2), kdf.swaplevel(-1, -2))
+        self.assert_eq(pdf.swaplevel("number", "color"), kdf.swaplevel("number", "color"))
+        self.assert_eq(pdf.swaplevel("number", "size"), kdf.swaplevel("number", "size"))
+        self.assert_eq(pdf.swaplevel("color", "size"), kdf.swaplevel("color", "size"))
+
+        # Error conditions
+        self.assertRaises(IndexError, lambda: ks.DataFrame([1, 2]).swaplevel())
+        self.assertRaises(IndexError, lambda: kdf.swaplevel(0, 9))
+        self.assertRaises(KeyError, lambda: kdf.swaplevel("not_number", "color"))
+        self.assertRaises(AssertionError, lambda: kdf.swaplevel(copy=False))
+
     def test_nlargest(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, None, 7], "b": [7, 6, 5, 4, 3, 2, 1]}, index=np.random.rand(7)

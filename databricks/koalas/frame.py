@@ -6355,6 +6355,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return self._sort(by=by, ascending=ascending, inplace=inplace, na_position=na_position)
 
+    def swaplevel(self, i=-2, j=-1, copy: bool = True) -> "DataFrame":
+        assert copy
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.index.names:
+                raise KeyError("Level %s not found" % index)
+
+        i = i if isinstance(i, int) else self.index.names.index(i)
+        j = j if isinstance(j, int) else self.index.names.index(j)
+
+        for index in (i, j):
+            if index >= self._internal.index_level or index < -self._internal.index_level:
+                raise IndexError(
+                    "Too many levels: Index of DataFrame has only %s levels, "
+                    "%s is not a valid level number" % (self._internal.index_level, index)
+                )
+
+        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
+
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        index_spark_column_names, index_names = zip(*index_map)
+        internal = self._internal.copy(
+            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
+        )
+        return DataFrame(internal)
+
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: "Any") -> "DataFrame":
         """
