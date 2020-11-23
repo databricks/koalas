@@ -2188,26 +2188,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "last_valid_index won't work properly with PySpark<3.0",
+    )
     def test_last_valid_index(self):
-        # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
-            # MultiIndex columns
-            midx = pd.MultiIndex(
-                [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
-                [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
-            )
-            pser.index = midx
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        # MultiIndex columns
+        midx = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        pser.index = midx
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
-            # Empty Series
-            pser = pd.Series([])
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        # Empty Series
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
     def test_first_valid_index(self):
         # Empty Series
