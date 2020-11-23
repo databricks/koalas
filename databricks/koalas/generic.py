@@ -1688,7 +1688,7 @@ class Frame(object, metaclass=ABCMeta):
             raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
-    def first_valid_index(self) -> Optional[Union[Any, Tuple[Any, ...]]]:
+    def first_valid_index(self) -> Optional[Union[Scalar, Tuple[Scalar, ...]]]:
         """
         Retrieves the index of the first valid value.
 
@@ -1787,7 +1787,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             return tuple(first_valid_row)
 
-    def last_valid_index(self) -> Optional[Union[Any, Tuple[Any, ...]]]:
+    def last_valid_index(self) -> Optional[Union[Scalar, Tuple[Scalar, ...]]]:
         """
         Return index for last non-NA/null value.
 
