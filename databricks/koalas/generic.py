@@ -1694,7 +1694,7 @@ class Frame(object, metaclass=ABCMeta):
 
         Returns
         -------
-        idx_first_valid : type of index
+        scalar, tuple, or None
 
         Examples
         --------
@@ -1793,7 +1793,7 @@ class Frame(object, metaclass=ABCMeta):
 
         Returns
         -------
-        scalar : type of index
+        scalar, tuple, or None
 
         Notes
         -----
