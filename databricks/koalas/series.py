@@ -2496,10 +2496,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         j = j if isinstance(j, int) else self.index.names.index(j)
 
         for index in (i, j):
-            if index >= len(self.index.names) or index < -len(self.index.names):
+            if index >= self._internal.index_level or index < -self._internal.index_level:
                 raise IndexError(
                     "Too many levels: Index of the series has only %s levels, "
-                    "%s is not a valid level number" % (len(self.index.names), index)
+                    "%s is not a valid level number" % (self._internal.index_level, index)
                 )
 
         index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
