@@ -2505,7 +2505,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
         index_map[i], index_map[j], = index_map[j], index_map[i]
         index_spark_column_names, index_names = zip(*index_map)
-        internal = self._kdf._internal.copy(
+        internal = self._internal.copy(
             index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
         )
         return first_series(DataFrame(internal))
