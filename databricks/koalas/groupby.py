@@ -285,13 +285,16 @@ class GroupBy(object, metaclass=ABCMeta):
             if len(label) != kdf._internal.column_labels_level:
                 raise TypeError("The length of the key must be the same as the column label level.")
             for aggfunc in [value] if isinstance(value, str) else value:
-                name = kdf._internal.spark_column_name_for(label)
-                data_col = "('{0}', '{1}')".format(name, aggfunc) if multi_aggs else name
+                column_label = tuple(list(label) + [aggfunc]) if multi_aggs else label
+                column_labels.append(column_label)
+
+                data_col = name_like_string(column_label)
                 data_columns.append(data_col)
-                column_labels.append(tuple(list(label) + [aggfunc]) if multi_aggs else label)
+
+                col_name = kdf._internal.spark_column_name_for(label)
                 if aggfunc == "nunique":
                     reordered.append(
-                        F.expr("count(DISTINCT `{0}`) as `{1}`".format(name, data_col))
+                        F.expr("count(DISTINCT `{0}`) as `{1}`".format(col_name, data_col))
                     )
 
                 # Implement "quartiles" aggregate function for ``describe``.
@@ -299,13 +302,15 @@ class GroupBy(object, metaclass=ABCMeta):
                     reordered.append(
                         F.expr(
                             "percentile_approx(`{0}`, array(0.25, 0.5, 0.75)) as `{1}`".format(
-                                name, data_col
+                                col_name, data_col
                             )
                         )
                     )
 
                 else:
-                    reordered.append(F.expr("{1}(`{0}`) as `{2}`".format(name, aggfunc, data_col)))
+                    reordered.append(
+                        F.expr("{1}(`{0}`) as `{2}`".format(col_name, aggfunc, data_col))
+                    )
 
         sdf = kdf._internal.spark_frame.select(groupkey_scols + kdf._internal.data_spark_columns)
         sdf = sdf.groupby(*groupkey_names).agg(*reordered)
@@ -2585,22 +2590,25 @@ class DataFrameGroupBy(GroupBy):
                     "DataFrameGroupBy.describe() doesn't support for string type for now"
                 )
 
-        kdf = self.agg(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
+        kdf = self.aggregate(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
         sdf = kdf._internal.spark_frame
-        agg_cols = [col.name for col in self._agg_columns]
+        agg_column_labels = [col._column_label for col in self._agg_columns]
         formatted_percentiles = ["25%", "50%", "75%"]
 
         # Split "quartiles" columns into first, second, and third quartiles.
-        for col_name in agg_cols:
-            quartiles_col = str((col_name, "quartiles"))
+        for label in agg_column_labels:
+            quartiles_col = name_like_string(tuple(list(label) + ["quartiles"]))
             for i, percentile in enumerate(formatted_percentiles):
-                sdf = sdf.withColumn(str((col_name, percentile)), F.col(quartiles_col)[i])
+                sdf = sdf.withColumn(
+                    name_like_string(tuple(list(label) + [percentile])),
+                    scol_for(sdf, quartiles_col)[i],
+                )
             sdf = sdf.drop(quartiles_col)
 
         # Reorder columns lexicographically by agg column followed by stats.
         stats = ["count", "mean", "std", "min"] + formatted_percentiles + ["max"]
-        column_labels = list(product(agg_cols, stats))
-        data_columns = map(str, column_labels)
+        column_labels = [tuple(list(label) + [s]) for label, s in product(agg_column_labels, stats)]
+        data_columns = map(name_like_string, column_labels)
 
         # Reindex the DataFrame to reflect initial grouping and agg columns.
         internal = InternalFrame(

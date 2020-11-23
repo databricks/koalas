@@ -2994,7 +2994,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
         """
         if isinstance(func, list):
-            return first_series(self.to_frame().agg(func)).rename(self.name)
+            return first_series(self.to_frame().aggregate(func)).rename(self.name)
         elif isinstance(func, str):
             return getattr(self, func)()
         else:
