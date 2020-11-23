@@ -2486,7 +2486,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2       b       y
         dtype: object
         """
-        assert copy
+        assert isinstance(self.index, ks.MultiIndex)
+        assert copy is True
 
         for index in (i, j):
             if not isinstance(index, int) and index not in self.index.names:
