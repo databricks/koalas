@@ -68,6 +68,13 @@ Computations / Descriptive Stats
    GroupBy.backfill
    GroupBy.shift
 
+The following methods are available only for `DataFrameGroupBy` objects.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrameGroupBy.describe
+
 The following methods are available only for `SeriesGroupBy` objects.
 
 .. autosummary::
