@@ -6447,34 +6447,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0        5    5
         1        6    6
         """
-
         if axis == 0 or axis == "index":
             assert isinstance(self.index, ks.MultiIndex)
             for index in (i, j):
                 if not isinstance(index, int) and index not in self.index.names:
                     raise KeyError("Level %s not found" % index)
 
-            i = i if isinstance(i, int) else self.index.names.index(i)
-            j = j if isinstance(j, int) else self.index.names.index(j)
-
-            for index in (i, j):
-                if index >= self._internal.index_level or index < -self._internal.index_level:
-                    raise IndexError(
-                        "Too many levels: Index of DataFrame has only %s levels, "
-                        "%s is not a valid level number" % (self._internal.index_level, index)
-                    )
-
-            index_map = list(
-                zip(self._internal.index_spark_column_names, self._internal.index_names)
-            )
-
-            index_map[i], index_map[j], = index_map[j], index_map[i]
-            index_spark_column_names, index_names = zip(*index_map)
-            internal = self._internal.copy(
-                index_spark_column_names=list(index_spark_column_names),
-                index_names=list(index_names),
-            )
-            return DataFrame(internal)
+            internal = self._swaplevel_index(i, j)
         else:
             assert axis == 1 or axis == "columns"
             assert isinstance(self.columns, pd.MultiIndex)
@@ -6482,32 +6461,50 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 if not isinstance(index, int) and index not in self.columns.names:
                     raise KeyError("Level %s not found" % index)
 
-            i = i if isinstance(i, int) else self.columns.names.index(i)
-            j = j if isinstance(j, int) else self.columns.names.index(j)
+            internal = self._swaplevel_columns(i, j)
 
-            for index in (i, j):
-                if index >= len(self.columns) or index < -len(self.columns):
-                    raise IndexError(
-                        "Too many levels: Columns of DataFrame has only %s levels, "
-                        "%s is not a valid level number" % (self._internal.index_level, index)
-                    )
+        return DataFrame(internal)
 
-            column_label_names = self._internal.column_label_names.copy()
-            column_label_names[i], column_label_names[j], = (
-                column_label_names[j],
-                column_label_names[i],
-            )
+    def _swaplevel_columns(self, i, j):
+        i = i if isinstance(i, int) else self.columns.names.index(i)
+        j = j if isinstance(j, int) else self.columns.names.index(j)
+        for index in (i, j):
+            if index >= len(self.columns) or index < -len(self.columns):
+                raise IndexError(
+                    "Too many levels: Columns of DataFrame has only %s levels, "
+                    "%s is not a valid level number" % (self._internal.index_level, index)
+                )
+        column_label_names = self._internal.column_label_names.copy()
+        column_label_names[i], column_label_names[j], = (
+            column_label_names[j],
+            column_label_names[i],
+        )
+        column_labels = self._internal._column_labels
+        column_label_list = [list(label) for label in column_labels]
+        for label_list in column_label_list:
+            label_list[i], label_list[j] = label_list[j], label_list[i]
+        column_labels = [tuple(x) for x in column_label_list]
+        internal = self._internal.copy(
+            column_label_names=list(column_label_names), column_labels=list(column_labels)
+        )
+        return internal
 
-            column_labels = self._internal._column_labels
-            column_label_list = [list(label) for label in column_labels]
-            for label_list in column_label_list:
-                label_list[i], label_list[j] = label_list[j], label_list[i]
-            column_labels = [tuple(x) for x in column_label_list]
-
-            internal = self._internal.copy(
-                column_label_names=list(column_label_names), column_labels=list(column_labels)
-            )
-            return DataFrame(internal)
+    def _swaplevel_index(self, i, j) -> InternalFrame:
+        i = i if isinstance(i, int) else self.index.names.index(i)
+        j = j if isinstance(j, int) else self.index.names.index(j)
+        for index in (i, j):
+            if index >= self._internal.index_level or index < -self._internal.index_level:
+                raise IndexError(
+                    "Too many levels: Index of DataFrame has only %s levels, "
+                    "%s is not a valid level number" % (self._internal.index_level, index)
+                )
+        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
+        index_map[i], index_map[j], = index_map[j], index_map[i]
+        index_spark_column_names, index_names = zip(*index_map)
+        internal = self._internal.copy(
+            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
+        )
+        return internal
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: "Any") -> "DataFrame":
