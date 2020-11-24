@@ -6465,7 +6465,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
-    def _swaplevel_columns(self, i, j):
+    def _swaplevel_columns(self, i, j) -> InternalFrame:
         i = i if isinstance(i, int) else self.columns.names.index(i)
         j = j if isinstance(j, int) else self.columns.names.index(j)
         for index in (i, j):
