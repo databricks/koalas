@@ -1437,7 +1437,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(AssertionError, lambda: ks.DataFrame([1, 2]).swaplevel())
         self.assertRaises(IndexError, lambda: kdf.swaplevel(0, 9, axis=1))
         self.assertRaises(KeyError, lambda: kdf.swaplevel("not_number", "color", axis=1))
-        self.assertRaises(AssertionError, lambda: kdf.swaplevel(axis=2))
+        self.assertRaises(ValueError, lambda: kdf.swaplevel(axis=2))
 
     def test_nlargest(self):
         pdf = pd.DataFrame(

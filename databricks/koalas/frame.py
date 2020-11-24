@@ -6447,10 +6447,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0        5    5
         1        6    6
         """
-        if axis == 0 or axis == "index":
+        axis = validate_axis(axis)
+        if axis == 0:
             internal = self._swaplevel_index(i, j)
         else:
-            assert axis == 1 or axis == "columns"
+            assert axis == 1
             internal = self._swaplevel_columns(i, j)
 
         return DataFrame(internal)
