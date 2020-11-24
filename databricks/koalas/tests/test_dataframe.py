@@ -1373,7 +1373,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # MultiIndex with two levels
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
         pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
-        pdf =  pd.DataFrame({"x1": ["a", "b", "c", "d"], "x2": ["a", "b", "c", "d"]}, index=pidx)
+        pdf = pd.DataFrame({"x1": ["a", "b", "c", "d"], "x2": ["a", "b", "c", "d"]}, index=pidx)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.swaplevel(), kdf.swaplevel())
         self.assert_eq(pdf.swaplevel(0, 1), kdf.swaplevel(0, 1))
@@ -1394,12 +1394,50 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.swaplevel("number", "color"), kdf.swaplevel("number", "color"))
         self.assert_eq(pdf.swaplevel("number", "size"), kdf.swaplevel("number", "size"))
         self.assert_eq(pdf.swaplevel("color", "size"), kdf.swaplevel("color", "size"))
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis="index"),
+            kdf.swaplevel("color", "size", axis="index"),
+        )
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis=0), kdf.swaplevel("color", "size", axis=0)
+        )
+
+        pdf = pd.DataFrame(
+            {
+                "x1": ["a", "b", "c", "d"],
+                "x2": ["a", "b", "c", "d"],
+                "x3": ["a", "b", "c", "d"],
+                "x4": ["a", "b", "c", "d"],
+            }
+        )
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color", "size"))
+        pdf.columns = pidx
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.swaplevel(axis=1), kdf.swaplevel(axis=1))
+        self.assert_eq(pdf.swaplevel(0, 1, axis=1), kdf.swaplevel(0, 1, axis=1))
+        self.assert_eq(pdf.swaplevel(0, 2, axis=1), kdf.swaplevel(0, 2, axis=1))
+        self.assert_eq(pdf.swaplevel(1, 2, axis=1), kdf.swaplevel(1, 2, axis=1))
+        self.assert_eq(pdf.swaplevel(1, 1, axis=1), kdf.swaplevel(1, 1, axis=1))
+        self.assert_eq(pdf.swaplevel(-1, -2, axis=1), kdf.swaplevel(-1, -2, axis=1))
+        self.assert_eq(
+            pdf.swaplevel("number", "color", axis=1), kdf.swaplevel("number", "color", axis=1)
+        )
+        self.assert_eq(
+            pdf.swaplevel("number", "size", axis=1), kdf.swaplevel("number", "size", axis=1)
+        )
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis=1), kdf.swaplevel("color", "size", axis=1)
+        )
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis="columns"),
+            kdf.swaplevel("color", "size", axis="columns"),
+        )
 
         # Error conditions
-        self.assertRaises(IndexError, lambda: ks.DataFrame([1, 2]).swaplevel())
-        self.assertRaises(IndexError, lambda: kdf.swaplevel(0, 9))
-        self.assertRaises(KeyError, lambda: kdf.swaplevel("not_number", "color"))
-        self.assertRaises(AssertionError, lambda: kdf.swaplevel(copy=False))
+        self.assertRaises(AssertionError, lambda: ks.DataFrame([1, 2]).swaplevel())
+        self.assertRaises(IndexError, lambda: kdf.swaplevel(0, 9, axis=1))
+        self.assertRaises(KeyError, lambda: kdf.swaplevel("not_number", "color", axis=1))
+        self.assertRaises(AssertionError, lambda: kdf.swaplevel(axis=2))
 
     def test_nlargest(self):
         pdf = pd.DataFrame(

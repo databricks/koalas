@@ -6355,30 +6355,158 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return self._sort(by=by, ascending=ascending, inplace=inplace, na_position=na_position)
 
-    def swaplevel(self, i=-2, j=-1, copy: bool = True) -> "DataFrame":
-        assert copy
-        for index in (i, j):
-            if not isinstance(index, int) and index not in self.index.names:
-                raise KeyError("Level %s not found" % index)
+    def swaplevel(self, i=-2, j=-1, axis=0) -> "DataFrame":
+        """
+        Swap levels i and j in a MultiIndex on a particular axis.
 
-        i = i if isinstance(i, int) else self.index.names.index(i)
-        j = j if isinstance(j, int) else self.index.names.index(j)
+        Parameters
+        ----------
+        i, j : int or str
+            Levels of the indices to be swapped. Can pass level name as string.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            The axis to swap levels on. 0 or 'index' for row-wise, 1 or
+            'columns' for column-wise.
 
-        for index in (i, j):
-            if index >= self._internal.index_level or index < -self._internal.index_level:
-                raise IndexError(
-                    "Too many levels: Index of DataFrame has only %s levels, "
-                    "%s is not a valid level number" % (self._internal.index_level, index)
-                )
+        Returns
+        -------
+        DataFrame
+            DataFrame with levels swapped in MultiIndex.
 
-        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
+        Examples
+        --------
+        >>> midx = pd.MultiIndex.from_arrays([['red', 'blue'], [1, 2], ['s', 'm']], names = ['color', 'number', 'size'])
+        >>> midx  # # doctest: +SKIP
+        MultiIndex([( 'red', 1, 's'),
+                    ('blue', 2, 'm')],
+                   names=['color', 'number', 'size'])
 
-        index_map[i], index_map[j], = index_map[j], index_map[i]
-        index_spark_column_names, index_names = zip(*index_map)
-        internal = self._internal.copy(
-            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
-        )
-        return DataFrame(internal)
+        Swap levels in a MultiIndex on index.
+
+        >>> kdf = ks.DataFrame({'x': [5, 6], 'y':[5, 6]}, index=midx)
+        >>> kdf
+                           x  y
+        color number size
+        red   1      s     5  5
+        blue  2      m     6  6
+
+        >>> kdf.swaplevel()
+                           x  y
+        color size number
+        red   s    1       5  5
+        blue  m    2       6  6
+
+        >>> kdf.swaplevel(0, 1)
+                           x  y
+        number color size
+        1      red   s     5  5
+        2      blue  m     6  6
+
+        >>> kdf.swaplevel('number', 'size')
+                           x  y
+        color size number
+        red   s    1       5  5
+        blue  m    2       6  6
+
+        Swap levels in a MultiIndex on columns.
+
+        >>> kdf = ks.DataFrame({'x': [5, 6], 'y':[5, 6]})
+        >>> kdf.columns = midx
+        >>> kdf
+        color  red blue
+        number   1    2
+        size     s    m
+        0        5    5
+        1        6    6
+
+        >>> kdf.swaplevel(axis=1)
+        color  red blue
+        size     s    m
+        number   1    2
+        0        5    5
+        1        6    6
+
+        >>> kdf.swaplevel(axis=1)
+        color  red blue
+        size     s    m
+        number   1    2
+        0        5    5
+        1        6    6
+
+        >>> kdf.swaplevel(0, 1, axis=1)
+        number   1    2
+        color  red blue
+        size     s    m
+        0        5    5
+        1        6    6
+
+        >>> kdf.swaplevel('number', 'color', axis=1)
+        number   1    2
+        color  red blue
+        size     s    m
+        0        5    5
+        1        6    6
+        """
+
+        if axis == 0 or axis == "index":
+            assert isinstance(self.index, ks.MultiIndex)
+            for index in (i, j):
+                if not isinstance(index, int) and index not in self.index.names:
+                    raise KeyError("Level %s not found" % index)
+
+            i = i if isinstance(i, int) else self.index.names.index(i)
+            j = j if isinstance(j, int) else self.index.names.index(j)
+
+            for index in (i, j):
+                if index >= self._internal.index_level or index < -self._internal.index_level:
+                    raise IndexError(
+                        "Too many levels: Index of DataFrame has only %s levels, "
+                        "%s is not a valid level number" % (self._internal.index_level, index)
+                    )
+
+            index_map = list(
+                zip(self._internal.index_spark_column_names, self._internal.index_names)
+            )
+
+            index_map[i], index_map[j], = index_map[j], index_map[i]
+            index_spark_column_names, index_names = zip(*index_map)
+            internal = self._internal.copy(
+                index_spark_column_names=list(index_spark_column_names),
+                index_names=list(index_names),
+            )
+            return DataFrame(internal)
+        else:
+            assert axis == 1 or axis == "columns"
+            assert isinstance(self.columns, pd.MultiIndex)
+            for index in (i, j):
+                if not isinstance(index, int) and index not in self.columns.names:
+                    raise KeyError("Level %s not found" % index)
+
+            i = i if isinstance(i, int) else self.columns.names.index(i)
+            j = j if isinstance(j, int) else self.columns.names.index(j)
+
+            for index in (i, j):
+                if index >= len(self.columns) or index < -len(self.columns):
+                    raise IndexError(
+                        "Too many levels: Columns of DataFrame has only %s levels, "
+                        "%s is not a valid level number" % (self._internal.index_level, index)
+                    )
+
+            column_label_names = self._internal.column_label_names.copy()
+            column_label_names[i], column_label_names[j], = (
+                column_label_names[j],
+                column_label_names[i],
+            )
+
+            column_labels = self._internal._column_labels
+            column_label_list = [list(label) for label in column_labels]
+            for label_list in column_label_list:
+                label_list[i], label_list[j] = label_list[j], label_list[i]
+            column_labels = [tuple(x) for x in column_label_list]
+
+            internal = self._internal.copy(
+                column_label_names=list(column_label_names), column_labels=list(column_labels)
+            )
+            return DataFrame(internal)
 
     # TODO:  add keep = First
     def nlargest(self, n: int, columns: "Any") -> "DataFrame":
