@@ -6384,25 +6384,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Swap levels in a MultiIndex on index.
 
         >>> kdf = ks.DataFrame({'x': [5, 6], 'y':[5, 6]}, index=midx)
-        >>> kdf
+        >>> kdf  # doctest: +NORMALIZE_WHITESPACE
                            x  y
         color number size
         red   1      s     5  5
         blue  2      m     6  6
 
-        >>> kdf.swaplevel()
+        >>> kdf.swaplevel()  # doctest: +NORMALIZE_WHITESPACE
                            x  y
         color size number
         red   s    1       5  5
         blue  m    2       6  6
 
-        >>> kdf.swaplevel(0, 1)
+        >>> kdf.swaplevel(0, 1)  # doctest: +NORMALIZE_WHITESPACE
                            x  y
         number color size
         1      red   s     5  5
         2      blue  m     6  6
 
-        >>> kdf.swaplevel('number', 'size')
+        >>> kdf.swaplevel('number', 'size')  # doctest: +NORMALIZE_WHITESPACE
                            x  y
         color size number
         red   s    1       5  5
