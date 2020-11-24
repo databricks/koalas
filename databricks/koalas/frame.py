@@ -6374,7 +6374,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> midx = pd.MultiIndex.from_arrays([['red', 'blue'], [1, 2], ['s', 'm']], names = ['color', 'number', 'size'])
+        >>> midx = pd.MultiIndex.from_arrays(
+            [['red', 'blue'], [1, 2], ['s', 'm']], names = ['color', 'number', 'size'])
         >>> midx  # # doctest: +SKIP
         MultiIndex([( 'red', 1, 's'),
                     ('blue', 2, 'm')],
