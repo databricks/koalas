@@ -6448,24 +6448,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         1        6    6
         """
         if axis == 0 or axis == "index":
-            assert isinstance(self.index, ks.MultiIndex)
-            for index in (i, j):
-                if not isinstance(index, int) and index not in self.index.names:
-                    raise KeyError("Level %s not found" % index)
-
             internal = self._swaplevel_index(i, j)
         else:
             assert axis == 1 or axis == "columns"
-            assert isinstance(self.columns, pd.MultiIndex)
-            for index in (i, j):
-                if not isinstance(index, int) and index not in self.columns.names:
-                    raise KeyError("Level %s not found" % index)
-
             internal = self._swaplevel_columns(i, j)
 
         return DataFrame(internal)
 
     def _swaplevel_columns(self, i, j) -> InternalFrame:
+        assert isinstance(self.columns, pd.MultiIndex)
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.columns.names:
+                raise KeyError("Level %s not found" % index)
+
         i = i if isinstance(i, int) else self.columns.names.index(i)
         j = j if isinstance(j, int) else self.columns.names.index(j)
         for index in (i, j):
@@ -6474,6 +6469,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "Too many levels: Columns of DataFrame has only %s levels, "
                     "%s is not a valid level number" % (self._internal.index_level, index)
                 )
+
         column_label_names = self._internal.column_label_names.copy()
         column_label_names[i], column_label_names[j], = (
             column_label_names[j],
@@ -6490,6 +6486,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return internal
 
     def _swaplevel_index(self, i, j) -> InternalFrame:
+        assert isinstance(self.index, ks.MultiIndex)
+        for index in (i, j):
+            if not isinstance(index, int) and index not in self.index.names:
+                raise KeyError("Level %s not found" % index)
+
         i = i if isinstance(i, int) else self.index.names.index(i)
         j = j if isinstance(j, int) else self.index.names.index(j)
         for index in (i, j):
@@ -6498,6 +6499,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     "Too many levels: Index of DataFrame has only %s levels, "
                     "%s is not a valid level number" % (self._internal.index_level, index)
                 )
+
         index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
         index_map[i], index_map[j], = index_map[j], index_map[i]
         index_spark_column_names, index_names = zip(*index_map)
