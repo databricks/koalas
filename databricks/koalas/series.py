@@ -4775,10 +4775,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if isinstance(other, DataFrame):
             col_results = []
-            with option_context('compute.ops_on_diff_frames', True):
+            with option_context("compute.ops_on_diff_frames", True):
                 for k, v in other._ksers.items():
                     col_results.append((self * v).sum())
-            return Series(col_results)
+            return Series(col_results, index=other.columns)
         if self._kdf is not other._kdf:
             if len(self.index) != len(other.index):
                 raise ValueError("matrices are not aligned")
