@@ -1270,7 +1270,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kdf
 
-    def to_frame(self, name: Union[Any, Tuple] = None) -> SparkDataFrame:
+    def to_frame(self, name: Union[Any, Tuple] = None) -> DataFrame:
         """
         Convert Series to DataFrame.
 
@@ -2486,30 +2486,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2       b       y
         dtype: object
         """
-        assert isinstance(self.index, ks.MultiIndex)
         assert copy is True
 
-        for index in (i, j):
-            if not isinstance(index, int) and index not in self.index.names:
-                raise KeyError("Level %s not found" % index)
-
-        i = i if isinstance(i, int) else self.index.names.index(i)
-        j = j if isinstance(j, int) else self.index.names.index(j)
-
-        for index in (i, j):
-            if index >= self._internal.index_level or index < -self._internal.index_level:
-                raise IndexError(
-                    "Too many levels: Index of the series has only %s levels, "
-                    "%s is not a valid level number" % (self._internal.index_level, index)
-                )
-
-        index_map = list(zip(self._internal.index_spark_column_names, self._internal.index_names))
-        index_map[i], index_map[j], = index_map[j], index_map[i]
-        index_spark_column_names, index_names = zip(*index_map)
-        internal = self._internal.copy(
-            index_spark_column_names=list(index_spark_column_names), index_names=list(index_names),
-        )
-        return first_series(DataFrame(internal))
+        return first_series(self.to_frame().swaplevel(i, j, axis=0)).rename(self.name)
 
     def add_prefix(self, prefix) -> "Series":
         """
