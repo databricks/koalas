@@ -6467,7 +6467,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for index in (i, j):
             if index >= len(self.columns) or index < -len(self.columns):
                 raise IndexError(
-                    "Too many levels: Columns of DataFrame has only %s levels, "
+                    "Too many levels: Columns have only %s levels, "
                     "%s is not a valid level number" % (self._internal.index_level, index)
                 )
 
@@ -6497,7 +6497,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for index in (i, j):
             if index >= self._internal.index_level or index < -self._internal.index_level:
                 raise IndexError(
-                    "Too many levels: Index of DataFrame has only %s levels, "
+                    "Too many levels: Index has only %s levels, "
                     "%s is not a valid level number" % (self._internal.index_level, index)
                 )
 
