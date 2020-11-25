@@ -465,24 +465,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.dot(kser), pser.dot(pser))
 
-        # other_pser = pd.Series([-1, 2, -3, 4])
-        # other_kser = ks.from_pandas(other_pser)
-        # self.assert_eq(kser.dot(other_kser), pser.dot(other_pser))
+        other_pser = pd.Series([-1, 2, -3, 4])
+        other_kser = ks.from_pandas(other_pser)
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(other_kser), pser.dot(other_pser))
 
         # DataFrame "other" without Index/MultiIndex
         pdf = pd.DataFrame([[0, 1], [-2, 3], [4, -5], [6, 7]])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
         # DataFrame "other" with Index
         pdf.columns = pd.Index(["x", "y"])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
         # DataFrame "other" with MultiIndex
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
     def test_dropna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
