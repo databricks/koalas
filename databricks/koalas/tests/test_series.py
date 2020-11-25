@@ -459,6 +459,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
+    def test_dot(self):
+        pser = pd.Series([0, 1, 2, 3])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.dot(kser), pser.dot(pser))
+
+        # other_pser = pd.Series([-1, 2, -3, 4])
+        # other_kser = ks.from_pandas(other_pser)
+        # self.assert_eq(kser.dot(other_kser), pser.dot(other_pser))
+
+        pdf = pd.DataFrame([[0, 1], [-2, 3], [4, -5], [6, 7]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+
     def test_dropna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)

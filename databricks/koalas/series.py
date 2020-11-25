@@ -4774,11 +4774,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         14
         """
         if isinstance(other, DataFrame):
-            raise ValueError(
-                "Series.dot() is currently not supported with DataFrame since "
-                "it will cause expansive calculation as many as the number "
-                "of columns of DataFrame"
-            )
+            col_results = []
+            with option_context('compute.ops_on_diff_frames', True):
+                for k, v in other._ksers.items():
+                    col_results.append((self * v).sum())
+            return Series(col_results)
         if self._kdf is not other._kdf:
             if len(self.index) != len(other.index):
                 raise ValueError("matrices are not aligned")
