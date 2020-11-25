@@ -4772,6 +4772,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         >>> s @ s
         14
+
+        >>> kdf = ks.DataFrame({'x': [0, 1, 2, 3], 'y': [0, -1, -2, -3]})
+        >>> kdf
+           x  y
+        0  0  0
+        1  1 -1
+        2  2 -2
+        3  3 -3
+
+        >>> with ks.option_context("compute.ops_on_diff_frames", True):
+        ...     s.dot(kdf)
+        ...
+        x    14
+        y   -14
+        dtype: int64
         """
         if isinstance(other, DataFrame):
             col_results = []
