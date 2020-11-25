@@ -4775,9 +4775,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if isinstance(other, DataFrame):
             col_results = []
-
-            for k, v in other._ksers.items():
-                col_results.append((self * v).sum())
+            for name in other.columns.values:
+                name = name if name is None or isinstance(name, tuple) else (name,)
+                col_results.append((self * other._ksers[name]).sum())
             return Series(col_results, index=other.columns)
         if self._kdf is not other._kdf:
             if len(self.index) != len(other.index):
