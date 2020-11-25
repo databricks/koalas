@@ -4789,11 +4789,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
         """
         if isinstance(other, DataFrame):
+            if not self.index.equals(other.index):
+                raise ValueError("matrices are not aligned")
             col_results = []
             for name in other.columns.values:
                 name = name if name is None or isinstance(name, tuple) else (name,)
                 col_results.append((self * other._ksers[name]).sum())
             return Series(col_results, index=other.columns)
+
         if self._kdf is not other._kdf:
             if len(self.index) != len(other.index):
                 raise ValueError("matrices are not aligned")
