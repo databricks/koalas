@@ -4956,7 +4956,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         # The data is expected to be small so it's fine to transpose/use default index.
         with ks.option_context(
-            "compute.default_index_type", "distributed", "compute.max_rows", None
+            "compute.default_index_type", "distributed", "compute.max_rows", 1
         ):
             kdf = ks.DataFrame(sdf)  # type: DataFrame
             kdf.columns = pd.Index(where)
