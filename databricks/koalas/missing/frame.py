@@ -63,7 +63,6 @@ class _MissingPandasLikeDataFrame(object):
     set_axis = _unsupported_function("set_axis")
     slice_shift = _unsupported_function("slice_shift")
     swapaxes = _unsupported_function("swapaxes")
-    swaplevel = _unsupported_function("swaplevel")
     to_feather = _unsupported_function("to_feather")
     to_gbq = _unsupported_function("to_gbq")
     to_hdf = _unsupported_function("to_hdf")

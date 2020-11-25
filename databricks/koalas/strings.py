@@ -17,7 +17,7 @@
 """
 String functions on Koalas Series
 """
-from typing import Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING, cast, Optional, List
 
 import numpy as np
 
@@ -1999,7 +1999,9 @@ class StringMethods(object):
             scol = kdf._internal.data_spark_columns[0]
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
-            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            internal = kdf._internal.with_new_columns(
+                spark_columns, cast(Optional[List], column_labels)
+            )
             return DataFrame(internal)
         else:
             return kser
@@ -2133,7 +2135,9 @@ class StringMethods(object):
             scol = kdf._internal.data_spark_columns[0]
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
-            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            internal = kdf._internal.with_new_columns(
+                spark_columns, cast(Optional[List], column_labels)
+            )
             return DataFrame(internal)
         else:
             return kser
