@@ -34,7 +34,7 @@ from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like, is_hashable
 import pyspark
 from pyspark import sql as spark
-from pyspark.sql import functions as F, Column, DataFrame as SparkDataFrame
+from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
