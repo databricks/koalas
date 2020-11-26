@@ -661,7 +661,7 @@ class DataFrame(Frame, Generic[T]):
             sdf = self._internal.spark_frame.select(*exprs)
 
             # The data is expected to be small so it's fine to transpose/use default index.
-            with ks.option_context("compute.max_rows", None):
+            with ks.option_context("compute.max_rows", 1):
                 internal = InternalFrame(
                     spark_frame=sdf,
                     index_spark_column_names=[SPARK_DEFAULT_INDEX_NAME],
@@ -3806,7 +3806,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
         # The data is expected to be small so it's fine to transpose/use default index.
-        with ks.option_context("compute.max_rows", None):
+        with ks.option_context("compute.max_rows", 1):
             internal = self._internal.copy(
                 spark_frame=sdf,
                 index_spark_column_names=[SPARK_DEFAULT_INDEX_NAME],
@@ -3815,7 +3815,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     scol_for(sdf, col) for col in self._internal.data_spark_column_names
                 ],
             )
-
             return first_series(DataFrame(internal).transpose())
 
     def round(self, decimals=0) -> "DataFrame":
@@ -10495,14 +10494,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + new_columns
             )
 
-            with ks.option_context("compute.max_rows", None):
+            # The data is expected to be small so it's fine to transpose/use default index.
+            with ks.option_context("compute.max_rows", 1):
                 internal = InternalFrame(
                     spark_frame=sdf,
                     index_spark_column_names=[SPARK_DEFAULT_INDEX_NAME],
                     column_labels=new_column_labels,
                     column_label_names=self._internal.column_label_names,
                 )
-
                 return first_series(DataFrame(internal).transpose())
 
         else:
