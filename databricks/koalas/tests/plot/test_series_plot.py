@@ -17,6 +17,7 @@
 import unittest
 
 from databricks import koalas as ks
+from databricks.koalas.plot import KoalasPlotAccessor
 
 
 class SeriesPlotTest(unittest.TestCase):
@@ -26,7 +27,7 @@ class SeriesPlotTest(unittest.TestCase):
         with ks.option_context("plotting.backend", plot_backend):
             self.assertEqual(ks.options.plotting.backend, plot_backend)
 
-            module = ks.plot._get_plot_backend(plot_backend)
+            module = KoalasPlotAccessor._get_plot_backend(plot_backend)
             self.assertEqual(module.__name__, plot_backend)
 
     def test_plot_backends_incorrect(self):
@@ -36,4 +37,4 @@ class SeriesPlotTest(unittest.TestCase):
             self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
 
             with self.assertRaises(ValueError):
-                ks.plot._get_plot_backend(fake_plot_backend)
+                KoalasPlotAccessor._get_plot_backend(fake_plot_backend)

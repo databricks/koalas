@@ -300,18 +300,18 @@ class KoalasPlotAccessor(PandasObject):
         if plot_backend.__name__ != "databricks.koalas.plot":
             return plot_backend.plot(plot_data, kind=kind, **kwds)
 
-        if kind not in self._koalas_all_kinds:
+        if kind not in KoalasPlotAccessor._koalas_all_kinds:
             raise ValueError("{} is not a valid plot kind".format(kind))
 
         from databricks.koalas import DataFrame, Series
         from databricks.koalas.plot.matplotlib import plot_series, plot_frame
 
         if isinstance(self.data, Series):
-            if kind not in self._series_kinds:
+            if kind not in KoalasPlotAccessor._series_kinds:
                 return unsupported_function(class_name="pd.Series", method_name=kind)()
             return plot_series(data=self.data, kind=kind, **kwds)
         elif isinstance(self.data, DataFrame):
-            if kind not in self._dataframe_kinds:
+            if kind not in KoalasPlotAccessor._dataframe_kinds:
                 return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
             return plot_frame(data=self.data, kind=kind, **kwds)
 
