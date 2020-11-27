@@ -15,8 +15,6 @@
 #
 
 import importlib
-from types import ModuleType
-from typing import Dict
 
 from pandas.core.base import PandasObject
 
@@ -110,7 +108,7 @@ class KoalasPlotAccessor(PandasObject):
     _dataframe_kinds = _common_kinds.union(set(["scatter", "hexbin"]))
     _kind_aliases = {"density": "kde"}
     _koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
-    _backends: Dict[str, ModuleType] = {}
+    _backends = {}  # type: ignore
 
     def __init__(self, data):
         self.data = data
