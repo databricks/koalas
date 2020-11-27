@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import unittest
+from distutils.version import LooseVersion
 
 import pandas as pd
 import numpy as np
@@ -22,6 +24,10 @@ from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
+@unittest.skipIf(
+    LooseVersion(pd.__version__) < "1.0.0",
+    "pandas<1.0 does not support latest plotly and/or 'plotting.backend' option.",
+)
 class DataFramePlotPlotlyTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
