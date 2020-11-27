@@ -30,7 +30,7 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 matplotlib.use("agg")
 
 
-class DataFramePlotTest(ReusedSQLTestCase, TestUtils):
+class DataFramePlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
     sample_ratio_default = None
 
     @classmethod
