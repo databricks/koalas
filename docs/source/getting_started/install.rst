@@ -136,4 +136,5 @@ Optional dependencies
 Package       Required version
 ============= ================
 `mlflow`      >=1.0
+`plotly`      >=4.8
 ============= ================
