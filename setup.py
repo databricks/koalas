@@ -45,6 +45,7 @@ setup(
     extras_require={
         'spark': ['pyspark>=2.4.0'],
         'mlflow': ['mlflow>=1.0'],
+        'plotly': ['plotly>=4.8'],
     },
     python_requires='>=3.5,<3.10',
     install_requires=[
