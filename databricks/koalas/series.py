@@ -4789,8 +4789,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
         """
         if isinstance(other, DataFrame):
-            if not self.index.equals(other.index):
-                raise ValueError("matrices are not aligned")
+            if not same_anchor(self, other):
+                if not self.sort_index().index.equals(other.sort_index().index):
+                    raise ValueError("matrices are not aligned")
 
             combined = combine_frames(self._kdf, other)
             sdf = combined._internal.spark_frame
@@ -4814,7 +4815,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             return cast(Union[Series, Scalar], ks.from_pandas(first_series(pdf)).rename(None))
 
         elif isinstance(other, Series):
-            if self._kdf is not other._kdf:
+            if not same_anchor(self, other):
                 if not self.sort_index().index.equals(other.sort_index().index):
                     raise ValueError("matrices are not aligned")
             result = (self * other).sum()

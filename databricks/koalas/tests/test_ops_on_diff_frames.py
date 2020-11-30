@@ -894,6 +894,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
+        pdf = pdf.reindex([1, 0, 2, 3])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
         # DataFrame "other" with MultiIndex as columns
         pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
         kdf = ks.from_pandas(pdf)
