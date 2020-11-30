@@ -4806,7 +4806,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 ]
             )
             pdf = (
-                sdf.select([F.sum(sdf[scol_name]).alias(scol_name) for scol_name in that_data_spark_column_names])
+                sdf.select(
+                    [
+                        F.sum(sdf[scol_name]).alias(scol_name)
+                        for scol_name in that_data_spark_column_names
+                    ]
+                )
                 .toPandas()
                 .transpose()
             )
