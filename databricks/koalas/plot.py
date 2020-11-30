@@ -1336,6 +1336,9 @@ class KoalasPlotAccessor(PandasObject):
         if backend_name != "databricks.koalas.plot":
             data = data_preprocessor_map[kind](data)
 
+        if backend_name == "plotly" and kind == "area" and "stacked" in kwargs:
+            del kwargs["stacked"]
+
         return data, kwargs
 
     def __call__(self, kind="line", backend=None, **kwargs):
