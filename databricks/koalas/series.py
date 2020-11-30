@@ -4820,7 +4820,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             result = (self * other).sum()
 
         else:
-            raise TypeError(f"unsupported type: {type(other)}")
+            raise TypeError("Unsupported type {}".format(type(other).__name__))
 
         return result
 
