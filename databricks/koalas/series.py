@@ -4815,7 +4815,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         elif isinstance(other, Series):
             if self._kdf is not other._kdf:
-                if not self.index.equals(other.index):
+                if not self.sort_index().index.equals(other.sort_index().index):
                     raise ValueError("matrices are not aligned")
             result = (self * other).sum()
 
