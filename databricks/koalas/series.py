@@ -4791,11 +4791,27 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if isinstance(other, DataFrame):
             if not self.index.equals(other.index):
                 raise ValueError("matrices are not aligned")
-            col_results = []
-            for name in other.columns.values:
-                name = name if name is None or isinstance(name, tuple) else (name,)
-                col_results.append((self * other._ksers[name]).sum())
-            return Series(col_results, index=other.columns)
+
+            combined = combine_frames(self._kdf, other)
+            sdf = combined._internal.spark_frame
+
+            this_data_spark_column_name = combined["this"]._internal.data_spark_column_names[0]
+            that_data_spark_column_names = combined["that"]._internal.data_spark_column_names
+
+            sdf = sdf.select(
+                [
+                    (sdf[this_data_spark_column_name] * sdf[scol]).alias(scol)
+                    for scol in that_data_spark_column_names
+                ]
+            )
+            pdf = (
+                sdf.select([F.sum(sdf[scol]).alias(scol) for scol in that_data_spark_column_names])
+                .toPandas()
+                .transpose()
+            )
+
+            pdf.index = other.columns
+            return ks.from_pandas(first_series(pdf)).rename(None)
 
         if self._kdf is not other._kdf:
             if len(self.index) != len(other.index):
