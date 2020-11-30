@@ -5702,7 +5702,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ValueError
             * If both of ``include`` and ``exclude`` are empty
 
-                >>> df = pd.DataFrame({'a': [1, 2] * 3,
+                >>> df = ks.DataFrame({'a': [1, 2] * 3,
                 ...                    'b': [True, False] * 3,
                 ...                    'c': [1.0, 2.0] * 3})
                 >>> df.select_dtypes()
@@ -5712,7 +5712,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             * If ``include`` and ``exclude`` have overlapping elements
 
-                >>> df = pd.DataFrame({'a': [1, 2] * 3,
+                >>> df = ks.DataFrame({'a': [1, 2] * 3,
                 ...                    'b': [True, False] * 3,
                 ...                    'c': [1.0, 2.0] * 3})
                 >>> df.select_dtypes(include='a', exclude='a')
@@ -9475,7 +9475,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = pd.DataFrame({"num_legs": [4, 4, 2],
+        >>> df = ks.DataFrame({"num_legs": [4, 4, 2],
         ...                    "num_arms": [0, 0, 2]},
         ...                   index=["dog", "cat", "monkey"],
         ...                   columns=["num_legs", "num_arms"])
