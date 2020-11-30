@@ -4813,11 +4813,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             pdf.index = other.columns
             return cast(Union[Series, Scalar], ks.from_pandas(first_series(pdf)).rename(None))
 
-        if self._kdf is not other._kdf:
-            if len(self.index) != len(other.index):
-                raise ValueError("matrices are not aligned")
-        if isinstance(other, Series):
+        elif isinstance(other, Series):
+            if self._kdf is not other._kdf:
+                if not self.index.equals(other.index):
+                    raise ValueError("matrices are not aligned")
             result = (self * other).sum()
+
+        else:
+            raise TypeError(f"unsupported type: {type(other)}")
 
         return result
 
