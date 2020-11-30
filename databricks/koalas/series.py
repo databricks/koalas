@@ -4811,7 +4811,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
 
             pdf.index = other.columns
-            return ks.from_pandas(first_series(pdf)).rename(None)
+            return cast(Union[Series, Scalar], ks.from_pandas(first_series(pdf)).rename(None))
 
         if self._kdf is not other._kdf:
             if len(self.index) != len(other.index):
