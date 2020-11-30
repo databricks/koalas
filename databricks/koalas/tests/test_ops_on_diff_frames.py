@@ -870,11 +870,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
             kser.dot(kser_other)
 
-        pdf = pd.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[2, 4, 1])
-        kdf = ks.from_pandas(pdf)
-        with ks.option_context("compute.ops_on_diff_frames", True):
-            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
-
         # for MultiIndex
         midx = pd.MultiIndex(
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
@@ -884,8 +879,28 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         pser_other = pd.Series([-450, 20, 12, -30, -250, 15, -320, 100, 3], index=midx)
         kser_other = ks.from_pandas(pser_other)
-
         self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
+        pser = pd.Series([0, 1, 2, 3])
+        kser = ks.from_pandas(pser)
+
+        # DataFrame "other" without Index/MultiIndex as columns
+        pdf = pd.DataFrame([[0, 1], [-2, 3], [4, -5], [6, 7]])
+        kdf = ks.from_pandas(pdf)
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        # DataFrame "other" with Index as columns
+        pdf.columns = pd.Index(["x", "y"])
+        kdf = ks.from_pandas(pdf)
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        # DataFrame "other" with MultiIndex as columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
+        kdf = ks.from_pandas(pdf)
+        with ks.option_context("compute.ops_on_diff_frames", True):
+            self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])
