@@ -890,7 +890,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
         # DataFrame "other" with Index as columns
-        pdf.columns = pd.Index(["x", "y"])
+        pdf.columns = pd.Index(["x", "y"], name="cols_name")
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
@@ -899,9 +899,18 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
         # DataFrame "other" with MultiIndex as columns
-        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
+        pdf.columns = pd.MultiIndex.from_tuples(
+            [("a", "x"), ("b", "y")], names=["cols_name1", "cols_name2"]
+        )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq((kdf["b"] * 10).dot(kdf["a"]), (pdf["b"] * 10).dot(pdf["a"]))
+        self.assert_eq((kdf["b"] * 10).dot(kdf), (pdf["b"] * 10).dot(pdf))
+        self.assert_eq((kdf["b"] * 10).dot(kdf + 1), (pdf["b"] * 10).dot(pdf + 1))
 
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])
