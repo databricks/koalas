@@ -4801,14 +4801,16 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             sdf = sdf.select(
                 [
-                    (scol_for(sdf, this_data_spark_column_name) * sdf[scol_name]).alias(scol_name)
+                    (scol_for(sdf, this_data_spark_column_name) * scol_for(sdf, scol_name)).alias(
+                        scol_name
+                    )
                     for scol_name in that_data_spark_column_names
                 ]
             )
             pdf = (
                 sdf.select(
                     [
-                        F.sum(sdf[scol_name]).alias(scol_name)
+                        F.sum(scol_for(sdf, scol_name)).alias(scol_name)
                         for scol_name in that_data_spark_column_names
                     ]
                 )
