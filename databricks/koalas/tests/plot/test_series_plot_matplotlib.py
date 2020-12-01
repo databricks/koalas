@@ -30,7 +30,7 @@ from databricks.koalas.plot import KoalasBoxPlot, KoalasHistPlot
 matplotlib.use("agg")
 
 
-class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
+class SeriesPlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -67,24 +67,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         b64_data = base64.b64encode(bytes_data.read())
         plt.close(ax.figure)
         return b64_data
-
-    def test_plot_backends(self):
-        plot_backend = "plotly"
-
-        with ks.option_context("plotting.backend", plot_backend):
-            self.assertEqual(ks.options.plotting.backend, plot_backend)
-
-            module = ks.plot._get_plot_backend(plot_backend)
-            self.assertEqual(module.__name__, plot_backend)
-
-    def test_plot_backends_incorrect(self):
-        fake_plot_backend = "none_plotting_module"
-
-        with ks.option_context("plotting.backend", fake_plot_backend):
-            self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
-
-            with self.assertRaises(ValueError):
-                ks.plot._get_plot_backend(fake_plot_backend)
 
     def test_bar_plot(self):
         pdf = self.pdf1
