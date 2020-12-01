@@ -5717,7 +5717,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 >>> df.select_dtypes(include='a', exclude='a')
                 Traceback (most recent call last):
                 ...
-                TypeError: string dtypes are not allowed, use 'object' instead
+                ValueError: include and exclude overlap on {'a'}
 
         Notes
         -----
