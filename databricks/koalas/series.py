@@ -4721,7 +4721,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         internal = self._internal.with_new_sdf(sdf)
         return first_series(ks.DataFrame(internal))
 
-    def dot(self, other) -> Union[Scalar, "Series"]:
+    def dot(self, other: Union["Series", ks.DataFrame]) -> Union[Scalar, "Series"]:
         """
         Compute the dot product between the Series and the columns of other.
 
@@ -4795,7 +4795,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
                 combined = combine_frames(self.to_frame(), other)
             else:
-                new_this = DataFrame(self._internal.resolved_copy)
+                new_this = DataFrame(self._internal.resolved_copy)  # type: DataFrame
                 combined = combine_frames(new_this, other)
 
             sdf = combined._internal.spark_frame
