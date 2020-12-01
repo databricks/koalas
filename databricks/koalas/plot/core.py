@@ -104,9 +104,8 @@ class KoalasPlotAccessor(PandasObject):
     # from databricks.koalas import DataFrame, Series
 
     _common_kinds = {"area", "bar", "barh", "box", "hist", "kde", "line", "pie"}
-    _series_kinds = _common_kinds.union(set([]))
-    _dataframe_kinds = _common_kinds.union(set(["scatter", "hexbin"]))
-    _kind_aliases = {"density": "kde"}
+    _series_kinds = _common_kinds.union(set())
+    _dataframe_kinds = _common_kinds.union({"scatter", "hexbin"})
     _koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
     _backends = {}  # type: ignore
 
