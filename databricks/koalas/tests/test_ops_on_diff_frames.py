@@ -890,6 +890,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
         # DataFrame "other" with Index as columns
+        pdf.columns = pd.Index(["x", "y"])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
         pdf.columns = pd.Index(["x", "y"], name="cols_name")
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
@@ -899,6 +902,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
         # DataFrame "other" with MultiIndex as columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
         pdf.columns = pd.MultiIndex.from_tuples(
             [("a", "x"), ("b", "y")], names=["cols_name1", "cols_name2"]
         )
