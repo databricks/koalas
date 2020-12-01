@@ -4793,7 +4793,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 if not self.sort_index().index.equals(other.sort_index().index):
                     raise ValueError("matrices are not aligned")
 
-            combined = combine_frames(self._kdf, other)
+                combined = combine_frames(self._kdf, other)
+            else:
+                new_this = DataFrame(self._internal.resolved_copy)
+                combined = combine_frames(new_this, other)
+
             sdf = combined._internal.spark_frame
 
             this_data_spark_column_name = combined["this"]._internal.data_spark_column_names[0]
@@ -4819,7 +4823,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
 
             pdf.index = other.columns
-            return cast(Union[Series, Scalar], ks.from_pandas(first_series(pdf)).rename(None))
+            return cast(Union[Series, Scalar], ks.from_pandas(first_series(pdf)).rename(self.name))
 
         elif isinstance(other, Series):
             if not same_anchor(self, other):
