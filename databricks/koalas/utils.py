@@ -67,7 +67,13 @@ def same_anchor(
 
     return (
         this_internal.spark_frame is that_internal.spark_frame
-        and this_internal.index_spark_column_names == that_internal.index_spark_column_names
+        and this_internal.index_level == that_internal.index_level
+        and all(
+            this_scol._jc.equals(that_scol._jc)
+            for this_scol, that_scol in zip(
+                this_internal.index_spark_columns, that_internal.index_spark_columns
+            )
+        )
     )
 
 
@@ -124,7 +130,9 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             )
             return internal.copy(
                 spark_frame=sdf,
-                index_spark_column_names=[rename(col) for col in internal.index_spark_column_names],
+                index_spark_columns=[
+                    scol_for(sdf, rename(col)) for col in internal.index_spark_column_names
+                ],
                 data_spark_columns=[
                     scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
                 ],
@@ -217,7 +225,7 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         return DataFrame(
             InternalFrame(
                 spark_frame=joined_df,
-                index_spark_column_names=index_column_names,
+                index_spark_columns=[scol_for(joined_df, col) for col in index_column_names],
                 index_names=this_internal.index_names,
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],

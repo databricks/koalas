@@ -703,7 +703,7 @@ class RollingGroupby(Rolling):
 
         internal = kdf._internal.copy(
             spark_frame=sdf,
-            index_spark_column_names=list(new_index_map.keys()),
+            index_spark_columns=[scol_for(sdf, col) for col in new_index_map.keys()],
             index_names=list(new_index_map.values()),
             column_labels=[c._column_label for c in applied],
             data_spark_columns=[

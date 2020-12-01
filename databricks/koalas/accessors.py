@@ -171,8 +171,8 @@ class KoalasFrameMethods(object):
         return DataFrame(
             InternalFrame(
                 spark_frame=sdf,
-                index_spark_column_names=[
-                    SPARK_INDEX_NAME_FORMAT(i) for i in range(internal.index_level)
+                index_spark_columns=[
+                    scol_for(sdf, SPARK_INDEX_NAME_FORMAT(i)) for i in range(internal.index_level)
                 ],
                 index_names=internal.index_names,
                 column_labels=internal.column_labels + [column],
@@ -386,7 +386,7 @@ class KoalasFrameMethods(object):
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_spark_column_names=None)
+            internal = InternalFrame(spark_frame=sdf, index_spark_columns=None)
 
         return DataFrame(internal)
 

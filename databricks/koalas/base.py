@@ -1362,7 +1362,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_spark_column_names=[index_name],
+            index_spark_columns=[scol_for(sdf, index_name)],
             column_labels=self._internal.column_labels,
             data_spark_columns=[scol_for(sdf, "count")],
             column_label_names=self._internal.column_label_names,
