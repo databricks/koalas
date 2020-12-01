@@ -918,6 +918,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq((kdf["b"] * 10).dot(kdf), (pdf["b"] * 10).dot(pdf))
         self.assert_eq((kdf["b"] * 10).dot(kdf + 1), (pdf["b"] * 10).dot(pdf + 1))
 
+        kser = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}).b
+        pser = kser.to_pandas()
+        kdf = ks.DataFrame({"c": [7, 8, 9]})
+        pdf = kdf.to_pandas()
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])
         kidx2 = ks.Index([1, 2, 3, 4, 5])

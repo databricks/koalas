@@ -4793,7 +4793,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 if not self.sort_index().index.equals(other.sort_index().index):
                     raise ValueError("matrices are not aligned")
 
-                combined = combine_frames(self._kdf, other)
+                combined = combine_frames(self.to_frame(), other)
             else:
                 new_this = DataFrame(self._internal.resolved_copy)
                 combined = combine_frames(new_this, other)
