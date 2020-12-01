@@ -376,7 +376,7 @@ def read_csv(
             if col not in column_labels:
                 raise KeyError(col)
         index_spark_column_names = [column_labels[col] for col in index_col]
-        index_names = [(col,) for col in index_col]
+        index_names = [(col,) for col in index_col]  # type: List[Tuple]
         column_labels = OrderedDict(
             (label, col) for label, col in column_labels.items() if label not in index_col
         )
@@ -669,7 +669,7 @@ def read_spark_io(
 
     return DataFrame(
         InternalFrame(
-            spark_frame=sdf, index_spark_columns=index_spark_columns, index_names=index_names,
+            spark_frame=sdf, index_spark_columns=index_spark_columns, index_names=index_names
         )
     )
 
@@ -1332,7 +1332,7 @@ def read_sql_table(
     index_spark_columns, index_names = _get_index_map(sdf, index_col)
     kdf = DataFrame(
         InternalFrame(
-            spark_frame=sdf, index_spark_columns=index_spark_columns, index_names=index_names,
+            spark_frame=sdf, index_spark_columns=index_spark_columns, index_names=index_names
         )
     )  # type: DataFrame
     if columns is not None:
@@ -1390,7 +1390,7 @@ def read_sql_query(sql, con, index_col=None, **options) -> DataFrame:
     index_spark_columns, index_names = _get_index_map(sdf, index_col)
     return DataFrame(
         InternalFrame(
-            spark_frame=sdf, index_spark_columns=index_spark_columns, index_names=index_names,
+            spark_frame=sdf, index_spark_columns=index_spark_columns, index_names=index_names
         )
     )
 
