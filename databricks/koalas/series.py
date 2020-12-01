@@ -4719,9 +4719,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             *index_scols, cond.alias(self._internal.data_spark_column_names[0])
         ).distinct()
         internal = self._internal.with_new_sdf(sdf)
-        return first_series(ks.DataFrame(internal))
+        return first_series(DataFrame(internal))
 
-    def dot(self, other: Union["Series", ks.DataFrame]) -> Union[Scalar, "Series"]:
+    def dot(self, other: Union["Series", DataFrame]) -> Union[Scalar, "Series"]:
         """
         Compute the dot product between the Series and the columns of other.
 
@@ -4989,7 +4989,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         should_return_series = True
         if isinstance(self.index, ks.MultiIndex):
             raise ValueError("asof is not supported for a MultiIndex")
-        if isinstance(where, (ks.Index, ks.Series, ks.DataFrame)):
+        if isinstance(where, (ks.Index, ks.Series, DataFrame)):
             raise ValueError("where cannot be an Index, Series or a DataFrame")
         if not self.index.is_monotonic_increasing:
             raise ValueError("asof requires a sorted index")
