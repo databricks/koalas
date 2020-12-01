@@ -1307,7 +1307,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             renamed = self.rename(DEFAULT_SERIES_NAME)
         else:
             renamed = self
-        return DataFrame(renamed._internal)
+        return DataFrame(renamed._internal.resolved_copy)
 
     to_dataframe = to_frame
 
