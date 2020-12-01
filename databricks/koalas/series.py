@@ -5224,7 +5224,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         4    5
         dtype: int64
         """
-        return first_series(self.spark.analyzed.to_frame().tail(n=n)).rename(self.name)
+        return first_series(self.to_frame().tail(n=n)).rename(self.name)
 
     def product(self, min_count=0) -> Union[int, float]:
         """
