@@ -4840,7 +4840,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         elif isinstance(other, Series):
             if not same_anchor(self, other):
-                if not self.sort_index().index.equals(other.sort_index().index):
+                if len(self.index) != len(other.index):
                     raise ValueError("matrices are not aligned")
             result = (self * other).sum()
 
