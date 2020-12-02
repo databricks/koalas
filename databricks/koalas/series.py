@@ -4794,14 +4794,27 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     raise ValueError("matrices are not aligned")
 
                 combined = combine_frames(self.to_frame(), other)
+                this_data_spark_column_name = combined["this"]._internal.data_spark_column_names[0]
+                that_data_spark_column_names = combined["that"]._internal.data_spark_column_names
             else:
-                new_this = DataFrame(self._internal.resolved_copy)  # type: DataFrame
-                combined = combine_frames(new_this, other)
+                self_column_label = verify_temp_column_name(other, "__self_column__")
+                combined = DataFrame(
+                    self._internal.with_new_columns(
+                        (
+                            [
+                                self._internal.data_spark_columns[0].alias(
+                                    name_like_string(self_column_label)
+                                )
+                            ]
+                            + other._internal.data_spark_columns
+                        ),
+                        column_labels=([self_column_label] + other._internal.column_labels),
+                    ).resolved_copy
+                )
+                this_data_spark_column_name = name_like_string(self_column_label)
+                that_data_spark_column_names = other._internal.data_spark_column_names
 
             sdf = combined._internal.spark_frame
-
-            this_data_spark_column_name = combined["this"]._internal.data_spark_column_names[0]
-            that_data_spark_column_names = combined["that"]._internal.data_spark_column_names
 
             sdf = sdf.select(
                 [
