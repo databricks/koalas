@@ -2137,6 +2137,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.tail(0), kser.tail(0))
         self.assert_eq(pser.tail(1001), kser.tail(1001))
         self.assert_eq(pser.tail(-1001), kser.tail(-1001))
+        self.assert_eq((pser + 1).tail(), (kser + 1).tail())
+        self.assert_eq((pser + 1).tail(10), (kser + 1).tail(10))
+        self.assert_eq((pser + 1).tail(-990), (kser + 1).tail(-990))
+        self.assert_eq((pser + 1).tail(0), (kser + 1).tail(0))
+        self.assert_eq((pser + 1).tail(1001), (kser + 1).tail(1001))
+        self.assert_eq((pser + 1).tail(-1001), (kser + 1).tail(-1001))
         with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
             kser.tail("10")
 

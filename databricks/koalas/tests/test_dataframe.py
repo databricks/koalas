@@ -4780,6 +4780,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.tail(0), kdf.tail(0))
         self.assert_eq(pdf.tail(-1001), kdf.tail(-1001))
         self.assert_eq(pdf.tail(1001), kdf.tail(1001))
+        self.assert_eq((pdf + 1).tail(), (kdf + 1).tail())
+        self.assert_eq((pdf + 1).tail(10), (kdf + 1).tail(10))
+        self.assert_eq((pdf + 1).tail(-990), (kdf + 1).tail(-990))
+        self.assert_eq((pdf + 1).tail(0), (kdf + 1).tail(0))
+        self.assert_eq((pdf + 1).tail(-1001), (kdf + 1).tail(-1001))
+        self.assert_eq((pdf + 1).tail(1001), (kdf + 1).tail(1001))
         with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
             kdf.tail("10")
 

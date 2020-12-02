@@ -5695,7 +5695,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ValueError
             * If both of ``include`` and ``exclude`` are empty
 
-                >>> df = pd.DataFrame({'a': [1, 2] * 3,
+                >>> df = ks.DataFrame({'a': [1, 2] * 3,
                 ...                    'b': [True, False] * 3,
                 ...                    'c': [1.0, 2.0] * 3})
                 >>> df.select_dtypes()
@@ -5705,13 +5705,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             * If ``include`` and ``exclude`` have overlapping elements
 
-                >>> df = pd.DataFrame({'a': [1, 2] * 3,
+                >>> df = ks.DataFrame({'a': [1, 2] * 3,
                 ...                    'b': [True, False] * 3,
                 ...                    'c': [1.0, 2.0] * 3})
                 >>> df.select_dtypes(include='a', exclude='a')
                 Traceback (most recent call last):
                 ...
-                TypeError: string dtypes are not allowed, use 'object' instead
+                ValueError: include and exclude overlap on {'a'}
 
         Notes
         -----
@@ -9482,7 +9482,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> df = pd.DataFrame({"num_legs": [4, 4, 2],
+        >>> df = ks.DataFrame({"num_legs": [4, 4, 2],
         ...                    "num_arms": [0, 0, 2]},
         ...                   index=["dog", "cat", "monkey"],
         ...                   columns=["num_legs", "num_arms"])
@@ -10607,7 +10607,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             n = len(self) + n
         if n <= 0:
             return ks.DataFrame(self._internal.with_filter(F.lit(False)))
-        sdf = self._internal.spark_frame
+        # Should use `resolved_copy` here for the case like `(kdf + 1).tail()`
+        sdf = self._internal.resolved_copy.spark_frame
         rows = sdf.tail(n)
         new_sdf = default_session().createDataFrame(rows, sdf.schema)
 

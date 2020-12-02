@@ -1025,8 +1025,6 @@ class SparkFrameMethods(object):
         -------
         DataFrame
 
-        .. note:: Experimental
-
         Examples
         --------
         >>> kdf = ks.DataFrame({"a": ["a", "b", "c"]})
@@ -1064,8 +1062,6 @@ class SparkFrameMethods(object):
         Returns
         -------
         DataFrame
-
-        .. note:: Experimental
 
         Examples
         --------

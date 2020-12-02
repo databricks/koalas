@@ -39,9 +39,14 @@ VERSION = __version__  # noqa
 setup(
     name='koalas',
     version=VERSION,
-    packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing',
-              'databricks.koalas.spark', 'databricks.koalas.typedef',
-              'databricks.koalas.usage_logging'],
+    packages=[
+        'databricks',
+        'databricks.koalas',
+        'databricks.koalas.missing',
+        'databricks.koalas.plot',
+        'databricks.koalas.spark',
+        'databricks.koalas.typedef',
+        'databricks.koalas.usage_logging'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
         'mlflow': ['mlflow>=1.0'],
