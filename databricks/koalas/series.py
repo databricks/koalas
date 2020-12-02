@@ -4730,7 +4730,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         It can also be called using `self @ other` in Python >= 3.5.
 
-        .. note:: This API is slightly different from pandas when indexes from both
+        .. note:: This API is slightly different from pandas when indexes from both Series
             are not aligned. To match with pandas', it requires to read the whole data for,
             for example, counting. pandas raises an exception; however, Koalas just proceeds
             and performs by ignoring mismatches with NaN permissively.
@@ -4789,65 +4789,32 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
         """
         if isinstance(other, DataFrame):
-            if not same_anchor(self, other):
-                if not self.sort_index().index.equals(other.sort_index().index):
-                    raise ValueError("matrices are not aligned")
+            if not same_anchor(self, other) and not self.index.sort_values().equals(
+                other.index.sort_values()
+            ):
+                raise ValueError("matrices are not aligned")
 
-                combined = combine_frames(self.to_frame(), other)
-                this_data_spark_column_name = combined["this"]._internal.data_spark_column_names[0]
-                that_data_spark_column_names = combined["that"]._internal.data_spark_column_names
-            else:
-                self_column_label = verify_temp_column_name(other, "__self_column__")
-                combined = DataFrame(
-                    self._internal.with_new_columns(
-                        (
-                            [
-                                self._internal.data_spark_columns[0].alias(
-                                    name_like_string(self_column_label)
-                                )
-                            ]
-                            + other._internal.data_spark_columns
-                        ),
-                        column_labels=([self_column_label] + other._internal.column_labels),
-                    ).resolved_copy
-                )
-                this_data_spark_column_name = name_like_string(self_column_label)
-                that_data_spark_column_names = other._internal.data_spark_column_names
+            other = other.copy()
+            column_labels = other._internal.column_labels
 
-            sdf = combined._internal.spark_frame
+            self_column_label = verify_temp_column_name(other, "__self_column__")
+            other[self_column_label] = self
+            self_kser = other._kser_for(self_column_label)
 
-            sdf = sdf.select(
-                [
-                    (scol_for(sdf, this_data_spark_column_name) * scol_for(sdf, scol_name)).alias(
-                        scol_name
-                    )
-                    for scol_name in that_data_spark_column_names
-                ]
-            )
-            pdf = (
-                sdf.select(
-                    [
-                        F.sum(scol_for(sdf, scol_name)).alias(scol_name)
-                        for scol_name in that_data_spark_column_names
-                    ]
-                )
-                .toPandas()
-                .transpose()
-            )
+            product_ksers = [other._kser_for(label) * self_kser for label in column_labels]
 
-            pdf.index = other.columns
-            return cast(Union[Series, Scalar], ks.from_pandas(first_series(pdf)).rename(self.name))
+            dot_product_kser = DataFrame(
+                other._internal.with_new_columns(product_ksers, column_labels)
+            ).sum()
 
-        elif isinstance(other, Series):
+            return cast(Series, dot_product_kser).rename(self.name)
+
+        else:
+            assert isinstance(other, Series)
             if not same_anchor(self, other):
                 if len(self.index) != len(other.index):
                     raise ValueError("matrices are not aligned")
-            result = (self * other).sum()
-
-        else:
-            raise TypeError("Unsupported type {}".format(type(other).__name__))
-
-        return result
+            return (self * other).sum()
 
     def __matmul__(self, other):
         """
