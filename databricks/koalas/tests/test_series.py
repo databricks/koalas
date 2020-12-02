@@ -2123,6 +2123,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 pser.droplevel([("a", "1"), ("c", "3")]), kser.droplevel([("a", "1"), ("c", "3")])
             )
 
+    def test_dot(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq((kdf["b"] * 10).dot(kdf["a"]), (pdf["b"] * 10).dot(pdf["a"]))
+        self.assert_eq((kdf["b"] * 10).dot(kdf), (pdf["b"] * 10).dot(pdf))
+        self.assert_eq((kdf["b"] * 10).dot(kdf + 1), (pdf["b"] * 10).dot(pdf + 1))
+
     @unittest.skipIf(
         LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
         "tail won't work properly with PySpark<3.0",
