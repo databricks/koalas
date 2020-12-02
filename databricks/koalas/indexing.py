@@ -437,12 +437,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 return kser
 
         if remaining_index is not None:
-            index_scols = self._internal.index_spark_columns[-remaining_index:]
-            index_spark_column_names = self._internal.index_spark_column_names[-remaining_index:]
+            index_spark_columns = self._internal.index_spark_columns[-remaining_index:]
             index_names = self._internal.index_names[-remaining_index:]
         else:
-            index_scols = self._internal.index_spark_columns
-            index_spark_column_names = self._internal.index_spark_column_names
+            index_spark_columns = self._internal.index_spark_columns
             index_names = self._internal.index_names
 
         if len(column_labels) > 0:
@@ -470,8 +468,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             sdf = self._internal.spark_frame
 
             if cond is not None:
+                index_columns = sdf.select(index_spark_columns).columns
                 data_columns = sdf.select(data_spark_columns).columns
-                sdf = sdf.filter(cond).select(index_scols + data_spark_columns)
+                sdf = sdf.filter(cond).select(index_spark_columns + data_spark_columns)
+                index_spark_columns = [scol_for(sdf, col) for col in index_columns]
                 data_spark_columns = [scol_for(sdf, col) for col in data_columns]
 
             if limit is not None:
@@ -489,7 +489,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_spark_column_names=index_spark_column_names,
+            index_spark_columns=index_spark_columns,
             index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,
