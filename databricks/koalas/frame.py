@@ -10599,7 +10599,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             n = len(self) + n
         if n <= 0:
             return ks.DataFrame(self._internal.with_filter(F.lit(False)))
-        sdf = self._internal.spark_frame
+        # Should use `resolved_copy` here for the case like `(kdf + 1).tail()`
+        sdf = self._internal.resolved_copy.spark_frame
         rows = sdf.tail(n)
         new_sdf = default_session().createDataFrame(rows, sdf.schema)
 
