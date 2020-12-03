@@ -2608,3 +2608,125 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(
             ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("mammal")
         )
+
+    def test_tail(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 1, 1, 1, 2, 2, 2, 3, 3, 3] * 3,
+                "b": [2, 3, 1, 4, 6, 9, 8, 10, 7, 5] * 3,
+                "c": [3, 5, 2, 5, 1, 2, 6, 4, 3, 6] * 3,
+            },
+            index=np.random.rand(10 * 3),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.groupby("a").tail(2).sort_index(), kdf.groupby("a").tail(2).sort_index())
+        self.assert_eq(
+            pdf.groupby("a").tail(-2).sort_index(), kdf.groupby("a").tail(-2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a").tail(100000).sort_index(), kdf.groupby("a").tail(100000).sort_index()
+        )
+
+        self.assert_eq(
+            pdf.groupby("a")["b"].tail(2).sort_index(), kdf.groupby("a")["b"].tail(2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a")["b"].tail(-2).sort_index(), kdf.groupby("a")["b"].tail(-2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a")["b"].tail(100000).sort_index(),
+            kdf.groupby("a")["b"].tail(100000).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].tail(2).sort_index(),
+            kdf.groupby("a")[["b"]].tail(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].tail(-2).sort_index(),
+            kdf.groupby("a")[["b"]].tail(-2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby("a")[["b"]].tail(100000).sort_index(),
+            kdf.groupby("a")[["b"]].tail(100000).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.groupby(pdf.a // 2).tail(2).sort_index(),
+            kdf.groupby(kdf.a // 2).tail(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby(pdf.a // 2)["b"].tail(2).sort_index(),
+            kdf.groupby(kdf.a // 2)["b"].tail(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby(pdf.a // 2)[["b"]].tail(2).sort_index(),
+            kdf.groupby(kdf.a // 2)[["b"]].tail(2).sort_index(),
+        )
+
+        self.assert_eq(
+            pdf.b.rename().groupby(pdf.a).tail(2).sort_index(),
+            kdf.b.rename().groupby(kdf.a).tail(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.b.groupby(pdf.a.rename()).tail(2).sort_index(),
+            kdf.b.groupby(kdf.a.rename()).tail(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.b.rename().groupby(pdf.a.rename()).tail(2).sort_index(),
+            kdf.b.rename().groupby(kdf.a.rename()).tail(2).sort_index(),
+        )
+
+        # multi-index
+        midx = pd.MultiIndex(
+            [["x", "y"], ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]],
+            [[0, 0, 0, 0, 0, 1, 1, 1, 1, 1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+        )
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 1, 1, 1, 2, 2, 2, 3, 3, 3],
+                "b": [2, 3, 1, 4, 6, 9, 8, 10, 7, 5],
+                "c": [3, 5, 2, 5, 1, 2, 6, 4, 3, 6],
+            },
+            columns=["a", "b", "c"],
+            index=midx,
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.groupby("a").tail(2).sort_index(), kdf.groupby("a").tail(2).sort_index())
+        self.assert_eq(
+            pdf.groupby("a").tail(-2).sort_index(), kdf.groupby("a").tail(-2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a").tail(100000).sort_index(), kdf.groupby("a").tail(100000).sort_index()
+        )
+
+        self.assert_eq(
+            pdf.groupby("a")["b"].tail(2).sort_index(), kdf.groupby("a")["b"].tail(2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a")["b"].tail(-2).sort_index(), kdf.groupby("a")["b"].tail(-2).sort_index()
+        )
+        self.assert_eq(
+            pdf.groupby("a")["b"].tail(100000).sort_index(),
+            kdf.groupby("a")["b"].tail(100000).sort_index(),
+        )
+
+        # multi-index columns
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(
+            pdf.groupby(("x", "a")).tail(2).sort_index(),
+            kdf.groupby(("x", "a")).tail(2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby(("x", "a")).tail(-2).sort_index(),
+            kdf.groupby(("x", "a")).tail(-2).sort_index(),
+        )
+        self.assert_eq(
+            pdf.groupby(("x", "a")).tail(100000).sort_index(),
+            kdf.groupby(("x", "a")).tail(100000).sort_index(),
+        )

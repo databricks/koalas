@@ -67,6 +67,7 @@ Computations / Descriptive Stats
    GroupBy.head
    GroupBy.backfill
    GroupBy.shift
+   GroupBy.tail
 
 The following methods are available only for `DataFrameGroupBy` objects.
 
