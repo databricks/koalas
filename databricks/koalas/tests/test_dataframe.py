@@ -1439,6 +1439,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kdf.swaplevel("not_number", "color", axis=1))
         self.assertRaises(ValueError, lambda: kdf.swaplevel(axis=2))
 
+    def test_swapaxes(self):
+        pdf = pd.DataFrame(
+            [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=["x", "y", "z"], columns=["a", "b", "c"]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.swapaxes(0, 1), pdf.swapaxes(0, 1))
+        self.assert_eq(kdf.swapaxes(1, 0), pdf.swapaxes(1, 0))
+        self.assert_eq(kdf.swapaxes('index', 'columns'), pdf.swapaxes('index', 'columns'))
+        self.assert_eq(kdf.swapaxes('columns', 'index'), pdf.swapaxes('columns', 'index'))
+        self.assert_eq((kdf + 1).swapaxes(0, 1), (pdf + 1).swapaxes(0, 1))
+
+        self.assertRaises(AssertionError, lambda: kdf.swapaxes(0, 1, copy=False))
+        self.assertRaises(ValueError, lambda: kdf.swapaxes(0, -1))
+
     def test_nlargest(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, None, 7], "b": [7, 6, 5, 4, 3, 2, 1]}, index=np.random.rand(7)
