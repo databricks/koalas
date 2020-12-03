@@ -6448,6 +6448,53 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
+    def swapaxes(
+        self, i: Union[str, int] = 0, j: Union[str, int] = 1, copy: bool = True
+    ) -> "DataFrame":
+        """
+        Interchange axes and swap values axes appropriately.
+
+        Parameters
+        ----------
+        i: {0 or 'index', 1 or 'columns'}, default 0. The axis to swap.
+        j: {0 or 'index', 1 or 'columns'}, default 1. The axis to swap.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame(
+        ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=['x', 'y', 'z'], columns=['a', 'b', 'c']
+        ... )
+        >>> kdf
+           a  b  c
+        x  1  2  3
+        y  4  5  6
+        z  7  8  9
+        >>> kdf.swapaxes()
+           x  y  z
+        a  1  4  7
+        b  2  5  8
+        c  3  6  9
+        >>> kdf.swapaxes(i=1, j=0)
+           x  y  z
+        a  1  4  7
+        b  2  5  8
+        c  3  6  9
+        >>> kdf.swapaxes(i=1, j=1)
+           a  b  c
+        x  1  2  3
+        y  4  5  6
+        z  7  8  9
+        """
+        assert copy is True
+        i = validate_axis(i)
+        j = validate_axis(j)
+
+        return self if i == j else self.transpose()
+
     def _swaplevel_columns(self, i, j) -> InternalFrame:
         assert isinstance(self.columns, pd.MultiIndex)
         for index in (i, j):
