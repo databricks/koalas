@@ -16,7 +16,7 @@
 """
 Helpers and utilities to deal with PySpark instances
 """
-from pyspark.sql.types import StructType, MapType, ArrayType, StructField, DataType
+from pyspark.sql.types import DecimalType, StructType, MapType, ArrayType, StructField, DataType
 
 
 def as_nullable_spark_type(dt: DataType) -> DataType:
@@ -63,5 +63,61 @@ StructField(B,FloatType,true)))
             as_nullable_spark_type(dt.valueType),
             valueContainsNull=True,
         )
+    else:
+        return dt
+
+
+def force_decimal_precision_scale(dt: DataType, precision: int = 38, scale: int = 18) -> DataType:
+    """
+    Returns a data type with a fixed decimal type.
+
+    The precision and scale of the decimal type are fixed with the given values.
+
+    Examples
+    --------
+    >>> from pyspark.sql.types import *
+    >>> force_decimal_precision_scale(StructType([
+    ...     StructField("A", DecimalType(10, 0), True),
+    ...     StructField("B", DecimalType(14, 7), False)]))  # doctest: +NORMALIZE_WHITESPACE
+    StructType(List(StructField(A,DecimalType(38,18),true),StructField(B,DecimalType(38,18),false)))
+
+    >>> force_decimal_precision_scale(StructType([
+    ...     StructField("A",
+    ...         StructType([
+    ...             StructField('a',
+    ...                 MapType(DecimalType(5, 0),
+    ...                 ArrayType(DecimalType(20, 0), False), False), False),
+    ...             StructField('b', StringType(), True)])),
+    ...     StructField("B", DecimalType(30, 15), False)]),
+    ...     precision=30, scale=15)  # doctest: +NORMALIZE_WHITESPACE
+    StructType(List(StructField(A,StructType(List(StructField(a,MapType(DecimalType(30,15),\
+ArrayType(DecimalType(30,15),false),false),false),StructField(b,StringType,true))),true),\
+StructField(B,DecimalType(30,15),false)))
+    """
+    if isinstance(dt, StructType):
+        new_fields = []
+        for field in dt.fields:
+            new_fields.append(
+                StructField(
+                    field.name,
+                    force_decimal_precision_scale(field.dataType, precision, scale),
+                    nullable=field.nullable,
+                    metadata=field.metadata,
+                )
+            )
+        return StructType(new_fields)
+    elif isinstance(dt, ArrayType):
+        return ArrayType(
+            force_decimal_precision_scale(dt.elementType, precision, scale),
+            containsNull=dt.containsNull,
+        )
+    elif isinstance(dt, MapType):
+        return MapType(
+            force_decimal_precision_scale(dt.keyType, precision, scale),
+            force_decimal_precision_scale(dt.valueType, precision, scale),
+            valueContainsNull=dt.valueContainsNull,
+        )
+    elif isinstance(dt, DecimalType):
+        return DecimalType(precision=precision, scale=scale)
     else:
         return dt

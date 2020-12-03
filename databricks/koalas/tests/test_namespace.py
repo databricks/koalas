@@ -265,8 +265,17 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
         sdf = kdf.to_spark()
         self.assertEqual(_get_index_map(sdf), (None, None))
-        self.assertEqual(_get_index_map(sdf, "year"), (["year"], [("year",)]))
-        self.assertEqual(
-            _get_index_map(sdf, ["year", "month"]), (["year", "month"], [("year",), ("month",)])
-        )
+
+        def check(actual, expected):
+            actual_scols, actual_labels = actual
+            expected_column_names, expected_labels = expected
+            self.assertEqual(len(actual_scols), len(expected_column_names))
+            for actual_scol, expected_column_name in zip(actual_scols, expected_column_names):
+                expected_scol = sdf[expected_column_name]
+                self.assertTrue(actual_scol._jc.equals(expected_scol._jc))
+            self.assertEqual(actual_labels, expected_labels)
+
+        check(_get_index_map(sdf, "year"), (["year"], [("year",)]))
+        check(_get_index_map(sdf, ["year", "month"]), (["year", "month"], [("year",), ("month",)]))
+
         self.assertRaises(KeyError, lambda: _get_index_map(sdf, ["year", "hour"]))

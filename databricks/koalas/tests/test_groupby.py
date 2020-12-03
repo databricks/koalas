@@ -719,6 +719,10 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         # it is okay if string type column as a group key
         datas.append({"a": ["a", "a", "c"], "b": [4, 5, 6], "c": [7, 8, 9]})
 
+        percentiles = [0.25, 0.5, 0.75]
+        formatted_percentiles = ["25%", "50%", "75%"]
+        non_percentile_stats = ["count", "mean", "std", "min", "max"]
+
         for data in datas:
             pdf = pd.DataFrame(data)
             kdf = ks.from_pandas(pdf)
@@ -731,7 +735,6 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
 
             # 1. Check that non-percentile columns are equal.
             agg_cols = [col.name for col in kdf.groupby("a")._agg_columns]
-            formatted_percentiles = ["25%", "50%", "75%"]
             self.assert_eq(
                 describe_kdf.drop(list(product(agg_cols, formatted_percentiles))),
                 describe_pdf.drop(columns=formatted_percentiles, level=1),
@@ -739,11 +742,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             )
 
             # 2. Check that percentile columns are equal.
-            percentiles = [0.25, 0.5, 0.75]
             # The interpolation argument is yet to be implemented in Koalas.
             quantile_pdf = pdf.groupby("a").quantile(percentiles, interpolation="nearest")
             quantile_pdf = quantile_pdf.unstack(level=1).astype(float)
-            non_percentile_stats = ["count", "mean", "std", "min", "max"]
             self.assert_eq(
                 describe_kdf.drop(list(product(agg_cols, non_percentile_stats))),
                 quantile_pdf.rename(columns="{:.0%}".format, level=1),
@@ -757,8 +758,42 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf = pd.DataFrame(data)
             kdf = ks.from_pandas(pdf)
 
-            describe_pdf = pdf.groupby("a").describe().sort_index()
             self.assertRaises(NotImplementedError, lambda: kdf.groupby("a").describe().sort_index())
+
+        # multi-index columns
+        pdf = pd.DataFrame({("x", "a"): [1, 1, 3], ("x", "b"): [4, 5, 6], ("y", "c"): [7, 8, 9]})
+        kdf = ks.from_pandas(pdf)
+
+        describe_pdf = pdf.groupby(("x", "a")).describe().sort_index()
+        describe_kdf = kdf.groupby(("x", "a")).describe().sort_index()
+
+        # 1. Check that non-percentile columns are equal.
+        agg_column_labels = [col._column_label for col in kdf.groupby(("x", "a"))._agg_columns]
+        self.assert_eq(
+            describe_kdf.drop(
+                [
+                    tuple(list(label) + [s])
+                    for label, s in product(agg_column_labels, formatted_percentiles)
+                ]
+            ),
+            describe_pdf.drop(columns=formatted_percentiles, level=2),
+            check_exact=False,
+        )
+
+        # 2. Check that percentile columns are equal.
+        # The interpolation argument is yet to be implemented in Koalas.
+        quantile_pdf = pdf.groupby(("x", "a")).quantile(percentiles, interpolation="nearest")
+        quantile_pdf = quantile_pdf.unstack(level=1).astype(float)
+
+        self.assert_eq(
+            describe_kdf.drop(
+                [
+                    tuple(list(label) + [s])
+                    for label, s in product(agg_column_labels, non_percentile_stats)
+                ]
+            ),
+            quantile_pdf.rename(columns="{:.0%}".format, level=2),
+        )
 
     def test_aggregate_relabel_multiindex(self):
         pdf = pd.DataFrame({"A": [0, 1, 2, 3], "B": [5, 6, 7, 8], "group": ["a", "a", "b", "b"]})

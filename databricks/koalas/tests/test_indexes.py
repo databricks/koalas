@@ -199,6 +199,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(ValueError, expected_error_message):
             kidx.names = ["0", "1"]
 
+        expected_error_message = "Index.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Index([1, 2, 3], name=["0", "1"])
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.name = ["renamed"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kidx.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Index([(1, 2), (3, 4)], names=["a", ["b"]])
+
     def test_multi_index_names(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
         idx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
@@ -253,7 +263,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.rename(None), pidx.rename(None))
         self.assert_eq(kdf.index.names, pdf.index.names)
 
-        self.assertRaises(ValueError, lambda: kidx.rename(["x", "y"]))
+        self.assertRaises(TypeError, lambda: kidx.rename(["x", "y"]))
 
     def test_multi_index_rename(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
@@ -1531,6 +1541,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
 
+        # Not supported for MultiIndex
+        kmidx = ks.Index([("a", 1), ("b", 2)])
+        self.assertRaises(NotImplementedError, lambda: kmidx.hasnans())
+
     def test_intersection(self):
         pidx = pd.Index([1, 2, 3, 4], name="Koalas")
         kidx = ks.from_pandas(pidx)
@@ -1954,3 +1968,61 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         err_msg = "index 4 is out of bounds for axis 0 with size 3"
         with self.assertRaisesRegex(IndexError, err_msg):
             kmidx.insert(4, ("b", "y"))
+
+    def test_astype(self):
+        pidx = pd.Index([10, 20, 15, 30, 45], name="x")
+        kidx = ks.Index(pidx)
+
+        self.assert_eq(kidx.astype(int), pidx.astype(int))
+        self.assert_eq(kidx.astype(np.int), pidx.astype(np.int))
+        self.assert_eq(kidx.astype(np.int8), pidx.astype(np.int8))
+        self.assert_eq(kidx.astype(np.int16), pidx.astype(np.int16))
+        self.assert_eq(kidx.astype(np.int32), pidx.astype(np.int32))
+        self.assert_eq(kidx.astype(np.int64), pidx.astype(np.int64))
+        self.assert_eq(kidx.astype(np.byte), pidx.astype(np.byte))
+        self.assert_eq(kidx.astype("int"), pidx.astype("int"))
+        self.assert_eq(kidx.astype("int8"), pidx.astype("int8"))
+        self.assert_eq(kidx.astype("int16"), pidx.astype("int16"))
+        self.assert_eq(kidx.astype("int32"), pidx.astype("int32"))
+        self.assert_eq(kidx.astype("int64"), pidx.astype("int64"))
+        self.assert_eq(kidx.astype("b"), pidx.astype("b"))
+        self.assert_eq(kidx.astype("byte"), pidx.astype("byte"))
+        self.assert_eq(kidx.astype("i"), pidx.astype("i"))
+        self.assert_eq(kidx.astype("long"), pidx.astype("long"))
+        self.assert_eq(kidx.astype("short"), pidx.astype("short"))
+        self.assert_eq(kidx.astype(np.float), pidx.astype(np.float))
+        self.assert_eq(kidx.astype(np.float32), pidx.astype(np.float32))
+        self.assert_eq(kidx.astype(np.float64), pidx.astype(np.float64))
+        self.assert_eq(kidx.astype("float"), pidx.astype("float"))
+        self.assert_eq(kidx.astype("float32"), pidx.astype("float32"))
+        self.assert_eq(kidx.astype("float64"), pidx.astype("float64"))
+        self.assert_eq(kidx.astype("double"), pidx.astype("double"))
+        self.assert_eq(kidx.astype("f"), pidx.astype("f"))
+        self.assert_eq(kidx.astype(bool), pidx.astype(bool))
+        self.assert_eq(kidx.astype("bool"), pidx.astype("bool"))
+        self.assert_eq(kidx.astype("?"), pidx.astype("?"))
+        self.assert_eq(kidx.astype(np.unicode_), pidx.astype(np.unicode_))
+        self.assert_eq(kidx.astype("str"), pidx.astype("str"))
+        self.assert_eq(kidx.astype("U"), pidx.astype("U"))
+
+        pidx = pd.Index([10, 20, 15, 30, 45, None], name="x")
+        kidx = ks.Index(pidx)
+
+        pidx = pd.Index(["hi", "hi ", " ", " \t", "", None], name="x")
+        kidx = ks.Index(pidx)
+
+        self.assert_eq(kidx.astype(bool), pidx.astype(bool))
+        self.assert_eq(kidx.astype(str).to_numpy(), ["hi", "hi ", " ", " \t", "", "None"])
+
+        pidx = pd.Index([True, False, None], name="x")
+        kidx = ks.Index(pidx)
+
+        self.assert_eq(kidx.astype(bool), pidx.astype(bool))
+
+        pidx = pd.Index(["2020-10-27"], name="x")
+        kidx = ks.Index(pidx)
+
+        self.assert_eq(kidx.astype("datetime64[ns]"), pidx.astype("datetime64[ns]"))
+
+        with self.assertRaisesRegex(TypeError, "not understood"):
+            kidx.astype("int63")

@@ -29,13 +29,14 @@ import numpy as np  # noqa: F401
 import pandas as pd
 from pandas.api.types import is_list_like
 
+import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import DataType, DoubleType, FloatType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
-from databricks.koalas.internal import InternalFrame, NATURAL_ORDER_COLUMN_NAME
+from databricks.koalas.internal import InternalFrame
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.typedef import Scalar
 from databricks.koalas.utils import (
@@ -48,9 +49,10 @@ from databricks.koalas.utils import (
 )
 from databricks.koalas.window import Rolling, Expanding
 
-
 if TYPE_CHECKING:
+    from databricks.koalas.frame import DataFrame
     from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
+    from databricks.koalas.series import Series
 
 
 class Frame(object, metaclass=ABCMeta):
@@ -102,7 +104,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     # TODO: add 'axis' parameter
-    def cummin(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cummin(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative minimum over a DataFrame or Series axis.
 
@@ -164,7 +166,7 @@ class Frame(object, metaclass=ABCMeta):
         )  # type: ignore
 
     # TODO: add 'axis' parameter
-    def cummax(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cummax(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative maximum over a DataFrame or Series axis.
 
@@ -227,7 +229,7 @@ class Frame(object, metaclass=ABCMeta):
         )  # type: ignore
 
     # TODO: add 'axis' parameter
-    def cumsum(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cumsum(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative sum over a DataFrame or Series axis.
 
@@ -292,7 +294,7 @@ class Frame(object, metaclass=ABCMeta):
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
     #  other window except unbounded ones is supported as of Spark 3.0.
-    def cumprod(self, skipna: bool = True) -> Union["ks.Series", "ks.DataFrame"]:
+    def cumprod(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
         """
         Return cumulative product over a DataFrame or Series axis.
 
@@ -827,7 +829,6 @@ class Frame(object, metaclass=ABCMeta):
         if partition_cols is not None:
             builder.partitionBy(partition_cols)
         builder._set_opts(
-            path=path,
             sep=sep,
             nullValue=na_rep,
             header=header,
@@ -1087,7 +1088,7 @@ class Frame(object, metaclass=ABCMeta):
             kdf._to_internal_pandas(), self.to_excel, f, args
         )
 
-    def mean(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def mean(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return the mean of the values.
 
@@ -1132,7 +1133,7 @@ class Frame(object, metaclass=ABCMeta):
             F.mean, name="mean", numeric_only=numeric_only, axis=axis
         )
 
-    def sum(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def sum(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
 
@@ -1177,7 +1178,7 @@ class Frame(object, metaclass=ABCMeta):
             F.sum, name="sum", numeric_only=numeric_only, axis=axis
         )
 
-    def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased skew normalized by N-1.
 
@@ -1215,7 +1216,7 @@ class Frame(object, metaclass=ABCMeta):
             F.skewness, name="skew", numeric_only=numeric_only, axis=axis
         )
 
-    def kurtosis(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def kurtosis(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
@@ -1256,7 +1257,7 @@ class Frame(object, metaclass=ABCMeta):
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=None) -> Union[Scalar, "ks.Series"]:
+    def min(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
         """
         Return the minimum of the values.
 
@@ -1302,7 +1303,7 @@ class Frame(object, metaclass=ABCMeta):
             F.min, name="min", numeric_only=numeric_only, axis=axis
         )
 
-    def max(self, axis=None, numeric_only=None) -> Union[Scalar, "ks.Series"]:
+    def max(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
         """
         Return the maximum of the values.
 
@@ -1348,7 +1349,7 @@ class Frame(object, metaclass=ABCMeta):
             F.max, name="max", numeric_only=numeric_only, axis=axis
         )
 
-    def std(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def std(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
 
@@ -1393,7 +1394,7 @@ class Frame(object, metaclass=ABCMeta):
             F.stddev, name="std", numeric_only=numeric_only, axis=axis
         )
 
-    def var(self, axis=None, numeric_only=True) -> Union[Scalar, "ks.Series"]:
+    def var(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
 
@@ -1466,7 +1467,7 @@ class Frame(object, metaclass=ABCMeta):
         else:
             return len(self) * num_columns  # type: ignore
 
-    def abs(self) -> Union["ks.DataFrame", "ks.Series"]:
+    def abs(self) -> Union["DataFrame", "Series"]:
         """
         Return a Series/DataFrame with absolute numeric value of each element.
 
@@ -1687,13 +1688,13 @@ class Frame(object, metaclass=ABCMeta):
             raise TypeError("bool() expects DataFrame or Series; however, " "got [%s]" % (self,))
         return df.head(2)._to_internal_pandas().bool()
 
-    def first_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
+    def first_valid_index(self) -> Optional[Union[Scalar, Tuple[Scalar, ...]]]:
         """
         Retrieves the index of the first valid value.
 
         Returns
         -------
-        idx_first_valid : type of index
+        scalar, tuple, or None
 
         Examples
         --------
@@ -1764,31 +1765,35 @@ class Frame(object, metaclass=ABCMeta):
         >>> s.first_valid_index()
         ('cow', 'weight')
         """
-        sdf = self._internal.spark_frame
         data_spark_columns = self._internal.data_spark_columns
+
+        if len(data_spark_columns) == 0:
+            return None
+
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
-        first_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).first()
+        first_valid_row = (
+            self._internal.spark_frame.filter(cond)
+            .select(self._internal.index_spark_columns)
+            .first()
+        )
+
         # For Empty Series or DataFrame, returns None.
         if first_valid_row is None:
             return None
 
-        first_valid_idx = tuple(
-            first_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
-        )
+        if len(first_valid_row) == 1:
+            return first_valid_row[0]
+        else:
+            return tuple(first_valid_row)
 
-        if len(first_valid_idx) == 1:
-            first_valid_idx = first_valid_idx[0]
-
-        return first_valid_idx
-
-    def last_valid_index(self) -> Union[Any, Tuple[Any, ...]]:
+    def last_valid_index(self) -> Optional[Union[Scalar, Tuple[Scalar, ...]]]:
         """
         Return index for last non-NA/null value.
 
         Returns
         -------
-        scalar : type of index
+        scalar, tuple, or None
 
         Notes
         -----
@@ -1863,27 +1868,34 @@ class Frame(object, metaclass=ABCMeta):
         >>> s.last_valid_index()  # doctest: +SKIP
         ('cow', 'weight')
         """
-        sdf = self._internal.spark_frame
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+            raise RuntimeError("last_valid_index can be used in PySpark >= 3.0")
+
         data_spark_columns = self._internal.data_spark_columns
+
+        if len(data_spark_columns) == 0:
+            return None
+
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
-        last_valid_row = sdf.drop(NATURAL_ORDER_COLUMN_NAME).filter(cond).tail(1)
-        # For Empty Series or DataFrame, returns None.
-        if len(last_valid_row) == 0:
-            return None
-        else:
-            last_valid_row = last_valid_row[0]
-
-        last_valid_idx = tuple(
-            last_valid_row[idx_col] for idx_col in self._internal.index_spark_column_names
+        last_valid_rows = (
+            self._internal.spark_frame.filter(cond)
+            .select(self._internal.index_spark_columns)
+            .tail(1)
         )
 
-        if len(last_valid_idx) == 1:
-            last_valid_idx = last_valid_idx[0]
+        # For Empty Series or DataFrame, returns None.
+        if len(last_valid_rows) == 0:
+            return None
 
-        return last_valid_idx
+        last_valid_row = last_valid_rows[0]
 
-    def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "ks.Series"]:
+        if len(last_valid_row) == 1:
+            return last_valid_row[0]
+        else:
+            return tuple(last_valid_row)
+
+    def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "Series"]:
         """
         Return the median of the values for the requested axis.
 
@@ -2079,7 +2091,7 @@ class Frame(object, metaclass=ABCMeta):
         except (KeyError, ValueError, IndexError):
             return default
 
-    def squeeze(self, axis=None) -> Union[Scalar, "ks.DataFrame", "ks.Series"]:
+    def squeeze(self, axis=None) -> Union[Scalar, "DataFrame", "Series"]:
         """
         Squeeze 1 dimensional axis objects into scalars.
 
@@ -2213,7 +2225,7 @@ class Frame(object, metaclass=ABCMeta):
 
     def truncate(
         self, before=None, after=None, axis=None, copy=True
-    ) -> Union["ks.DataFrame", "ks.Series"]:
+    ) -> Union["DataFrame", "Series"]:
         """
         Truncate a Series or DataFrame before and after some index value.
 
@@ -2413,7 +2425,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     # TODO: add 'downcast' when value parameter exists
-    def bfill(self, axis=None, inplace=False, limit=None) -> Union["ks.DataFrame", "ks.Series"]:
+    def bfill(self, axis=None, inplace=False, limit=None) -> Union["DataFrame", "Series"]:
         """
         Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`bfill```.
 
@@ -2487,7 +2499,7 @@ class Frame(object, metaclass=ABCMeta):
     backfill = bfill
 
     # TODO: add 'downcast' when value parameter exists
-    def ffill(self, axis=None, inplace=False, limit=None) -> Union["ks.DataFrame", "ks.Series"]:
+    def ffill(self, axis=None, inplace=False, limit=None) -> Union["DataFrame", "Series"]:
         """
         Synonym for `DataFrame.fillna()` or `Series.fillna()` with ``method=`ffill```.
 

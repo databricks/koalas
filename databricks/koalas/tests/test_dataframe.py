@@ -1369,6 +1369,76 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+    def test_swaplevel(self):
+        # MultiIndex with two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
+        pdf = pd.DataFrame({"x1": ["a", "b", "c", "d"], "x2": ["a", "b", "c", "d"]}, index=pidx)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.swaplevel(), kdf.swaplevel())
+        self.assert_eq(pdf.swaplevel(0, 1), kdf.swaplevel(0, 1))
+        self.assert_eq(pdf.swaplevel(1, 1), kdf.swaplevel(1, 1))
+        self.assert_eq(pdf.swaplevel("number", "color"), kdf.swaplevel("number", "color"))
+
+        # MultiIndex with more than two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"], ["l", "m", "s", "xs"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color", "size"))
+        pdf = pd.DataFrame({"x1": ["a", "b", "c", "d"], "x2": ["a", "b", "c", "d"]}, index=pidx)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.swaplevel(), kdf.swaplevel())
+        self.assert_eq(pdf.swaplevel(0, 1), kdf.swaplevel(0, 1))
+        self.assert_eq(pdf.swaplevel(0, 2), kdf.swaplevel(0, 2))
+        self.assert_eq(pdf.swaplevel(1, 2), kdf.swaplevel(1, 2))
+        self.assert_eq(pdf.swaplevel(1, 1), kdf.swaplevel(1, 1))
+        self.assert_eq(pdf.swaplevel(-1, -2), kdf.swaplevel(-1, -2))
+        self.assert_eq(pdf.swaplevel("number", "color"), kdf.swaplevel("number", "color"))
+        self.assert_eq(pdf.swaplevel("number", "size"), kdf.swaplevel("number", "size"))
+        self.assert_eq(pdf.swaplevel("color", "size"), kdf.swaplevel("color", "size"))
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis="index"),
+            kdf.swaplevel("color", "size", axis="index"),
+        )
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis=0), kdf.swaplevel("color", "size", axis=0)
+        )
+
+        pdf = pd.DataFrame(
+            {
+                "x1": ["a", "b", "c", "d"],
+                "x2": ["a", "b", "c", "d"],
+                "x3": ["a", "b", "c", "d"],
+                "x4": ["a", "b", "c", "d"],
+            }
+        )
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color", "size"))
+        pdf.columns = pidx
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.swaplevel(axis=1), kdf.swaplevel(axis=1))
+        self.assert_eq(pdf.swaplevel(0, 1, axis=1), kdf.swaplevel(0, 1, axis=1))
+        self.assert_eq(pdf.swaplevel(0, 2, axis=1), kdf.swaplevel(0, 2, axis=1))
+        self.assert_eq(pdf.swaplevel(1, 2, axis=1), kdf.swaplevel(1, 2, axis=1))
+        self.assert_eq(pdf.swaplevel(1, 1, axis=1), kdf.swaplevel(1, 1, axis=1))
+        self.assert_eq(pdf.swaplevel(-1, -2, axis=1), kdf.swaplevel(-1, -2, axis=1))
+        self.assert_eq(
+            pdf.swaplevel("number", "color", axis=1), kdf.swaplevel("number", "color", axis=1)
+        )
+        self.assert_eq(
+            pdf.swaplevel("number", "size", axis=1), kdf.swaplevel("number", "size", axis=1)
+        )
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis=1), kdf.swaplevel("color", "size", axis=1)
+        )
+        self.assert_eq(
+            pdf.swaplevel("color", "size", axis="columns"),
+            kdf.swaplevel("color", "size", axis="columns"),
+        )
+
+        # Error conditions
+        self.assertRaises(AssertionError, lambda: ks.DataFrame([1, 2]).swaplevel())
+        self.assertRaises(IndexError, lambda: kdf.swaplevel(0, 9, axis=1))
+        self.assertRaises(KeyError, lambda: kdf.swaplevel("not_number", "color", axis=1))
+        self.assertRaises(ValueError, lambda: kdf.swaplevel(axis=2))
+
     def test_nlargest(self):
         pdf = pd.DataFrame(
             {"a": [1, 2, 3, 4, 5, None, 7], "b": [7, 6, 5, 4, 3, 2, 1]}, index=np.random.rand(7)
@@ -4710,30 +4780,52 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.tail(0), kdf.tail(0))
         self.assert_eq(pdf.tail(-1001), kdf.tail(-1001))
         self.assert_eq(pdf.tail(1001), kdf.tail(1001))
+        self.assert_eq((pdf + 1).tail(), (kdf + 1).tail())
+        self.assert_eq((pdf + 1).tail(10), (kdf + 1).tail(10))
+        self.assert_eq((pdf + 1).tail(-990), (kdf + 1).tail(-990))
+        self.assert_eq((pdf + 1).tail(0), (kdf + 1).tail(0))
+        self.assert_eq((pdf + 1).tail(-1001), (kdf + 1).tail(-1001))
+        self.assert_eq((pdf + 1).tail(1001), (kdf + 1).tail(1001))
         with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
             kdf.tail("10")
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "last_valid_index won't work properly with PySpark<3.0",
+    )
     def test_last_valid_index(self):
-        # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pdf = pd.DataFrame(
-                {"a": [1, 2, 3, None], "b": [1.0, 2.0, 3.0, None], "c": [100, 200, 400, None]},
-                index=["Q", "W", "E", "R"],
-            )
-            kdf = ks.from_pandas(pdf)
-            self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, None], "b": [1.0, 2.0, 3.0, None], "c": [100, 200, 400, None]},
+            index=["Q", "W", "E", "R"],
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
+        self.assert_eq(pdf[[]].last_valid_index(), kdf[[]].last_valid_index())
 
-            # MultiIndex columns
-            pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
-            kdf = ks.from_pandas(pdf)
-            self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
+        # MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
-            # Empty DataFrame
-            pdf = pd.Series([]).to_frame()
-            kdf = ks.Series([]).to_frame()
-            self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
+        # Empty DataFrame
+        pdf = pd.Series([]).to_frame()
+        kdf = ks.Series([]).to_frame()
+        self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
     def test_first_valid_index(self):
+        pdf = pd.DataFrame(
+            {"a": [None, 2, 3, 2], "b": [None, 2.0, 3.0, 1.0], "c": [None, 200, 400, 200]},
+            index=["Q", "W", "E", "R"],
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
+        self.assert_eq(pdf[[]].first_valid_index(), kdf[[]].first_valid_index())
+
+        # MultiIndex columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
+
         # Empty DataFrame
         pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()

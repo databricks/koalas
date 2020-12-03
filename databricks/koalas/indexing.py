@@ -29,7 +29,7 @@ from pyspark.sql.types import BooleanType, LongType
 from pyspark.sql.utils import AnalysisException
 import numpy as np
 
-from databricks import koalas as ks
+from databricks import koalas as ks  # noqa: F401
 from databricks.koalas.internal import (
     InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
@@ -48,6 +48,7 @@ from databricks.koalas.utils import (
 )
 
 if TYPE_CHECKING:
+    from databricks.koalas.frame import DataFrame
     from databricks.koalas.series import Series
 
 
@@ -124,7 +125,7 @@ class AtIndexer(IndexerLike):
     array([ 4, 20])
     """
 
-    def __getitem__(self, key) -> Union["ks.Series", "ks.DataFrame", Scalar]:
+    def __getitem__(self, key) -> Union["Series", "DataFrame", Scalar]:
         if self._is_df:
             if not isinstance(key, tuple) or len(key) != 2:
                 raise TypeError("Use DataFrame.at like .at[row_index, column_name]")
@@ -211,7 +212,7 @@ class iAtIndexer(IndexerLike):
     2
     """
 
-    def __getitem__(self, key) -> Union["ks.Series", "ks.DataFrame", Scalar]:
+    def __getitem__(self, key) -> Union["Series", "DataFrame", Scalar]:
         if self._is_df:
             if not isinstance(key, tuple) or len(key) != 2:
                 raise TypeError(
@@ -386,7 +387,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
         """ Select columns by other type key. """
         pass
 
-    def __getitem__(self, key) -> Union["ks.Series", "ks.DataFrame"]:
+    def __getitem__(self, key) -> Union["Series", "DataFrame"]:
         from databricks.koalas.frame import DataFrame
         from databricks.koalas.series import Series, first_series
 
@@ -436,12 +437,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 return kser
 
         if remaining_index is not None:
-            index_scols = self._internal.index_spark_columns[-remaining_index:]
-            index_spark_column_names = self._internal.index_spark_column_names[-remaining_index:]
+            index_spark_columns = self._internal.index_spark_columns[-remaining_index:]
             index_names = self._internal.index_names[-remaining_index:]
         else:
-            index_scols = self._internal.index_spark_columns
-            index_spark_column_names = self._internal.index_spark_column_names
+            index_spark_columns = self._internal.index_spark_columns
             index_names = self._internal.index_names
 
         if len(column_labels) > 0:
@@ -469,8 +468,10 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
             sdf = self._internal.spark_frame
 
             if cond is not None:
+                index_columns = sdf.select(index_spark_columns).columns
                 data_columns = sdf.select(data_spark_columns).columns
-                sdf = sdf.filter(cond).select(index_scols + data_spark_columns)
+                sdf = sdf.filter(cond).select(index_spark_columns + data_spark_columns)
+                index_spark_columns = [scol_for(sdf, col) for col in index_columns]
                 data_spark_columns = [scol_for(sdf, col) for col in data_columns]
 
             if limit is not None:
@@ -488,7 +489,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
         internal = InternalFrame(
             spark_frame=sdf,
-            index_spark_column_names=index_spark_column_names,
+            index_spark_columns=index_spark_columns,
             index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,

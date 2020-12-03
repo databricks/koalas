@@ -135,6 +135,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kidx.name, "renamed")
         self.assert_eq(kidx, pidx)
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.name = ["renamed"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Series([1, 2, 3], name=["0", "1"])
+
     def test_rename_method(self):
         # Series name
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -150,6 +158,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.rename("z", inplace=True)
         self.assertEqual(kser.name, "z")
         self.assert_eq(kser, pser)
+
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.rename(["0", "1"])
 
         # Series index
         # pser = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
@@ -1812,6 +1824,38 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
 
+    def test_swaplevel(self):
+        # MultiIndex with two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
+        pser = pd.Series(["a", "b", "c", "d"], index=pidx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.swaplevel(), kser.swaplevel())
+        self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
+        self.assert_eq(pser.swaplevel(1, 1), kser.swaplevel(1, 1))
+        self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
+
+        # MultiIndex with more than two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"], ["l", "m", "s", "xs"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color", "size"))
+        pser = pd.Series(["a", "b", "c", "d"], index=pidx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.swaplevel(), kser.swaplevel())
+        self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
+        self.assert_eq(pser.swaplevel(0, 2), kser.swaplevel(0, 2))
+        self.assert_eq(pser.swaplevel(1, 2), kser.swaplevel(1, 2))
+        self.assert_eq(pser.swaplevel(1, 1), kser.swaplevel(1, 1))
+        self.assert_eq(pser.swaplevel(-1, -2), kser.swaplevel(-1, -2))
+        self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
+        self.assert_eq(pser.swaplevel("number", "size"), kser.swaplevel("number", "size"))
+        self.assert_eq(pser.swaplevel("color", "size"), kser.swaplevel("color", "size"))
+
+        # Error conditions
+        self.assertRaises(AssertionError, lambda: ks.Series([1, 2]).swaplevel())
+        self.assertRaises(IndexError, lambda: kser.swaplevel(0, 9))
+        self.assertRaises(KeyError, lambda: kser.swaplevel("not_number", "color"))
+        self.assertRaises(AssertionError, lambda: kser.swaplevel(copy=False))
+
     def test_div_zero_and_nan(self):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
         kser = ks.from_pandas(pser)
@@ -2093,6 +2137,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.tail(0), kser.tail(0))
         self.assert_eq(pser.tail(1001), kser.tail(1001))
         self.assert_eq(pser.tail(-1001), kser.tail(-1001))
+        self.assert_eq((pser + 1).tail(), (kser + 1).tail())
+        self.assert_eq((pser + 1).tail(10), (kser + 1).tail(10))
+        self.assert_eq((pser + 1).tail(-990), (kser + 1).tail(-990))
+        self.assert_eq((pser + 1).tail(0), (kser + 1).tail(0))
+        self.assert_eq((pser + 1).tail(1001), (kser + 1).tail(1001))
+        self.assert_eq((pser + 1).tail(-1001), (kser + 1).tail(-1001))
         with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
             kser.tail("10")
 
@@ -2176,26 +2226,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "last_valid_index won't work properly with PySpark<3.0",
+    )
     def test_last_valid_index(self):
-        # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
-            # MultiIndex columns
-            midx = pd.MultiIndex(
-                [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
-                [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
-            )
-            pser.index = midx
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        # MultiIndex columns
+        midx = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        pser.index = midx
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
-            # Empty Series
-            pser = pd.Series([])
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        # Empty Series
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
     def test_first_valid_index(self):
         # Empty Series

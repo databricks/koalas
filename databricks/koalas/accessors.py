@@ -33,7 +33,7 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_SERIES_NAME,
 )
 from databricks.koalas.typedef import infer_return_type, DataFrameType, SeriesType
-from databricks.koalas.spark.utils import as_nullable_spark_type
+from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.utils import (
     is_name_like_value,
     is_name_like_tuple,
@@ -45,7 +45,6 @@ from databricks.koalas.utils import (
 if TYPE_CHECKING:
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.series import Series
-    from databricks import koalas as ks
 
 
 class KoalasFrameMethods(object):
@@ -172,8 +171,8 @@ class KoalasFrameMethods(object):
         return DataFrame(
             InternalFrame(
                 spark_frame=sdf,
-                index_spark_column_names=[
-                    SPARK_INDEX_NAME_FORMAT(i) for i in range(internal.index_level)
+                index_spark_columns=[
+                    scol_for(sdf, SPARK_INDEX_NAME_FORMAT(i)) for i in range(internal.index_level)
                 ],
                 index_names=internal.index_names,
                 column_labels=internal.column_labels + [column],
@@ -347,7 +346,9 @@ class KoalasFrameMethods(object):
             if len(pdf) <= limit:
                 return kdf
 
-            return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+            return_schema = force_decimal_precision_scale(
+                as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+            )
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
                     self_applied, func, return_schema, retain_index=True
@@ -385,7 +386,7 @@ class KoalasFrameMethods(object):
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_spark_column_names=None)
+            internal = InternalFrame(spark_frame=sdf, index_spark_columns=None)
 
         return DataFrame(internal)
 
@@ -574,7 +575,9 @@ class KoalasFrameMethods(object):
                 kser = kdf_or_kser
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
-                    returnType=as_nullable_spark_type(kser.spark.data_type),
+                    returnType=force_decimal_precision_scale(
+                        as_nullable_spark_type(kser.spark.data_type)
+                    ),
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -597,7 +600,9 @@ class KoalasFrameMethods(object):
                     return cast(ks.DataFrame, kdf)
 
                 # Force nullability.
-                return_schema = as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+                return_schema = force_decimal_precision_scale(
+                    as_nullable_spark_type(kdf._internal.to_internal_spark_frame.schema)
+                )
 
                 self_applied = DataFrame(self._kdf._internal.resolved_copy)  # type: DataFrame
 
@@ -692,7 +697,7 @@ class KoalasSeriesMethods(object):
     def __init__(self, series: "Series"):
         self._kser = series
 
-    def transform_batch(self, func, *args, **kwargs) -> "ks.Series":
+    def transform_batch(self, func, *args, **kwargs) -> "Series":
         """
         Transform the data with the function that takes pandas Series and outputs pandas Series.
         The pandas Series given to the function is of a batch used internally.
@@ -835,7 +840,9 @@ class KoalasSeriesMethods(object):
             pser = self._kser.head(limit)._to_internal_pandas()
             transformed = pser.transform(func)
             kser = Series(transformed)
-            spark_return_type = as_nullable_spark_type(kser.spark.data_type)
+            spark_return_type = force_decimal_precision_scale(
+                as_nullable_spark_type(kser.spark.data_type)
+            )
         else:
             spark_return_type = return_schema
 
