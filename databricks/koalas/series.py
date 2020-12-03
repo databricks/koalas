@@ -4789,10 +4789,15 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: int64
         """
         if isinstance(other, DataFrame):
-            if not same_anchor(self, other) and not self.index.sort_values().equals(
-                other.index.sort_values()
-            ):
-                raise ValueError("matrices are not aligned")
+            if not same_anchor(self, other):
+                if ks.get_option("compute.ops_on_diff_frames") is False:
+                    raise ValueError(
+                        "Cannot calculate the dot product because the series and the dataframe "
+                        "come from different dataframes. In order to allow this operation, "
+                        "enable 'compute.ops_on_diff_frames' option."
+                    )
+                if not self.index.sort_values().equals(other.index.sort_values()):
+                    raise ValueError("matrices are not aligned")
 
             other = other.copy()
             column_labels = other._internal.column_labels
