@@ -1903,16 +1903,16 @@ class GroupBy(object, metaclass=ABCMeta):
         >>> df.groupby('a').tail(2).sort_index()
            a  b  c
         1  1  4  5
-        4  1  1  2
         4  2  9  2
+        4  1  1  2
         5  3  7  3
         6  3  5  6
         9  2  8  6
 
         >>> df.groupby('a')['b'].tail(2).sort_index()
         1    4
-        4    1
         4    9
+        4    1
         5    7
         6    5
         9    8
