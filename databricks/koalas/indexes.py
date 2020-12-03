@@ -2297,11 +2297,7 @@ class Index(IndexOpsMixin):
         >>> midx.to_list()
         [(1, 'red'), (1, 'blue'), (2, 'red'), (2, 'green')]
         """
-        # pandas<0.24 doesn't support `to_list()` as an alias for `tolist()`
-        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
-            return self.to_pandas().tolist()
-        else:
-            return self.to_pandas().to_list()
+        return self.to_pandas().tolist()
 
     tolist = to_list
 
