@@ -1014,10 +1014,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual((pser + 1).is_unique, (kser + 1).is_unique)
 
     def test_to_list(self):
-        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            self.assert_eq(self.kser.to_list(), self.pser.to_list())
-        else:
-            self.assert_eq(self.kser.tolist(), self.pser.tolist())
+        self.assert_eq(self.kser.tolist(), self.pser.tolist())
 
     def test_append(self):
         pser1 = pd.Series([1, 2, 3], name="0")
