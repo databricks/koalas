@@ -2271,6 +2271,36 @@ class Index(IndexOpsMixin):
         """
         return self.copy()
 
+    def to_list(self) -> List:
+        """
+        Return a list of the values.
+
+        These are each a scalar type, which is a Python scalar
+        (for str, int, float) or a pandas scalar
+        (for Timestamp/Timedelta/Interval/Period)
+
+        .. note:: This method should only be used if the resulting list is expected
+            to be small, as all the data is loaded into the driver's memory.
+
+        Examples
+        --------
+        Index
+
+        >>> idx = ks.Index([1, 2, 3, 4, 5])
+        >>> idx.to_list()
+        [1, 2, 3, 4, 5]
+
+        MultiIndex
+
+        >>> tuples = [(1, 'red'), (1, 'blue'), (2, 'red'), (2, 'green')]
+        >>> midx = ks.MultiIndex.from_tuples(tuples)
+        >>> midx.to_list()
+        [(1, 'red'), (1, 'blue'), (2, 'red'), (2, 'green')]
+        """
+        return self._internal.to_pandas_frame.index.to_list()
+
+    tolist = to_list
+
     @property
     def inferred_type(self) -> str:
         """
