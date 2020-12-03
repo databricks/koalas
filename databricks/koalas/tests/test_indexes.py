@@ -2013,22 +2013,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pmidx = pd.MultiIndex.from_tuples(tuples)
         kmidx = ks.from_pandas(pmidx)
 
-        # Only support as `to_list` in pandas < 0.24.0.
-        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            self.assert_eq(kidx.to_list(), pidx.to_list())
+        self.assert_eq(kidx.tolist(), pidx.tolist())
 
-            if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-                # PySpark < 2.4 does not support struct type with arrow enabled.
-                with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-                    self.assert_eq(kmidx.to_list(), pmidx.to_list())
-            else:
-                self.assert_eq(kidx.to_list(), pidx.to_list())
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            # PySpark < 2.4 does not support struct type with arrow enabled.
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kmidx.tolist(), pmidx.tolist())
         else:
             self.assert_eq(kidx.tolist(), pidx.tolist())
-
-            if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-                # PySpark < 2.4 does not support struct type with arrow enabled.
-                with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-                    self.assert_eq(kmidx.tolist(), pmidx.tolist())
-            else:
-                self.assert_eq(kidx.tolist(), pidx.tolist())
