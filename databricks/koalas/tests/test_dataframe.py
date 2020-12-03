@@ -279,6 +279,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "Item must have length equal to number of levels."):
             kdf.reset_index(col_level=1)
 
+    def test_index_to_frame_reset_index(self):
+        def check(kdf, pdf):
+            self.assert_eq(kdf.reset_index(), pdf.reset_index())
+            self.assert_eq(kdf.reset_index(drop=True), pdf.reset_index(drop=True))
+
+            pdf.reset_index(drop=True, inplace=True)
+            kdf.reset_index(drop=True, inplace=True)
+            self.assert_eq(kdf, pdf)
+
+        pdf, kdf = self.df_pair
+        check(kdf.index.to_frame(), pdf.index.to_frame())
+        check(kdf.index.to_frame(index=False), pdf.index.to_frame(index=False))
+        check(kdf.index.to_frame(name="a"), pdf.index.to_frame(name="a"))
+        check(
+            kdf.index.to_frame(index=False, name="a"), pdf.index.to_frame(index=False, name="a")
+        )
+        check(kdf.index.to_frame(name=("x", "a")), pdf.index.to_frame(name=("x", "a")))
+        check(
+            kdf.index.to_frame(index=False, name=("x", "a")),
+            pdf.index.to_frame(index=False, name=("x", "a")),
+        )
+
     def test_multiindex_column_access(self):
         columns = pd.MultiIndex.from_tuples(
             [
