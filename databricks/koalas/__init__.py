@@ -70,14 +70,27 @@ elif "ARROW_PRE_0_15_IPC_FORMAT" in os.environ:
         "when you use pyarrow>=0.15 and pyspark<3.0."
     )
 
+if (
+    LooseVersion(pyarrow.__version__) >= LooseVersion("2.0.0")
+    and "PYARROW_IGNORE_TIMEZONE" not in os.environ
+):
+    import logging
+
+    logging.warning(
+        "'PYARROW_IGNORE_TIMEZONE' environment variable was not set. It is required to "
+        "set this environment variable to '1' in both driver and executor sides if you use "
+        "pyarrow>=2.0.0. "
+        "Koalas will set it for you but it does not work if there is a Spark context already "
+        "launched."
+    )
+    os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index, MultiIndex
 from databricks.koalas.series import Series
-from databricks.koalas.config import get_option, set_option, reset_option, options
 from databricks.koalas.groupby import NamedAgg
 
-__all__ = [
+__all__ = [  # noqa: F405
     "read_csv",
     "read_parquet",
     "to_datetime",
@@ -108,8 +121,8 @@ def _auto_patch_spark():
     import logging
 
     # Attach a usage logger.
-    logger_module = os.getenv("KOALAS_USAGE_LOGGER", None)
-    if logger_module is not None:
+    logger_module = os.getenv("KOALAS_USAGE_LOGGER", "")
+    if logger_module != "":
         try:
             from databricks.koalas import usage_logging
 
@@ -159,6 +172,6 @@ _auto_patch_spark()
 _auto_patch_pandas()
 
 # Import after the usage logger is attached.
-from databricks.koalas.config import *
-from databricks.koalas.namespace import *
+from databricks.koalas.config import get_option, options, option_context, reset_option, set_option
+from databricks.koalas.namespace import *  # F405
 from databricks.koalas.sql import sql

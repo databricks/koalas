@@ -48,7 +48,7 @@ Environment Setup
 Conda
 -----
 
-If you are using Conda, the Koalas installation and developement enviornment are as follows.
+If you are using Conda, the Koalas installation and development environment are as follows.
 
 .. code-block:: bash
 
@@ -145,16 +145,14 @@ Release Guide
 Release Cadence
 ---------------
 
-In general, minor releases occur about every month. Therefore, Koalas 1.3.0 would generally be released about a month after 1.2.0.
+In general, minor releases occur about every month. Therefore, Koalas 1.4.0 would generally be released about a month after 1.3.0.
 Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule
 The chart below is the expected release dates of minor releases.
 
 +------------+---------+
 | Date       | Version |
 +============+=========+
-| 10/9 2020  | 1.3.0   |
-+------------+---------+
-| 11/20 2020 | 1.4.0   |
+| 12/11 2020 | 1.5.0   |
 +------------+---------+
 
 Release Instructions

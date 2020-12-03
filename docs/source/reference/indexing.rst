@@ -1,8 +1,8 @@
 .. _api.indexing:
 
-========
-Indexing
-========
+=============
+Index objects
+=============
 
 Index
 -----
@@ -21,6 +21,7 @@ Properties
    Index.is_monotonic
    Index.is_monotonic_increasing
    Index.is_monotonic_decreasing
+   Index.is_unique
    Index.has_duplicates
    Index.hasnans
    Index.dtype
@@ -50,6 +51,7 @@ Modifying and computations
    Index.delete
    Index.equals
    Index.identical
+   Index.insert
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -99,8 +101,10 @@ Conversion
    :toctree: api/
 
    Index.astype
+   Index.item
    Index.to_series
    Index.to_frame
+   Index.view
    Index.to_numpy
 
 Spark-related
@@ -135,6 +139,7 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.intersection
    Index.union
    Index.difference
    Index.symmetric_difference
@@ -164,6 +169,7 @@ MultiIndex Constructors
    MultiIndex.from_arrays
    MultiIndex.from_tuples
    MultiIndex.from_product
+   MultiIndex.from_frame
 
 MultiIndex Properties
 ~~~~~~~~~~~~~~~~~~~~~
@@ -213,6 +219,7 @@ MultiIndex Modifying and computations
 
    MultiIndex.equals
    MultiIndex.identical
+   MultiIndex.insert
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.delete
@@ -230,6 +237,7 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.intersection
    MultiIndex.union
    MultiIndex.difference
    MultiIndex.symmetric_difference
@@ -240,8 +248,10 @@ MultiIndex Conversion
    :toctree: api/
 
    MultiIndex.astype
+   MultiIndex.item
    MultiIndex.to_series
    MultiIndex.to_frame
+   MultiIndex.view
    MultiIndex.to_numpy
 
 MultiIndex Spark-related

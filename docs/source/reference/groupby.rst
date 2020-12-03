@@ -9,6 +9,14 @@ GroupBy objects are returned by groupby calls: :func:`DataFrame.groupby`, :func:
 
 .. currentmodule:: databricks.koalas.groupby
 
+
+Indexing, iteration
+-------------------
+.. autosummary::
+   :toctree: api/
+
+   GroupBy.get_group
+
 Function application
 --------------------
 .. autosummary::
@@ -59,6 +67,13 @@ Computations / Descriptive Stats
    GroupBy.head
    GroupBy.backfill
    GroupBy.shift
+
+The following methods are available only for `DataFrameGroupBy` objects.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrameGroupBy.describe
 
 The following methods are available only for `SeriesGroupBy` objects.
 

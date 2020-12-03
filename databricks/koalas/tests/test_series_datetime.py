@@ -49,9 +49,7 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         # timezone behaviours inherited from C library.
 
         actual = (kdf["end_date"] - kdf["start_date"] - 1).to_pandas()
-        expected = ((pdf["end_date"] - pdf["start_date"]) // np.timedelta64(1, "s") - 1).rename(
-            "end_date"
-        )
+        expected = (pdf["end_date"] - pdf["start_date"]) // np.timedelta64(1, "s") - 1
         # self.assert_eq(actual, expected)
 
         actual = (kdf["end_date"] - pd.Timestamp("2012-1-1 12:45:31") - 1).to_pandas()
@@ -81,10 +79,9 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
 
-        # TODO: Fix the Series name
         self.assert_eq(
             kdf["end_date"].dt.date - kdf["start_date"].dt.date,
-            (pdf["end_date"].dt.date - pdf["start_date"].dt.date).dt.days.rename("end_date"),
+            (pdf["end_date"].dt.date - pdf["start_date"].dt.date).dt.days,
         )
 
         self.assert_eq(

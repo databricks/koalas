@@ -30,16 +30,16 @@ from databricks.koalas.plot import KoalasBoxPlot, KoalasHistPlot
 matplotlib.use("agg")
 
 
-class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
+class SeriesPlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
-        super(SeriesPlotTest, cls).setUpClass()
+        super().setUpClass()
         set_option("plotting.max_rows", 1000)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("plotting.max_rows")
-        super(SeriesPlotTest, cls).tearDownClass()
+        super().tearDownClass()
 
     @property
     def pdf1(self):
@@ -67,24 +67,6 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         b64_data = base64.b64encode(bytes_data.read())
         plt.close(ax.figure)
         return b64_data
-
-    def test_plot_backends(self):
-        plot_backend = "plotly"
-
-        with ks.option_context("plotting.backend", plot_backend):
-            self.assertEqual(ks.options.plotting.backend, plot_backend)
-
-            module = ks.plot._get_plot_backend(plot_backend)
-            self.assertEqual(module.__name__, plot_backend)
-
-    def test_plot_backends_incorrect(self):
-        fake_plot_backend = "none_plotting_module"
-
-        with ks.option_context("plotting.backend", fake_plot_backend):
-            self.assertEqual(ks.options.plotting.backend, fake_plot_backend)
-
-            with self.assertRaises(ValueError):
-                ks.plot._get_plot_backend(fake_plot_backend)
 
     def test_bar_plot(self):
         pdf = self.pdf1
@@ -284,11 +266,11 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         self.assertEqual(bin1, bin2)
 
     def test_box_plot(self):
-        def check_box_plot(pdf, kdf, *args, **kwargs):
+        def check_box_plot(pser, kser, *args, **kwargs):
             _, ax1 = plt.subplots(1, 1)
-            ax1 = pdf["a"].plot.box(*args, **kwargs)
+            ax1 = pser.plot.box(*args, **kwargs)
             _, ax2 = plt.subplots(1, 1)
-            ax2 = kdf["a"].plot.box(*args, **kwargs)
+            ax2 = kser.plot.box(*args, **kwargs)
 
             diffs = [
                 np.array([0, 0.5, 0, 0.5, 0, -0.5, 0, -0.5, 0, 0.5]),
@@ -307,13 +289,20 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
                 ax1.cla()
                 ax2.cla()
 
-        check_box_plot(self.pdf1, self.kdf1)
-        check_box_plot(self.pdf1, self.kdf1, showfliers=True)
-        check_box_plot(self.pdf1, self.kdf1, sym="")
-        check_box_plot(self.pdf1, self.kdf1, sym=".", color="r")
-        check_box_plot(self.pdf1, self.kdf1, use_index=False, labels=["Test"])
-        check_box_plot(self.pdf1, self.kdf1, usermedians=[2.0])
-        check_box_plot(self.pdf1, self.kdf1, conf_intervals=[(1.0, 3.0)])
+        # Non-named Series
+        pser = pd.Series([1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50], [0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10])
+        kser = ks.from_pandas(pser)
+
+        spec = [(self.pdf1.a, self.kdf1.a), (pser, kser)]
+
+        for p, k in spec:
+            check_box_plot(p, k)
+            check_box_plot(p, k, showfliers=True)
+            check_box_plot(p, k, sym="")
+            check_box_plot(p, k, sym=".", color="r")
+            check_box_plot(p, k, use_index=False, labels=["Test"])
+            check_box_plot(p, k, usermedians=[2.0])
+            check_box_plot(p, k, conf_intervals=[(1.0, 3.0)])
 
         val = (1, 3)
         self.assertRaises(
@@ -327,34 +316,38 @@ class SeriesPlotTest(ReusedSQLTestCase, TestUtils):
         )
 
     def test_box_summary(self):
-        kdf = self.kdf1
-        pdf = self.pdf1
-        k = 1.5
+        def check_box_summary(kdf, pdf):
+            k = 1.5
+            stats, fences = KoalasBoxPlot._compute_stats(kdf["a"], "a", whis=k, precision=0.01)
+            outliers = KoalasBoxPlot._outliers(kdf["a"], "a", *fences)
+            whiskers = KoalasBoxPlot._calc_whiskers("a", outliers)
+            fliers = KoalasBoxPlot._get_fliers("a", outliers, whiskers[0])
 
-        stats, fences = KoalasBoxPlot._compute_stats(kdf["a"], "a", whis=k, precision=0.01)
-        outliers = KoalasBoxPlot._outliers(kdf["a"], "a", *fences)
-        whiskers = KoalasBoxPlot._calc_whiskers("a", outliers)
-        fliers = KoalasBoxPlot._get_fliers("a", outliers)
+            expected_mean = pdf["a"].mean()
+            expected_median = pdf["a"].median()
+            expected_q1 = np.percentile(pdf["a"], 25)
+            expected_q3 = np.percentile(pdf["a"], 75)
+            iqr = expected_q3 - expected_q1
+            expected_fences = (expected_q1 - k * iqr, expected_q3 + k * iqr)
+            pdf["outlier"] = ~pdf["a"].between(fences[0], fences[1])
+            expected_whiskers = (
+                pdf.query("not outlier")["a"].min(),
+                pdf.query("not outlier")["a"].max(),
+            )
+            expected_fliers = pdf.query("outlier")["a"].values
 
-        expected_mean = pdf["a"].mean()
-        expected_median = pdf["a"].median()
-        expected_q1 = np.percentile(pdf["a"], 25)
-        expected_q3 = np.percentile(pdf["a"], 75)
-        iqr = expected_q3 - expected_q1
-        expected_fences = (expected_q1 - k * iqr, expected_q3 + k * iqr)
-        pdf["outlier"] = ~pdf["a"].between(fences[0], fences[1])
-        expected_whiskers = pdf.query("not outlier")["a"].min(), pdf.query("not outlier")["a"].max()
-        expected_fliers = pdf.query("outlier")["a"].values
+            self.assertEqual(expected_mean, stats["mean"])
+            self.assertEqual(expected_median, stats["med"])
+            self.assertEqual(expected_q1, stats["q1"] + 0.5)
+            self.assertEqual(expected_q3, stats["q3"] - 0.5)
+            self.assertEqual(expected_fences[0], fences[0] + 2.0)
+            self.assertEqual(expected_fences[1], fences[1] - 2.0)
+            self.assertEqual(expected_whiskers[0], whiskers[0])
+            self.assertEqual(expected_whiskers[1], whiskers[1])
+            self.assertEqual(expected_fliers, fliers)
 
-        self.assertEqual(expected_mean, stats["mean"])
-        self.assertEqual(expected_median, stats["med"])
-        self.assertEqual(expected_q1, stats["q1"] + 0.5)
-        self.assertEqual(expected_q3, stats["q3"] - 0.5)
-        self.assertEqual(expected_fences[0], fences[0] + 2.0)
-        self.assertEqual(expected_fences[1], fences[1] - 2.0)
-        self.assertEqual(expected_whiskers[0], whiskers[0])
-        self.assertEqual(expected_whiskers[1], whiskers[1])
-        self.assertEqual(expected_fliers, fliers)
+        check_box_summary(self.kdf1, self.pdf1)
+        check_box_summary(-self.kdf1, -self.pdf1)
 
     def test_kde_plot(self):
         def moving_average(a, n=10):

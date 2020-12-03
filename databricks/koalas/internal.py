@@ -18,15 +18,13 @@
 An internal immutable DataFrame with some metadata to manage indexes.
 """
 import re
-from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
-from collections import OrderedDict
-import os
 import py4j
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_list_like
+from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
@@ -45,10 +43,15 @@ if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
     from databricks.koalas.series import Series
 from databricks.koalas.config import get_option
-from databricks.koalas.typedef import infer_pd_series_spark_type, spark_type_to_pandas_dtype
+from databricks.koalas.typedef import (
+    infer_pd_series_spark_type,
+    spark_type_to_pandas_dtype,
+)
 from databricks.koalas.utils import (
     column_labels_level,
     default_session,
+    is_name_like_tuple,
+    is_testing,
     lazy_property,
     name_like_string,
     scol_for,
@@ -66,7 +69,8 @@ NATURAL_ORDER_COLUMN_NAME = "__natural_order__"
 
 HIDDEN_COLUMNS = {NATURAL_ORDER_COLUMN_NAME}
 
-SPARK_DEFAULT_SERIES_NAME = "0"
+DEFAULT_SERIES_NAME = 0
+SPARK_DEFAULT_SERIES_NAME = str(DEFAULT_SERIES_NAME)
 
 
 class InternalFrame(object):
@@ -124,8 +128,6 @@ class InternalFrame(object):
 
     * `index_names` represents the external index name as a label
 
-    * `index_map` is zipped pairs of `index_spark_column_names` and `index_names`
-
     * `to_internal_spark_frame` represents Spark DataFrame derived by the metadata. Includes index.
 
     * `to_pandas_frame` represents pandas DataFrame derived by the metadata
@@ -148,8 +150,6 @@ class InternalFrame(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [None]
-    >>> internal.index_map
-    OrderedDict([('__index_level_0__', None)])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
@@ -205,8 +205,6 @@ class InternalFrame(object):
     ['A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [('A',)]
-    >>> internal.index_map
-    OrderedDict([('A', ('A',))])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
@@ -263,8 +261,6 @@ class InternalFrame(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [None, ('A',)]
-    >>> internal.index_map
-    OrderedDict([('__index_level_0__', None), ('A', ('A',))])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
@@ -346,8 +342,6 @@ class InternalFrame(object):
     ['A', 'B']
     >>> internal.index_names
     [('A',)]
-    >>> internal.index_map
-    OrderedDict([('A', ('A',))])
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+
     |  A|  B|
@@ -369,26 +363,27 @@ class InternalFrame(object):
     def __init__(
         self,
         spark_frame: spark.DataFrame,
-        index_map: Optional[Dict[str, Optional[Tuple[str, ...]]]],
-        column_labels: Optional[List[Tuple[str, ...]]] = None,
+        index_spark_columns: Optional[List[spark.Column]],
+        index_names: Optional[List[Optional[Tuple]]] = None,
+        column_labels: Optional[List[Tuple]] = None,
         data_spark_columns: Optional[List[spark.Column]] = None,
-        column_label_names: Optional[List[str]] = None,
+        column_label_names: Optional[List[Optional[Tuple]]] = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
         index fields and names.
 
         :param spark_frame: Spark DataFrame to be managed.
-        :param index_map: dictionary of string pairs
-                           Each pair holds the index field name which exists in Spark fields,
-                           and the index name.
+        :param index_spark_columns: list of Spark Column
+                                    Spark Columns for the index.
+        :param index_names: list of tuples
+                            the index names.
         :param column_labels: list of tuples with the same length
                               The multi-level values in the tuples.
         :param data_spark_columns: list of Spark Column
-                                   Spark Columns to appear as columns. If spark_column is not None,
-                                   this argument is ignored, otherwise if this is None, calculated
+                                   Spark Columns to appear as columns. If this is None, calculated
                                    from spark_frame.
-        :param column_label_names: Names for each of the index levels.
+        :param column_label_names: Names for each of the column index levels.
 
         See the examples below to refer what each parameter means.
 
@@ -408,7 +403,7 @@ class InternalFrame(object):
                                 4       5  6
         zoo         bar         7       8  9
 
-        >>> internal = kdf[('a', 'y')]._internal
+        >>> internal = kdf._internal
 
         >>> internal._sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
         +-----------------+-----------------+------+------+------+...
@@ -419,36 +414,37 @@ class InternalFrame(object):
         |              zoo|              bar|     7|     8|     9|...
         +-----------------+-----------------+------+------+------+...
 
-        >>> internal._index_map  # doctest: +NORMALIZE_WHITESPACE
-        OrderedDict([('__index_level_0__', ('row_index_a',)),
-         ('__index_level_1__', ('row_index_b',)),
-         ('(a, x)', ('a', 'x'))])
+        >>> internal._index_spark_columns
+        [Column<b'__index_level_0__'>, Column<b'__index_level_1__'>, Column<b'(a, x)'>]
+
+        >>> internal._index_names
+        [('row_index_a',), ('row_index_b',), ('a', 'x')]
 
         >>> internal._column_labels
-        [('a', 'y')]
+        [('a', 'y'), ('b', 'z')]
 
         >>> internal._data_spark_columns
-        [Column<b'(a, y)'>]
+        [Column<b'(a, y)'>, Column<b'(b, z)'>]
 
-        >>> list(internal._column_label_names)
-        ['column_labels_a', 'column_labels_b']
+        >>> internal._column_label_names
+        [('column_labels_a',), ('column_labels_b',)]
         """
 
         assert isinstance(spark_frame, spark.DataFrame)
         assert not spark_frame.isStreaming, "Koalas does not support Structured Streaming."
 
-        if index_map is None:
+        if not index_spark_columns:
+            if data_spark_columns is not None:
+                spark_frame = spark_frame.select(data_spark_columns)
+
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in spark_frame.columns), (
                 "Index columns should not appear in columns of the Spark DataFrame. Avoid "
                 "index column names [%s]." % SPARK_INDEX_NAME_PATTERN
             )
 
-            if data_spark_columns is not None:
-                spark_frame = spark_frame.select(data_spark_columns)
-
             # Create default index.
             spark_frame = InternalFrame.attach_default_index(spark_frame)
-            index_map = OrderedDict({SPARK_DEFAULT_INDEX_NAME: None})
+            index_spark_columns = [scol_for(spark_frame, SPARK_DEFAULT_INDEX_NAME)]
 
             if data_spark_columns is not None:
                 data_spark_columns = [
@@ -462,31 +458,36 @@ class InternalFrame(object):
                 NATURAL_ORDER_COLUMN_NAME, F.monotonically_increasing_id()
             )
 
-        assert isinstance(index_map, OrderedDict), index_map
+        if not index_names:
+            index_names = [None] * len(index_spark_columns)
+
+        assert len(index_spark_columns) == len(index_names), (
+            len(index_spark_columns),
+            len(index_names),
+        )
         assert all(
-            isinstance(index_field, str)
-            and (
-                index_name is None
-                or (
-                    isinstance(index_name, tuple)
-                    and all(isinstance(name, str) for name in index_name)
-                )
-            )
-            for index_field, index_name in index_map.items()
-        ), index_map
+            isinstance(index_scol, spark.Column) for index_scol in index_spark_columns
+        ), index_spark_columns
+        assert all(
+            is_name_like_tuple(index_name, check_type=True) for index_name in index_names
+        ), index_names
         assert data_spark_columns is None or all(
             isinstance(scol, spark.Column) for scol in data_spark_columns
         )
 
         self._sdf = spark_frame  # type: spark.DataFrame
-        self._index_map = index_map  # type: Dict[str, Optional[Tuple[str, ...]]]
+        self._index_spark_columns = index_spark_columns  # type: List[spark.Column]
+        self._index_names = index_names  # type: List[Optional[Tuple]]
 
         if data_spark_columns is None:
-            index_columns = set(index_column for index_column in self._index_map)
             self._data_spark_columns = [
                 scol_for(spark_frame, col)
                 for col in spark_frame.columns
-                if col not in index_columns and col not in HIDDEN_COLUMNS
+                if all(
+                    not scol_for(spark_frame, col)._jc.equals(index_scol._jc)
+                    for index_scol in index_spark_columns
+                )
+                and col not in HIDDEN_COLUMNS
             ]
         else:
             self._data_spark_columns = data_spark_columns
@@ -494,7 +495,7 @@ class InternalFrame(object):
         if column_labels is None:
             self._column_labels = [
                 (col,) for col in spark_frame.select(self._data_spark_columns).columns
-            ]  # type: List[Tuple[str, ...]]
+            ]  # type: List[Tuple]
         else:
             assert len(column_labels) == len(self._data_spark_columns), (
                 len(column_labels),
@@ -502,25 +503,31 @@ class InternalFrame(object):
             )
             if len(column_labels) == 1:
                 column_label = column_labels[0]
-                assert column_label is None or (
-                    isinstance(column_label, tuple) and len(column_label) > 0
-                ), column_label
+                assert is_name_like_tuple(column_label, check_type=True), column_label
             else:
                 assert all(
-                    isinstance(label, tuple) and len(label) > 0 for label in column_labels
+                    is_name_like_tuple(column_label, check_type=True)
+                    for column_label in column_labels
                 ), column_labels
                 assert len(set(len(label) for label in column_labels)) <= 1, column_labels
             self._column_labels = column_labels
 
-        if column_label_names is not None and not is_list_like(column_label_names):
-            raise ValueError("Column_index_names should be list-like or None for a MultiIndex")
-
-        if isinstance(column_label_names, list):
-            if all(name is None for name in column_label_names):
-                self._column_label_names = None
-            else:
-                self._column_label_names = column_label_names
+        if column_label_names is None:
+            self._column_label_names = [None] * column_labels_level(
+                self._column_labels
+            )  # type: List[Optional[Tuple]]
         else:
+            if len(self._column_labels) > 0:
+                assert len(column_label_names) == column_labels_level(self._column_labels), (
+                    len(column_label_names),
+                    column_labels_level(self._column_labels),
+                )
+            else:
+                assert len(column_label_names) > 0, len(column_label_names)
+            assert all(
+                is_name_like_tuple(column_label_name, check_type=True)
+                for column_label_name in column_label_names
+            ), column_label_names
             self._column_label_names = column_label_names
 
     @staticmethod
@@ -606,7 +613,7 @@ class InternalFrame(object):
                 encoders = sql_ctx._jvm.org.apache.spark.sql.Encoders
                 encoder = encoders.tuple(jdf.exprEnc(), encoders.scalaLong())
 
-                jrdd = jdf.rdd().zipWithIndex()
+                jrdd = jdf.localCheckpoint(False).rdd().zipWithIndex()
 
                 df = spark.DataFrame(
                     sql_ctx.sparkSession._jsparkSession.createDataset(jrdd, encoder).toDF(), sql_ctx
@@ -616,13 +623,17 @@ class InternalFrame(object):
                     "`{}` as `{}`".format(columns[1], column_name), "`{}`.*".format(columns[0])
                 )
             except py4j.protocol.Py4JError:
-                if "KOALAS_TESTING" in os.environ:
+                if is_testing():
                     raise
                 return InternalFrame._attach_distributed_sequence_column(sdf, column_name)
         else:
-            return default_session().createDataFrame(
-                [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
-            )
+            cnt = sdf.count()
+            if cnt > 0:
+                return default_session().range(cnt).toDF(column_name)
+            else:
+                return default_session().createDataFrame(
+                    [], schema=StructType().add(column_name, data_type=LongType(), nullable=False)
+                )
 
     @staticmethod
     def _attach_distributed_sequence_column(sdf, column_name):
@@ -690,11 +701,11 @@ class InternalFrame(object):
             (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
         )
 
-    def spark_column_name_for(self, label: Tuple[str, ...]) -> str:
+    def spark_column_name_for(self, label: Tuple) -> str:
         """ Return the actual Spark column name for the given column label. """
         return self.spark_frame.select(self.spark_column_for(label)).columns[0]
 
-    def spark_column_for(self, label: Tuple[str, ...]):
+    def spark_column_for(self, label: Tuple):
         """ Return Spark Column for the given column label. """
         column_labels_to_scol = dict(zip(self.column_labels, self.data_spark_columns))
         if label in column_labels_to_scol:
@@ -702,11 +713,11 @@ class InternalFrame(object):
         else:
             raise KeyError(name_like_string(label))
 
-    def spark_type_for(self, label: Tuple[str, ...]) -> DataType:
+    def spark_type_for(self, label: Tuple) -> DataType:
         """ Return DataType for the given column label. """
         return self.spark_frame.select(self.spark_column_for(label)).schema[0].dataType
 
-    def spark_column_nullable_for(self, label: Tuple[str, ...]) -> bool:
+    def spark_column_nullable_for(self, label: Tuple) -> bool:
         """ Return nullability for the given column label. """
         return self.spark_frame.select(self.spark_column_for(label)).schema[0].nullable
 
@@ -725,15 +736,15 @@ class InternalFrame(object):
         """ Return Spark Columns for the managed data columns. """
         return self._data_spark_columns
 
-    @lazy_property
+    @property
     def index_spark_column_names(self) -> List[str]:
         """ Return the managed index field names. """
-        return list(self.index_map.keys())
+        return self.spark_frame.select(self.index_spark_columns).columns
 
-    @lazy_property
+    @property
     def index_spark_columns(self) -> List[spark.Column]:
         """ Return Spark Columns for the managed index columns. """
-        return [scol_for(self.spark_frame, column) for column in self.index_spark_column_names]
+        return self._index_spark_columns
 
     @lazy_property
     def spark_column_names(self) -> List[str]:
@@ -751,28 +762,27 @@ class InternalFrame(object):
         ]
 
     @property
-    def index_map(self) -> Dict[str, Optional[Tuple[str, ...]]]:
-        """ Return the managed index information. """
-        assert len(self._index_map) > 0
-        return self._index_map
+    def index_names(self) -> List[Optional[Tuple]]:
+        """ Return the managed index names. """
+        return self._index_names
 
     @lazy_property
-    def index_names(self) -> List[Optional[Tuple[str, ...]]]:
-        """ Return the managed index names. """
-        return list(self.index_map.values())
+    def index_level(self) -> int:
+        """ Return the level of the index. """
+        return len(self._index_names)
 
     @property
-    def column_labels(self) -> List[Tuple[str, ...]]:
+    def column_labels(self) -> List[Tuple]:
         """ Return the managed column index. """
         return self._column_labels
 
     @lazy_property
     def column_labels_level(self) -> int:
         """ Return the level of the column index. """
-        return column_labels_level(self._column_labels)
+        return len(self._column_label_names)
 
     @property
-    def column_label_names(self) -> Optional[List[str]]:
+    def column_label_names(self) -> List[Optional[Tuple]]:
         """ Return names of the index levels. """
         return self._column_label_names
 
@@ -827,26 +837,30 @@ class InternalFrame(object):
             append = True
         pdf = pdf[column_names]
 
+        names = [
+            name if name is None or len(name) > 1 else name[0] for name in self._column_label_names
+        ]
         if self.column_labels_level > 1:
-            pdf.columns = pd.MultiIndex.from_tuples(self._column_labels)
+            pdf.columns = pd.MultiIndex.from_tuples(self._column_labels, names=names)
         else:
-            pdf.columns = [None if label is None else label[0] for label in self._column_labels]
-        if self._column_label_names is not None:
-            pdf.columns.names = self._column_label_names
+            pdf.columns = pd.Index(
+                [None if label is None else label[0] for label in self._column_labels],
+                name=names[0],
+            )
 
-        index_names = self.index_names
-        if len(index_names) > 0:
-            pdf.index.names = [
-                name if name is None or len(name) > 1 else name[0] for name in index_names
-            ]
+        pdf.index.names = [
+            name if name is None or len(name) > 1 else name[0] for name in self.index_names
+        ]
+
         return pdf
 
     @lazy_property
-    def resolved_copy(self):
+    def resolved_copy(self) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates resolved. """
         sdf = self.spark_frame.select(self.spark_columns + list(HIDDEN_COLUMNS))
         return self.copy(
             spark_frame=sdf,
+            index_spark_columns=[scol_for(sdf, col) for col in self.index_spark_column_names],
             data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
         )
 
@@ -869,14 +883,16 @@ class InternalFrame(object):
             )
         sdf = spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
         return self.copy(
-            spark_frame=sdf, data_spark_columns=[scol_for(sdf, col) for col in data_columns]
+            spark_frame=sdf,
+            index_spark_columns=[scol_for(sdf, col) for col in self.index_spark_column_names],
+            data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
 
     def with_new_columns(
         self,
         scols_or_ksers: List[Union[spark.Column, "Series"]],
-        column_labels: Optional[List[Tuple[str, ...]]] = None,
-        column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
+        column_labels: Optional[List[Tuple]] = None,
+        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         keep_order: bool = True,
     ) -> "InternalFrame":
         """
@@ -886,6 +902,7 @@ class InternalFrame(object):
         :param column_labels: the new column index.
             If None, the its column_labels is used when the corresponding `scols_or_ksers` is
             Series, otherwise the original one is used.
+        :param column_label_names: the new names of the column index levels.
         :return: the copied InternalFrame.
         """
         from databricks.koalas.series import Series
@@ -921,15 +938,19 @@ class InternalFrame(object):
         sdf = self.spark_frame
         if not keep_order:
             sdf = self.spark_frame.select(self.index_spark_columns + data_spark_columns)
+            index_spark_columns = [scol_for(sdf, col) for col in self.index_spark_column_names]
             data_spark_columns = [
                 scol_for(sdf, col) for col in self.spark_frame.select(data_spark_columns).columns
             ]
+        else:
+            index_spark_columns = self.index_spark_columns
 
         if column_label_names is _NoValue:
             column_label_names = self._column_label_names
 
         return self.copy(
             spark_frame=sdf,
+            index_spark_columns=index_spark_columns,
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
@@ -953,7 +974,7 @@ class InternalFrame(object):
         return self.with_new_sdf(self.spark_frame.filter(pred).select(self.spark_columns))
 
     def with_new_spark_column(
-        self, column_label: Tuple[str, ...], scol: spark.Column, keep_order: bool = True
+        self, column_label: Tuple, scol: spark.Column, keep_order: bool = True
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Column.
@@ -969,7 +990,7 @@ class InternalFrame(object):
         data_spark_columns[idx] = scol
         return self.with_new_columns(data_spark_columns, keep_order=keep_order)
 
-    def select_column(self, column_label: Tuple[str, ...]) -> "InternalFrame":
+    def select_column(self, column_label: Tuple) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the specified column.
 
@@ -979,39 +1000,49 @@ class InternalFrame(object):
         assert column_label in self.column_labels, column_label
 
         return self.copy(
-            column_labels=[column_label], data_spark_columns=[self.spark_column_for(column_label)]
+            column_labels=[column_label],
+            data_spark_columns=[self.spark_column_for(column_label)],
+            column_label_names=None,
         )
 
     def copy(
         self,
         spark_frame: Union[spark.DataFrame, _NoValueType] = _NoValue,
-        index_map: Optional[Union[Dict[str, Optional[Tuple[str, ...]]], _NoValueType]] = _NoValue,
-        column_labels: Optional[Union[List[Tuple[str, ...]], _NoValueType]] = _NoValue,
+        index_spark_columns: Union[List[spark.Column], _NoValueType] = _NoValue,
+        index_names: Union[List[Optional[Tuple]], _NoValueType] = _NoValue,
+        column_labels: Optional[Union[List[Tuple], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
-        column_label_names: Optional[Union[List[str], _NoValueType]] = _NoValue,
+        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
-        :param spark_frame: the new Spark DataFrame. If None, then the original one is used.
-        :param index_map: the new index information. If None, then the original one is used.
-        :param column_labels: the new column index.
-        :param data_spark_columns: the new Spark Columns. If None, then the original ones are used.
-        :param column_label_names: the new names of the index levels.
+        :param spark_frame: the new Spark DataFrame. If not specified, the original one is used.
+        :param index_spark_columns: the list of Spark Column.
+                                    If not specified, the original ones are used.
+        :param index_names: the index names. If not specified, the original ones are used.
+        :param column_labels: the new column labels. If not specified, the original ones are used.
+        :param data_spark_columns: the new Spark Columns.
+                                   If not specified, the original ones are used.
+        :param column_label_names: the new names of the column index levels.
+                                   If not specified, the original ones are used.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
             spark_frame = self.spark_frame
-        if index_map is _NoValue:
-            index_map = self._index_map
+        if index_spark_columns is _NoValue:
+            index_spark_columns = self.index_spark_columns
+        if index_names is _NoValue:
+            index_names = self.index_names
         if column_labels is _NoValue:
-            column_labels = self._column_labels
+            column_labels = self.column_labels
         if data_spark_columns is _NoValue:
-            data_spark_columns = self._data_spark_columns
+            data_spark_columns = self.data_spark_columns
         if column_label_names is _NoValue:
-            column_label_names = self._column_label_names
+            column_label_names = self.column_label_names
         return InternalFrame(
-            spark_frame,
-            index_map=index_map,
+            spark_frame=spark_frame,
+            index_spark_columns=index_spark_columns,
+            index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=data_spark_columns,
             column_label_names=column_label_names,
@@ -1029,8 +1060,10 @@ class InternalFrame(object):
         if isinstance(columns, pd.MultiIndex):
             column_labels = columns.tolist()
         else:
-            column_labels = None
-        column_label_names = columns.names
+            column_labels = [(col,) for col in columns]
+        column_label_names = [
+            name if name is None or isinstance(name, tuple) else (name,) for name in columns.names
+        ]
 
         index_names = [
             name if name is None or isinstance(name, tuple) else (name,) for name in pdf.index.names
@@ -1057,7 +1090,8 @@ class InternalFrame(object):
         sdf = default_session().createDataFrame(reset_index, schema=schema)
         return InternalFrame(
             spark_frame=sdf,
-            index_map=OrderedDict(zip(index_columns, index_names)),
+            index_spark_columns=[scol_for(sdf, col) for col in index_columns],
+            index_names=index_names,
             column_labels=column_labels,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             column_label_names=column_label_names,

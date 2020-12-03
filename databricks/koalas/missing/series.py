@@ -36,12 +36,12 @@ class MissingPandasLikeSeries(object):
 
     # Functions
     align = _unsupported_function("align")
-    argsort = _unsupported_function("argsort")
     asfreq = _unsupported_function("asfreq")
     at_time = _unsupported_function("at_time")
     autocorr = _unsupported_function("autocorr")
     between_time = _unsupported_function("between_time")
     combine = _unsupported_function("combine")
+    convert_dtypes = _unsupported_function("convert_dtypes")
     cov = _unsupported_function("cov")
     ewm = _unsupported_function("ewm")
     factorize = _unsupported_function("factorize")
@@ -49,8 +49,6 @@ class MissingPandasLikeSeries(object):
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")
     last = _unsupported_function("last")
-    reindex_like = _unsupported_function("reindex_like")
-    rename_axis = _unsupported_function("rename_axis")
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
     searchsorted = _unsupported_function("searchsorted")
@@ -58,7 +56,6 @@ class MissingPandasLikeSeries(object):
     set_axis = _unsupported_function("set_axis")
     slice_shift = _unsupported_function("slice_shift")
     swapaxes = _unsupported_function("swapaxes")
-    swaplevel = _unsupported_function("swaplevel")
     to_hdf = _unsupported_function("to_hdf")
     to_period = _unsupported_function("to_period")
     to_sql = _unsupported_function("to_sql")
@@ -127,8 +124,6 @@ class MissingPandasLikeSeries(object):
         compound = _unsupported_function("compound", deprecated=True)
         put = _unsupported_function("put", deprecated=True)
         ptp = _unsupported_function("ptp", deprecated=True)
-        argmax = _unsupported_function("argmax", deprecated=True)
-        argmin = _unsupported_function("argmin", deprecated=True)
 
         # Functions we won't support.
         real = _unsupported_property(

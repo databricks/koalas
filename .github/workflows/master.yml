@@ -1,4 +1,4 @@
-name: master
+name: Build and test
 
 on:
   push:
@@ -47,17 +47,9 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    # Setup Python 3.5 via `apt-get install` since the dafault Python 3.5 from `actions/setup-python`
-    # seems to have some problems with Tkinter, so we should manually install the python3.5-tk.
-    # For this, we should use the Python manually installed, not the default one from `actions/setup-python`
-    - name: Setup Python ${{ matrix.python-version }}
-      run: |
-        sudo add-apt-repository ppa:deadsnakes/ppa
-        sudo apt-get install tk-dev python$PYTHON_VERSION-tk python$PYTHON_VERSION
-        sudo rm /usr/bin/python
-        sudo ln -s /usr/bin/python$PYTHON_VERSION /usr/bin/python
-        # Below command is required for ensuring PIP-installed executables to be in the path.
-        echo "::add-path::/home/runner/.local/bin"
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
         sudo apt-get install xclip
@@ -91,32 +83,32 @@ jobs:
       matrix:
         include:
           - python-version: 3.6
-            spark-version: 2.4.6
+            spark-version: 2.4.7
             pandas-version: 0.24.2
             pyarrow-version: 0.14.1
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.6
-            spark-version: 2.4.6
+            spark-version: 2.4.7
             pandas-version: 0.25.3
             pyarrow-version: 0.15.1
             default-index-type: 'distributed-sequence'
           - python-version: 3.7
-            spark-version: 2.4.6
+            spark-version: 2.4.7
             pandas-version: 0.25.3
             pyarrow-version: 0.14.1
           - python-version: 3.7
-            spark-version: 2.4.6
+            spark-version: 2.4.7
             pandas-version: 1.0.5
             pyarrow-version: 0.15.1
             default-index-type: 'distributed-sequence'
           - python-version: 3.7
-            spark-version: 3.0.0
+            spark-version: 3.0.1
             pandas-version: 0.25.3
-            pyarrow-version: 0.15.1
-          - python-version: 3.8
-            spark-version: 3.0.0
-            pandas-version: 1.0.5
             pyarrow-version: 1.0.1
+          - python-version: 3.8
+            spark-version: 3.0.1
+            pandas-version: 1.1.4
+            pyarrow-version: 2.0.0
             default-index-type: 'distributed-sequence'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
@@ -150,7 +142,12 @@ jobs:
         conda config --env --add pinned_packages pandas==$PANDAS_VERSION
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
         conda config --env --add pinned_packages pyspark==$SPARK_VERSION
-        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
+        if [[ "$SPARK_VERSION" < "3.0" ]]; then
+          pip install pyspark==$SPARK_VERSION
+        else
+          conda install -c conda-forge --yes pyspark==$SPARK_VERSION
+        fi
+        conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
         conda list

@@ -13,5 +13,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-from databricks.koalas.typedef.typehints import *  # noqa: F401,F405

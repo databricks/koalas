@@ -170,9 +170,12 @@ Reindexing / Selection / Label manipulation
    Series.idxmin
    Series.isin
    Series.rename
+   Series.rename_axis
    Series.reindex
+   Series.reindex_like
    Series.reset_index
    Series.sample
+   Series.swaplevel
    Series.take
    Series.tail
    Series.where
@@ -184,10 +187,13 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   Series.backfill
+   Series.bfill
    Series.isna
    Series.isnull
    Series.notna
    Series.notnull
+   Series.pad
    Series.dropna
    Series.fillna
 
@@ -196,9 +202,13 @@ Reshaping, sorting, transposing
 .. autosummary::
    :toctree: api/
 
+   Series.argsort
+   Series.argmin
+   Series.argmax
    Series.sort_index
    Series.sort_values
    Series.unstack
+   Series.explode
    Series.repeat
    Series.squeeze
 
@@ -208,6 +218,7 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+   Series.compare
    Series.replace
    Series.update
 

@@ -44,6 +44,7 @@ Conversion
    DataFrame.isnull
    DataFrame.notna
    DataFrame.notnull
+   DataFrame.pad
    DataFrame.bool
 
 Indexing, iteration
@@ -136,6 +137,8 @@ Computations / Descriptive Stats
    DataFrame.min
    DataFrame.median
    DataFrame.pct_change
+   DataFrame.prod
+   DataFrame.product
    DataFrame.quantile
    DataFrame.nunique
    DataFrame.skew
@@ -165,8 +168,10 @@ Reindexing / Selection / Label manipulation
    DataFrame.filter
    DataFrame.head
    DataFrame.rename
+   DataFrame.rename_axis
    DataFrame.reset_index
    DataFrame.set_index
+   DataFrame.swaplevel
    DataFrame.take
    DataFrame.isin
    DataFrame.sample
@@ -179,6 +184,7 @@ Missing data handling
 .. autosummary::
    :toctree: api/
 
+   DataFrame.backfill
    DataFrame.dropna
    DataFrame.fillna
    DataFrame.replace
@@ -204,6 +210,7 @@ Reshaping, sorting, transposing
    DataFrame.T
    DataFrame.transpose
    DataFrame.reindex
+   DataFrame.reindex_like
    DataFrame.rank
 
 Combining / joining / merging
@@ -271,6 +278,10 @@ in Spark. These can be accessed by ``DataFrame.spark.<function/property>``.
    DataFrame.spark.to_spark_io
    DataFrame.spark.explain
    DataFrame.spark.apply
+   DataFrame.spark.repartition
+   DataFrame.spark.coalesce
+   DataFrame.spark.checkpoint
+   DataFrame.spark.local_checkpoint
 
 .. _api.dataframe.plot:
 

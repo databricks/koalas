@@ -102,6 +102,37 @@ class BasicIndexingTest(ComparisonTestBase):
         yield s
         yield df1
 
+        # multi-index columns
+        df4 = df.copy()
+        df4.columns = pd.MultiIndex.from_tuples(
+            [("cal", "month"), ("cal", "year"), ("num", "sale")]
+        )
+        df5 = df4.set_index(("cal", "month"))
+        yield df5
+        yield df4.set_index([("cal", "month"), ("num", "sale")])
+
+        self.assertRaises(KeyError, lambda: df5.reset_index(level=("cal", "month")))
+
+        yield df5.reset_index(level=[("cal", "month")])
+
+        # non-string names
+        df6 = df.copy()
+        df6.columns = [10.0, 20.0, 30.0]
+        df7 = df6.set_index(10.0)
+        yield df7
+        yield df6.set_index([10.0, 30.0])
+
+        yield df7.reset_index(level=10.0)
+        yield df7.reset_index(level=[10.0])
+
+        df8 = df.copy()
+        df8.columns = pd.MultiIndex.from_tuples([(10, "month"), (10, "year"), (20, "sale")])
+        df9 = df8.set_index((10, "month"))
+        yield df9
+        yield df8.set_index([(10, "month"), (20, "sale")])
+
+        yield df9.reset_index(level=[(10, "month")])
+
     def test_from_pandas_with_explicit_index(self):
         pdf = self.pdf
 
@@ -133,6 +164,17 @@ class IndexingTest(ReusedSQLTestCase):
     def kdf(self):
         return ks.from_pandas(self.pdf)
 
+    @property
+    def pdf2(self):
+        return pd.DataFrame(
+            {0: [1, 2, 3, 4, 5, 6, 7, 8, 9], 1: [4, 5, 6, 3, 2, 1, 0, 0, 0]},
+            index=[0, 1, 3, 5, 6, 8, 9, 9, 9],
+        )
+
+    @property
+    def kdf2(self):
+        return ks.from_pandas(self.pdf2)
+
     def test_at(self):
         pdf = self.pdf
         kdf = self.kdf
@@ -151,8 +193,8 @@ class IndexingTest(ReusedSQLTestCase):
         # Assert .at for DataFrames
         self.assertEqual(kdf.at[3, "b"], 6)
         self.assertEqual(kdf.at[3, "b"], pdf.at[3, "b"])
-        np.testing.assert_array_equal(kdf.at[9, "b"], np.array([0, 0, 0]))
-        np.testing.assert_array_equal(kdf.at[9, "b"], pdf.at[9, "b"])
+        self.assert_eq(kdf.at[9, "b"], np.array([0, 0, 0]))
+        self.assert_eq(kdf.at[9, "b"], pdf.at[9, "b"])
 
         # Assert .at for Series
         self.assertEqual(test_series.at["b"], 6)
@@ -179,14 +221,31 @@ class IndexingTest(ReusedSQLTestCase):
         with self.assertRaises(TypeError):
             kdf.at[3, "b"] = 10
 
+        # non-string column names
+        pdf = self.pdf2
+        kdf = self.kdf2
+
+        # Assert .at for DataFrames
+        self.assertEqual(kdf.at[3, 1], 6)
+        self.assertEqual(kdf.at[3, 1], pdf.at[3, 1])
+        self.assert_eq(kdf.at[9, 1], np.array([0, 0, 0]))
+        self.assert_eq(kdf.at[9, 1], pdf.at[9, 1])
+
     def test_at_multiindex(self):
         pdf = self.pdf.set_index("b", append=True)
         kdf = self.kdf.set_index("b", append=True)
 
-        self.assert_eq(kdf.at[(3, 6), "a"], pdf.at[(3, 6), "a"])
-        self.assert_eq(kdf.at[(3,), "a"], pdf.at[(3,), "a"])
-        self.assert_eq(list(kdf.at[(9, 0), "a"]), list(pdf.at[(9, 0), "a"]))
-        self.assert_eq(list(kdf.at[(9,), "a"]), list(pdf.at[(9,), "a"]))
+        # TODO: seems like a pandas' bug in pandas>=1.1.0
+        if LooseVersion(pd.__version__) < LooseVersion("1.1.0"):
+            self.assert_eq(kdf.at[(3, 6), "a"], pdf.at[(3, 6), "a"])
+            self.assert_eq(kdf.at[(3,), "a"], pdf.at[(3,), "a"])
+            self.assert_eq(list(kdf.at[(9, 0), "a"]), list(pdf.at[(9, 0), "a"]))
+            self.assert_eq(list(kdf.at[(9,), "a"]), list(pdf.at[(9,), "a"]))
+        else:
+            self.assert_eq(kdf.at[(3, 6), "a"], 3)
+            self.assert_eq(kdf.at[(3,), "a"], np.array([3]))
+            self.assert_eq(list(kdf.at[(9, 0), "a"]), [7, 8, 9])
+            self.assert_eq(list(kdf.at[(9,), "a"]), [7, 8, 9])
 
         with self.assertRaises(ValueError):
             kdf.at[3, "a"]
@@ -201,6 +260,14 @@ class IndexingTest(ReusedSQLTestCase):
 
         with self.assertRaises(KeyError):
             kdf.at["B", "bar"]
+
+        # non-string column names
+        arrays = [np.array([0, 0, 1, 1]), np.array([1, 2, 1, 2])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=["A", "B", "C"], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.at["B", (0, 1)], pdf.at["B", (0, 1)])
 
     def test_iat(self):
         pdf = self.pdf
@@ -526,6 +593,19 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[:, "a":"d"], pdf.loc[:, "a":"d"])
         self.assert_eq(kdf.loc[:, "c":"d"], pdf.loc[:, "c":"d"])
 
+        # non-string column names
+        kdf = self.kdf2
+        pdf = self.pdf2
+
+        self.assert_eq(kdf.loc[5:5, 0], pdf.loc[5:5, 0])
+        self.assert_eq(kdf.loc[5:5, [0]], pdf.loc[5:5, [0]])
+        self.assert_eq(kdf.loc[3:8, 0], pdf.loc[3:8, 0])
+        self.assert_eq(kdf.loc[3:8, [0]], pdf.loc[3:8, [0]])
+
+        self.assert_eq(kdf.loc[:, 0:0], pdf.loc[:, 0:0])
+        self.assert_eq(kdf.loc[:, 0:3], pdf.loc[:, 0:3])
+        self.assert_eq(kdf.loc[:, 2:3], pdf.loc[:, 2:3])
+
     def test_loc2d_multiindex_columns(self):
         arrays = [np.array(["bar", "bar", "baz", "baz"]), np.array(["one", "two", "one", "two"])]
 
@@ -561,6 +641,20 @@ class IndexingTest(ReusedSQLTestCase):
 
         self.assertRaises(KeyError, lambda: kdf.loc[:, "bar":("baz", "one")])
         self.assertRaises(KeyError, lambda: kdf.loc[:, ("bar", "two"):"bar"])
+
+        # non-string column names
+        arrays = [np.array([0, 0, 1, 1]), np.array([1, 2, 1, 2])]
+
+        pdf = pd.DataFrame(np.random.randn(3, 4), index=["A", "B", "C"], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.loc["B":"B", 0], pdf.loc["B":"B", 0])
+        self.assert_eq(kdf.loc["B":"B", [0]], pdf.loc["B":"B", [0]])
+        self.assert_eq(kdf.loc[:, 0:0], pdf.loc[:, 0:0])
+        self.assert_eq(kdf.loc[:, 0:(1, 1)], pdf.loc[:, 0:(1, 1)])
+        self.assert_eq(kdf.loc[:, (0, 2):(1, 1)], pdf.loc[:, (0, 2):(1, 1)])
+        self.assert_eq(kdf.loc[:, (0, 2):0], pdf.loc[:, (0, 2):0])
+        self.assert_eq(kdf.loc[:, -1:2], pdf.loc[:, -1:2])
 
     def test_loc2d_with_known_divisions(self):
         pdf = pd.DataFrame(
@@ -631,6 +725,19 @@ class IndexingTest(ReusedSQLTestCase):
 
         # TODO?: self.assertRaises(KeyError, lambda: pdf[8])
         # TODO?: self.assertRaises(KeyError, lambda: pdf[[1, 8]])
+
+        # non-string column names
+        pdf = pd.DataFrame(
+            {
+                10: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                20: [9, 8, 7, 6, 5, 4, 3, 2, 1],
+                30: [True, False, True] * 3,
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf[10], pdf[10])
+        self.assert_eq(kdf[[10, 20]], pdf[[10, 20]])
 
     def test_getitem_slice(self):
         pdf = pd.DataFrame(
@@ -808,6 +915,7 @@ class IndexingTest(ReusedSQLTestCase):
             slice(1, 2),
             slice(-3, None),
             slice(None, -3),
+            slice(None, 0),
             slice(None, None, 3),
             slice(3, 8, 2),
             slice(None, None, -2),
@@ -1127,38 +1235,38 @@ class IndexingTest(ReusedSQLTestCase):
         kdf = ks.from_pandas(pdf)
 
         # Positional iloc search
-        self.assert_eq(kdf[:4], pdf[:4])
-        self.assert_eq(kdf[:3], pdf[:3])
-        self.assert_eq(kdf[3:], pdf[3:])
-        self.assert_eq(kdf[2:], pdf[2:])
-        self.assert_eq(kdf[2:3], pdf[2:3])
-        self.assert_eq(kdf[2:-1], pdf[2:-1])
-        self.assert_eq(kdf[10:3], pdf[10:3])
+        self.assert_eq(kdf[:4], pdf[:4], almost=True)
+        self.assert_eq(kdf[:3], pdf[:3], almost=True)
+        self.assert_eq(kdf[3:], pdf[3:], almost=True)
+        self.assert_eq(kdf[2:], pdf[2:], almost=True)
+        self.assert_eq(kdf[2:3], pdf[2:3], almost=True)
+        self.assert_eq(kdf[2:-1], pdf[2:-1], almost=True)
+        self.assert_eq(kdf[10:3], pdf[10:3], almost=True)
 
         # Index loc search
         self.assert_eq(kdf.A[4], pdf.A[4])
         self.assert_eq(kdf.A[3], pdf.A[3])
 
         # Positional iloc search
-        self.assert_eq(kdf.A[:4], pdf.A[:4])
-        self.assert_eq(kdf.A[:3], pdf.A[:3])
-        self.assert_eq(kdf.A[3:], pdf.A[3:])
-        self.assert_eq(kdf.A[2:], pdf.A[2:])
-        self.assert_eq(kdf.A[2:3], pdf.A[2:3])
-        self.assert_eq(kdf.A[2:-1], pdf.A[2:-1])
-        self.assert_eq(kdf.A[10:3], pdf.A[10:3])
+        self.assert_eq(kdf.A[:4], pdf.A[:4], almost=True)
+        self.assert_eq(kdf.A[:3], pdf.A[:3], almost=True)
+        self.assert_eq(kdf.A[3:], pdf.A[3:], almost=True)
+        self.assert_eq(kdf.A[2:], pdf.A[2:], almost=True)
+        self.assert_eq(kdf.A[2:3], pdf.A[2:3], almost=True)
+        self.assert_eq(kdf.A[2:-1], pdf.A[2:-1], almost=True)
+        self.assert_eq(kdf.A[10:3], pdf.A[10:3], almost=True)
 
         dt1 = datetime.datetime.strptime("2013-01-02", "%Y-%m-%d")
         dt2 = datetime.datetime.strptime("2013-01-04", "%Y-%m-%d")
 
         # Index loc search
-        self.assert_eq(kdf[:dt2], pdf[:dt2])
-        self.assert_eq(kdf[dt1:], pdf[dt1:])
-        self.assert_eq(kdf[dt1:dt2], pdf[dt1:dt2])
-        self.assert_eq(kdf.A[dt2], pdf.A[dt2])
-        self.assert_eq(kdf.A[:dt2], pdf.A[:dt2])
-        self.assert_eq(kdf.A[dt1:], pdf.A[dt1:])
-        self.assert_eq(kdf.A[dt1:dt2], pdf.A[dt1:dt2])
+        self.assert_eq(kdf[:dt2], pdf[:dt2], almost=True)
+        self.assert_eq(kdf[dt1:], pdf[dt1:], almost=True)
+        self.assert_eq(kdf[dt1:dt2], pdf[dt1:dt2], almost=True)
+        self.assert_eq(kdf.A[dt2], pdf.A[dt2], almost=True)
+        self.assert_eq(kdf.A[:dt2], pdf.A[:dt2], almost=True)
+        self.assert_eq(kdf.A[dt1:], pdf.A[dt1:], almost=True)
+        self.assert_eq(kdf.A[dt1:dt2], pdf.A[dt1:dt2], almost=True)
 
     def test_index_operator_int(self):
         pdf = pd.DataFrame(np.random.randn(6, 4), index=[1, 3, 5, 7, 9, 11], columns=list("ABCD"))

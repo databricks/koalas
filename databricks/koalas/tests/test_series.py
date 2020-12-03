@@ -15,6 +15,7 @@
 #
 
 import base64
+import unittest
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
@@ -33,7 +34,11 @@ from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
 from databricks.koalas import Series
-from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.testing.utils import (
+    ReusedSQLTestCase,
+    SQLTestUtils,
+    SPARK_CONF_ARROW_ENABLED,
+)
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import MissingPandasLikeSeries
 
@@ -83,7 +88,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(ks.from_pandas(a), a)
         self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(ks.from_pandas(a), a)
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
@@ -95,12 +100,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
         self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-        with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
             self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
             self.assertRaises(ValueError, lambda: ks.from_pandas(b))
 
-    def test_head_tail(self):
+    def test_head(self):
         kser = self.kser
         pser = self.pser
 
@@ -108,8 +113,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(0), pser.head(0))
         self.assert_eq(kser.head(-3), pser.head(-3))
         self.assert_eq(kser.head(-10), pser.head(-10))
-
-        # TODO: self.assert_eq(kser.tail(3), pser.tail(3))
 
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -132,6 +135,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kidx.name, "renamed")
         self.assert_eq(kidx, pidx)
 
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.name = ["renamed"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.name = ["0", "1"]
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            ks.Series([1, 2, 3], name=["0", "1"])
+
     def test_rename_method(self):
         # Series name
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -147,6 +158,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser.rename("z", inplace=True)
         self.assertEqual(kser.name, "z")
         self.assert_eq(kser, pser)
+
+        expected_error_message = "Series.name must be a hashable type"
+        with self.assertRaisesRegex(TypeError, expected_error_message):
+            kser.rename(["0", "1"])
 
         # Series index
         # pser = pd.Series(['a', 'b', 'c', 'd', 'e', 'f', 'g'], name='x')
@@ -167,6 +182,91 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         # s.rename(lambda x: x**2, inplace=True)
         # self.assert_eq(kser, pser)
 
+    def test_rename_axis(self):
+        index = pd.Index(["A", "B", "C"], name="index")
+        pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.rename_axis("index2").sort_index(), kser.rename_axis("index2").sort_index(),
+        )
+
+        self.assert_eq(
+            (pser + 1).rename_axis("index2").sort_index(),
+            (kser + 1).rename_axis("index2").sort_index(),
+        )
+
+        pser2 = pser.copy()
+        kser2 = kser.copy()
+        pser2.rename_axis("index2", inplace=True)
+        kser2.rename_axis("index2", inplace=True)
+        self.assert_eq(pser2.sort_index(), kser2.sort_index())
+
+        self.assertRaises(ValueError, lambda: kser.rename_axis(["index2", "index3"]))
+        self.assertRaises(TypeError, lambda: kser.rename_axis(mapper=["index2"], index=["index3"]))
+
+        # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assert_eq(
+                pser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+                kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index(),
+            )
+
+            self.assert_eq(
+                pser.rename_axis(index=str.upper).sort_index(),
+                kser.rename_axis(index=str.upper).sort_index(),
+            )
+        else:
+            expected = kser
+            expected.index.name = "index2"
+            result = kser.rename_axis(index={"index": "index2", "missing": "index4"}).sort_index()
+            self.assert_eq(expected, result)
+
+            expected = kser
+            expected.index.name = "INDEX"
+            result = kser.rename_axis(index=str.upper).sort_index()
+            self.assert_eq(expected, result)
+
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+        pser = pd.Series([1.0, 2.0, 3.0], index=index, name="name")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.rename_axis(["index3", "index4"]).sort_index(),
+            kser.rename_axis(["index3", "index4"]).sort_index(),
+        )
+
+        self.assertRaises(ValueError, lambda: kser.rename_axis(["index3", "index4", "index5"]))
+
+        # index/columns parameters and dict_like/functions mappers introduced in pandas 0.24.0
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
+            self.assert_eq(
+                pser.rename_axis(
+                    index={"index1": "index3", "index2": "index4", "missing": "index5"}
+                ).sort_index(),
+                kser.rename_axis(
+                    index={"index1": "index3", "index2": "index4", "missing": "index5"}
+                ).sort_index(),
+            )
+
+            self.assert_eq(
+                pser.rename_axis(index=str.upper).sort_index(),
+                kser.rename_axis(index=str.upper).sort_index(),
+            )
+        else:
+            expected = kser
+            expected.index.names = ["index3", "index4"]
+            result = kser.rename_axis(
+                index={"index1": "index3", "index2": "index4", "missing": "index5"}
+            ).sort_index()
+            self.assert_eq(expected, result)
+
+            expected.index.names = ["INDEX1", "INDEX2"]
+            result = kser.rename_axis(index=str.upper).sort_index()
+            self.assert_eq(expected, result)
+
     def test_or(self):
         pdf = pd.DataFrame(
             {
@@ -176,10 +276,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(
-            (pdf["left"] | pdf["right"]).rename("left"),  # TODO: Fix the Series name
-            kdf["left"] | kdf["right"],
-        )
+        self.assert_eq(pdf["left"] | pdf["right"], kdf["left"] | kdf["right"])
 
     def test_and(self):
         pdf = pd.DataFrame(
@@ -191,15 +288,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            (pdf["left"] & pdf["right"]).rename("left"),  # TODO: Fix the Series name
-            kdf["left"] & kdf["right"],
+            pdf["left"] & pdf["right"], kdf["left"] & kdf["right"],
         )
 
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
 
         kser = ks.from_pandas(pser)
-        np.testing.assert_equal(kser.to_numpy(), pser.values)
+        self.assert_eq(kser.to_numpy(), pser.values)
 
     def test_isin(self):
         pser = pd.Series(["lama", "cow", "lama", "beetle", "lama", "hippo"], name="animal")
@@ -255,6 +351,63 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(TypeError, lambda: kser.reindex(index=123))
 
+    def test_reindex_like(self):
+        data = [1.0, 2.0, None]
+        index = pd.Index(["A", "B", "C"], name="index1")
+        pser = pd.Series(data=data, index=index, name="name1")
+        kser = ks.from_pandas(pser)
+
+        # Reindexing single Index on single Index
+        data2 = [3.0, None, 4.0]
+        index2 = pd.Index(["A", "C", "D"], name="index2")
+        pser2 = pd.Series(data=data2, index=index2, name="name2")
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        self.assert_eq(
+            (pser + 1).reindex_like(pser2).sort_index(),
+            (kser + 1).reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing MultiIndex on single Index
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "G"), ("C", "D"), ("I", "J")], names=["index3", "index4"]
+        )
+        pser2 = pd.Series(data=data2, index=index2, name="name2")
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        self.assertRaises(TypeError, lambda: kser.reindex_like(index2))
+        self.assertRaises(AssertionError, lambda: kser2.reindex_like(kser))
+
+        # Reindexing MultiIndex on MultiIndex
+        index = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["index1", "index2"]
+        )
+        pser = pd.Series(data=data, index=index, name="name1")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(
+            pser.reindex_like(pser2).sort_index(), kser.reindex_like(kser2).sort_index(),
+        )
+
+        # Reindexing with DataFrame
+        index2 = pd.MultiIndex.from_tuples(
+            [("A", "B"), ("C", "D"), ("E", "F")], names=["name3", "name4"]
+        )
+        pdf = pd.DataFrame(data=data, index=index2)
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pser.reindex_like(pdf).sort_index(), kser.reindex_like(kdf).sort_index(),
+        )
+
     def test_fillna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6], "y": [np.nan, 2, 3, 4, np.nan, 6]})
         kdf = ks.from_pandas(pdf)
@@ -290,6 +443,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.fillna(0), pser.fillna(0))
         self.assert_eq(kser.fillna(method="ffill"), pser.fillna(method="ffill"))
         self.assert_eq(kser.fillna(method="bfill"), pser.fillna(method="bfill"))
+
+        # inplace fillna on non-nullable column
+        pdf = pd.DataFrame({"a": [1, 2, None], "b": [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pdf.b
+        kser = kdf.b
+
+        self.assert_eq(kser.fillna(0), pser.fillna(0))
+        self.assert_eq(kser.fillna(np.nan).fillna(0), pser.fillna(np.nan).fillna(0))
+
+        kser.fillna(0, inplace=True)
+        pser.fillna(0, inplace=True)
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
 
     def test_dropna(self):
         pdf = pd.DataFrame({"x": [np.nan, 2, 3, 4, np.nan, 6]})
@@ -553,7 +721,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_value_counts(self):
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 self._test_value_counts()
             self.assertRaises(
                 RuntimeError,
@@ -847,7 +1015,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_to_list(self):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24.0"):
-            self.assertEqual(self.kser.to_list(), self.pser.to_list())
+            self.assert_eq(self.kser.to_list(), self.pser.to_list())
+        else:
+            self.assert_eq(self.kser.tolist(), self.pser.tolist())
 
     def test_append(self):
         pser1 = pd.Series([1, 2, 3], name="0")
@@ -979,6 +1149,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
         self.assert_eq(pser.cumprod().sum(), kser.cumprod().sum())
 
+        # with integer type
+        pser = pd.Series([1, 10, 1, 4, 9])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
+        self.assert_eq(pser.cumprod().sum(), kser.cumprod().sum())
+
         # with reversed index
         pser.index = [4, 3, 2, 1, 0]
         kser = ks.from_pandas(pser)
@@ -1088,8 +1265,37 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
 
+        self.assert_eq(kser.astype(int), pser.astype(int))
+        self.assert_eq(kser.astype(np.int), pser.astype(np.int))
+        self.assert_eq(kser.astype(np.int8), pser.astype(np.int8))
+        self.assert_eq(kser.astype(np.int16), pser.astype(np.int16))
         self.assert_eq(kser.astype(np.int32), pser.astype(np.int32))
+        self.assert_eq(kser.astype(np.int64), pser.astype(np.int64))
+        self.assert_eq(kser.astype(np.byte), pser.astype(np.byte))
+        self.assert_eq(kser.astype("int"), pser.astype("int"))
+        self.assert_eq(kser.astype("int8"), pser.astype("int8"))
+        self.assert_eq(kser.astype("int16"), pser.astype("int16"))
+        self.assert_eq(kser.astype("int32"), pser.astype("int32"))
+        self.assert_eq(kser.astype("int64"), pser.astype("int64"))
+        self.assert_eq(kser.astype("b"), pser.astype("b"))
+        self.assert_eq(kser.astype("byte"), pser.astype("byte"))
+        self.assert_eq(kser.astype("i"), pser.astype("i"))
+        self.assert_eq(kser.astype("long"), pser.astype("long"))
+        self.assert_eq(kser.astype("short"), pser.astype("short"))
+        self.assert_eq(kser.astype(np.float), pser.astype(np.float))
+        self.assert_eq(kser.astype(np.float32), pser.astype(np.float32))
+        self.assert_eq(kser.astype(np.float64), pser.astype(np.float64))
+        self.assert_eq(kser.astype("float"), pser.astype("float"))
+        self.assert_eq(kser.astype("float32"), pser.astype("float32"))
+        self.assert_eq(kser.astype("float64"), pser.astype("float64"))
+        self.assert_eq(kser.astype("double"), pser.astype("double"))
+        self.assert_eq(kser.astype("f"), pser.astype("f"))
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype("bool"), pser.astype("bool"))
+        self.assert_eq(kser.astype("?"), pser.astype("?"))
+        self.assert_eq(kser.astype(np.unicode_), pser.astype(np.unicode_))
+        self.assert_eq(kser.astype("str"), pser.astype("str"))
+        self.assert_eq(kser.astype("U"), pser.astype("U"))
 
         pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
         kser = ks.Series(pser)
@@ -1100,12 +1306,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        # TODO: restore after pandas 1.1.4 is released.
+        # self.assert_eq(kser.astype(str).tolist(), pser.astype(str).tolist())
+        self.assert_eq(kser.astype(str).tolist(), ["hi", "hi ", " ", " \t", "", "None"])
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
         pser = pd.Series([True, False, None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+
+        pser = pd.Series(["2020-10-27"], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.astype(np.datetime64), pser.astype(np.datetime64))
+        self.assert_eq(kser.astype("datetime64[ns]"), pser.astype("datetime64[ns]"))
+        self.assert_eq(kser.astype("M"), pser.astype("M"))
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")
@@ -1125,37 +1341,51 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_drop(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
+
+        self.assert_eq(kser.drop(1), pser.drop(1))
+        self.assert_eq(kser.drop([1, 4]), pser.drop([1, 4]))
+
         msg = "Need to specify at least one of 'labels' or 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop()
+        self.assertRaises(KeyError, lambda: kser.drop((0, 1)))
 
         # For MultiIndex
         midx = pd.MultiIndex(
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
             [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
         )
-        kser = ks.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.drop("lama"), pser.drop("lama"))
+        self.assert_eq(kser.drop(labels="weight", level=1), pser.drop(labels="weight", level=1))
+        self.assert_eq(kser.drop(("lama", "weight")), pser.drop(("lama", "weight")))
+        self.assert_eq(
+            kser.drop([("lama", "speed"), ("falcon", "weight")]),
+            pser.drop([("lama", "speed"), ("falcon", "weight")]),
+        )
+        self.assert_eq(kser.drop({"lama": "speed"}), pser.drop({"lama": "speed"}))
+
         msg = "'level' should be less than the number of indexes"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(labels="weight", level=2)
+
         msg = (
             "If the given index is a list, it "
-            "should only contains names as strings, "
-            "or a list of tuples that contain "
-            "index names as strings"
+            "should only contains names as all tuples or all non tuples "
+            "that contain index names"
         )
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop(["lama", ["cow", "falcon"]])
-        msg = "'index' type should be one of str, list, tuple"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.drop({"lama": "speed"})
+
         msg = "Cannot specify both 'labels' and 'index'"
         with self.assertRaisesRegex(ValueError, msg):
             kser.drop("lama", index="cow")
+
         msg = r"'Key length \(2\) exceeds index depth \(3\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.drop(("lama", "speed", "x"))
-        self.assert_eq(kser.drop(("lama", "speed", "x"), level=1), kser)
 
     def test_pop(self):
         midx = pd.MultiIndex(
@@ -1172,15 +1402,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
-        msg = "'key' should be string or tuple that contains strings"
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(0)
-        msg = (
-            "'key' should have index names as only strings "
-            "or a tuple that contain index names as only strings"
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            kser.pop(("lama", 0))
         msg = r"'Key length \(3\) exceeds index depth \(2\)'"
         with self.assertRaisesRegex(KeyError, msg):
             kser.pop(("lama", "speed", "x"))
@@ -1261,8 +1482,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser1.truncate(after=5), pser1.truncate(after=5))
         self.assert_eq(kser1.truncate(copy=False), pser1.truncate(copy=False))
         self.assert_eq(kser1.truncate(2, 5, copy=False), pser1.truncate(2, 5, copy=False))
-        self.assert_eq(kser2.truncate(4, 6), pser2.truncate(4, 6))
-        self.assert_eq(kser2.truncate(4, 6, copy=False), pser2.truncate(4, 6, copy=False))
+        # The bug for these tests has been fixed in pandas 1.1.0.
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1.0"):
+            self.assert_eq(kser2.truncate(4, 6), pser2.truncate(4, 6))
+            self.assert_eq(kser2.truncate(4, 6, copy=False), pser2.truncate(4, 6, copy=False))
+        else:
+            expected_kser = ks.Series([20, 30, 40], index=[6, 5, 4])
+            self.assert_eq(kser2.truncate(4, 6), expected_kser)
+            self.assert_eq(kser2.truncate(4, 6, copy=False), expected_kser)
 
         kser = ks.Series([10, 20, 30, 40, 50, 60, 70], index=[1, 2, 3, 4, 3, 2, 1])
         msg = "truncate requires a sorted index"
@@ -1350,7 +1577,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_axes(self):
         pser = pd.Series([90, 91, 85], index=[2, 4, 1])
         kser = ks.from_pandas(pser)
-        self.assert_list_eq(kser.axes, pser.axes)
+        self.assert_eq(kser.axes, pser.axes)
 
         # for MultiIndex
         midx = pd.MultiIndex(
@@ -1359,7 +1586,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         pser = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1, 0.3], index=midx)
         kser = ks.from_pandas(pser)
-        self.assert_list_eq(kser.axes, pser.axes)
+        self.assert_eq(kser.axes, pser.axes)
 
     def test_combine_first(self):
         pser1 = pd.Series({"falcon": 330.0, "eagle": 160.0})
@@ -1432,7 +1659,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([sparse_vector])
 
         if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
-            with self.sql_conf({"spark.sql.execution.arrow.enabled": False}):
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
                 kser = ks.from_pandas(pser)
                 self.assert_eq(kser, pser)
         else:
@@ -1502,7 +1729,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kmod, pmod)
 
     def test_rdivmod(self):
-        pser = pd.Series([100, None, 300, None, 500], name="Koalas")
+        pser = pd.Series([100, None, 300, None, 500])
         kser = ks.from_pandas(pser)
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
@@ -1536,7 +1763,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b).rename("a"))
+        self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b))
 
     def test_rmod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
@@ -1548,7 +1775,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         pdf = pd.DataFrame({"a": [100, None, -300, None, 500, -700], "b": [150] * 6})
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.a.rmod(kdf.b), pdf.a.rmod(pdf.b).rename("a"))
+        self.assert_eq(kdf.a.rmod(kdf.b), pdf.a.rmod(pdf.b))
 
     def test_asof(self):
         pser = pd.Series([1, 2, np.nan, 4], index=[10, 20, 30, 40], name="Koalas")
@@ -1596,6 +1823,38 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([90, 91, 85], index=midx)
         kser = ks.from_pandas(pser)
         self.assert_eq(kser.squeeze(), pser.squeeze())
+
+    def test_swaplevel(self):
+        # MultiIndex with two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
+        pser = pd.Series(["a", "b", "c", "d"], index=pidx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.swaplevel(), kser.swaplevel())
+        self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
+        self.assert_eq(pser.swaplevel(1, 1), kser.swaplevel(1, 1))
+        self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
+
+        # MultiIndex with more than two levels
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"], ["l", "m", "s", "xs"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color", "size"))
+        pser = pd.Series(["a", "b", "c", "d"], index=pidx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.swaplevel(), kser.swaplevel())
+        self.assert_eq(pser.swaplevel(0, 1), kser.swaplevel(0, 1))
+        self.assert_eq(pser.swaplevel(0, 2), kser.swaplevel(0, 2))
+        self.assert_eq(pser.swaplevel(1, 2), kser.swaplevel(1, 2))
+        self.assert_eq(pser.swaplevel(1, 1), kser.swaplevel(1, 1))
+        self.assert_eq(pser.swaplevel(-1, -2), kser.swaplevel(-1, -2))
+        self.assert_eq(pser.swaplevel("number", "color"), kser.swaplevel("number", "color"))
+        self.assert_eq(pser.swaplevel("number", "size"), kser.swaplevel("number", "size"))
+        self.assert_eq(pser.swaplevel("color", "size"), kser.swaplevel("color", "size"))
+
+        # Error conditions
+        self.assertRaises(AssertionError, lambda: ks.Series([1, 2]).swaplevel())
+        self.assertRaises(IndexError, lambda: kser.swaplevel(0, 9))
+        self.assertRaises(KeyError, lambda: kser.swaplevel("not_number", "color"))
+        self.assertRaises(AssertionError, lambda: kser.swaplevel(copy=False))
 
     def test_div_zero_and_nan(self):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
@@ -1749,7 +2008,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.filter(items=[("one", "x"), ("three", "z")]),
         )
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type <class 'list'>"):
+        with self.assertRaisesRegex(TypeError, "Unsupported type list"):
             kser.filter(items=[["one", "x"], ("three", "z")])
 
         with self.assertRaisesRegex(ValueError, "The item should not be empty."):
@@ -1864,19 +2123,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 pser.droplevel([("a", "1"), ("c", "3")]), kser.droplevel([("a", "1"), ("c", "3")])
             )
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "tail won't work properly with PySpark<3.0",
+    )
     def test_tail(self):
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series(range(1000), name="Koalas")
-            kser = ks.from_pandas(pser)
+        pser = pd.Series(range(1000), name="Koalas")
+        kser = ks.from_pandas(pser)
 
-            self.assert_eq(pser.tail(), kser.tail())
-            self.assert_eq(pser.tail(10), kser.tail(10))
-            self.assert_eq(pser.tail(-990), kser.tail(-990))
-            self.assert_eq(pser.tail(0), kser.tail(0))
-            self.assert_eq(pser.tail(1001), kser.tail(1001))
-            self.assert_eq(pser.tail(-1001), kser.tail(-1001))
-            with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
-                kser.tail("10")
+        self.assert_eq(pser.tail(), kser.tail())
+        self.assert_eq(pser.tail(10), kser.tail(10))
+        self.assert_eq(pser.tail(-990), kser.tail(-990))
+        self.assert_eq(pser.tail(0), kser.tail(0))
+        self.assert_eq(pser.tail(1001), kser.tail(1001))
+        self.assert_eq(pser.tail(-1001), kser.tail(-1001))
+        self.assert_eq((pser + 1).tail(), (kser + 1).tail())
+        self.assert_eq((pser + 1).tail(10), (kser + 1).tail(10))
+        self.assert_eq((pser + 1).tail(-990), (kser + 1).tail(-990))
+        self.assert_eq((pser + 1).tail(0), (kser + 1).tail(0))
+        self.assert_eq((pser + 1).tail(1001), (kser + 1).tail(1001))
+        self.assert_eq((pser + 1).tail(-1001), (kser + 1).tail(-1001))
+        with self.assertRaisesRegex(TypeError, "bad operand type for unary -: 'str'"):
+            kser.tail("10")
 
     def test_product(self):
         pser = pd.Series([10, 20, 30, 40, 50])
@@ -1958,29 +2226,423 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.hasnans, kser.hasnans)
 
+    @unittest.skipIf(
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        "last_valid_index won't work properly with PySpark<3.0",
+    )
     def test_last_valid_index(self):
-        # `pyspark.sql.dataframe.DataFrame.tail` is new in pyspark >= 3.0.
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0"):
-            pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        pser = pd.Series([250, 1.5, 320, 1, 0.3, None, None, None, None])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
-            # MultiIndex columns
-            midx = pd.MultiIndex(
-                [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
-                [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
-            )
-            pser.index = midx
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        # MultiIndex columns
+        midx = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        pser.index = midx
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
-            # Empty Series
-            pser = pd.Series([])
-            kser = ks.from_pandas(pser)
-            self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
+        # Empty Series
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.last_valid_index(), kser.last_valid_index())
 
     def test_first_valid_index(self):
         # Empty Series
         pser = pd.Series([])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
+
+    def test_pad(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pser.pad(), kser.pad())
+
+            # Test `inplace=True`
+            pser.pad(inplace=True)
+            kser.pad(inplace=True)
+            self.assert_eq(pser, kser)
+        else:
+            expected = ks.Series([np.nan, 2, 3, 4, 4, 6], name="x")
+            self.assert_eq(expected, kser.pad())
+
+            # Test `inplace=True`
+            kser.pad(inplace=True)
+            self.assert_eq(expected, kser)
+
+    def test_explode(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode(), almost=True)
+
+            # non-array type Series
+            pser = pd.Series([1, 2, 3, 4])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.explode(), kser.explode())
+        else:
+            pser = pd.Series([[1, 2, 3], [], None, [3, 4]])
+            kser = ks.from_pandas(pser)
+            expected = pd.Series([1.0, 2.0, 3.0, None, None, 3.0, 4.0], index=[0, 0, 0, 1, 2, 3, 3])
+            self.assert_eq(kser.explode(), expected)
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples([("a", "w"), ("b", "x"), ("c", "y"), ("d", "z")])
+            kser = ks.from_pandas(pser)
+            expected = pd.Series(
+                [1.0, 2.0, 3.0, None, None, 3.0, 4.0],
+                index=pd.MultiIndex.from_tuples(
+                    [
+                        ("a", "w"),
+                        ("a", "w"),
+                        ("a", "w"),
+                        ("b", "x"),
+                        ("c", "y"),
+                        ("d", "z"),
+                        ("d", "z"),
+                    ]
+                ),
+            )
+            self.assert_eq(kser.explode(), expected)
+
+            # non-array type Series
+            pser = pd.Series([1, 2, 3, 4])
+            kser = ks.from_pandas(pser)
+            expected = pser
+            self.assert_eq(kser.explode(), expected)
+
+    def test_argsort(self):
+        # Without null values
+        pser = pd.Series([0, -100, 50, 100, 20], index=["A", "B", "C", "D", "E"])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # MultiIndex
+        pser.index = pd.MultiIndex.from_tuples(
+            [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
+        )
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # With name
+        pser.name = "Koalas"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # Series from Index
+        pidx = pd.Index([4.0, -6.0, 2.0, -100.0, 11.0, 20.0, 1.0, -99.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from Index with name
+        pidx.name = "Koalas"
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from DataFrame
+        pdf = pd.DataFrame({"A": [4.0, -6.0, 2.0, np.nan, -100.0, 11.0, 20.0, np.nan, 1.0, -99.0]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.A.argsort().sort_index(), kdf.A.argsort().sort_index())
+        self.assert_eq((-pdf.A).argsort().sort_index(), (-kdf.A).argsort().sort_index())
+
+        # With null values
+        pser = pd.Series([0, -100, np.nan, 100, np.nan], index=["A", "B", "C", "D", "E"])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # MultiIndex with null values
+        pser.index = pd.MultiIndex.from_tuples(
+            [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
+        )
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # With name with null values
+        pser.name = "Koalas"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.argsort().sort_index(), kser.argsort().sort_index())
+        self.assert_eq((-pser).argsort().sort_index(), (-kser).argsort().sort_index())
+
+        # Series from Index with null values
+        pidx = pd.Index([4.0, -6.0, 2.0, np.nan, -100.0, 11.0, 20.0, np.nan, 1.0, -99.0])
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from Index with name with null values
+        pidx.name = "Koalas"
+        kidx = ks.from_pandas(pidx)
+        self.assert_eq(
+            pidx.to_series().argsort().sort_index(), kidx.to_series().argsort().sort_index()
+        )
+        self.assert_eq(
+            (-pidx.to_series()).argsort().sort_index(), (-kidx.to_series()).argsort().sort_index()
+        )
+
+        # Series from DataFrame with null values
+        pdf = pd.DataFrame({"A": [4.0, -6.0, 2.0, np.nan, -100.0, 11.0, 20.0, np.nan, 1.0, -99.0]})
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.A.argsort().sort_index(), kdf.A.argsort().sort_index())
+        self.assert_eq((-pdf.A).argsort().sort_index(), (-kdf.A).argsort().sort_index())
+
+    def test_argmin_argmax(self):
+        pser = pd.Series(
+            {
+                "Corn Flakes": 100.0,
+                "Almond Delight": 110.0,
+                "Cinnamon Toast Crunch": 120.0,
+                "Cocoa Puff": 110.0,
+                "Expensive Flakes": 120.0,
+                "Cheap Flakes": 100.0,
+            },
+            name="Koalas",
+        )
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.argmin(), kser.argmin())
+            self.assert_eq(pser.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(pd.Series([np.nan]).argmin(), ks.Series([np.nan]).argmin())
+            self.assert_eq(pd.Series([np.nan]).argmax(), ks.Series([np.nan]).argmax())
+        else:
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # MultiIndex
+            pser.index = pd.MultiIndex.from_tuples(
+                [("a", "t"), ("b", "u"), ("c", "v"), ("d", "w"), ("e", "x"), ("f", "u")]
+            )
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.values.argmin(), kser.argmin())
+            self.assert_eq(pser.values.argmax(), kser.argmax())
+
+            # Null Series
+            self.assert_eq(-1, ks.Series([np.nan]).argmin())
+            self.assert_eq(-1, ks.Series([np.nan]).argmax())
+
+        with self.assertRaisesRegex(ValueError, "attempt to get argmin of an empty sequence"):
+            ks.Series([]).argmin()
+        with self.assertRaisesRegex(ValueError, "attempt to get argmax of an empty sequence"):
+            ks.Series([]).argmax()
+
+    def test_backfill(self):
+        pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(pser.backfill(), kser.backfill())
+
+            # Test `inplace=True`
+            pser.backfill(inplace=True)
+            kser.backfill(inplace=True)
+            self.assert_eq(pser, kser)
+        else:
+            expected = ks.Series([2.0, 2.0, 3.0, 4.0, 6.0, 6.0], name="x")
+            self.assert_eq(expected, kser.backfill())
+
+            # Test `inplace=True`
+            kser.backfill(inplace=True)
+            self.assert_eq(expected, kser)
+
+    def test_compare(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            pser1 = pd.Series(["b", "c", np.nan, "g", np.nan])
+            pser2 = pd.Series(["a", "c", np.nan, np.nan, "h"])
+            kser1 = ks.from_pandas(pser1)
+            kser2 = ks.from_pandas(pser2)
+            self.assert_eq(
+                pser1.compare(pser2).sort_index(), kser1.compare(kser2).sort_index(),
+            )
+
+            # `keep_shape=True`
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True`
+            self.assert_eq(
+                pser1.compare(pser2, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True`
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+
+            # MultiIndex
+            pser1.index = pd.MultiIndex.from_tuples(
+                [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+            )
+            pser2.index = pd.MultiIndex.from_tuples(
+                [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+            )
+            kser1 = ks.from_pandas(pser1)
+            kser2 = ks.from_pandas(pser2)
+            self.assert_eq(
+                pser1.compare(pser2).sort_index(), kser1.compare(kser2).sort_index(),
+            )
+
+            # `keep_shape=True` with MultiIndex
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True` with MultiIndex
+            self.assert_eq(
+                pser1.compare(pser2, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True` with MultiIndex
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+        else:
+            kser1 = ks.Series(["b", "c", np.nan, "g", np.nan])
+            kser2 = ks.Series(["a", "c", np.nan, np.nan, "h"])
+            expected = ks.DataFrame(
+                [["b", "a"], ["g", None], [None, "h"]], index=[0, 3, 4], columns=["self", "other"]
+            )
+            self.assert_eq(expected, kser1.compare(kser2).sort_index())
+
+            # `keep_shape=True`
+            expected = ks.DataFrame(
+                [["b", "a"], [None, None], [None, None], ["g", None], [None, "h"]],
+                index=[0, 1, 2, 3, 4],
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], ["g", None], [None, "h"]], index=[0, 3, 4], columns=["self", "other"]
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], ["c", "c"], [None, None], ["g", None], [None, "h"]],
+                index=[0, 1, 2, 3, 4],
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+
+            # MultiIndex
+            kser1 = ks.Series(
+                ["b", "c", np.nan, "g", np.nan],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            kser2 = ks.Series(
+                ["a", "c", np.nan, np.nan, "h"],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            expected = ks.DataFrame(
+                [["b", "a"], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples([("a", "x"), ("q", "l"), ("x", "k")]),
+                columns=["self", "other"],
+            )
+            self.assert_eq(expected, kser1.compare(kser2).sort_index())
+
+            # `keep_shape=True`
+            expected = ks.DataFrame(
+                [["b", "a"], [None, None], [None, None], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("q", "l"), ("x", "k")]
+                ),
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples([("a", "x"), ("q", "l"), ("x", "k")]),
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], ["c", "c"], [None, None], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("q", "l"), ("x", "k")]
+                ),
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+
+        # Different Index
+        with self.assertRaisesRegex(
+            ValueError, "Can only compare identically-labeled Series objects"
+        ):
+            kser1 = ks.Series([1, 2, 3, 4, 5], index=pd.Index([1, 2, 3, 4, 5]),)
+            kser2 = ks.Series([2, 2, 3, 4, 1], index=pd.Index([5, 4, 3, 2, 1]),)
+            kser1.compare(kser2)
+        # Different MultiIndex
+        with self.assertRaisesRegex(
+            ValueError, "Can only compare identically-labeled Series objects"
+        ):
+            kser1 = ks.Series(
+                [1, 2, 3, 4, 5],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            kser2 = ks.Series(
+                [2, 2, 3, 4, 1],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "a"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            kser1.compare(kser2)

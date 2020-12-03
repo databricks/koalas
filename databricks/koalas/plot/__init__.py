@@ -13,5 +13,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-from databricks.koalas.typedef.typehints import *  # noqa: F401,F405
+from databricks.koalas.plot.core import *  # noqa: F401
+from databricks.koalas.plot.matplotlib import *  # noqa: F401

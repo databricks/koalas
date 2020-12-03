@@ -19,6 +19,10 @@ Exceptions/Errors used in Koalas.
 """
 
 
+class DataError(Exception):
+    pass
+
+
 class SparkPandasIndexingError(Exception):
     pass
 
@@ -48,7 +52,7 @@ class SparkPandasNotImplementedError(NotImplementedError):
             description += " " + hint
         else:
             description = hint
-        super(SparkPandasNotImplementedError, self).__init__(description)
+        super().__init__(description)
 
 
 class PandasNotImplementedError(NotImplementedError):
@@ -98,4 +102,4 @@ class PandasNotImplementedError(NotImplementedError):
                 msg = "The property `{0}.{1}()` is not implemented{2}".format(
                     class_name, property_name, reason
                 )
-        super(NotImplementedError, self).__init__(msg)
+        super().__init__(msg)

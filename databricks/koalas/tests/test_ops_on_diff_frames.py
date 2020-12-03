@@ -28,13 +28,13 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
 class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesEnabledTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", True)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesEnabledTest, cls).tearDownClass()
+        super().tearDownClass()
 
     @property
     def pdf1(self):
@@ -172,13 +172,11 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser2 = self.pser2
 
         # Series
-        self.assert_eq((kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).rename("a").sort_index())
+        self.assert_eq((kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).sort_index())
 
-        self.assert_eq((kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).rename("a").sort_index())
+        self.assert_eq((kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).sort_index())
 
-        self.assert_eq(
-            (kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).rename("a").sort_index()
-        )
+        self.assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
 
         # DataFrame
         self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
@@ -193,17 +191,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         # Series
         self.assert_eq(
             (kdf1[("x", "a")] - kdf2[("x", "b")]).sort_index(),
-            (pdf1[("x", "a")] - pdf2[("x", "b")]).rename(("x", "a")).sort_index(),
+            (pdf1[("x", "a")] - pdf2[("x", "b")]).sort_index(),
         )
 
         self.assert_eq(
             (kdf1[("x", "a")] - kdf2["x"]["b"]).sort_index(),
-            (pdf1[("x", "a")] - pdf2["x"]["b"]).rename(("x", "a")).sort_index(),
+            (pdf1[("x", "a")] - pdf2["x"]["b"]).sort_index(),
         )
 
         self.assert_eq(
             (kdf1["x"]["a"] - kdf2[("x", "b")]).sort_index(),
-            (pdf1["x"]["a"] - pdf2[("x", "b")]).rename("a").sort_index(),
+            (pdf1["x"]["a"] - pdf2[("x", "b")]).sort_index(),
         )
 
         # DataFrame
@@ -234,18 +232,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # Series
         self.assert_eq(
-            (kdf1.a - kdf2.b - kdf3.c).sort_index(),
-            (pdf1.a - pdf2.b - pdf3.c).rename("a").sort_index(),
+            (kdf1.a - kdf2.b - kdf3.c).sort_index(), (pdf1.a - pdf2.b - pdf3.c).sort_index()
         )
 
         self.assert_eq(
-            (kdf1.a * (kdf2.a * kdf3.c)).sort_index(),
-            (pdf1.a * (pdf2.a * pdf3.c)).rename("a").sort_index(),
+            (kdf1.a * (kdf2.a * kdf3.c)).sort_index(), (pdf1.a * (pdf2.a * pdf3.c)).sort_index()
         )
 
         self.assert_eq(
             (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
-            (pdf1["a"] / pdf2["a"] / pdf3["c"]).rename("a").sort_index(),
+            (pdf1["a"] / pdf2["a"] / pdf3["c"]).sort_index(),
         )
 
         # DataFrame
@@ -266,16 +262,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         # Series
         self.assert_eq(
             (kdf1[("x", "a")] - kdf2[("x", "b")] - kdf3[("y", "c")]).sort_index(),
-            (pdf1[("x", "a")] - pdf2[("x", "b")] - pdf3[("y", "c")])
-            .rename(("x", "a"))
-            .sort_index(),
+            (pdf1[("x", "a")] - pdf2[("x", "b")] - pdf3[("y", "c")]).sort_index(),
         )
 
         self.assert_eq(
             (kdf1[("x", "a")] * (kdf2[("x", "b")] * kdf3[("y", "c")])).sort_index(),
-            (pdf1[("x", "a")] * (pdf2[("x", "b")] * pdf3[("y", "c")]))
-            .rename(("x", "a"))
-            .sort_index(),
+            (pdf1[("x", "a")] * (pdf2[("x", "b")] * pdf3[("y", "c")])).sort_index(),
         )
 
         # DataFrame
@@ -522,11 +514,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf6 = self.pdf6
 
         # Series
-        self.assert_eq((kdf5.c - kdf6.e).sort_index(), (pdf5.c - pdf6.e).rename("c").sort_index())
+        self.assert_eq((kdf5.c - kdf6.e).sort_index(), (pdf5.c - pdf6.e).sort_index())
 
-        self.assert_eq(
-            (kdf5["c"] / kdf6["e"]).sort_index(), (pdf5["c"] / pdf6["e"]).rename("c").sort_index()
-        )
+        self.assert_eq((kdf5["c"] / kdf6["e"]).sort_index(), (pdf5["c"] / pdf6["e"]).sort_index())
 
         # DataFrame
         self.assert_eq((kdf5 + kdf6).sort_index(), (pdf5 + pdf6).sort_index(), almost=True)
@@ -1143,13 +1133,13 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
     def setUpClass(cls):
-        super(OpsOnDiffFramesDisabledTest, cls).setUpClass()
+        super().setUpClass()
         set_option("compute.ops_on_diff_frames", False)
 
     @classmethod
     def tearDownClass(cls):
         reset_option("compute.ops_on_diff_frames")
-        super(OpsOnDiffFramesDisabledTest, cls).tearDownClass()
+        super().tearDownClass()
 
     @property
     def pdf1(self):
