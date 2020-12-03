@@ -7247,6 +7247,40 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return cast(DataFrame, concat([self, other], ignore_index=ignore_index))
 
+    def combine_first(self, other: "DataFrame") -> "DataFrame":
+        if isinstance(other, ks.Series):
+            other = other.to_frame()
+
+        update_columns = list(
+            set(self._internal.column_labels).intersection(set(other._internal.column_labels))
+        )
+
+        update_sdf = self.join(
+            other, how="outer", rsuffix="_new"
+            )._internal.resolved_copy.spark_frame
+
+        for column_labels in update_columns:
+            column_name = self._internal.spark_column_name_for(column_labels)
+            old_col = scol_for(update_sdf, column_name)
+            new_col = scol_for(
+                update_sdf, other._internal.spark_column_name_for(column_labels) + "_new"
+            )
+            update_sdf = update_sdf.withColumn(
+                column_name, F.when(old_col.isNull(), new_col).otherwise(old_col)
+            )
+            update_sdf = update_sdf.drop(column_labels[0] + "_new")
+
+        index_spark_column_names = list(
+            set(self._internal.index_spark_column_names).union(set(other._internal.index_spark_column_names))
+        )
+
+        internal = InternalFrame(
+            spark_frame=update_sdf,
+            index_spark_column_names=index_spark_column_names,
+        )
+
+        return DataFrame(internal)
+
     # TODO: add 'filter_func' and 'errors' parameter
     def update(self, other: "DataFrame", join: str = "left", overwrite: bool = True) -> None:
         """
