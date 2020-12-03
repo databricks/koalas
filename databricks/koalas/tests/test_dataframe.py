@@ -291,13 +291,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf, kdf = self.df_pair
         check(kdf.index.to_frame(), pdf.index.to_frame())
         check(kdf.index.to_frame(index=False), pdf.index.to_frame(index=False))
-        check(kdf.index.to_frame(name="a"), pdf.index.to_frame(name="a"))
-        check(kdf.index.to_frame(index=False, name="a"), pdf.index.to_frame(index=False, name="a"))
-        check(kdf.index.to_frame(name=("x", "a")), pdf.index.to_frame(name=("x", "a")))
-        check(
-            kdf.index.to_frame(index=False, name=("x", "a")),
-            pdf.index.to_frame(index=False, name=("x", "a")),
-        )
+
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            # The `name` argument is added in pandas 0.24.
+            check(kdf.index.to_frame(name="a"), pdf.index.to_frame(name="a"))
+            check(
+                kdf.index.to_frame(index=False, name="a"), pdf.index.to_frame(index=False, name="a")
+            )
+            check(kdf.index.to_frame(name=("x", "a")), pdf.index.to_frame(name=("x", "a")))
+            check(
+                kdf.index.to_frame(index=False, name=("x", "a")),
+                pdf.index.to_frame(index=False, name=("x", "a")),
+            )
 
     def test_multiindex_column_access(self):
         columns = pd.MultiIndex.from_tuples(
