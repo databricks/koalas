@@ -292,9 +292,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         check(kdf.index.to_frame(), pdf.index.to_frame())
         check(kdf.index.to_frame(index=False), pdf.index.to_frame(index=False))
         check(kdf.index.to_frame(name="a"), pdf.index.to_frame(name="a"))
-        check(
-            kdf.index.to_frame(index=False, name="a"), pdf.index.to_frame(index=False, name="a")
-        )
+        check(kdf.index.to_frame(index=False, name="a"), pdf.index.to_frame(index=False, name="a"))
         check(kdf.index.to_frame(name=("x", "a")), pdf.index.to_frame(name=("x", "a")))
         check(
             kdf.index.to_frame(index=False, name=("x", "a")),
