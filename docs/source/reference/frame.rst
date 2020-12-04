@@ -98,6 +98,7 @@ Binary operator functions
    DataFrame.ge
    DataFrame.ne
    DataFrame.eq
+   DataFrame.dot
 
 Function application, GroupBy & Window
 --------------------------------------
