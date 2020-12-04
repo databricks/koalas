@@ -4707,8 +4707,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             that = other.spark.column
             combined = self._kdf
         else:
-            with option_context("compute.ops_on_diff_frames", True):
-                combined = combine_frames(self._kdf, other._kdf)
+            combined = combine_frames(self._kdf, other._kdf)
             this = combined["this"]._internal.spark_column_for(self._column_label)
             that = combined["that"]._internal.spark_column_for(other._column_label)
         # If `self` has missing value, use value of `other`
@@ -5591,10 +5590,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3    d     b
         4    e     e
         """
-        with option_context("compute.ops_on_diff_frames", True):
-            if not self.index.equals(other.index):
-                raise ValueError("Can only compare identically-labeled Series objects")
-            combined = combine_frames(self.to_frame(), other.to_frame())
+        if not self.index.equals(other.index):
+            raise ValueError("Can only compare identically-labeled Series objects")
+        combined = combine_frames(self.to_frame(), other.to_frame())
 
         this_column_label = "self"
         that_column_label = "other"

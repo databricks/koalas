@@ -2017,20 +2017,19 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
                 kdfs_not_same_anchor.append(kdf)
 
         if len(kdfs_not_same_anchor) > 0:
-            with ks.option_context("compute.ops_on_diff_frames", True):
 
-                def resolve_func(kdf, this_column_labels, that_column_labels):
-                    raise AssertionError("This should not happen.")
+            def resolve_func(kdf, this_column_labels, that_column_labels):
+                raise AssertionError("This should not happen.")
 
-                for kdf in kdfs_not_same_anchor:
-                    if join == "inner":
-                        concat_kdf = align_diff_frames(
-                            resolve_func, concat_kdf, kdf, fillna=False, how="inner",
-                        )
-                    elif join == "outer":
-                        concat_kdf = align_diff_frames(
-                            resolve_func, concat_kdf, kdf, fillna=False, how="full",
-                        )
+            for kdf in kdfs_not_same_anchor:
+                if join == "inner":
+                    concat_kdf = align_diff_frames(
+                        resolve_func, concat_kdf, kdf, fillna=False, how="inner",
+                    )
+                elif join == "outer":
+                    concat_kdf = align_diff_frames(
+                        resolve_func, concat_kdf, kdf, fillna=False, how="full",
+                    )
 
             concat_kdf = concat_kdf[column_labels]
 
