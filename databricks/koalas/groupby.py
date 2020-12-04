@@ -2789,7 +2789,7 @@ class SeriesGroupBy(GroupBy):
     def tail(self, n=5) -> Series:
         return first_series(super().tail(n)).rename(self._kser.name)
 
-    head.__doc__ = GroupBy.tail.__doc__
+    tail.__doc__ = GroupBy.tail.__doc__
 
     def size(self) -> Series:
         return super().size().rename(self._kser.name)
