@@ -6448,6 +6448,68 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
+    def swapaxes(
+        self, i: Union[str, int] = 0, j: Union[str, int] = 1, copy: bool = True
+    ) -> "DataFrame":
+        """
+        Interchange axes and swap values axes appropriately.
+
+        .. note:: This method is based on an expensive operation due to the nature
+            of big data. Internally it needs to generate each row for each value, and
+            then group twice - it is a huge operation. To prevent misusage, this method
+            has the 'compute.max_rows' default limit of input length, and raises a ValueError.
+
+                >>> from databricks.koalas.config import option_context
+                >>> with option_context('compute.max_rows', 1000):  # doctest: +NORMALIZE_WHITESPACE
+                ...     ks.DataFrame({'a': range(1001)}).swapaxes()
+                Traceback (most recent call last):
+                  ...
+                ValueError: Current DataFrame has more then the given limit 1000 rows.
+                Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
+                to retrieve to retrieve more than 1000 rows. Note that, before changing the
+                'compute.max_rows', this operation is considerably expensive.
+
+        Parameters
+        ----------
+        i: {0 or 'index', 1 or 'columns'}, default 0. The axis to swap.
+        j: {0 or 'index', 1 or 'columns'}, default 1. The axis to swap.
+
+        Returns
+        -------
+        DataFrame
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame(
+        ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=['x', 'y', 'z'], columns=['a', 'b', 'c']
+        ... )
+        >>> kdf
+           a  b  c
+        x  1  2  3
+        y  4  5  6
+        z  7  8  9
+        >>> kdf.swapaxes()
+           x  y  z
+        a  1  4  7
+        b  2  5  8
+        c  3  6  9
+        >>> kdf.swapaxes(i=1, j=0)
+           x  y  z
+        a  1  4  7
+        b  2  5  8
+        c  3  6  9
+        >>> kdf.swapaxes(i=1, j=1)
+           a  b  c
+        x  1  2  3
+        y  4  5  6
+        z  7  8  9
+        """
+        assert copy is True
+        i = validate_axis(i)
+        j = validate_axis(j)
+
+        return self if i == j else self.transpose()
+
     def _swaplevel_columns(self, i, j) -> InternalFrame:
         assert isinstance(self.columns, pd.MultiIndex)
         for index in (i, j):
