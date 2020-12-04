@@ -1447,8 +1447,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.swapaxes(0, 1), pdf.swapaxes(0, 1))
         self.assert_eq(kdf.swapaxes(1, 0), pdf.swapaxes(1, 0))
-        self.assert_eq(kdf.swapaxes('index', 'columns'), pdf.swapaxes('index', 'columns'))
-        self.assert_eq(kdf.swapaxes('columns', 'index'), pdf.swapaxes('columns', 'index'))
+        self.assert_eq(kdf.swapaxes("index", "columns"), pdf.swapaxes("index", "columns"))
+        self.assert_eq(kdf.swapaxes("columns", "index"), pdf.swapaxes("columns", "index"))
         self.assert_eq((kdf + 1).swapaxes(0, 1), (pdf + 1).swapaxes(0, 1))
 
         self.assertRaises(AssertionError, lambda: kdf.swapaxes(0, 1, copy=False))
