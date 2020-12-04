@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 from distutils.version import LooseVersion
+from itertools import product
 
 import pandas as pd
 import numpy as np
@@ -358,6 +359,288 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser1 | pser2, (kser1 | kser2).sort_index())
         self.assert_eq(pser1 & pser2, (kser1 & kser2).sort_index())
+
+    def test_concat_column_axis(self):
+        pdf1 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
+        pdf1.columns.names = ["AB"]
+        pdf2 = pd.DataFrame({"C": [1, 2, 3], "D": [4, 5, 6]}, index=[1, 3, 5])
+        pdf2.columns.names = ["CD"]
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        kdf3 = kdf1.copy()
+        kdf4 = kdf2.copy()
+        pdf3 = pdf1.copy()
+        pdf4 = pdf2.copy()
+
+        columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B")], names=["X", "AB"])
+        pdf3.columns = columns
+        kdf3.columns = columns
+
+        columns = pd.MultiIndex.from_tuples([("X", "C"), ("X", "D")], names=["Y", "CD"])
+        pdf4.columns = columns
+        kdf4.columns = columns
+
+        pdf5 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
+        pdf6 = pd.DataFrame({"C": [1, 2, 3]}, index=[1, 3, 5])
+        kdf5 = ks.from_pandas(pdf5)
+        kdf6 = ks.from_pandas(pdf6)
+
+        ignore_indexes = [True, False]
+        joins = ["inner", "outer"]
+
+        objs = [
+            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
+            # TODO: ([kdf1, kdf2.C], [pdf1, pdf2.C]),
+            ([kdf1.A, kdf2], [pdf1.A, pdf2]),
+            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
+            ([kdf3[("X", "A")], kdf4[("X", "C")]], [pdf3[("X", "A")], pdf4[("X", "C")]]),
+            ([kdf3, kdf4[("X", "C")]], [pdf3, pdf4[("X", "C")]]),
+            ([kdf3[("X", "A")], kdf4], [pdf3[("X", "A")], pdf4]),
+            ([kdf3, kdf4], [pdf3, pdf4]),
+            ([kdf5, kdf6], [pdf5, pdf6]),
+            ([kdf6, kdf5], [pdf6, pdf5]),
+        ]
+
+        for ignore_index, join in product(ignore_indexes, joins):
+            for i, (kdfs, pdfs) in enumerate(objs):
+                with self.subTest(ignore_index=ignore_index, join=join, pdfs=pdfs, pair=i):
+                    actual = ks.concat(kdfs, axis=1, ignore_index=ignore_index, join=join)
+                    expected = pd.concat(pdfs, axis=1, ignore_index=ignore_index, join=join)
+                    self.assert_eq(
+                        repr(actual.sort_values(list(actual.columns)).reset_index(drop=True)),
+                        repr(expected.sort_values(list(expected.columns)).reset_index(drop=True)),
+                    )
+
+    def test_combine_first(self):
+        pser1 = pd.Series({"falcon": 330.0, "eagle": 160.0})
+        pser2 = pd.Series({"falcon": 345.0, "eagle": 200.0, "duck": 30.0})
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+        with self.assertRaisesRegex(
+            ValueError, "`combine_first` only allows `Series` for parameter `other`"
+        ):
+            kser1.combine_first(50)
+
+        kser1.name = ("X", "A")
+        kser2.name = ("Y", "B")
+        pser1.name = ("X", "A")
+        pser2.name = ("Y", "B")
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+
+        # MultiIndex
+        midx1 = pd.MultiIndex(
+            [["lama", "cow", "falcon", "koala"], ["speed", "weight", "length", "power"]],
+            [[0, 3, 1, 1, 1, 2, 2, 2], [0, 2, 0, 3, 2, 0, 1, 3]],
+        )
+        midx2 = pd.MultiIndex(
+            [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
+            [[0, 0, 0, 1, 1, 1, 2, 2, 2], [0, 1, 2, 0, 1, 2, 0, 1, 2]],
+        )
+        pser1 = pd.Series([45, 200, 1.2, 30, 250, 1.5, 320, 1], index=midx1)
+        pser2 = pd.Series([-45, 200, -1.2, 30, -250, 1.5, 320, 1, -0.3], index=midx2)
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+
+        # Series come from same DataFrame
+        pdf = pd.DataFrame(
+            {
+                "A": {"falcon": 330.0, "eagle": 160.0},
+                "B": {"falcon": 345.0, "eagle": 200.0, "duck": 30.0},
+            }
+        )
+        pser1 = pdf.A
+        pser2 = pdf.B
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+
+        kser1.name = ("X", "A")
+        kser2.name = ("Y", "B")
+        pser1.name = ("X", "A")
+        pser2.name = ("Y", "B")
+
+        self.assert_eq(
+            kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
+        )
+
+    def test_compare(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            pser1 = pd.Series(["b", "c", np.nan, "g", np.nan])
+            pser2 = pd.Series(["a", "c", np.nan, np.nan, "h"])
+            kser1 = ks.from_pandas(pser1)
+            kser2 = ks.from_pandas(pser2)
+            self.assert_eq(
+                pser1.compare(pser2).sort_index(), kser1.compare(kser2).sort_index(),
+            )
+
+            # `keep_shape=True`
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True`
+            self.assert_eq(
+                pser1.compare(pser2, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True`
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+
+            # MultiIndex
+            pser1.index = pd.MultiIndex.from_tuples(
+                [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+            )
+            pser2.index = pd.MultiIndex.from_tuples(
+                [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+            )
+            kser1 = ks.from_pandas(pser1)
+            kser2 = ks.from_pandas(pser2)
+            self.assert_eq(
+                pser1.compare(pser2).sort_index(), kser1.compare(kser2).sort_index(),
+            )
+
+            # `keep_shape=True` with MultiIndex
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True` with MultiIndex
+            self.assert_eq(
+                pser1.compare(pser2, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True` with MultiIndex
+            self.assert_eq(
+                pser1.compare(pser2, keep_shape=True, keep_equal=True).sort_index(),
+                kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+        else:
+            kser1 = ks.Series(["b", "c", np.nan, "g", np.nan])
+            kser2 = ks.Series(["a", "c", np.nan, np.nan, "h"])
+            expected = ks.DataFrame(
+                [["b", "a"], ["g", None], [None, "h"]], index=[0, 3, 4], columns=["self", "other"]
+            )
+            self.assert_eq(expected, kser1.compare(kser2).sort_index())
+
+            # `keep_shape=True`
+            expected = ks.DataFrame(
+                [["b", "a"], [None, None], [None, None], ["g", None], [None, "h"]],
+                index=[0, 1, 2, 3, 4],
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], ["g", None], [None, "h"]], index=[0, 3, 4], columns=["self", "other"]
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], ["c", "c"], [None, None], ["g", None], [None, "h"]],
+                index=[0, 1, 2, 3, 4],
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+
+            # MultiIndex
+            kser1 = ks.Series(
+                ["b", "c", np.nan, "g", np.nan],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            kser2 = ks.Series(
+                ["a", "c", np.nan, np.nan, "h"],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            expected = ks.DataFrame(
+                [["b", "a"], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples([("a", "x"), ("q", "l"), ("x", "k")]),
+                columns=["self", "other"],
+            )
+            self.assert_eq(expected, kser1.compare(kser2).sort_index())
+
+            # `keep_shape=True`
+            expected = ks.DataFrame(
+                [["b", "a"], [None, None], [None, None], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("q", "l"), ("x", "k")]
+                ),
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True).sort_index(),
+            )
+            # `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples([("a", "x"), ("q", "l"), ("x", "k")]),
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_equal=True).sort_index(),
+            )
+            # `keep_shape=True` and `keep_equal=True`
+            expected = ks.DataFrame(
+                [["b", "a"], ["c", "c"], [None, None], [None, "h"], ["g", None]],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("q", "l"), ("x", "k")]
+                ),
+                columns=["self", "other"],
+            )
+            self.assert_eq(
+                expected, kser1.compare(kser2, keep_shape=True, keep_equal=True).sort_index(),
+            )
+
+        # Different Index
+        with self.assertRaisesRegex(
+            ValueError, "Can only compare identically-labeled Series objects"
+        ):
+            kser1 = ks.Series([1, 2, 3, 4, 5], index=pd.Index([1, 2, 3, 4, 5]),)
+            kser2 = ks.Series([2, 2, 3, 4, 1], index=pd.Index([5, 4, 3, 2, 1]),)
+            kser1.compare(kser2)
+        # Different MultiIndex
+        with self.assertRaisesRegex(
+            ValueError, "Can only compare identically-labeled Series objects"
+        ):
+            kser1 = ks.Series(
+                [1, 2, 3, 4, 5],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "z"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            kser2 = ks.Series(
+                [2, 2, 3, 4, 1],
+                index=pd.MultiIndex.from_tuples(
+                    [("a", "x"), ("b", "y"), ("c", "a"), ("x", "k"), ("q", "l")]
+                ),
+            )
+            kser1.compare(kser2)
 
     def test_different_columns(self):
         kdf1 = self.kdf1

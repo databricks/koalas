@@ -206,24 +206,11 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf4.columns = columns
         kdf4.columns = columns
 
-        pdf5 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
-        pdf6 = pd.DataFrame({"C": [1, 2, 3]}, index=[1, 3, 5])
-        kdf5 = ks.from_pandas(pdf5)
-        kdf6 = ks.from_pandas(pdf6)
-
         ignore_indexes = [True, False]
         joins = ["inner", "outer"]
 
         objs = [
-            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
-            # TODO: ([kdf1, kdf2.C], [pdf1, pdf2.C]),
-            ([kdf1.A, kdf2], [pdf1.A, pdf2]),
-            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
             ([kdf1.A, kdf1.A.rename("B")], [pdf1.A, pdf1.A.rename("B")]),
-            ([kdf3[("X", "A")], kdf4[("X", "C")]], [pdf3[("X", "A")], pdf4[("X", "C")]]),
-            ([kdf3, kdf4[("X", "C")]], [pdf3, pdf4[("X", "C")]]),
-            ([kdf3[("X", "A")], kdf4], [pdf3[("X", "A")], pdf4]),
-            ([kdf3, kdf4], [pdf3, pdf4]),
             ([kdf3[("X", "A")], kdf3[("X", "B")]], [pdf3[("X", "A")], pdf3[("X", "B")]],),
             (
                 [kdf3[("X", "A")], kdf3[("X", "B")].rename("ABC")],
@@ -233,8 +220,6 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
                 [kdf3[("X", "A")].rename("ABC"), kdf3[("X", "B")]],
                 [pdf3[("X", "A")].rename("ABC"), pdf3[("X", "B")]],
             ),
-            ([kdf5, kdf6], [pdf5, pdf6]),
-            ([kdf6, kdf5], [pdf6, pdf5]),
         ]
 
         for ignore_index, join in itertools.product(ignore_indexes, joins):
