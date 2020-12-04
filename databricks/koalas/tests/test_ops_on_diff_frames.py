@@ -852,7 +852,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
             kdf[("1", "2", "3")] = ks.Series([100, 200, 300, 200])
 
-    def test_dot(self):
+    def test_series_dot(self):
         pser = pd.Series([90, 91, 85], index=[2, 4, 1])
         kser = ks.from_pandas(pser)
         pser_other = pd.Series([90, 91, 85], index=[2, 4, 1])
