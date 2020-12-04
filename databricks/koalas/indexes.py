@@ -376,6 +376,14 @@ class Index(IndexOpsMixin):
 
     T = property(transpose)
 
+    def _to_internal_pandas(self) -> pd.Index:
+        """
+        Return a pandas Index directly from _internal to avoid overhead of copy.
+
+        This method is for internal use only.
+        """
+        return self._kdf._internal.to_pandas_frame.index
+
     def to_pandas(self) -> pd.Index:
         """
         Return a pandas Index.
@@ -391,7 +399,7 @@ class Index(IndexOpsMixin):
         >>> df['dogs'].index.to_pandas()
         Index(['a', 'b', 'c', 'd'], dtype='object')
         """
-        return self._internal.to_pandas_frame.index  # type: ignore
+        return self._to_internal_pandas().copy()
 
     def toPandas(self) -> pd.Index:
         warnings.warn(
@@ -430,7 +438,7 @@ class Index(IndexOpsMixin):
         >>> ks.DataFrame({'a': ['a', 'b', 'c']}, index=[[1, 2, 3], [4, 5, 6]]).index.to_numpy()
         array([(1, 4), (2, 5), (3, 6)], dtype=object)
         """
-        result = np.asarray(self.to_pandas()._values, dtype=dtype)
+        result = np.asarray(self._to_internal_pandas()._values, dtype=dtype)
         if copy:
             result = result.copy()
         return result
@@ -2318,7 +2326,7 @@ class Index(IndexOpsMixin):
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
         if max_display_count is None:
-            return repr(self.to_pandas())
+            return repr(self._to_internal_pandas())
 
         pindex = self._kdf._get_or_create_repr_pandas_cache(max_display_count).index
 
@@ -2887,7 +2895,7 @@ class MultiIndex(Index):
         # TODO: We might need to handle internal state change.
         # So far, we don't have any functions to change the internal state of MultiIndex except for
         # series-like operations. In that case, it creates new Index object instead of MultiIndex.
-        return self._kdf[[]]._to_internal_pandas().index
+        return super().to_pandas()
 
     def toPandas(self) -> pd.MultiIndex:
         warnings.warn(
