@@ -3515,7 +3515,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 raise ValueError("cannot insert {}, already exists".format(name_like_string(label)))
 
         if self._internal.column_labels_level > 1:
-            column_depth = self._internal.column_labels_level
+            column_depth = len(self._internal.column_labels[0])
             if col_level >= column_depth:
                 raise IndexError(
                     "Too many levels: Index has only {} levels, not {}".format(
@@ -3533,21 +3533,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 for label in new_column_labels
             ]
 
-        if len(index_spark_columns) == 0:
-            existing_data_spark_columns = [
-                scol.alias(name_like_string(label))
-                for scol, label in zip(
-                    self._internal.data_spark_columns, self._internal.column_labels
-                )
-            ]
-        else:
-            existing_data_spark_columns = self._internal.data_spark_columns
-
         internal = self._internal.copy(
             index_spark_columns=index_spark_columns,
             index_names=index_names,
             column_labels=new_column_labels + self._internal.column_labels,
-            data_spark_columns=new_data_spark_columns + existing_data_spark_columns,
+            data_spark_columns=new_data_spark_columns + self._internal.data_spark_columns,
         )
 
         if inplace:

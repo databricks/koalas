@@ -435,6 +435,11 @@ class InternalFrame(object):
 
         if not index_spark_columns:
             if data_spark_columns is not None:
+                if column_labels is not None:
+                    data_spark_columns = [
+                        scol.alias(name_like_string(label))
+                        for scol, label in zip(data_spark_columns, column_labels)
+                    ]
                 spark_frame = spark_frame.select(data_spark_columns)
 
             assert not any(SPARK_INDEX_NAME_PATTERN.match(name) for name in spark_frame.columns), (
