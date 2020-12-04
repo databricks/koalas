@@ -2593,7 +2593,7 @@ class DataFrameGroupBy(GroupBy):
                     "DataFrameGroupBy.describe() doesn't support for string type for now"
                 )
 
-        kdf = self.aggregate(["count", "mean", "std", "min", "quartiles", "max"]).reset_index()
+        kdf = self.aggregate(["count", "mean", "std", "min", "quartiles", "max"])
         sdf = kdf._internal.spark_frame
         agg_column_labels = [col._column_label for col in self._agg_columns]
         formatted_percentiles = ["25%", "50%", "75%"]
@@ -2614,12 +2614,8 @@ class DataFrameGroupBy(GroupBy):
         data_columns = map(name_like_string, column_labels)
 
         # Reindex the DataFrame to reflect initial grouping and agg columns.
-        internal = InternalFrame(
+        internal = kdf._internal.copy(
             spark_frame=sdf,
-            index_spark_columns=[
-                scol_for(sdf, kser._internal.data_spark_column_names[0]) for kser in self._groupkeys
-            ],
-            index_names=[kser._column_label for kser in self._groupkeys],
             column_labels=column_labels,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
         )
