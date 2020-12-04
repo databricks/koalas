@@ -4059,6 +4059,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0   -4
         1    5
         dtype: int64
+
+        >>> reset_option("compute.ops_on_diff_frames")
         """
         if not isinstance(other, ks.Series):
             raise TypeError("Unsupported type {}".format(type(other).__name__))
