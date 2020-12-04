@@ -6454,15 +6454,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Interchange axes and swap values axes appropriately.
 
-        Parameters
-        ----------
-        i: {0 or 'index', 1 or 'columns'}, default 0. The axis to swap.
-        j: {0 or 'index', 1 or 'columns'}, default 1. The axis to swap.
-
-        Returns
-        -------
-        DataFrame
-
         .. note:: This method is based on an expensive operation due to the nature
             of big data. Internally it needs to generate each row for each value, and
             then group twice - it is a huge operation. To prevent misusage, this method
@@ -6477,6 +6468,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
                 to retrieve to retrieve more than 1000 rows. Note that, before changing the
                 'compute.max_rows', this operation is considerably expensive.
+
+        Parameters
+        ----------
+        i: {0 or 'index', 1 or 'columns'}, default 0. The axis to swap.
+        j: {0 or 'index', 1 or 'columns'}, default 1. The axis to swap.
+
+        Returns
+        -------
+        DataFrame
 
         Examples
         --------
