@@ -49,7 +49,7 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
+from databricks import koalas as ks  # noqa: F401
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.utils import (
     align_diff_frames,
@@ -1858,7 +1858,8 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
 
     >>> s1 = ks.Series(['a', 'b'])
     >>> s2 = ks.Series(['c', 'd'])
-    >>> ks.concat([s1, s2])
+    >>> with ks.option_context("compute.ops_on_diff_frames", True):
+    ...     ks.concat([s1, s2])
     0    a
     1    b
     0    c

@@ -50,7 +50,7 @@ from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.accessors import KoalasSeriesMethods
-from databricks.koalas.config import get_option, option_context
+from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
@@ -4695,7 +4695,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         --------
         >>> s1 = ks.Series([1, np.nan])
         >>> s2 = ks.Series([3, 4])
-        >>> s1.combine_first(s2)
+        >>> with ks.option_context("compute.ops_on_diff_frames", True):
+        ...     s1.combine_first(s2)
         0    1.0
         1    4.0
         dtype: float64
@@ -5560,6 +5561,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
         >>> s1 = ks.Series(["a", "b", "c", "d", "e"])
         >>> s2 = ks.Series(["a", "a", "c", "b", "e"])
 
@@ -5589,6 +5593,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    c     c
         3    d     b
         4    e     e
+
+        >>> reset_option("compute.ops_on_diff_frames")
         """
         if not self.index.equals(other.index):
             raise ValueError("Can only compare identically-labeled Series objects")
