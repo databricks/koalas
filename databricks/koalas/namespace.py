@@ -1854,12 +1854,14 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
 
     Examples
     --------
+    >>> from databricks.koalas.config import set_option, reset_option
+    >>> set_option("compute.ops_on_diff_frames", True)
+
     Combine two ``Series``.
 
     >>> s1 = ks.Series(['a', 'b'])
     >>> s2 = ks.Series(['c', 'd'])
-    >>> with ks.option_context("compute.ops_on_diff_frames", True):
-    ...     ks.concat([s1, s2])
+    >>> ks.concat([s1, s2])
     0    a
     1    b
     0    c
@@ -1954,6 +1956,8 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
       letter  number  animal    name
     0      a       1    bird   polly
     1      b       2  monkey  george
+
+    >>> reset_option("compute.ops_on_diff_frames")
     """
     if isinstance(objs, (DataFrame, IndexOpsMixin)) or not isinstance(
         objs, Iterable
