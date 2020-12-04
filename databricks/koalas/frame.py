@@ -4065,7 +4065,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(other, ks.Series):
             raise TypeError("Unsupported type {}".format(type(other).__name__))
         else:
-            return cast(Series, other.dot(self.transpose())).rename(None)
+            return cast(ks.Series, other.dot(self.transpose())).rename(None)
 
     def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None) -> "DataFrame":
         """
