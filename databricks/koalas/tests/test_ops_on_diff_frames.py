@@ -870,13 +870,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "matrices are not aligned"):
             kser.dot(kser_other)
 
-        # with DataFram is not supported for now since performance issue,
-        # now we raise ValueError with proper message instead.
-        kdf = ks.DataFrame([[0, 1], [-2, 3], [4, -5]], index=[2, 4, 1])
-
-        with self.assertRaisesRegex(ValueError, r"Series\.dot\(\) is currently not supported*"):
-            kser.dot(kdf)
-
         # for MultiIndex
         midx = pd.MultiIndex(
             [["lama", "cow", "falcon"], ["speed", "weight", "length"]],
@@ -886,8 +879,43 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         pser_other = pd.Series([-450, 20, 12, -30, -250, 15, -320, 100, 3], index=midx)
         kser_other = ks.from_pandas(pser_other)
-
         self.assert_eq(kser.dot(kser_other), pser.dot(pser_other))
+
+        pser = pd.Series([0, 1, 2, 3])
+        kser = ks.from_pandas(pser)
+
+        # DataFrame "other" without Index/MultiIndex as columns
+        pdf = pd.DataFrame([[0, 1], [-2, 3], [4, -5], [6, 7]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        # DataFrame "other" with Index as columns
+        pdf.columns = pd.Index(["x", "y"])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+        pdf.columns = pd.Index(["x", "y"], name="cols_name")
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        pdf = pdf.reindex([1, 0, 2, 3])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        # DataFrame "other" with MultiIndex as columns
+        pdf.columns = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y")])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+        pdf.columns = pd.MultiIndex.from_tuples(
+            [("a", "x"), ("b", "y")], names=["cols_name1", "cols_name2"]
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+        kser = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}).b
+        pser = kser.to_pandas()
+        kdf = ks.DataFrame({"c": [7, 8, 9]})
+        pdf = kdf.to_pandas()
+        self.assert_eq(kser.dot(kdf), pser.dot(pdf))
 
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])

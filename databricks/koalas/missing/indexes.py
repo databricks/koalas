@@ -75,8 +75,6 @@ class MissingPandasLikeIndex(object):
 
     # Functions we won't support.
     memory_usage = common.memory_usage(_unsupported_function)
-    to_list = common.to_list(_unsupported_function)
-    tolist = common.tolist(_unsupported_function)
     __iter__ = common.__iter__(_unsupported_function)
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
@@ -161,8 +159,6 @@ class MissingPandasLikeMultiIndex(object):
 
     # Properties we won't support.
     memory_usage = common.memory_usage(_unsupported_function)
-    to_list = common.to_list(_unsupported_function)
-    tolist = common.tolist(_unsupported_function)
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
         # Deprecated properties

@@ -1506,11 +1506,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             to be small, as all the data is loaded into the driver's memory.
 
         """
-        # pandas<0.24 doesn't support `to_list()` as an alias for `tolist()`
-        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
-            return self._to_internal_pandas().tolist()
-        else:
-            return self._to_internal_pandas().to_list()
+        return self._to_internal_pandas().tolist()
 
     tolist = to_list
 
@@ -4721,9 +4717,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             *index_scols, cond.alias(self._internal.data_spark_column_names[0])
         ).distinct()
         internal = self._internal.with_new_sdf(sdf)
-        return first_series(ks.DataFrame(internal))
+        return first_series(DataFrame(internal))
 
-    def dot(self, other) -> Union[Scalar, "Series"]:
+    def dot(self, other: Union["Series", DataFrame]) -> Union[Scalar, "Series"]:
         """
         Compute the dot product between the Series and the columns of other.
 
@@ -4732,7 +4728,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         It can also be called using `self @ other` in Python >= 3.5.
 
-        .. note:: This API is slightly different from pandas when indexes from both
+        .. note:: This API is slightly different from pandas when indexes from both Series
             are not aligned. To match with pandas', it requires to read the whole data for,
             for example, counting. pandas raises an exception; however, Koalas just proceeds
             and performs by ignoring mismatches with NaN permissively.
@@ -4774,20 +4770,48 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         >>> s @ s
         14
+
+        >>> kdf = ks.DataFrame({'x': [0, 1, 2, 3], 'y': [0, -1, -2, -3]})
+        >>> kdf
+           x  y
+        0  0  0
+        1  1 -1
+        2  2 -2
+        3  3 -3
+
+        >>> with ks.option_context("compute.ops_on_diff_frames", True):
+        ...     s.dot(kdf)
+        ...
+        x    14
+        y   -14
+        dtype: int64
         """
         if isinstance(other, DataFrame):
-            raise ValueError(
-                "Series.dot() is currently not supported with DataFrame since "
-                "it will cause expansive calculation as many as the number "
-                "of columns of DataFrame"
-            )
-        if self._kdf is not other._kdf:
-            if len(self.index) != len(other.index):
-                raise ValueError("matrices are not aligned")
-        if isinstance(other, Series):
-            result = (self * other).sum()
+            if not same_anchor(self, other):
+                if not self.index.sort_values().equals(other.index.sort_values()):
+                    raise ValueError("matrices are not aligned")
 
-        return result
+            other = other.copy()
+            column_labels = other._internal.column_labels
+
+            self_column_label = verify_temp_column_name(other, "__self_column__")
+            other[self_column_label] = self
+            self_kser = other._kser_for(self_column_label)
+
+            product_ksers = [other._kser_for(label) * self_kser for label in column_labels]
+
+            dot_product_kser = DataFrame(
+                other._internal.with_new_columns(product_ksers, column_labels)
+            ).sum()
+
+            return cast(Series, dot_product_kser).rename(self.name)
+
+        else:
+            assert isinstance(other, Series)
+            if not same_anchor(self, other):
+                if len(self.index) != len(other.index):
+                    raise ValueError("matrices are not aligned")
+            return (self * other).sum()
 
     def __matmul__(self, other):
         """
@@ -4945,7 +4969,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         should_return_series = True
         if isinstance(self.index, ks.MultiIndex):
             raise ValueError("asof is not supported for a MultiIndex")
-        if isinstance(where, (ks.Index, ks.Series, ks.DataFrame)):
+        if isinstance(where, (ks.Index, ks.Series, DataFrame)):
             raise ValueError("where cannot be an Index, Series or a DataFrame")
         if not self.index.is_monotonic_increasing:
             raise ValueError("asof requires a sorted index")
