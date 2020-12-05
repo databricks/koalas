@@ -7272,11 +7272,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         all_column_labels = []
         for column in update_sdf.columns:
             if column.startswith("__this_") or column.startswith("__that_"):
-                all_column_labels.append((column[7 : ],))
+                all_column_labels.append((column[7:],))
 
         internal = InternalFrame(
             spark_frame=update_sdf,
-            index_spark_column_names = self._internal.index_spark_column_names,
+            index_spark_column_names=self._internal.index_spark_column_names,
             column_labels=all_column_labels,
         )
 
