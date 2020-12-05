@@ -7276,8 +7276,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         internal = InternalFrame(
             spark_frame=update_sdf,
-            index_spark_column_names=self._internal.index_spark_column_names,
-            column_labels=all_column_labels,
+            index_spark_column_names=list(self._internal.index_spark_column_names),
+            column_labels=list(all_column_labels),
         )
 
         return DataFrame(internal)
