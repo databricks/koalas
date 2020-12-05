@@ -2003,3 +2003,21 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kidx.astype("int63")
+
+    def test_to_list(self):
+        # Index
+        pidx = pd.Index([1, 2, 3, 4, 5])
+        kidx = ks.from_pandas(pidx)
+        # MultiIndex
+        tuples = [(1, "red"), (1, "blue"), (2, "red"), (2, "green")]
+        pmidx = pd.MultiIndex.from_tuples(tuples)
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(kidx.tolist(), pidx.tolist())
+
+        if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            # PySpark < 2.4 does not support struct type with arrow enabled.
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kmidx.tolist(), pmidx.tolist())
+        else:
+            self.assert_eq(kidx.tolist(), pidx.tolist())

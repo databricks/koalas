@@ -102,6 +102,7 @@ Conversion
 
    Index.astype
    Index.item
+   Index.to_list
    Index.to_series
    Index.to_frame
    Index.view
@@ -249,6 +250,7 @@ MultiIndex Conversion
 
    MultiIndex.astype
    MultiIndex.item
+   MultiIndex.to_list
    MultiIndex.to_series
    MultiIndex.to_frame
    MultiIndex.view
