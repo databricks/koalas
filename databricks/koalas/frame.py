@@ -85,6 +85,7 @@ from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFram
 from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
+    combine_frames,
     default_session,
     is_name_like_tuple,
     is_name_like_value,
@@ -7255,28 +7256,28 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             set(self._internal.column_labels).intersection(set(other._internal.column_labels))
         )
 
-        update_sdf = self.join(
-            other, how="outer", rsuffix="_new"
-            )._internal.resolved_copy.spark_frame
+        update_sdf = combine_frames(self, other)._internal.resolved_copy.spark_frame
 
         for column_labels in update_columns:
             column_name = self._internal.spark_column_name_for(column_labels)
-            old_col = scol_for(update_sdf, column_name)
+            old_col = scol_for(update_sdf, "__this_" + column_name)
             new_col = scol_for(
-                update_sdf, other._internal.spark_column_name_for(column_labels) + "_new"
+                update_sdf, ("__that_" + other._internal.spark_column_name_for(column_labels))
             )
             update_sdf = update_sdf.withColumn(
-                column_name, F.when(old_col.isNull(), new_col).otherwise(old_col)
+                "__this_" + column_name, F.when(old_col.isNull(), new_col).otherwise(old_col)
             )
-            update_sdf = update_sdf.drop(column_labels[0] + "_new")
+            update_sdf = update_sdf.drop("__that_" + column_labels[0])
 
-        index_spark_column_names = list(
-            set(self._internal.index_spark_column_names).union(set(other._internal.index_spark_column_names))
-        )
+        all_column_labels = []
+        for column in update_sdf.columns:
+            if column.startswith("__this_") or column.startswith("__that_"):
+                all_column_labels.append((column[7 : ],))
 
         internal = InternalFrame(
             spark_frame=update_sdf,
-            index_spark_column_names=index_spark_column_names,
+            index_spark_column_names = self._internal.index_spark_column_names,
+            column_labels=all_column_labels,
         )
 
         return DataFrame(internal)
