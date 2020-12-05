@@ -1506,11 +1506,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             to be small, as all the data is loaded into the driver's memory.
 
         """
-        # pandas<0.24 doesn't support `to_list()` as an alias for `tolist()`
-        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
-            return self._to_internal_pandas().tolist()
-        else:
-            return self._to_internal_pandas().to_list()
+        return self._to_internal_pandas().tolist()
 
     tolist = to_list
 
