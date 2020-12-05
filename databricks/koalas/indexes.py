@@ -2318,7 +2318,7 @@ class Index(IndexOpsMixin):
         >>> midx.to_list()
         [(1, 'red'), (1, 'blue'), (2, 'red'), (2, 'green')]
         """
-        return self.to_pandas().tolist()
+        return self._to_internal_pandas().tolist()
 
     tolist = to_list
 
