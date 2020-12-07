@@ -49,7 +49,7 @@ from databricks.koalas.internal import (
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
-from databricks.koalas.utils import align_diff_series, same_anchor, scol_for, validate_axis
+from databricks.koalas.utils import scol_for, validate_axis
 from databricks.koalas.frame import DataFrame
 
 if TYPE_CHECKING:
@@ -99,25 +99,20 @@ def column_op(f):
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
 
-        if all(same_anchor(self, col) for col in cols):
+        if all(not self._need_alignment_for_column_op(col) for col in cols):
             # Same DataFrame anchors
             args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self.spark.column, *args)
             scol = booleanize_null(self.spark.column, scol, f)
 
-            kser = self._with_new_scol(scol)
+            index_ops = self._with_new_scol(scol)
         else:
-            # Different DataFrame anchors
-            def apply_func(this_column, *that_columns):
-                scol = f(this_column, *that_columns)
-                return booleanize_null(this_column, scol, f)
-
-            kser = align_diff_series(apply_func, self, *args, how="full")
+            index_ops = self._align_and_column_op(f, *args)
 
         if not all(self.name == col.name for col in cols):
-            kser = kser.rename()
+            index_ops = index_ops.rename(None)
 
-        return kser
+        return index_ops
 
     return wrapper
 
@@ -179,6 +174,14 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self.spark.column
 
     spark_column.__doc__ = SparkIndexOpsMethods.column.__doc__
+
+    @abstractmethod
+    def _need_alignment_for_column_op(self, other: "IndexOpsMixin") -> bool:
+        pass
+
+    @abstractmethod
+    def _align_and_column_op(self, f, *args) -> "IndexOpsMixin":
+        pass
 
     # arithmetic operators
     __neg__ = column_op(Column.__neg__)

@@ -47,7 +47,7 @@ from pyspark.sql.types import TimestampType, IntegralType, DataType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.base import IndexOpsMixin
+from databricks.koalas.base import IndexOpsMixin, column_op
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
@@ -58,9 +58,11 @@ from databricks.koalas.utils import (
     is_name_like_tuple,
     is_name_like_value,
     name_like_string,
+    same_anchor,
     scol_for,
     verify_temp_column_name,
     validate_bool_kwarg,
+    ERROR_MESSAGE_CANNOT_COMBINE,
 )
 from databricks.koalas.internal import (
     InternalFrame,
@@ -154,13 +156,39 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        sdf = self._internal.spark_frame.select(scol.alias(SPARK_DEFAULT_INDEX_NAME))
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_spark_columns=[scol_for(sdf, col) for col in sdf.columns],
-            index_names=self._internal.index_names,
-        )
+        scol = scol.alias(SPARK_DEFAULT_INDEX_NAME)
+        internal = self._internal.copy(index_spark_columns=[scol], data_spark_columns=[scol])
         return DataFrame(internal).index
+
+    def _need_alignment_for_column_op(self, other: "IndexOpsMixin") -> bool:
+        return self._internal.spark_frame is not other._internal.spark_frame
+
+    def _align_and_column_op(self, f, *args) -> "Index":
+        if get_option("compute.ops_on_diff_frames"):
+            # TODO: avoid using default index?
+            with ks.option_context("compute.default_index_type", "distributed-sequence"):
+                # Directly using Series from both self and other seems causing
+                # some exceptions when 'compute.ops_on_diff_frames' is enabled.
+                # Working around for now via using frame.
+                return (
+                    cast(
+                        Series,
+                        column_op(f)(
+                            self.to_series().reset_index(drop=True),
+                            *[
+                                arg.to_series().reset_index(drop=True)
+                                if isinstance(arg, Index)
+                                else arg
+                                for arg in args
+                            ]
+                        ),
+                    )
+                    .to_frame(DEFAULT_SERIES_NAME)
+                    .set_index(DEFAULT_SERIES_NAME)
+                    .index.rename(self.name)
+                )
+        else:
+            raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
 
     spark = CachedAccessor("spark", SparkIndexMethods)
 
@@ -280,9 +308,8 @@ class Index(IndexOpsMixin):
         self_name = self.names if isinstance(self, MultiIndex) else self.name
         other_name = other.names if isinstance(other, MultiIndex) else other.name
 
-        return (self is other) or (
-            type(self) == type(other)
-            and self_name == other_name  # to support non-index comparison by short-circuiting.
+        return (
+            self_name == other_name  # to support non-index comparison by short-circuiting.
             and self.equals(other)
         )
 
@@ -331,18 +358,7 @@ class Index(IndexOpsMixin):
         >>> midx.equals(idx)
         False
         """
-        # TODO: avoid using default index?
-        with option_context("compute.default_index_type", "distributed-sequence"):
-            # Directly using Series from both self and other seems causing
-            # some exceptions when 'compute.ops_on_diff_frames' is enabled.
-            # Working around for now via using frame.
-            return (self is other) or (
-                type(self) == type(other)
-                and (
-                    self.to_series().rename("self").to_frame().reset_index()["self"]
-                    == other.to_series().rename("other").to_frame().reset_index()["other"]
-                ).all()
-            )
+        return same_anchor(self, other) or (type(self) == type(other) and (self == other).all())
 
     def transpose(self) -> "Index":
         """
@@ -2436,6 +2452,9 @@ class MultiIndex(Index):
     def _with_new_scol(self, scol: spark.Column):
         raise NotImplementedError("Not supported for type MultiIndex")
 
+    def _align_and_column_op(self, f, *args) -> "Index":
+        raise NotImplementedError("Not supported for type MultiIndex")
+
     def any(self, *args, **kwargs) -> None:
         raise TypeError("cannot perform any with this index type: MultiIndex")
 
@@ -2656,6 +2675,27 @@ class MultiIndex(Index):
             return [n if is_name_like_tuple(n) else (n,) for n in name]
         else:
             raise TypeError("Must pass list-like as `names`.")
+
+    def equals(self, other) -> bool:
+        if same_anchor(self, other):
+            return True
+        elif type(self) == type(other):
+            if get_option("compute.ops_on_diff_frames"):
+                # TODO: avoid using default index?
+                with option_context("compute.default_index_type", "distributed-sequence"):
+                    # Directly using Series from both self and other seems causing
+                    # some exceptions when 'compute.ops_on_diff_frames' is enabled.
+                    # Working around for now via using frame.
+                    return (
+                        self.to_series("self").reset_index(drop=True)
+                        == other.to_series("other").reset_index(drop=True)
+                    ).all()
+            else:
+                raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
+        else:
+            return False
+
+    equals.__doc__ = Index.equals.__doc__
 
     def swaplevel(self, i=-2, j=-1) -> "MultiIndex":
         """

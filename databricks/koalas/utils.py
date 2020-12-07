@@ -40,6 +40,13 @@ if TYPE_CHECKING:
     from databricks.koalas.base import IndexOpsMixin
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.internal import InternalFrame
+    from databricks.koalas.series import Series
+
+
+ERROR_MESSAGE_CANNOT_COMBINE = (
+    "Cannot combine the series or dataframe because it comes from a different dataframe. "
+    "In order to allow this operation, enable 'compute.ops_on_diff_frames' option."
+)
 
 
 def same_anchor(
@@ -233,15 +240,17 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             )
         )
     else:
-        raise ValueError(
-            "Cannot combine the series or dataframe because it comes from a different dataframe. "
-            "In order to allow this operation, enable 'compute.ops_on_diff_frames' option."
-        )
+        raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
 
 
 def align_diff_frames(
-    resolve_func, this, that, fillna=True, how="full", preserve_order_column=False
-):
+    resolve_func,
+    this: "DataFrame",
+    that: "DataFrame",
+    fillna: bool = True,
+    how: str = "full",
+    preserve_order_column: bool = False,
+) -> "DataFrame":
     """
     This method aligns two different DataFrames with a given `func`. Columns are resolved and
     handled within the given `func`.
@@ -376,12 +385,11 @@ def align_diff_frames(
     return kdf
 
 
-def align_diff_series(func, this_series, *args, how="full"):
-    from databricks.koalas.base import IndexOpsMixin
+def align_diff_series(func, this_series: "Series", *args, how: str = "full") -> "Series":
     from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import first_series
+    from databricks.koalas.series import Series, first_series
 
-    cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
+    cols = [arg for arg in args if isinstance(arg, Series)]
     combined = combine_frames(this_series.to_frame(), *cols, how=how)
 
     scol = func(
