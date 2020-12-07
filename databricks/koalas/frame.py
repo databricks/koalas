@@ -7272,6 +7272,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
         >>> df1 = ks.DataFrame({'A': [None, 0], 'B': [None, 4]})
         >>> df2 = ks.DataFrame({'A': [1, 1], 'B': [3, 3]})
         >>> df1.combine_first(df2)
@@ -7289,6 +7291,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         0  NaN  4.0  NaN
         1  0.0  3.0  1.0
         2  NaN  3.0  1.0
+
+        >>> reset_option("compute.ops_on_diff_frames")
         """
 
         update_columns = set(self._internal.column_labels).intersection(
