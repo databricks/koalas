@@ -7249,38 +7249,77 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return cast(DataFrame, concat([self, other], ignore_index=ignore_index))
 
     def combine_first(self, other: "DataFrame") -> "DataFrame":
-        if isinstance(other, ks.Series):
-            other = other.to_frame()
+        """
+        Update null elements with value in the same location in `other`.
 
-        update_columns = list(
-            set(self._internal.column_labels).intersection(set(other._internal.column_labels))
+        Combine two DataFrame objects by filling null values in one DataFrame
+        with non-null values from other DataFrame. The row and column indexes
+        of the resulting DataFrame will be the union of the two.
+
+        Parameters
+        ----------
+        other : DataFrame
+            Provided DataFrame to use to fill null values.
+
+        Returns
+        -------
+        DataFrame
+
+        See Also
+        --------
+        DataFrame.combine : Perform series-wise operation on two DataFrames
+            using a given function.
+
+        Examples
+        --------
+        >>> df1 = ks.DataFrame({'A': [None, 0], 'B': [None, 4]})
+        >>> df2 = ks.DataFrame({'A': [1, 1], 'B': [3, 3]})
+        >>> df1.combine_first(df2)
+             A    B
+        0  1.0  3.0
+        1  0.0  4.0
+
+        Null values still persist if the location of that null value
+        does not exist in `other`
+
+        >>> df1 = ks.DataFrame({'A': [None, 0], 'B': [4, None]})
+        >>> df2 = ks.DataFrame({'B': [3, 3], 'C': [1, 1]}, index=[1, 2])
+        >>> df1.combine_first(df2)
+             A    B    C
+        0  NaN  4.0  NaN
+        1  0.0  3.0  1.0
+        2  NaN  3.0  1.0
+        """
+
+        update_columns = set(self._internal.column_labels).intersection(
+            set(other._internal.column_labels)
+        )
+        final_spark_columns = []
+
+        combined_df = combine_frames(self, other)
+        column_labels = combined_df._internal.column_labels
+        updated_sdf = combined_df._internal.resolved_copy.spark_frame
+        spark_columns = combined_df._internal.spark_columns
+
+        for column_label in column_labels:
+            if (column_label[1],) in update_columns:
+                if column_label[0] == "this":
+                    column_name = "__newc_" + column_label[1]
+                    final_spark_columns.append(column_name)
+
+                    old_col = scol_for(updated_sdf, "__this_" + column_label[1])
+                    new_col = scol_for(updated_sdf, ("__that_" + column_label[1]))
+                    cond = F.when(old_col.isNull(), new_col).otherwise(old_col).alias(column_name)
+                    updated_sdf = updated_sdf.select(*spark_columns, cond)
+            else:
+                column_name = combined_df._internal.spark_column_name_for(column_label)
+                final_spark_columns.append(column_name)
+
+        updated_sdf = updated_sdf.select(
+            [scol_for(updated_sdf, column).alias(column[7:]) for column in final_spark_columns]
         )
 
-        update_sdf = combine_frames(self, other)._internal.resolved_copy.spark_frame
-
-        for column_labels in update_columns:
-            column_name = self._internal.spark_column_name_for(column_labels)
-            old_col = scol_for(update_sdf, "__this_" + column_name)
-            new_col = scol_for(
-                update_sdf, ("__that_" + other._internal.spark_column_name_for(column_labels))
-            )
-            update_sdf = update_sdf.withColumn(
-                "__this_" + column_name, F.when(old_col.isNull(), new_col).otherwise(old_col)
-            )
-            update_sdf = update_sdf.drop("__that_" + column_labels[0])
-
-        all_column_labels = []
-        for column in update_sdf.columns:
-            if column.startswith("__this_") or column.startswith("__that_"):
-                all_column_labels.append((column[7:],))
-
-        internal = InternalFrame(
-            spark_frame=update_sdf,
-            index_spark_column_names=list(self._internal.index_spark_column_names),
-            column_labels=list(all_column_labels),
-        )
-
-        return DataFrame(internal)
+        return DataFrame(updated_sdf)
 
     # TODO: add 'filter_func' and 'errors' parameter
     def update(self, other: "DataFrame", join: str = "left", overwrite: bool = True) -> None:
