@@ -1482,7 +1482,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3    0.2
         Name: dogs, dtype: float64
         """
-        return first_series(self._internal.to_pandas_frame.copy())
+        return self._to_internal_pandas().copy()
 
     # Alias to maintain backward compatibility with Spark
     def toPandas(self) -> pd.Series:
@@ -5854,7 +5854,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         This method is for internal use only.
         """
-        return first_series(self._internal.to_pandas_frame)
+        return self._kdf._internal.to_pandas_frame[self.name]
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
