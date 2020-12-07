@@ -7311,6 +7311,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     new_col = scol_for(updated_sdf, ("__that_" + column_label[1]))
                     cond = F.when(old_col.isNull(), new_col).otherwise(old_col).alias(column_name)
                     updated_sdf = updated_sdf.select(*spark_columns, cond)
+                    spark_columns.append(column_name)
             else:
                 column_name = combined_df._internal.spark_column_name_for(column_label)
                 final_spark_columns.append(column_name)
