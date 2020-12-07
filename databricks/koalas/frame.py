@@ -7314,7 +7314,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     spark_columns.append(column_name)
             else:
                 column_name = combined_df._internal.spark_column_name_for(column_label)
-                updated_sdf = updated_sdf.select(*spark_columns, scol_for(updated_sdf, column_name).alias(column_name[7:]))
+                col = scol_for(updated_sdf, column_name)
+                updated_sdf = updated_sdf.select(*spark_columns, col.alias(column_name[7:]))
                 spark_columns.append(column_name[7:])
                 final_spark_columns.append(column_name[7:])
 
