@@ -7304,7 +7304,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for column_label in column_labels:
             if (column_label[1],) in update_columns:
                 if column_label[0] == "this":
-                    column_name = "__newc_" + column_label[1]
+                    column_name = column_label[1]
                     final_spark_columns.append(column_name)
 
                     old_col = scol_for(updated_sdf, "__this_" + column_label[1])
@@ -7314,11 +7314,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     spark_columns.append(column_name)
             else:
                 column_name = combined_df._internal.spark_column_name_for(column_label)
-                final_spark_columns.append(column_name)
+                updated_sdf = updated_sdf.select(*spark_columns, scol_for(updated_sdf, column_name).alias(column_name[7:]))
+                spark_columns.append(column_name[7:])
+                final_spark_columns.append(column_name[7:])
 
-        updated_sdf = updated_sdf.select(
-            [scol_for(updated_sdf, column).alias(column[7:]) for column in final_spark_columns]
-        )
+        updated_sdf = updated_sdf.select(*final_spark_columns)
 
         return DataFrame(updated_sdf)
 
