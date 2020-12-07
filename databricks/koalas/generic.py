@@ -618,7 +618,7 @@ class Frame(object, metaclass=ABCMeta):
         mode: str = "overwrite",
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
-        **options,
+        **options
     ) -> Optional[str]:
         r"""
         Write object to a comma-separated values (csv) file.
@@ -847,7 +847,7 @@ class Frame(object, metaclass=ABCMeta):
         mode: str = "overwrite",
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
-        **options,
+        **options
     ) -> Optional[str]:
         """
         Convert the object to a JSON string.
