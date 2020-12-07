@@ -618,7 +618,7 @@ class Frame(object, metaclass=ABCMeta):
         mode: str = "overwrite",
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
-        **options
+        **options,
     ) -> Optional[str]:
         r"""
         Write object to a comma-separated values (csv) file.
@@ -847,7 +847,7 @@ class Frame(object, metaclass=ABCMeta):
         mode: str = "overwrite",
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
-        **options
+        **options,
     ) -> Optional[str]:
         """
         Convert the object to a JSON string.
@@ -1177,6 +1177,85 @@ class Frame(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(
             F.sum, name="sum", numeric_only=numeric_only, axis=axis
         )
+
+    def swapaxes(
+        self, i: Union[str, int], j: Union[str, int], copy: bool = True
+    ) -> Union["DataFrame", "Series"]:
+        """
+        Interchange axes and swap values axes appropriately.
+
+        .. note:: This method, if applied to a DataFrame, is based on an expensive operation due to
+            the nature of big data. Internally it needs to generate each row for each value, and
+            then group twice - it is a huge operation. To prevent misusage, this method
+            has the 'compute.max_rows' default limit of input length, and raises a ValueError.
+
+                >>> from databricks.koalas.config import option_context
+                >>> with option_context('compute.max_rows', 1000):  # doctest: +NORMALIZE_WHITESPACE
+                ...     ks.DataFrame({'a': range(1001)}).swapaxes()
+                Traceback (most recent call last):
+                  ...
+                ValueError: Current DataFrame has more then the given limit 1000 rows.
+                Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
+                to retrieve to retrieve more than 1000 rows. Note that, before changing the
+                'compute.max_rows', this operation is considerably expensive.
+
+        Parameters
+        ----------
+        i: {0 or 'index', 1 or 'columns'}. The axis to swap.
+        j: {0 or 'index', 1 or 'columns'}. The axis to swap.
+        copy : bool, default True.
+
+        Returns
+        -------
+        DataFrame or Series
+
+        Examples
+        --------
+        On a DataFrame:
+
+        >>> kdf = ks.DataFrame(
+        ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=['x', 'y', 'z'], columns=['a', 'b', 'c']
+        ... )
+        >>> kdf
+           a  b  c
+        x  1  2  3
+        y  4  5  6
+        z  7  8  9
+        >>> kdf.swapaxes(i=1, j=0)
+           x  y  z
+        a  1  4  7
+        b  2  5  8
+        c  3  6  9
+        >>> kdf.swapaxes(i=1, j=1)
+           a  b  c
+        x  1  2  3
+        y  4  5  6
+        z  7  8  9
+
+        On a Series:
+
+        >>> kser = ks.Series([1, 2, 3], index=["x", "y", "z"])
+        >>> kser
+        x    1
+        y    2
+        z    3
+        dtype: int64
+        >>>
+        >>> kser.swapaxes(0, 0)
+        x    1
+        y    2
+        z    3
+        dtype: int64
+        """
+        assert copy is True
+        i = validate_axis(i)
+        j = validate_axis(j)
+
+        if isinstance(self, ks.Series):
+            if not i == j == 0:
+                raise ValueError("Axis must be 0 for Series")
+
+        return self.copy() if i == j else cast(Union["DataFrame", "Series"], self).transpose()
 
     def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
