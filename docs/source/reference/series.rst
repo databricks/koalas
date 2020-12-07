@@ -176,6 +176,7 @@ Reindexing / Selection / Label manipulation
    Series.reset_index
    Series.sample
    Series.swaplevel
+   Series.swapaxes
    Series.take
    Series.tail
    Series.where
