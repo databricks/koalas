@@ -99,6 +99,13 @@ def column_op(f):
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
 
+        # TODO: support ops between different types.
+        assert all(
+            type(self) == type(col) for col in cols
+        ), "All arguments must be the same types: [{}, {}]".format(
+            type(self).__name__, ", ".join(type(col).__name__ for col in cols)
+        )
+
         if all(not self._need_alignment_for_column_op(col) for col in cols):
             # Same DataFrame anchors
             args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
