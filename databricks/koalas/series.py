@@ -5629,7 +5629,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     + [other._internal.data_spark_columns[0]],
                     column_labels=[self_column_label] + [other_column_label],
                 )
-            )
+            )  # type: DataFrame
         else:
             if not self.index.equals(other.index):
                 raise ValueError("Can only compare identically-labeled Series objects")
