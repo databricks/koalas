@@ -2032,3 +2032,15 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = ks.from_pandas(pidx)
 
         self.assert_eq((kidx * 100) + (kidx * 10) + kidx, (pidx * 100) + (pidx * 10) + pidx)
+
+        pdf = pd.DataFrame(
+            index=pd.MultiIndex.from_tuples([(1, 2), (3, 4), (5, 6)], names=["a", "b"])
+        )
+        kdf = ks.from_pandas(pdf)
+
+        pidx1 = pdf.index.get_level_values(0)
+        pidx2 = pdf.index.get_level_values(1)
+        kidx1 = kdf.index.get_level_values(0)
+        kidx2 = kdf.index.get_level_values(1)
+
+        self.assert_eq(kidx1 + kidx2, pidx1 + pidx2)

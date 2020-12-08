@@ -472,6 +472,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __rand__ = column_op(Column.__rand__)
     __ror__ = column_op(Column.__ror__)
 
+    def __len__(self):
+        return len(self._kdf)
+
     # NDArray Compat
     def __array_ufunc__(self, ufunc: Callable, method: str, *inputs: Any, **kwargs: Any):
         # Try dunder methods first.

@@ -5831,9 +5831,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol = sfun(scol, spark_type)
         return unpack_scalar(self._internal.spark_frame.select(scol))
 
-    def __len__(self):
-        return len(self.to_dataframe())
-
     def __getitem__(self, key):
         try:
             if (isinstance(key, slice) and any(type(n) == int for n in [key.start, key.stop])) or (

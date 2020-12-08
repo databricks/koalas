@@ -156,8 +156,11 @@ class Index(IndexOpsMixin):
         :param scol: the new Spark Column
         :return: the copied Index
         """
-        scol = scol.alias(SPARK_DEFAULT_INDEX_NAME)
-        internal = self._internal.copy(index_spark_columns=[scol], data_spark_columns=[scol])
+        internal = self._internal.copy(
+            index_spark_columns=[scol.alias(SPARK_DEFAULT_INDEX_NAME)],
+            column_labels=[],
+            data_spark_columns=[],
+        )
         return DataFrame(internal).index
 
     def _need_alignment_for_column_op(self, other: "IndexOpsMixin") -> bool:
@@ -239,7 +242,7 @@ class Index(IndexOpsMixin):
         >>> df.set_index('dogs', append=True).index.size
         4
         """
-        return len(self._kdf)  # type: ignore
+        return len(self)
 
     @property
     def shape(self) -> tuple:
@@ -2410,9 +2413,6 @@ class Index(IndexOpsMixin):
     def __xor__(self, other):
         return self.symmetric_difference(other)
 
-    def __len__(self):
-        return self.size
-
     def __bool__(self):
         raise ValueError(
             "The truth value of a {0} is ambiguous. "
@@ -3298,14 +3298,13 @@ class MultiIndex(Index):
         Index(['a', 'b', 'a'], dtype='object', name='level_2')
         """
         level = self._get_level_number(level)
-        index_scol_name = self._internal.index_spark_column_names[level]
+        index_scol = self._internal.index_spark_columns[level]
         index_name = self._internal.index_names[level]
-        scol = self._internal.index_spark_columns[level]
-        sdf = self._internal.spark_frame.select(scol)
-        internal = InternalFrame(
-            spark_frame=sdf,
-            index_spark_columns=[scol_for(sdf, index_scol_name)],
+        internal = self._internal.copy(
+            index_spark_columns=[index_scol],
             index_names=[index_name],
+            column_labels=[],
+            data_spark_columns=[],
         )
         return DataFrame(internal).index
 
