@@ -1864,7 +1864,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(AssertionError, lambda: kser.swapaxes(0, 1, copy=False))
         self.assertRaises(ValueError, lambda: kser.swapaxes(0, 1))
         self.assertRaises(ValueError, lambda: kser.swapaxes("index", "columns"))
-        self.assertRaises(TypeError, lambda: kser.swapaxes())
 
     def test_div_zero_and_nan(self):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
