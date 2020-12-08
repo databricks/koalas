@@ -1228,7 +1228,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kidx1 = ks.from_pandas(pidx1)
         kidx2 = ks.from_pandas(pidx2)
 
-        self.assert_eq(((kidx1 * 10) + kidx2).sort_values(), ((pidx1 * 10) + pidx2).sort_values())
+        self.assert_eq((kidx1 * 10 + kidx2).sort_values(), (pidx1 * 10 + pidx2).sort_values())
 
         pidx3 = pd.Index([11, 12, 13])
         kidx3 = ks.from_pandas(pidx3)
@@ -1245,8 +1245,8 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kidx2 = ks.from_pandas(pidx2)
         kidx3 = ks.from_pandas(pidx3)
 
-        self.assert_eq(((kidx1 * 10) + kidx2).sort_values(), ((pidx1 * 10) + pidx2).sort_values())
-        self.assert_eq(((kidx1 * 10) + kidx3).sort_values(), ((pidx1 * 10) + pidx3).sort_values())
+        self.assert_eq((kidx1 * 10 + kidx2).sort_values(), (pidx1 * 10 + pidx2).sort_values())
+        self.assert_eq((kidx1 * 10 + kidx3).sort_values(), (pidx1 * 10 + pidx3).sort_values())
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):

@@ -2026,12 +2026,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx = pd.Index([1, 2, 3, 4, 5])
         kidx = ks.from_pandas(pidx)
 
-        self.assert_eq((kidx * 100) + (kidx * 10) + kidx, (pidx * 100) + (pidx * 10) + pidx)
+        self.assert_eq(kidx * 100 + kidx * 10 + kidx, pidx * 100 + pidx * 10 + pidx)
 
         pidx = pd.Index([1, 2, 3, 4, 5], name="a")
         kidx = ks.from_pandas(pidx)
 
-        self.assert_eq((kidx * 100) + (kidx * 10) + kidx, (pidx * 100) + (pidx * 10) + pidx)
+        self.assert_eq(kidx * 100 + kidx * 10 + kidx, pidx * 100 + pidx * 10 + pidx)
 
         pdf = pd.DataFrame(
             index=pd.MultiIndex.from_tuples([(1, 2), (3, 4), (5, 6)], names=["a", "b"])
@@ -2043,4 +2043,4 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx1 = kdf.index.get_level_values(0)
         kidx2 = kdf.index.get_level_values(1)
 
-        self.assert_eq(kidx1 + kidx2, pidx1 + pidx2)
+        self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
