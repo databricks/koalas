@@ -991,6 +991,32 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         str_kser = ks.Series(["a", "b", "c"])
         self.assert_eq(str_kser.clip(1, 3), str_kser)
 
+    def test_compare(self):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            pser = pd.Series([1, 2])
+            kser = ks.from_pandas(pser)
+
+            res_kdf = kser.compare(kser)
+            self.assertTrue(res_kdf.empty)
+            self.assert_eq(res_kdf.columns, pd.Index(["self", "other"]))
+
+            self.assert_eq(pser.compare(pser + 1).sort_index(), kser.compare(kser + 1).sort_index())
+
+            pser = pd.Series([1, 2], index=["x", "y"])
+            kser = ks.from_pandas(pser)
+            self.assert_eq(pser.compare(pser + 1).sort_index(), kser.compare(kser + 1).sort_index())
+        else:
+            kser = ks.Series([1, 2])
+            res_kdf = kser.compare(kser)
+            self.assertTrue(res_kdf.empty)
+            self.assert_eq(res_kdf.columns, pd.Index(["self", "other"]))
+            expected = ks.DataFrame([[1, 2], [2, 3]], columns=["self", "other"])
+            self.assert_eq(expected, kser.compare(kser + 1).sort_index())
+
+            kser = ks.Series([1, 2], index=["x", "y"])
+            expected = ks.DataFrame([[1, 2], [2, 3]], index=["x", "y"], columns=["self", "other"])
+            self.assert_eq(expected, kser.compare(kser + 1).sort_index())
+
     def test_is_unique(self):
         # We can't use pandas' is_unique for comparison. pandas 0.23 ignores None
         pser = pd.Series([1, 2, 2, None, None])
