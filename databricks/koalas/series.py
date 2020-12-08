@@ -2502,8 +2502,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Examples
         --------
-        On a Series:
-
         >>> kser = ks.Series([1, 2, 3], index=["x", "y", "z"])
         >>> kser
         x    1
