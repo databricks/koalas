@@ -1135,7 +1135,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(KeyError, "Key length \\(3\\) exceeds index depth \\(2\\)"):
             kdf[("1", "2", "3")] = ks.Series([100, 200, 300, 200])
 
-    def test_dot(self):
+    def test_series_dot(self):
         pser = pd.Series([90, 91, 85], index=[2, 4, 1])
         kser = ks.from_pandas(pser)
         pser_other = pd.Series([90, 91, 85], index=[2, 4, 1])
@@ -1199,6 +1199,57 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"c": [7, 8, 9]})
         pdf = kdf.to_pandas()
         self.assert_eq(kser.dot(kdf), pser.dot(pdf))
+
+    def test_frame_dot(self):
+        pdf = pd.DataFrame([[0, 1, -2, -1], [1, 1, 1, 1]])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pd.Series([1, 1, 2, 1])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        # Index reorder
+        pser = pser.reindex([1, 0, 2, 3])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        # ser with name
+        pser.name = "ser"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        # df with MultiIndex as column (ser with MultiIndex)
+        arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+        pidx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
+        pser = pd.Series([1, 1, 2, 1], index=pidx)
+        pdf = pd.DataFrame([[0, 1, -2, -1], [1, 1, 1, 1]], columns=pidx)
+        kdf = ks.from_pandas(pdf)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        # df with Index as column (ser with Index)
+        pidx = pd.Index([1, 2, 3, 4], name="number")
+        pser = pd.Series([1, 1, 2, 1], index=pidx)
+        pdf = pd.DataFrame([[0, 1, -2, -1], [1, 1, 1, 1]], columns=pidx)
+        kdf = ks.from_pandas(pdf)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        # df with Index
+        pdf.index = pd.Index(["x", "y"], name="char")
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        # df with MultiIndex
+        pdf.index = pd.MultiIndex.from_arrays([[1, 1], ["red", "blue"]], names=("number", "color"))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.dot(kser), pdf.dot(pser))
+
+        pdf = pd.DataFrame([[1, 2], [3, 4]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.dot(kdf[0]), pdf.dot(pdf[0]))
+        self.assert_eq(kdf.dot(kdf[0] * 10), pdf.dot(pdf[0] * 10))
+        self.assert_eq((kdf + 1).dot(kdf[0] * 10), (pdf + 1).dot(pdf[0] * 10))
 
     def test_to_series_comparison(self):
         kidx1 = ks.Index([1, 2, 3, 4, 5])
