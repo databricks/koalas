@@ -6452,8 +6452,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         Interchange axes and swap values axes appropriately.
 
-        .. note:: This method is based on an expensive operation due to
-            the nature of big data. Internally it needs to generate each row for each value, and
+        .. note:: This method is based on an expensive operation due to the nature
+            of big data. Internally it needs to generate each row for each value, and
             then group twice - it is a huge operation. To prevent misusage, this method
             has the 'compute.max_rows' default limit of input length, and raises a ValueError.
 
