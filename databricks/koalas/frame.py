@@ -4008,6 +4008,94 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
+    # TODO: support other as DataFrame or array-like
+    def dot(self, other: "Series") -> "Series":
+        """
+        Compute the matrix multiplication between the DataFrame and other.
+
+        This method computes the matrix product between the DataFrame and the
+        values of an other Series
+
+        It can also be called using ``self @ other`` in Python >= 3.5.
+
+        .. note:: This method is based on an expensive operation due to the nature
+            of big data. Internally it needs to generate each row for each value, and
+            then group twice - it is a huge operation. To prevent misusage, this method
+            has the 'compute.max_rows' default limit of input length, and raises a ValueError.
+
+                >>> from databricks.koalas.config import option_context
+                >>> with option_context(
+                ...     'compute.max_rows', 1000, "compute.ops_on_diff_frames", True
+                ... ):  # doctest: +NORMALIZE_WHITESPACE
+                ...     kdf = ks.DataFrame({'a': range(1001)})
+                ...     kser = ks.Series([2], index=['a'])
+                ...     kdf.dot(kser)
+                Traceback (most recent call last):
+                  ...
+                ValueError: Current DataFrame has more then the given limit 1000 rows.
+                Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option'
+                to retrieve to retrieve more than 1000 rows. Note that, before changing the
+                'compute.max_rows', this operation is considerably expensive.
+
+        Parameters
+        ----------
+        other : Series
+            The other object to compute the matrix product with.
+
+        Returns
+        -------
+        Series
+            Return the matrix product between self and other as a Series.
+
+        See Also
+        --------
+        Series.dot: Similar method for Series.
+
+        Notes
+        -----
+        The dimensions of DataFrame and other must be compatible in order to
+        compute the matrix multiplication. In addition, the column names of
+        DataFrame and the index of other must contain the same values, as they
+        will be aligned prior to the multiplication.
+
+        The dot method for Series computes the inner product, instead of the
+        matrix product here.
+
+        Examples
+        --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> kdf = ks.DataFrame([[0, 1, -2, -1], [1, 1, 1, 1]])
+        >>> kser = ks.Series([1, 1, 2, 1])
+        >>> kdf.dot(kser)
+        0   -4
+        1    5
+        dtype: int64
+
+        Note how shuffling of the objects does not change the result.
+
+        >>> kser2 = kser.reindex([1, 0, 2, 3])
+        >>> kdf.dot(kser2)
+        0   -4
+        1    5
+        dtype: int64
+        >>> kdf @ kser2
+        0   -4
+        1    5
+        dtype: int64
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if not isinstance(other, ks.Series):
+            raise TypeError("Unsupported type {}".format(type(other).__name__))
+        else:
+            return cast(ks.Series, other.dot(self.transpose())).rename(None)
+
+    def __matmul__(self, other):
+        """
+        Matrix multiplication using binary `@` operator in Python>=3.5.
+        """
+        return self.dot(other)
+
     def to_koalas(self, index_col: Optional[Union[str, List[str]]] = None) -> "DataFrame":
         """
         Converts the existing DataFrame into a Koalas DataFrame.
