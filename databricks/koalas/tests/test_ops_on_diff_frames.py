@@ -1222,6 +1222,32 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kser1.repeat(kser2).sort_index(), pser1.repeat(pser2).sort_index())
 
+    def test_index_ops(self):
+        pidx1 = pd.Index([1, 2, 3, 4, 5])
+        pidx2 = pd.Index([6, 7, 8, 9, 10])
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
+
+        self.assert_eq(((kidx1 * 10) + kidx2).sort_values(), ((pidx1 * 10) + pidx2).sort_values())
+
+        pidx3 = pd.Index([11, 12, 13])
+        kidx3 = ks.from_pandas(pidx3)
+
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx1 + kidx3
+
+        pidx1 = pd.Index([1, 2, 3, 4, 5], name="a")
+        pidx2 = pd.Index([6, 7, 8, 9, 10], name="a")
+        pidx3 = pd.Index([11, 12, 13, 14, 15], name="x")
+        kidx1 = ks.from_pandas(pidx1)
+        kidx2 = ks.from_pandas(pidx2)
+        kidx3 = ks.from_pandas(pidx3)
+
+        self.assert_eq(((kidx1 * 10) + kidx2).sort_values(), ((pidx1 * 10) + pidx2).sort_values())
+        self.assert_eq(((kidx1 * 10) + kidx3).sort_values(), ((pidx1 * 10) + pidx3).sort_values())
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod

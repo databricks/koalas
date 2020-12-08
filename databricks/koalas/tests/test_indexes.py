@@ -2021,3 +2021,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(kmidx.tolist(), pmidx.tolist())
         else:
             self.assert_eq(kidx.tolist(), pidx.tolist())
+
+    def test_index_ops(self):
+        pidx = pd.Index([1, 2, 3, 4, 5])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq((kidx * 100) + (kidx * 10) + kidx, (pidx * 100) + (pidx * 10) + pidx)
+
+        pidx = pd.Index([1, 2, 3, 4, 5], name="a")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq((kidx * 100) + (kidx * 10) + kidx, (pidx * 100) + (pidx * 10) + pidx)

@@ -165,6 +165,10 @@ class Index(IndexOpsMixin):
 
     def _align_and_column_op(self, f, *args) -> "Index":
         if get_option("compute.ops_on_diff_frames"):
+            self_len = len(self)
+            if any(len(col) != self_len for col in args if isinstance(col, IndexOpsMixin)):
+                raise ValueError("operands could not be broadcast together with shapes")
+
             # TODO: avoid using default index?
             with ks.option_context("compute.default_index_type", "distributed-sequence"):
                 # Directly using Series from both self and other seems causing
@@ -358,7 +362,23 @@ class Index(IndexOpsMixin):
         >>> midx.equals(idx)
         False
         """
-        return same_anchor(self, other) or (type(self) == type(other) and (self == other).all())
+        if same_anchor(self, other):
+            return True
+        elif type(self) == type(other):
+            if get_option("compute.ops_on_diff_frames"):
+                # TODO: avoid using default index?
+                with option_context("compute.default_index_type", "distributed-sequence"):
+                    # Directly using Series from both self and other seems causing
+                    # some exceptions when 'compute.ops_on_diff_frames' is enabled.
+                    # Working around for now via using frame.
+                    return (
+                        self.to_series("self").reset_index(drop=True)
+                        == other.to_series("other").reset_index(drop=True)
+                    ).all()
+            else:
+                raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
+        else:
+            return False
 
     def transpose(self) -> "Index":
         """
@@ -2675,27 +2695,6 @@ class MultiIndex(Index):
             return [n if is_name_like_tuple(n) else (n,) for n in name]
         else:
             raise TypeError("Must pass list-like as `names`.")
-
-    def equals(self, other) -> bool:
-        if same_anchor(self, other):
-            return True
-        elif type(self) == type(other):
-            if get_option("compute.ops_on_diff_frames"):
-                # TODO: avoid using default index?
-                with option_context("compute.default_index_type", "distributed-sequence"):
-                    # Directly using Series from both self and other seems causing
-                    # some exceptions when 'compute.ops_on_diff_frames' is enabled.
-                    # Working around for now via using frame.
-                    return (
-                        self.to_series("self").reset_index(drop=True)
-                        == other.to_series("other").reset_index(drop=True)
-                    ).all()
-            else:
-                raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
-        else:
-            return False
-
-    equals.__doc__ = Index.equals.__doc__
 
     def swaplevel(self, i=-2, j=-1) -> "MultiIndex":
         """
