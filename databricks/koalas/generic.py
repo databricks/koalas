@@ -1178,9 +1178,7 @@ class Frame(object, metaclass=ABCMeta):
             F.sum, name="sum", numeric_only=numeric_only, axis=axis
         )
 
-    def swapaxes(
-        self, i: Union[str, int], j: Union[str, int], copy: bool = True
-    ) -> Union["DataFrame", "Series"]:
+    def swapaxes(self, i: Union[str, int], j: Union[str, int], copy: bool = True) -> "DataFrame":
         """
         Interchange axes and swap values axes appropriately.
 
@@ -1207,12 +1205,10 @@ class Frame(object, metaclass=ABCMeta):
 
         Returns
         -------
-        DataFrame or Series
+        DataFrame
 
         Examples
         --------
-        On a DataFrame:
-
         >>> kdf = ks.DataFrame(
         ...     [[1, 2, 3], [4, 5, 6], [7, 8, 9]], index=['x', 'y', 'z'], columns=['a', 'b', 'c']
         ... )
@@ -1231,31 +1227,13 @@ class Frame(object, metaclass=ABCMeta):
         x  1  2  3
         y  4  5  6
         z  7  8  9
-
-        On a Series:
-
-        >>> kser = ks.Series([1, 2, 3], index=["x", "y", "z"])
-        >>> kser
-        x    1
-        y    2
-        z    3
-        dtype: int64
-        >>>
-        >>> kser.swapaxes(0, 0)
-        x    1
-        y    2
-        z    3
-        dtype: int64
         """
         assert copy is True
+
         i = validate_axis(i)
         j = validate_axis(j)
 
-        if isinstance(self, ks.Series):
-            if not i == j == 0:
-                raise ValueError("Axis must be 0 for Series")
-
-        return self.copy() if i == j else cast(Union["DataFrame", "Series"], self).transpose()
+        return self.copy() if i == j else cast("DataFrame", self).transpose()
 
     def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
         """
