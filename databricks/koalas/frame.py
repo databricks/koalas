@@ -4008,6 +4008,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
+    # TODO: support other as DataFrame or array-like
     def dot(self, other: "Series") -> "Series":
         """
         Compute the matrix multiplication between the DataFrame and other.
