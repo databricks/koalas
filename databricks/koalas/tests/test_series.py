@@ -841,6 +841,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 kser.reset_index().to_pandas().reset_index(drop=True), pser.reset_index()
             )
 
+    def test_index_to_series_reset_index(self):
+        def check(kser, pser):
+            self.assert_eq(kser.reset_index(), pser.reset_index())
+            self.assert_eq(kser.reset_index(drop=True), pser.reset_index(drop=True))
+
+            pser.reset_index(drop=True, inplace=True)
+            kser.reset_index(drop=True, inplace=True)
+            self.assert_eq(kser, pser)
+
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0]},
+            index=np.random.rand(9),
+        )
+        kdf = ks.from_pandas(pdf)
+        check(kdf.index.to_series(), pdf.index.to_series())
+        check(kdf.index.to_series(name="a"), pdf.index.to_series(name="a"))
+        check(kdf.index.to_series(name=("x", "a")), pdf.index.to_series(name=("x", "a")))
+
     def test_sort_values(self):
         pdf = pd.DataFrame({"x": [1, 2, 3, 4, 5, None, 7]})
         kdf = ks.from_pandas(pdf)
