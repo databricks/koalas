@@ -168,6 +168,9 @@ class Index(IndexOpsMixin):
 
     def _align_and_column_op(self, f, *args) -> "Index":
         if get_option("compute.ops_on_diff_frames"):
+            # This could cause as many counts, reset_index calls, joins for combining
+            # as the number of `Index`s in `args`. So far it's fine since we can assume the ops
+            # only work between two `Index`s at the most. We might need to fix it in the future.
             self_len = len(self)
             if any(len(col) != self_len for col in args if isinstance(col, IndexOpsMixin)):
                 raise ValueError("operands could not be broadcast together with shapes")
