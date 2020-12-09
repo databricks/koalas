@@ -3127,8 +3127,9 @@ class MultiIndex(Index):
         MultiIndex([('c', 'z')],
                    )
         """
-        sdf = self._internal.spark_frame
-        index_scols = self._internal.index_spark_columns
+        internal = self._internal.resolved_copy
+        sdf = internal.spark_frame
+        index_scols = internal.index_spark_columns
         if level is None:
             scol = index_scols[0]
         elif isinstance(level, int):
@@ -3136,7 +3137,7 @@ class MultiIndex(Index):
         else:
             scol = None
             for index_spark_column, index_name in zip(
-                self._internal.index_spark_columns, self._internal.index_names
+                internal.index_spark_columns, internal.index_names
             ):
                 if not isinstance(level, tuple):
                     level = (level,)
@@ -3157,9 +3158,9 @@ class MultiIndex(Index):
                 InternalFrame(
                     spark_frame=sdf,
                     index_spark_columns=[
-                        scol_for(sdf, col) for col in self._internal.index_spark_column_names
+                        scol_for(sdf, col) for col in internal.index_spark_column_names
                     ],
-                    index_names=self._internal.index_names,
+                    index_names=internal.index_names,
                 )
             )
         )
