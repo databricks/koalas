@@ -186,6 +186,29 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[("X", "A")].to_pandas().columns.names, pdf[("X", "A")].columns.names)
         self.assert_eq(kdf[("X", "A", "Z")], pdf[("X", "A", "Z")])
 
+    def test_itertuples(self):
+        pdf = pd.DataFrame({"num_legs": [4, 2], "num_wings": [0, 2]}, index=["dog", "hawk"])
+        kdf = ks.from_pandas(pdf)
+
+        for ptuple, ktuple in zip(pdf.itertuples(), kdf.itertuples()):
+            self.assert_eq(ptuple, ktuple)
+
+        for ptuple, ktuple in zip(pdf.itertuples(index=False), kdf.itertuples(index=False)):
+            self.assert_eq(ptuple, ktuple)
+
+        for ptuple, ktuple in zip(pdf.itertuples(name="Animal"), kdf.itertuples(name="Animal")):
+            self.assert_eq(ptuple, ktuple)
+
+        # for ptuple, ktuple in zip(pdf.itertuples(name=None), kdf.itertuples(name=None)):
+        #     self.assert_eq(ptuple, ktuple)
+
+        # On python versions < 3.7 regular tuples are returned for DataFrames
+        #         with a large number of columns (>254).
+
+        # Test MultiIndex
+
+        # Test Same_anchor
+
     def test_iterrows(self):
         pdf = pd.DataFrame(
             {
@@ -197,7 +220,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             index=np.random.rand(3),
         )
         kdf = ks.from_pandas(pdf)
-
         for (pdf_k, pdf_v), (kdf_k, kdf_v) in zip(pdf.iterrows(), kdf.iterrows()):
             self.assert_eq(pdf_k, kdf_k)
             self.assert_eq(pdf_v, kdf_v)

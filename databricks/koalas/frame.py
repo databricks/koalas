@@ -17,7 +17,7 @@
 """
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 from collections.abc import Mapping
 from distutils.version import LooseVersion
 import re
@@ -1435,6 +1435,92 @@ class DataFrame(Frame, Generic[T]):
         ):
             s = pd.Series(v, index=columns, name=k)
             yield k, s
+
+    def itertuples(self, index: bool = True, name: Optional[str] = "Pandas") -> Iterator:
+        """
+        Iterate over DataFrame rows as namedtuples.
+
+        Parameters
+        ----------
+        index : bool, default True
+            If True, return the index as the first element of the tuple.
+        name : str or None, default "Pandas"
+            The name of the returned namedtuples or None to return regular
+            tuples.
+
+        Returns
+        -------
+        iterator
+            An object to iterate over namedtuples for each row in the
+            DataFrame with the first field possibly being the index and
+            following fields being the column values.
+
+        See Also
+        --------
+        DataFrame.iterrows : Iterate over DataFrame rows as (index, Series)
+            pairs.
+        DataFrame.items : Iterate over (column name, Series) pairs.
+
+        Notes
+        -----
+        The column names will be renamed to positional names if they are
+        invalid Python identifiers, repeated, or start with an underscore.
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({'num_legs': [4, 2], 'num_wings': [0, 2]},
+        ...                   index=['dog', 'hawk'])
+        >>> df
+              num_legs  num_wings
+        dog          4          0
+        hawk         2          2
+
+        >>> for row in df.itertuples():
+        ...     print(row)
+        ...
+        Pandas(Index='dog', num_legs=4, num_wings=0)
+        Pandas(Index='hawk', num_legs=2, num_wings=2)
+
+        By setting the `index` parameter to False we can remove the index
+        as the first element of the tuple:
+
+        >>> for row in df.itertuples(index=False):
+        ...     print(row)
+        ...
+        Pandas(num_legs=4, num_wings=0)
+        Pandas(num_legs=2, num_wings=2)
+
+        With the `name` parameter set we set a custom name for the yielded
+        namedtuples:
+
+        >>> for row in df.itertuples(name='Animal'):
+        ...     print(row)
+        ...
+        Animal(Index='dog', num_legs=4, num_wings=0)
+        Animal(Index='hawk', num_legs=2, num_wings=2)
+        """
+        fields = list(self.columns)
+        if index:
+            fields.insert(0, "Index")
+
+        internal_index_columns = self._internal.index_spark_column_names
+        internal_data_columns = self._internal.data_spark_column_names
+
+        def extract_kv_from_spark_row(row):
+            k = (
+                row[internal_index_columns[0]]
+                if len(internal_index_columns) == 1
+                else tuple(row[c] for c in internal_index_columns)
+            )
+            v = [row[c] for c in internal_data_columns]
+            return k, v
+
+        itertuple = namedtuple(name, fields, rename=True)
+
+        for k, v in map(
+            extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
+        ):
+            yield itertuple._make(([k] if index else []) + list(v))
 
     def items(self) -> Iterator:
         """This is an alias of ``iteritems``."""
