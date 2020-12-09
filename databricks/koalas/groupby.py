@@ -1792,6 +1792,46 @@ class GroupBy(object, metaclass=ABCMeta):
 
     pad = ffill
 
+    def _limit(self, n: int, asc: bool):
+        """
+        Private function for tail and head.
+        """
+        kdf = self._kdf
+
+        if self._agg_columns_selected:
+            agg_columns = self._agg_columns
+        else:
+            agg_columns = [
+                kdf._kser_for(label)
+                for label in kdf._internal.column_labels
+                if label not in self._column_labels_to_exlcude
+            ]
+
+        kdf, groupkey_labels, _ = GroupBy._prepare_group_map_apply(
+            kdf, self._groupkeys, agg_columns,
+        )
+
+        groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
+
+        sdf = kdf._internal.spark_frame
+        tmp_col = verify_temp_column_name(sdf, "__row_number__")
+
+        # This part is handled differently depending on whether it is a tail or a head.
+        window = (
+            Window.partitionBy(groupkey_scols).orderBy(F.col(NATURAL_ORDER_COLUMN_NAME).asc())
+            if asc
+            else Window.partitionBy(groupkey_scols).orderBy(F.col(NATURAL_ORDER_COLUMN_NAME).desc())
+        )
+
+        sdf = (
+            sdf.withColumn(tmp_col, F.row_number().over(window))
+            .filter(F.col(tmp_col) <= n)
+            .drop(tmp_col)
+        )
+
+        internal = kdf._internal.with_new_sdf(sdf)
+        return DataFrame(internal).drop(groupkey_labels, axis=1)
+
     def head(self, n=5) -> Union[DataFrame, Series]:
         """
         Return first n rows of each group.
@@ -1838,34 +1878,7 @@ class GroupBy(object, metaclass=ABCMeta):
         10    10
         Name: b, dtype: int64
         """
-        kdf = self._kdf
-
-        if self._agg_columns_selected:
-            agg_columns = self._agg_columns
-        else:
-            agg_columns = [
-                kdf._kser_for(label)
-                for label in kdf._internal.column_labels
-                if label not in self._column_labels_to_exlcude
-            ]
-
-        kdf, groupkey_labels, _ = GroupBy._prepare_group_map_apply(
-            kdf, self._groupkeys, agg_columns,
-        )
-
-        groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
-
-        sdf = kdf._internal.spark_frame
-        tmp_col = verify_temp_column_name(sdf, "__row_number__")
-        window = Window.partitionBy(groupkey_scols).orderBy(NATURAL_ORDER_COLUMN_NAME)
-        sdf = (
-            sdf.withColumn(tmp_col, F.row_number().over(window))
-            .filter(F.col(tmp_col) <= n)
-            .drop(tmp_col)
-        )
-
-        internal = kdf._internal.with_new_sdf(sdf)
-        return DataFrame(internal).drop(groupkey_labels, axis=1)
+        return self._limit(n, asc=True)
 
     def tail(self, n=5) -> Union[DataFrame, Series]:
         """
@@ -1918,34 +1931,7 @@ class GroupBy(object, metaclass=ABCMeta):
         9    8
         Name: b, dtype: int64
         """
-        kdf = self._kdf
-
-        if self._agg_columns_selected:
-            agg_columns = self._agg_columns
-        else:
-            agg_columns = [
-                kdf._kser_for(label)
-                for label in kdf._internal.column_labels
-                if label not in self._column_labels_to_exlcude
-            ]
-
-        kdf, groupkey_labels, _ = GroupBy._prepare_group_map_apply(
-            kdf, self._groupkeys, agg_columns,
-        )
-
-        groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
-
-        sdf = kdf._internal.spark_frame
-        tmp_col = verify_temp_column_name(sdf, "__row_number__")
-        window = Window.partitionBy(groupkey_scols).orderBy(F.col(NATURAL_ORDER_COLUMN_NAME).desc())
-        sdf = (
-            sdf.withColumn(tmp_col, F.row_number().over(window))
-            .filter(F.col(tmp_col) <= n)
-            .drop(tmp_col)
-        )
-
-        internal = kdf._internal.with_new_sdf(sdf)
-        return DataFrame(internal).drop(groupkey_labels, axis=1)
+        return self._limit(n, asc=False)
 
     def shift(self, periods=1, fill_value=None) -> Union[DataFrame, Series]:
         """
