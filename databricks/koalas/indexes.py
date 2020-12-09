@@ -1153,6 +1153,8 @@ class Index(IndexOpsMixin):
                         scol_for(sdf, col) for col in self._internal.index_spark_column_names
                     ],
                     index_names=self._internal.index_names,
+                    column_labels=[],
+                    data_spark_columns=[],
                 )
             )
         )
@@ -3161,6 +3163,8 @@ class MultiIndex(Index):
                         scol_for(sdf, col) for col in internal.index_spark_column_names
                     ],
                     index_names=internal.index_names,
+                    column_labels=[],
+                    data_spark_columns=[],
                 )
             )
         )
