@@ -220,6 +220,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             index=np.random.rand(3),
         )
         kdf = ks.from_pandas(pdf)
+
         for (pdf_k, pdf_v), (kdf_k, kdf_v) in zip(pdf.iterrows(), kdf.iterrows()):
             self.assert_eq(pdf_k, kdf_k)
             self.assert_eq(pdf_v, kdf_v)
