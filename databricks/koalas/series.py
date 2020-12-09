@@ -2486,6 +2486,44 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return first_series(self.to_frame().swaplevel(i, j, axis=0)).rename(self.name)
 
+    def swapaxes(self, i: Union[str, int], j: Union[str, int], copy: bool = True) -> "Series":
+        """
+        Interchange axes and swap values axes appropriately.
+
+        Parameters
+        ----------
+        i: {0 or 'index', 1 or 'columns'}. The axis to swap.
+        j: {0 or 'index', 1 or 'columns'}. The axis to swap.
+        copy : bool, default True.
+
+        Returns
+        -------
+        Series
+
+        Examples
+        --------
+        >>> kser = ks.Series([1, 2, 3], index=["x", "y", "z"])
+        >>> kser
+        x    1
+        y    2
+        z    3
+        dtype: int64
+        >>>
+        >>> kser.swapaxes(0, 0)
+        x    1
+        y    2
+        z    3
+        dtype: int64
+        """
+        assert copy is True
+
+        i = validate_axis(i)
+        j = validate_axis(j)
+        if not i == j == 0:
+            raise ValueError("Axis must be 0 for Series")
+
+        return self.copy()
+
     def add_prefix(self, prefix) -> "Series":
         """
         Prefix labels with string `prefix`.

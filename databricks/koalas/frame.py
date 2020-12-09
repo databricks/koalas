@@ -6536,9 +6536,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(internal)
 
-    def swapaxes(
-        self, i: Union[str, int] = 0, j: Union[str, int] = 1, copy: bool = True
-    ) -> "DataFrame":
+    def swapaxes(self, i: Union[str, int], j: Union[str, int], copy: bool = True) -> "DataFrame":
         """
         Interchange axes and swap values axes appropriately.
 
@@ -6549,7 +6547,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                 >>> from databricks.koalas.config import option_context
                 >>> with option_context('compute.max_rows', 1000):  # doctest: +NORMALIZE_WHITESPACE
-                ...     ks.DataFrame({'a': range(1001)}).swapaxes()
+                ...     ks.DataFrame({'a': range(1001)}).swapaxes(i=0, j=1)
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
@@ -6559,8 +6557,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        i: {0 or 'index', 1 or 'columns'}, default 0. The axis to swap.
-        j: {0 or 'index', 1 or 'columns'}, default 1. The axis to swap.
+        i: {0 or 'index', 1 or 'columns'}. The axis to swap.
+        j: {0 or 'index', 1 or 'columns'}. The axis to swap.
+        copy : bool, default True.
 
         Returns
         -------
@@ -6576,11 +6575,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         x  1  2  3
         y  4  5  6
         z  7  8  9
-        >>> kdf.swapaxes()
-           x  y  z
-        a  1  4  7
-        b  2  5  8
-        c  3  6  9
         >>> kdf.swapaxes(i=1, j=0)
            x  y  z
         a  1  4  7
@@ -6593,10 +6587,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         z  7  8  9
         """
         assert copy is True
+
         i = validate_axis(i)
         j = validate_axis(j)
 
-        return self if i == j else self.transpose()
+        return self.copy() if i == j else self.transpose()
 
     def _swaplevel_columns(self, i, j) -> InternalFrame:
         assert isinstance(self.columns, pd.MultiIndex)

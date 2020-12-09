@@ -1806,6 +1806,18 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(KeyError, lambda: kser.swaplevel("not_number", "color"))
         self.assertRaises(AssertionError, lambda: kser.swaplevel(copy=False))
 
+    def test_swapaxes(self):
+        pser = pd.Series([1, 2, 3], index=["x", "y", "z"], name="ser")
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.swapaxes(0, 0), pser.swapaxes(0, 0))
+        self.assert_eq(kser.swapaxes("index", "index"), pser.swapaxes("index", "index"))
+        self.assert_eq((kser + 1).swapaxes(0, 0), (pser + 1).swapaxes(0, 0))
+
+        self.assertRaises(AssertionError, lambda: kser.swapaxes(0, 1, copy=False))
+        self.assertRaises(ValueError, lambda: kser.swapaxes(0, 1))
+        self.assertRaises(ValueError, lambda: kser.swapaxes("index", "columns"))
+
     def test_div_zero_and_nan(self):
         pser = pd.Series([100, None, -300, None, 500, -700, np.inf, -np.inf], name="Koalas")
         kser = ks.from_pandas(pser)
