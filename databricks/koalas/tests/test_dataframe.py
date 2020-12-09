@@ -192,22 +192,32 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         for ptuple, ktuple in zip(pdf.itertuples(), kdf.itertuples()):
             self.assert_eq(ptuple, ktuple)
-
         for ptuple, ktuple in zip(pdf.itertuples(index=False), kdf.itertuples(index=False)):
             self.assert_eq(ptuple, ktuple)
+        for ptuple, ktuple in zip(pdf.itertuples(name="Animal"), kdf.itertuples(name="Animal")):
+            self.assert_eq(ptuple, ktuple)
+        for ptuple, ktuple in zip(pdf.itertuples(name=None), kdf.itertuples(name=None)):
+            self.assert_eq(ptuple, ktuple)
 
+        pdf.index = pd.MultiIndex.from_arrays(
+            [[1, 2], ["black", "brown"]], names=("count", "color")
+        )
+        kdf = ks.from_pandas(pdf)
         for ptuple, ktuple in zip(pdf.itertuples(name="Animal"), kdf.itertuples(name="Animal")):
             self.assert_eq(ptuple, ktuple)
 
-        # for ptuple, ktuple in zip(pdf.itertuples(name=None), kdf.itertuples(name=None)):
-        #     self.assert_eq(ptuple, ktuple)
+        pdf = pd.DataFrame([1, 2, 3])
+        kdf = ks.from_pandas(pdf)
+        for ptuple, ktuple in zip(
+            (pdf + 1).itertuples(name="num"), (kdf + 1).itertuples(name="num")
+        ):
+            self.assert_eq(ptuple, ktuple)
 
-        # On python versions < 3.7 regular tuples are returned for DataFrames
-        #         with a large number of columns (>254).
-
-        # Test MultiIndex
-
-        # Test Same_anchor
+        # DataFrames with a large number of columns (>254)
+        pdf = pd.DataFrame(np.random.random((1, 255)))
+        kdf = ks.from_pandas(pdf)
+        for ptuple, ktuple in zip(pdf.itertuples(name="num"), kdf.itertuples(name="num")):
+            self.assert_eq(ptuple, ktuple)
 
     def test_iterrows(self):
         pdf = pd.DataFrame(

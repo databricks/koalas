@@ -1465,6 +1465,8 @@ class DataFrame(Frame, Generic[T]):
         -----
         The column names will be renamed to positional names if they are
         invalid Python identifiers, repeated, or start with an underscore.
+        On python versions < 3.7 regular tuples are returned for DataFrames
+        with a large number of columns (>254).
 
         Examples
         --------
@@ -1515,12 +1517,21 @@ class DataFrame(Frame, Generic[T]):
             v = [row[c] for c in internal_data_columns]
             return k, v
 
-        itertuple = namedtuple(name, fields, rename=True)
+        can_return_named_tuples = sys.version_info >= (3, 7) or len(self.columns) + index < 255
 
-        for k, v in map(
-            extract_kv_from_spark_row, self._internal.resolved_copy.spark_frame.toLocalIterator()
-        ):
-            yield itertuple._make(([k] if index else []) + list(v))
+        if name is not None and can_return_named_tuples:
+            itertuple = namedtuple(name, fields, rename=True)  # type: ignore
+            for k, v in map(
+                extract_kv_from_spark_row,
+                self._internal.resolved_copy.spark_frame.toLocalIterator(),
+            ):
+                yield itertuple._make(([k] if index else []) + list(v))
+        else:
+            for k, v in map(
+                extract_kv_from_spark_row,
+                self._internal.resolved_copy.spark_frame.toLocalIterator(),
+            ):
+                yield tuple(([k] if index else []) + list(v))
 
     def items(self) -> Iterator:
         """This is an alias of ``iteritems``."""
