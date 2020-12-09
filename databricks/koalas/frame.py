@@ -6459,7 +6459,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
                 >>> from databricks.koalas.config import option_context
                 >>> with option_context('compute.max_rows', 1000):  # doctest: +NORMALIZE_WHITESPACE
-                ...     ks.DataFrame({'a': range(1001)}).swapaxes()
+                ...     ks.DataFrame({'a': range(1001)}).swapaxes(i=0, j=1)
                 Traceback (most recent call last):
                   ...
                 ValueError: Current DataFrame has more then the given limit 1000 rows.
