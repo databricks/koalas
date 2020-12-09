@@ -626,6 +626,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.drop(1), kidx.drop(1))
         self.assert_eq(pidx.drop([1, 2]), kidx.drop([1, 2]))
+        self.assert_eq((pidx + 1).drop([2, 3]), (kidx + 1).drop([2, 3]))
 
     def test_multiindex_drop(self):
         pidx = pd.MultiIndex.from_tuples(
