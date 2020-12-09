@@ -2608,3 +2608,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assertRaises(
             ValueError, lambda: kdf.groupby([("B", "class"), ("A", "name")]).get_group("mammal")
         )
+
+    def test_median(self):
+        kdf = ks.DataFrame(
+            {
+                "a": [1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0],
+                "b": [2.0, 3.0, 1.0, 4.0, 6.0, 9.0, 8.0, 10.0, 7.0, 5.0],
+                "c": [3.0, 5.0, 2.0, 5.0, 1.0, 2.0, 6.0, 4.0, 3.0, 6.0],
+            },
+            columns=["a", "b", "c"],
+            index=[7, 2, 4, 1, 3, 4, 9, 10, 5, 6],
+        )
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            kdf.groupby("a").median(accuracy="a")

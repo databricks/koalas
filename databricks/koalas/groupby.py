@@ -71,6 +71,7 @@ from databricks.koalas.utils import (
 from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.window import RollingGroupby, ExpandingGroupby
 from databricks.koalas.exceptions import DataError
+from databricks.koalas.spark import functions as SF
 
 # to keep it the same as pandas
 NamedAgg = namedtuple("NamedAgg", ["column", "aggfunc"])
@@ -2276,6 +2277,73 @@ class GroupBy(object, metaclass=ABCMeta):
             raise KeyError(name)
 
         return DataFrame(internal)
+
+    def median(self, numeric_only=True, accuracy=10000):
+        """
+        Compute median of groups, excluding missing values.
+
+        For multiple groupings, the result index will be a MultiIndex
+
+        .. note:: Unlike pandas', the median in Koalas is an approximated median based upon
+            approximate percentile computation because computing median across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
+
+        Returns
+        -------
+        Series or DataFrame
+            Median of values within each group.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'a': [1., 1., 1., 1., 2., 2., 2., 3., 3., 3.],
+        ...                     'b': [2., 3., 1., 4., 6., 9., 8., 10., 7., 5.],
+        ...                     'c': [3., 5., 2., 5., 1., 2., 6., 4., 3., 6.]},
+        ...                    columns=['a', 'b', 'c'],
+        ...                    index=[7, 2, 4, 1, 3, 4, 9, 10, 5, 6])
+        >>> kdf
+              a     b    c
+        7   1.0   2.0  3.0
+        2   1.0   3.0  5.0
+        4   1.0   1.0  2.0
+        1   1.0   4.0  5.0
+        3   2.0   6.0  1.0
+        4   2.0   9.0  2.0
+        9   2.0   8.0  6.0
+        10  3.0  10.0  4.0
+        5   3.0   7.0  3.0
+        6   3.0   5.0  6.0
+
+        DataFrameGroupBy
+
+        >>> kdf.groupby('a').median().sort_index()  # doctest: +NORMALIZE_WHITESPACE
+               b    c
+        a
+        1.0  2.0  3.0
+        2.0  8.0  2.0
+        3.0  7.0  4.0
+
+        SeriesGroupBy
+
+        >>> kdf.groupby('a')['b'].median().sort_index()
+        a
+        1.0    2.0
+        2.0    8.0
+        3.0    7.0
+        Name: b, dtype: float64
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+            )
+
+        stat_function = lambda col: SF.percentile_approx(col, 0.5, accuracy)
+        return self._reduce_for_stat_function(stat_function, only_numeric=numeric_only)
 
     def _reduce_for_stat_function(self, sfun, only_numeric):
         agg_columns = self._agg_columns
