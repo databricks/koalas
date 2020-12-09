@@ -2043,4 +2043,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx1 = kdf.index.get_level_values(0)
         kidx2 = kdf.index.get_level_values(1)
 
-        self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
+        else:
+            self.assert_eq(kidx1 * 10 + kidx2, (pidx1 * 10 + pidx2).rename(None))

@@ -1246,7 +1246,13 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kidx3 = ks.from_pandas(pidx3)
 
         self.assert_eq((kidx1 * 10 + kidx2).sort_values(), (pidx1 * 10 + pidx2).sort_values())
-        self.assert_eq((kidx1 * 10 + kidx3).sort_values(), (pidx1 * 10 + pidx3).sort_values())
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq((kidx1 * 10 + kidx3).sort_values(), (pidx1 * 10 + pidx3).sort_values())
+        else:
+            self.assert_eq(
+                (kidx1 * 10 + kidx3).sort_values(), (pidx1 * 10 + pidx3).rename(None).sort_values()
+            )
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
