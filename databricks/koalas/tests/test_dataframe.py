@@ -190,17 +190,22 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"num_legs": [4, 2], "num_wings": [0, 2]}, index=["dog", "hawk"])
         kdf = ks.from_pandas(pdf)
 
-        for ptuple, ktuple in zip(pdf.itertuples(), kdf.itertuples()):
-            self.assert_eq(ptuple, ktuple)
-        for ptuple, ktuple in zip(pdf.itertuples(index=False), kdf.itertuples(index=False)):
-            self.assert_eq(ptuple, ktuple)
-        for ptuple, ktuple in zip(pdf.itertuples(name="Animal"), kdf.itertuples(name="Animal")):
+        for ptuple, ktuple in zip(
+            pdf.itertuples(index=False, name="Animal"), kdf.itertuples(index=False, name="Animal")
+        ):
             self.assert_eq(ptuple, ktuple)
         for ptuple, ktuple in zip(pdf.itertuples(name=None), kdf.itertuples(name=None)):
             self.assert_eq(ptuple, ktuple)
 
         pdf.index = pd.MultiIndex.from_arrays(
             [[1, 2], ["black", "brown"]], names=("count", "color")
+        )
+        kdf = ks.from_pandas(pdf)
+        for ptuple, ktuple in zip(pdf.itertuples(name="Animal"), kdf.itertuples(name="Animal")):
+            self.assert_eq(ptuple, ktuple)
+
+        pdf.columns = pd.MultiIndex.from_arrays(
+            [["CA", "WA"], ["age", "children"]], names=("origin", "info")
         )
         kdf = ks.from_pandas(pdf)
         for ptuple, ktuple in zip(pdf.itertuples(name="Animal"), kdf.itertuples(name="Animal")):
