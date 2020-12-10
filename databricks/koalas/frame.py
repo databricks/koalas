@@ -1436,7 +1436,7 @@ class DataFrame(Frame, Generic[T]):
             s = pd.Series(v, index=columns, name=k)
             yield k, s
 
-    def itertuples(self, index: bool = True, name: Optional[str] = "Pandas") -> Iterator:
+    def itertuples(self, index: bool = True, name: Optional[str] = "Koalas") -> Iterator:
         """
         Iterate over DataFrame rows as namedtuples.
 
@@ -1444,7 +1444,7 @@ class DataFrame(Frame, Generic[T]):
         ----------
         index : bool, default True
             If True, return the index as the first element of the tuple.
-        name : str or None, default "Pandas"
+        name : str or None, default "Koalas"
             The name of the returned namedtuples or None to return regular
             tuples.
 
@@ -1480,8 +1480,8 @@ class DataFrame(Frame, Generic[T]):
         >>> for row in df.itertuples():
         ...     print(row)
         ...
-        Pandas(Index='dog', num_legs=4, num_wings=0)
-        Pandas(Index='hawk', num_legs=2, num_wings=2)
+        Koalas(Index='dog', num_legs=4, num_wings=0)
+        Koalas(Index='hawk', num_legs=2, num_wings=2)
 
         By setting the `index` parameter to False we can remove the index
         as the first element of the tuple:
@@ -1489,8 +1489,8 @@ class DataFrame(Frame, Generic[T]):
         >>> for row in df.itertuples(index=False):
         ...     print(row)
         ...
-        Pandas(num_legs=4, num_wings=0)
-        Pandas(num_legs=2, num_wings=2)
+        Koalas(num_legs=4, num_wings=0)
+        Koalas(num_legs=2, num_wings=2)
 
         With the `name` parameter set we set a custom name for the yielded
         namedtuples:
@@ -1505,16 +1505,16 @@ class DataFrame(Frame, Generic[T]):
         if index:
             fields.insert(0, "Index")
 
-        internal_index_columns = self._internal.index_spark_column_names
-        internal_data_columns = self._internal.data_spark_column_names
+        index_spark_column_names = self._internal.index_spark_column_names
+        data_spark_column_names = self._internal.data_spark_column_names
 
         def extract_kv_from_spark_row(row):
             k = (
-                row[internal_index_columns[0]]
-                if len(internal_index_columns) == 1
-                else tuple(row[c] for c in internal_index_columns)
+                row[index_spark_column_names[0]]
+                if len(index_spark_column_names) == 1
+                else tuple(row[c] for c in index_spark_column_names)
             )
-            v = [row[c] for c in internal_data_columns]
+            v = [row[c] for c in data_spark_column_names]
             return k, v
 
         can_return_named_tuples = sys.version_info >= (3, 7) or len(self.columns) + index < 255
