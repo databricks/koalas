@@ -5625,8 +5625,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             other_column_label = verify_temp_column_name(self.to_frame(), "__other_column__")
             combined = DataFrame(
                 self._internal.with_new_columns(
-                    [self._internal.data_spark_columns[0]]
-                    + [other._internal.data_spark_columns[0]],
+                    [self._internal.data_spark_columns[0], other._internal.data_spark_columns[0]],
                     column_labels=[self_column_label, other_column_label],
                 )
             )  # type: DataFrame
