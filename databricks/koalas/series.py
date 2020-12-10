@@ -51,7 +51,7 @@ from pyspark.sql.window import Window
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.accessors import KoalasSeriesMethods
 from databricks.koalas.config import get_option
-from databricks.koalas.base import IndexOpsMixin
+from databricks.koalas.base import IndexOpsMixin, booleanize_null
 from databricks.koalas.exceptions import SparkPandasIndexingError
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.generic import Frame
@@ -66,6 +66,7 @@ from databricks.koalas.missing.series import MissingPandasLikeSeries
 from databricks.koalas.plot import KoalasPlotAccessor
 from databricks.koalas.ml import corr
 from databricks.koalas.utils import (
+    align_diff_series,
     combine_frames,
     is_name_like_tuple,
     is_name_like_value,
@@ -400,12 +401,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         :param scol: the new Spark Column
         :return: the copied Series
         """
-        internal = self._kdf._internal.copy(
-            column_labels=[self._column_label],
-            data_spark_columns=[scol.alias(name_like_string(self._column_label))],
-            column_label_names=None,
+        internal = self._internal.copy(
+            data_spark_columns=[scol.alias(name_like_string(self._column_label))]
         )
         return first_series(DataFrame(internal))
+
+    def _need_alignment_for_column_op(self, other: "IndexOpsMixin") -> bool:
+        return not same_anchor(self, other)
+
+    def _align_and_column_op(self, f, *args) -> "Series":
+        # Different DataFrame anchors
+        def apply_func(this_column, *that_columns):
+            scol = f(this_column, *that_columns)
+            return booleanize_null(this_column, scol, f)
+
+        return align_diff_series(apply_func, self, *args, how="full")
 
     spark = CachedAccessor("spark", SparkSeriesMethods)
 
@@ -5858,9 +5868,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # Pass in both the column and its data type if sfun accepts two args
             scol = sfun(scol, spark_type)
         return unpack_scalar(self._internal.spark_frame.select(scol))
-
-    def __len__(self):
-        return len(self.to_dataframe())
 
     def __getitem__(self, key):
         try:
