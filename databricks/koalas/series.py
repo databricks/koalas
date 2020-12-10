@@ -5627,7 +5627,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 self._internal.with_new_columns(
                     [self._internal.data_spark_columns[0]]
                     + [other._internal.data_spark_columns[0]],
-                    column_labels=[self_column_label] + [other_column_label],
+                    column_labels=[self_column_label, other_column_label],
                 )
             )  # type: DataFrame
         else:
