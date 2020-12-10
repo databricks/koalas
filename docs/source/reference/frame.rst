@@ -62,6 +62,7 @@ Indexing, iteration
    DataFrame.items
    DataFrame.iteritems
    DataFrame.iterrows
+   DataFrame.itertuples
    DataFrame.keys
    DataFrame.pop
    DataFrame.tail
