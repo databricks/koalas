@@ -1422,11 +1422,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.pop(("lama", "speed", "x"))
 
     def test_replace(self):
-        pser = pd.Series([10, 20, 15, 30, 45], name="x")
+        pser = pd.Series([10, 20, 15, 30, np.nan], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.replace(), pser.replace())
         self.assert_eq(kser.replace({}), pser.replace({}))
+
+        self.assert_eq(kser.replace(np.nan, 45), pser.replace(np.nan, 45))
 
         msg = "'to_replace' should be one of str, list, dict, int, float"
         with self.assertRaisesRegex(ValueError, msg):

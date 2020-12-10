@@ -4264,7 +4264,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: float64
         """
         if to_replace is None:
-            return self
+            return self.fillna(method="ffill")
         if not isinstance(to_replace, (str, list, dict, int, float)):
             raise ValueError("'to_replace' should be one of str, list, dict, int, float")
         if regex:
@@ -4283,14 +4283,23 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 current = self.spark.column
             else:
                 for to_replace_, value in to_replace.items():
+                    cond = (
+                        (F.isnan(self.spark.column) | self.spark.column.isNull())
+                        if pd.isna(to_replace_)
+                        else (self.spark.column == F.lit(to_replace_))
+                    )
                     if is_start:
-                        current = F.when(self.spark.column == F.lit(to_replace_), value)
+                        current = F.when(cond, value)
                         is_start = False
                     else:
-                        current = current.when(self.spark.column == F.lit(to_replace_), value)
+                        current = current.when(cond, value)
                 current = current.otherwise(self.spark.column)
         else:
-            current = F.when(self.spark.column.isin(to_replace), value).otherwise(self.spark.column)
+            cond = self.spark.column.isin(to_replace)
+            # to_replace may be a scalar
+            if np.array(pd.isna(to_replace)).any():
+                cond = cond | F.isnan(self.spark.column) | self.spark.column.isNull()
+            current = F.when(cond, value).otherwise(self.spark.column)
 
         return self._with_new_scol(current)
 

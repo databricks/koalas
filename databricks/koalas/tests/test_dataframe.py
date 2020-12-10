@@ -2385,7 +2385,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
 
         pdf = pd.DataFrame(
-            {"A": [0, 1, 2, 3, 4], "B": [5, 6, 7, 8, 9], "C": ["a", "b", "c", "d", "e"]},
+            {"A": [0, 1, 2, 3, np.nan], "B": [5, 6, 7, 8, np.nan], "C": ["a", "b", "c", "d", None]},
             index=np.random.rand(5),
         )
         kdf = ks.from_pandas(pdf)
@@ -2399,10 +2399,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.replace({0: 10, 1: 100, 7: 200}), pdf.replace({0: 10, 1: 100, 7: 200}))
 
-        self.assert_eq(kdf.replace({"A": 0, "B": 5}, 100), pdf.replace({"A": 0, "B": 5}, 100))
+        self.assert_eq(
+            kdf.replace({"A": [0, np.nan], "B": [5, np.nan]}, 100),
+            pdf.replace({"A": [0, np.nan], "B": [5, np.nan]}, 100),
+        )
 
-        self.assert_eq(kdf.replace({"A": {0: 100, 4: 400}}), pdf.replace({"A": {0: 100, 4: 400}}))
-        self.assert_eq(kdf.replace({"X": {0: 100, 4: 400}}), pdf.replace({"X": {0: 100, 4: 400}}))
+        self.assert_eq(
+            kdf.replace({"A": {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({"A": {0: 100, 4: 400, np.nan: 700}}),
+        )
+        self.assert_eq(
+            kdf.replace({"X": {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({"X": {0: 100, 4: 400, np.nan: 700}}),
+        )
+
+        self.assert_eq(kdf.replace({"C": ["a", None]}, "e"), pdf.replace({"C": ["a", None]}, "e"))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
@@ -2419,15 +2430,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.replace({0: 10, 1: 100, 7: 200}), pdf.replace({0: 10, 1: 100, 7: 200}))
 
         self.assert_eq(
-            kdf.replace({("X", "A"): 0, ("X", "B"): 5}, 100),
-            pdf.replace({("X", "A"): 0, ("X", "B"): 5}, 100),
+            kdf.replace({("X", "A"): [0, np.nan], ("X", "B"): 5}, 100),
+            pdf.replace({("X", "A"): [0, np.nan], ("X", "B"): 5}, 100),
         )
 
         self.assert_eq(
-            kdf.replace({("X", "A"): {0: 100, 4: 400}}), pdf.replace({("X", "A"): {0: 100, 4: 400}})
+            kdf.replace({("X", "A"): {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({("X", "A"): {0: 100, 4: 400, np.nan: 700}}),
         )
         self.assert_eq(
-            kdf.replace({("X", "B"): {0: 100, 4: 400}}), pdf.replace({("X", "B"): {0: 100, 4: 400}})
+            kdf.replace({("X", "B"): {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({("X", "B"): {0: 100, 4: 400, np.nan: 700}}),
+        )
+
+        self.assert_eq(
+            kdf.replace({("Y", "C"): ["a", None]}, "e"), pdf.replace({("Y", "C"): ["a", None]}, "e")
         )
 
     def test_update(self):
