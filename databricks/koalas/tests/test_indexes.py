@@ -626,6 +626,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(pidx.drop(1), kidx.drop(1))
         self.assert_eq(pidx.drop([1, 2]), kidx.drop([1, 2]))
+        self.assert_eq((pidx + 1).drop([2, 3]), (kidx + 1).drop([2, 3]))
 
     def test_multiindex_drop(self):
         pidx = pd.MultiIndex.from_tuples(
@@ -2021,3 +2022,29 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(kmidx.tolist(), pmidx.tolist())
         else:
             self.assert_eq(kidx.tolist(), pidx.tolist())
+
+    def test_index_ops(self):
+        pidx = pd.Index([1, 2, 3, 4, 5])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx * 100 + kidx * 10 + kidx, pidx * 100 + pidx * 10 + pidx)
+
+        pidx = pd.Index([1, 2, 3, 4, 5], name="a")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx * 100 + kidx * 10 + kidx, pidx * 100 + pidx * 10 + pidx)
+
+        pdf = pd.DataFrame(
+            index=pd.MultiIndex.from_tuples([(1, 2), (3, 4), (5, 6)], names=["a", "b"])
+        )
+        kdf = ks.from_pandas(pdf)
+
+        pidx1 = pdf.index.get_level_values(0)
+        pidx2 = pdf.index.get_level_values(1)
+        kidx1 = kdf.index.get_level_values(0)
+        kidx2 = kdf.index.get_level_values(1)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
+        else:
+            self.assert_eq(kidx1 * 10 + kidx2, (pidx1 * 10 + pidx2).rename(None))
