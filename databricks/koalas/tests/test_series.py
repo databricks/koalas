@@ -123,10 +123,10 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(kser.name, "renamed")
         self.assert_eq(kser, pser)
 
-        # pser.name = None
-        # kser.name = None
-        # self.assertEqual(kser.name, None)
-        # self.assert_eq(kser, pser)
+        pser.name = None
+        kser.name = None
+        self.assertEqual(kser.name, None)
+        self.assert_eq(kser, pser)
 
         pidx = pser.index
         kidx = kser.index
