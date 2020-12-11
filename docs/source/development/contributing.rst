@@ -152,7 +152,7 @@ The chart below is the expected release dates of minor releases.
 +------------+---------+
 | Date       | Version |
 +============+=========+
-| 12/11 2020 | 1.5.0   |
+| 01/15 2020 | 1.6.0   |
 +------------+---------+
 
 Release Instructions
