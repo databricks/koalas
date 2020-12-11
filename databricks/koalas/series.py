@@ -5668,9 +5668,20 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
-        if not self.index.equals(other.index):
-            raise ValueError("Can only compare identically-labeled Series objects")
-        combined = combine_frames(self.to_frame(), other.to_frame())
+        if same_anchor(self, other):
+            self_column_label = verify_temp_column_name(other.to_frame(), "__self_column__")
+            other_column_label = verify_temp_column_name(self.to_frame(), "__other_column__")
+            combined = DataFrame(
+                self._internal.with_new_columns(
+                    [self._internal.data_spark_columns[0], other._internal.data_spark_columns[0]],
+                    column_labels=[self_column_label, other_column_label],
+                )
+            )  # type: DataFrame
+        else:
+            if not self.index.equals(other.index):
+                raise ValueError("Can only compare identically-labeled Series objects")
+
+            combined = combine_frames(self.to_frame(), other.to_frame())
 
         this_column_label = "self"
         that_column_label = "other"
