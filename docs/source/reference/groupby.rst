@@ -51,6 +51,7 @@ Computations / Descriptive Stats
    GroupBy.last
    GroupBy.max
    GroupBy.mean
+   GroupBy.median
    GroupBy.min
    GroupBy.rank
    GroupBy.std
