@@ -5068,7 +5068,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.between_time('0:15', '0:45'), kdf.between_time('0:15', '0:45'))
 
         # Assert axis cannot be other than 0
-        with self.assertRaisesRegex(NotImplementedError, "between_time currently only works for axis=0"):
+        with self.assertRaisesRegex(
+            NotImplementedError, "between_time currently only works for axis=0"
+        ):
             kdf.between_time('0:15', '0:45', axis=1)
 
         # Assert index should be of datetime datatype
