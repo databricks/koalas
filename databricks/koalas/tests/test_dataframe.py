@@ -5062,18 +5062,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(expected, kdf)
 
     def test_between_time(self):
-        idx = pd.date_range('2018-04-09', periods=4, freq='1D20min')
-        pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.between_time('0:15', '0:45'), kdf.between_time('0:15', '0:45'))
+        self.assert_eq(pdf.between_time("0:15", "0:45"), kdf.between_time("0:15", "0:45"))
 
         # Assert axis cannot be other than 0
         with self.assertRaisesRegex(
             NotImplementedError, "between_time currently only works for axis=0"
         ):
-            kdf.between_time('0:15', '0:45', axis=1)
+            kdf.between_time("0:15", "0:45", axis=1)
 
         # Assert index should be of datetime datatype
-        kdf = ks.DataFrame({'A': [1, 2, 3, 4]})
+        kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Datatype of Index must be datetime"):
-            kdf.between_time('0:15', '0:45')
+            kdf.between_time("0:15", "0:45")
