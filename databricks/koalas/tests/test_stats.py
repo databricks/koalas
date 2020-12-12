@@ -27,34 +27,45 @@ from databricks.koalas.testing.utils import (
 
 
 class StatsTest(ReusedSQLTestCase, SQLTestUtils):
-    def _test_stat_functions(self, pdf, kdf):
+    def _test_stat_functions(self, pdf_or_pser, kdf_or_kser):
         functions = ["max", "min", "mean", "sum"]
         for funcname in functions:
-            self.assert_eq(getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)())
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)())
+            self.assert_eq(getattr(kdf_or_kser, funcname)(), getattr(pdf_or_pser, funcname)())
 
         functions = ["std", "var"]
         for funcname in functions:
             self.assert_eq(
-                getattr(kdf.A, funcname)(), getattr(pdf.A, funcname)(), check_exact=False
+                getattr(kdf_or_kser, funcname)(),
+                getattr(pdf_or_pser, funcname)(),
+                check_exact=False,
             )
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)(), check_exact=False)
 
         # NOTE: To test skew, kurt, and median, just make sure they run.
         #       The numbers are different in spark and pandas.
         functions = ["skew", "kurt", "median"]
         for funcname in functions:
-            getattr(kdf.A, funcname)()
-            getattr(kdf, funcname)()
+            getattr(kdf_or_kser, funcname)()
 
     def test_stat_functions(self):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1, 2, 3, 4]})
         kdf = ks.from_pandas(pdf)
+        self._test_stat_functions(pdf.A, kdf.A)
         self._test_stat_functions(pdf, kdf)
 
     def test_stat_functions_multiindex_column(self):
         arrays = [np.array(["A", "A", "B", "B"]), np.array(["one", "two", "one", "two"])]
         pdf = pd.DataFrame(np.random.randn(3, 4), index=["A", "B", "C"], columns=arrays)
+        kdf = ks.from_pandas(pdf)
+        self._test_stat_functions(pdf.A, kdf.A)
+        self._test_stat_functions(pdf, kdf)
+
+    def test_stat_functions_with_no_numeric_columns(self):
+        pdf = pd.DataFrame(
+            {
+                "A": pd.date_range("2020-01-01", periods=3),
+                "B": pd.date_range("2021-01-01", periods=3),
+            }
+        )
         kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf, kdf)
 
