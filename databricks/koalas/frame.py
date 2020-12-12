@@ -2952,7 +2952,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def between_time(
         self, start_time, end_time, include_start=True, include_end=True, axis: Union[int, str] = 0,
-    ) -> "Dataframe":
+    ) -> "DataFrame":
         """
         Select values between particular times of the day (e.g., 9:00-9:30 AM).
         Parameters
