@@ -2950,6 +2950,82 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             ).resolved_copy
             return DataFrame(internal)
 
+    def between_time(
+        self, start_time, end_time, include_start=True, include_end=True, axis: Union[int, str] = 0,
+    ) -> "Dataframe":
+        """
+        Select values between particular times of the day (e.g., 9:00-9:30 AM).
+        Parameters
+        ----------
+        start_time : datetime.time or str
+            Initial time as a time filter limit.
+        end_time : datetime.time or str
+            End time as a time filter limit.
+        include_start : bool, default True
+            Whether the start time needs to be included in the result.
+        include_end : bool, default True
+            Whether the end time needs to be included in the result.
+        axis : int, default 0 or 'index'
+            Can only be set to 0 at the moment.
+        Returns
+        -------
+        DataFrame
+            Data from the original dataframe filtered to the specified dates range.
+        Raises
+        ------
+        TypeError
+            If the datatype of index is not datetime
+        Examples
+        --------
+        >>> i = pd.date_range('2018-04-09', periods=4, freq='1D20min')
+        >>> ts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=i)
+        >>> ts
+                             A
+        2018-04-09 00:00:00  1
+        2018-04-10 00:20:00  2
+        2018-04-11 00:40:00  3
+        2018-04-12 01:00:00  4
+        >>> ts.between_time('0:15', '0:45')
+                             A
+        2018-04-10 00:20:00  2
+        2018-04-11 00:40:00  3
+        You get the times that are *not* between two times by setting
+        ``start_time`` later than ``end_time``:
+        >>> ts.between_time('0:45', '0:15')
+                             A
+        2018-04-09 00:00:00  1
+        2018-04-12 01:00:00  4
+        """
+        axis = validate_axis(axis)
+        if axis != 0:
+            raise NotImplementedError('axis should be 0.')
+
+        if not self.index.is_all_dates:
+            raise TypeError("Datatype of Index must be datetime")
+
+        index_locations = self._get_index_locations(start_time, end_time, include_start, include_end)
+        return self.copy().take(index_locations)
+
+    def _get_index_locations(self, start_time, end_time, include_start=True, include_end=True):
+        """
+        Return index locations of values between particular times of day
+        (e.g., 9:00-9:30AM).
+        Parameters
+        ----------
+        start_time, end_time : datetime.time, str
+            Time passed either as object (datetime.time) or as string in
+            appropriate format ("%H:%M", "%H%M", "%I:%M%p", "%I%M%p",
+            "%H:%M:%S", "%H%M%S", "%I:%M:%S%p","%I%M%S%p").
+        include_start : bool, default True
+        include_end : bool, default True
+        Returns
+        -------
+        values_between_time : array of integers
+        """
+        return self.index.to_pandas().indexer_between_time(
+            start_time, end_time, include_start=include_start, include_end=include_end
+        )
+
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
         Replace values where the condition is False.
