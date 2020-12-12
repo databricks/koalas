@@ -2977,20 +2977,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             If the datatype of index is not datetime
         Examples
         --------
-        >>> i = pd.date_range('2018-04-09', periods=4, freq='1D20min')
-        >>> ts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=i)
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='1D20min')
+        >>> ts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
         >>> ts
                              A
         2018-04-09 00:00:00  1
         2018-04-10 00:20:00  2
         2018-04-11 00:40:00  3
         2018-04-12 01:00:00  4
+
         >>> ts.between_time('0:15', '0:45')
                              A
         2018-04-10 00:20:00  2
         2018-04-11 00:40:00  3
+
         You get the times that are *not* between two times by setting
         ``start_time`` later than ``end_time``:
+
         >>> ts.between_time('0:45', '0:15')
                              A
         2018-04-09 00:00:00  1
@@ -2998,7 +3001,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise NotImplementedError("axis should be 0.")
+            raise NotImplementedError("between_time currently only works for axis=0")
 
         if not self.index.is_all_dates:
             raise TypeError("Datatype of Index must be datetime")
