@@ -2998,7 +2998,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         axis = validate_axis(axis)
         if axis != 0:
-            raise NotImplementedError('axis should be 0.')
+            raise NotImplementedError("axis should be 0.")
 
         if not self.index.is_all_dates:
             raise TypeError("Datatype of Index must be datetime")
