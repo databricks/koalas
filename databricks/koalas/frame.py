@@ -3003,7 +3003,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not self.index.is_all_dates:
             raise TypeError("Datatype of Index must be datetime")
 
-        index_locations = self._get_index_locations(start_time, end_time, include_start, include_end)
+        index_locations = self._get_index_locations(
+            start_time, end_time, include_start, include_end
+        )
         return self.copy().take(index_locations)
 
     def _get_index_locations(self, start_time, end_time, include_start=True, include_end=True):
