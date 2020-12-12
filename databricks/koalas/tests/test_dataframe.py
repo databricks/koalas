@@ -5065,7 +5065,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
         pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(pdf.between_time("0:15", "0:45"), kdf.between_time("0:15", "0:45"))
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45"), kdf.between_time("0:15", "0:45"), almost=True
+        )
 
         # Assert axis cannot be other than 0
         with self.assertRaisesRegex(
