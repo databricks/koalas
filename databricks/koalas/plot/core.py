@@ -176,7 +176,7 @@ class KoalasPlotAccessor(PandasObject):
         KoalasPlotAccessor._backends[backend] = module
         return module
 
-    def __call__(self, *, kind="line", backend=None, **kwargs):
+    def __call__(self, kind="line", backend=None, **kwargs):
         plot_backend = KoalasPlotAccessor._get_plot_backend(backend)
         plot_data = self.data
 
