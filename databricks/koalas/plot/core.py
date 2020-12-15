@@ -189,10 +189,10 @@ class KoalasPlotAccessor(PandasObject):
                 "area": SampledPlot().get_sampled,
                 "line": SampledPlot().get_sampled,
             }
-            if data_preprocessor_map[kind]:
+            if not data_preprocessor_map[kind]:
                 raise NotImplementedError(
                     "'%s' plot is not supported with '%s' plot "
-                    "backend yet." % plot_backend.__name__
+                    "backend yet." % (kind, plot_backend.__name__)
                 )
             plot_data = data_preprocessor_map[kind](plot_data)
             return plot_backend.plot(plot_data, kind=kind, **kwargs)
