@@ -173,6 +173,12 @@ class KoalasPlotAccessor(PandasObject):
             return KoalasPlotAccessor._backends[backend]
 
         module = KoalasPlotAccessor._find_backend(backend)
+
+        if backend == "plotly":
+            from databricks.koalas.plot.plotly import plot_plotly
+
+            module.plot = plot_plotly(module.plot)
+
         KoalasPlotAccessor._backends[backend] = module
         return module
 
@@ -714,7 +720,7 @@ class KoalasPlotAccessor(PandasObject):
         elif isinstance(self.data, DataFrame):
             return self(kind="area", x=x, y=y, **kwds)
 
-    def pie(self, y=None, **kwds):
+    def pie(self, **kwds):
         """
         Generate a pie plot.
 
@@ -764,9 +770,13 @@ class KoalasPlotAccessor(PandasObject):
             return self(kind="pie", **kwds)
         else:
             # pandas will raise an error if y is None and subplots if not True
-            if isinstance(self.data, DataFrame) and y is None and not kwds.get("subplots", False):
+            if (
+                isinstance(self.data, DataFrame)
+                and kwds.get("y", None) is None
+                and not kwds.get("subplots", False)
+            ):
                 raise ValueError("pie requires either y column or 'subplots=True'")
-            return self(kind="pie", y=y, **kwds)
+            return self(kind="pie", **kwds)
 
     def scatter(self, x, y, **kwds):
         """
