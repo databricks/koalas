@@ -24,6 +24,7 @@ import warnings
 from collections.abc import Iterable, Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
+from itertools import chain
 from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union, cast
 
 import matplotlib
@@ -1906,6 +1907,136 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 self._column_label, scol.alias(name_like_string(self.name))
             )
         )._kser_for(self._column_label)
+
+    def factorize(self, sort: bool = True, na_sentinel: Optional[int] = -1):
+        """
+        Encode the object as an enumerated type or categorical variable.
+        This method is useful for obtaining a numeric representation of an
+        array when all that matters is identifying distinct values.
+
+        Parameters
+        ----------
+        sort : bool, default True
+        na_sentinel : int or None, default -1
+            Value to mark "not found". If None, will not drop the NaN
+            from the uniques of the values.
+
+        Returns
+        -------
+        codes : Series
+            An Series that's an indexer into `uniques`.
+            ``uniques.take(codes)`` will have the same values as `values`.
+        uniques : Index
+            The unique valid values. When `values` is koalas object, an
+            `Index` is returned.
+
+            .. note ::
+
+               Even if there's a missing value in `values`, `uniques` will
+               *not* contain an entry for it.
+
+        Examples
+        --------
+        >>> kser = ks.Series(['b', None, 'a', 'c', 'b'])
+        >>> codes, uniques = kser.factorize()
+        >>> codes
+        0    1
+        1   -1
+        2    0
+        3    2
+        4    1
+        dtype: int64
+        >>> uniques
+        Index(['a', 'b', 'c'], dtype='object')
+
+        >>> codes, uniques = kser.factorize(na_sentinel=None)
+        >>> codes
+        0    1
+        1    3
+        2    0
+        3    2
+        4    1
+        dtype: int64
+        >>> uniques
+        Index(['a', 'b', 'c', None], dtype='object')
+
+        >>> codes, uniques = kser.factorize(na_sentinel=-2)
+        >>> codes
+        0    1
+        1   -2
+        2    0
+        3    2
+        4    1
+        dtype: int64
+        >>> uniques
+        Index(['a', 'b', 'c'], dtype='object')
+        """
+        assert (na_sentinel is None) or isinstance(na_sentinel, int)
+        assert sort is True
+        uniq_sdf = self._internal.spark_frame.select(self.spark.column).distinct()
+
+        # Check number of uniques and constructs sorted `uniques_list`
+        max_compute_count = get_option("compute.max_rows")
+        if max_compute_count is not None:
+            uniq_pdf = uniq_sdf.limit(max_compute_count + 1).toPandas()
+            if len(uniq_pdf) > max_compute_count:
+                raise ValueError(
+                    "Current Series has more then {0} unique values. "
+                    "Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option' "
+                    "to more than {0} rows. Note that, before changing the "
+                    "'compute.max_rows', this operation is considerably expensive.".format(
+                        max_compute_count
+                    )
+                )
+        else:
+            raise ValueError(
+                "Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option' "
+                "to restrict the total number of unique values of the current Series."
+                "Note that, before changing the 'compute.max_rows', "
+                "this operation is considerably expensive."
+            )
+
+        uniques_list = first_series(uniq_pdf).tolist()
+        uniques_list = sorted(uniques_list, key=lambda x: (x is None, x))
+
+        # Constructs `unique_to_code` mapping unique to code
+        unique_to_code = {}
+        if na_sentinel is not None:
+            unique_to_code = {np.nan: na_sentinel}
+            na_sentinel_code = na_sentinel
+        code = 0
+        for unique in uniques_list:
+            if unique not in unique_to_code:
+                if unique is None and na_sentinel is not None:
+                    continue
+
+                if unique is None:
+                    na_sentinel_code = code
+                else:
+                    unique_to_code[unique] = code
+                code += 1
+
+        sdf = self._internal.resolved_copy.spark_frame
+        scol_name = self._internal.data_spark_column_names[0]
+        new_scol_name = cast(str, verify_temp_column_name(sdf, "__new_column__"))
+
+        kvs = list(
+            chain(*([(F.lit(unique), F.lit(code)) for unique, code in unique_to_code.items()]))
+        )
+
+        map_scol = F.create_map(kvs)
+        null_scol = F.when(self.spark.column.isNull(), F.lit(na_sentinel_code))
+        mapped_scol = map_scol.getItem(self.spark.column)
+        internal = self._internal.with_new_columns([null_scol.otherwise(mapped_scol)])
+
+        codes = first_series(DataFrame(internal))
+
+        if na_sentinel is not None:
+            uniques = ks.Index([x for x in uniques_list if x is not None])
+        else:
+            uniques = ks.Index(uniques_list)
+
+        return codes, uniques
 
     def dropna(self, axis=0, inplace=False, **kwargs) -> Optional["Series"]:
         """
