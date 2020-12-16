@@ -639,7 +639,7 @@ class DataFrame(Frame, Generic[T]):
                 col_type = self._internal.spark_type_for(label)
 
                 is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
-                min_or_max = sfun.__name__ in ("min", "max")
+                min_or_max = name in ("min", "max")
                 keep_column = not numeric_only or is_numeric_or_boolean or min_or_max
 
                 if keep_column:
@@ -658,6 +658,9 @@ class DataFrame(Frame, Generic[T]):
                     exprs.append(col_sdf.alias(name_like_string(label)))
                     new_column_labels.append(label)
 
+            if len(exprs) == 1:
+                return Series([])
+
             sdf = self._internal.spark_frame.select(*exprs)
 
             # The data is expected to be small so it's fine to transpose/use default index.
@@ -670,7 +673,7 @@ class DataFrame(Frame, Generic[T]):
                 )
                 return first_series(DataFrame(internal).transpose())
 
-        elif axis == 1:
+        else:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
@@ -689,9 +692,6 @@ class DataFrame(Frame, Generic[T]):
                 )
             )
             return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
-
-        else:
-            raise ValueError("No axis named %s for object type %s." % (axis, type(axis).__name__))
 
     def _kser_for(self, label):
         """
