@@ -734,7 +734,7 @@ class KoalasPlotAccessor(PandasObject):
         ----------
         y : int or label, optional
             Label or position of the column to plot.
-            If not provided, ``subplots=True`` argument must be passed.
+            If not provided, ``subplots=True`` argument must be passed (matplotlib-only).
         **kwds
             Keyword arguments to pass on to :meth:`Koalas.Series.plot`.
 
@@ -775,7 +775,9 @@ class KoalasPlotAccessor(PandasObject):
                 and kwds.get("y", None) is None
                 and not kwds.get("subplots", False)
             ):
-                raise ValueError("pie requires either y column or 'subplots=True'")
+                raise ValueError(
+                    "pie requires either y column or 'subplots=True' (matplotlib-only)"
+                )
             return self(kind="pie", **kwds)
 
     def scatter(self, x, y, **kwds):
