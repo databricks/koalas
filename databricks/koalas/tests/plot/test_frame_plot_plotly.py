@@ -18,6 +18,7 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 import numpy as np
+from plotly import express
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -143,3 +144,33 @@ class DataFramePlotPlotlyTest(ReusedSQLTestCase, TestUtils):
         pdf1 = pd.DataFrame(np.random.rand(50, 4), columns=["a", "b", "c", "d"])
         kdf1 = ks.from_pandas(pdf1)
         check_scatter_plot(pdf1, kdf1, x="a", y="b", c="c")
+
+    def test_pie_plot(self):
+        def check_pie_plot(kdf):
+            pdf = kdf.to_pandas()
+            self.assertEqual(
+                kdf.plot(kind="pie", y=kdf.columns[0]),
+                express.pie(pdf, values="a", names=pdf.index),
+            )
+
+            self.assertEqual(
+                kdf.plot(kind="pie", values="a"), express.pie(pdf, values="a"),
+            )
+
+        kdf1 = self.kdf1
+        check_pie_plot(kdf1)
+
+        # TODO: support multi-index columns
+        # columns = pd.MultiIndex.from_tuples([("x", "y"), ("y", "z")])
+        # kdf1.columns = columns
+        # check_pie_plot(kdf1)
+
+        # TODO: support multi-index
+        # kdf1 = ks.DataFrame(
+        #     {
+        #         "a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
+        #         "b": [2, 3, 4, 5, 7, 9, 10, 15, 34, 45, 49]
+        #     },
+        #     index=pd.MultiIndex.from_tuples([("x", "y")] * 11),
+        # )
+        # check_pie_plot(kdf1)
