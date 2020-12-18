@@ -17,6 +17,7 @@ import unittest
 from distutils.version import LooseVersion
 
 import pandas as pd
+from plotly import express
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -98,3 +99,32 @@ class SeriesPlotPlotlyTest(ReusedSQLTestCase, TestUtils):
 
         # just a sanity check for df.col type
         self.assertEqual(pdf.sales.plot(kind="area"), kdf.sales.plot(kind="area"))
+
+    def test_pie_plot(self):
+        kdf = self.kdf1
+        pdf = kdf.to_pandas()
+        self.assertEqual(
+            kdf["a"].plot(kind="pie"), express.pie(pdf, values=pdf.columns[0], names=pdf.index),
+        )
+
+        # TODO: support multi-index columns
+        # columns = pd.MultiIndex.from_tuples([("x", "y")])
+        # kdf.columns = columns
+        # pdf.columns = columns
+        # self.assertEqual(
+        #     kdf[("x", "y")].plot(kind="pie"),
+        #     express.pie(pdf, values=pdf.iloc[:, 0].to_numpy(), names=pdf.index.to_numpy()),
+        # )
+
+        # TODO: support multi-index
+        # kdf = ks.DataFrame(
+        #     {
+        #         "a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
+        #         "b": [2, 3, 4, 5, 7, 9, 10, 15, 34, 45, 49]
+        #     },
+        #     index=pd.MultiIndex.from_tuples([("x", "y")] * 11),
+        # )
+        # pdf = kdf.to_pandas()
+        # self.assertEqual(
+        #     kdf["a"].plot(kind="pie"), express.pie(pdf, values=pdf.columns[0], names=pdf.index),
+        # )
