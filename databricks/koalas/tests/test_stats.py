@@ -28,7 +28,7 @@ from databricks.koalas.testing.utils import (
 
 class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_stat_functions(self, pdf_or_pser, kdf_or_kser):
-        functions = ["max", "min", "mean", "sum"]
+        functions = ["max", "min", "mean", "sum", "count"]
         for funcname in functions:
             self.assert_eq(getattr(kdf_or_kser, funcname)(), getattr(pdf_or_pser, funcname)())
 
@@ -47,7 +47,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             getattr(kdf_or_kser, funcname)()
 
     def test_stat_functions(self):
-        pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1, 2, 3, 4]})
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1, 2, 3, 4], "C": [1, np.nan, 3, np.nan]})
         kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf.A, kdf.A)
         self._test_stat_functions(pdf, kdf)
@@ -168,6 +168,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.min(), pdf.min())
         self.assert_eq(kdf.max(), pdf.max())
+        self.assert_eq(kdf.count(), pdf.count())
 
         self.assert_eq(kdf.sum(), pdf.sum())
         self.assert_eq(kdf.mean(), pdf.mean())
@@ -181,6 +182,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.min(), pser.min())
         self.assert_eq(kser.max(), pser.max())
+        self.assert_eq(kser.count(), pser.count())
 
         self.assert_eq(kser.sum(), pser.sum())
         self.assert_eq(kser.mean(), pser.mean())
@@ -193,6 +195,20 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assertTrue(isinstance(kdf.sum(numeric_only=True), ks.Series))
+
+        self.assertEqual(
+            len(kdf[["i", "s"]].max(numeric_only=True)), len(pdf[["i", "s"]].max(numeric_only=True))
+        )
+        self.assertEqual(
+            len(kdf[["b", "s"]].max(numeric_only=True)), len(pdf[["b", "s"]].max(numeric_only=True))
+        )
+        self.assertEqual(
+            len(kdf[["i", "s"]].min(numeric_only=True)), len(pdf[["i", "s"]].min(numeric_only=True))
+        )
+        self.assertEqual(
+            len(kdf[["b", "s"]].min(numeric_only=True)), len(pdf[["b", "s"]].min(numeric_only=True))
+        )
+        self.assertEqual(len(kdf.count(numeric_only=True)), len(pdf.count(numeric_only=True)))
 
         self.assertEqual(len(kdf.sum(numeric_only=True)), len(pdf.sum(numeric_only=True)))
         self.assertEqual(len(kdf.mean(numeric_only=True)), len(pdf.mean(numeric_only=True)))
@@ -207,7 +223,13 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
 
-        with self.assertRaisesRegex(
-            ValueError, "Disabling 'numeric_only' parameter is not supported"
-        ):
+        self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+        self.assert_eq(
+            kdf[["i", "b"]].sum(numeric_only=False), pdf[["i", "b"]].sum(numeric_only=False)
+        )
+
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
             kdf.sum(numeric_only=False)
+
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+            kdf.s.sum()

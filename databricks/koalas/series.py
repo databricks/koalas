@@ -2807,32 +2807,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.sort_values(ascending=False).head(n)
 
-    def count(self) -> int:
-        """
-        Return number of non-NA/null observations in the Series.
-
-        Returns
-        -------
-        nobs : int
-
-        Examples
-        --------
-        Constructing DataFrame from a dictionary:
-
-        >>> df = ks.DataFrame({"Person":
-        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
-        ...                    "Age": [24., np.nan, 21., 33, 26]})
-
-        Notice the uncounted NA values:
-
-        >>> df['Person'].count()
-        5
-
-        >>> df['Age'].count()
-        4
-        """
-        return self._reduce_for_stat_function(Frame._count_expr, name="count")
-
     def append(
         self, to_append: "Series", ignore_index: bool = False, verify_integrity: bool = False
     ) -> "Series":
@@ -5875,11 +5849,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         num_args = len(signature(sfun).parameters)
         scol = self.spark.column
         spark_type = self.spark.data_type
-        if isinstance(spark_type, BooleanType) and sfun.__name__ not in ("min", "max"):
-            # Stat functions cannot be used with boolean values by default
-            # Thus, cast to integer (true to 1 and false to 0)
-            # Exclude the min and max methods though since those work with booleans
-            scol = scol.cast("integer")
         if num_args == 1:
             # Only pass in the column if sfun accepts only one arg
             scol = sfun(scol)
