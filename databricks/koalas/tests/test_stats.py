@@ -209,7 +209,11 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         )
         self.assert_eq(kdf.count(numeric_only=True), pdf.count(numeric_only=True))
 
-        self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+        else:
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True).astype(int))
+
         self.assert_eq(kdf.mean(numeric_only=True), pdf.mean(numeric_only=True))
 
         self.assert_eq(kdf.var(numeric_only=True), pdf.var(numeric_only=True), check_exact=False)
