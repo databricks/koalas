@@ -1607,14 +1607,14 @@ class Frame(object, metaclass=ABCMeta):
         Examples
         --------
         >>> df = ks.DataFrame({
-        ...     'a': [24., 21., 25., 33., 26.], 'b': [1., 2., 3., 4., 5.]}, columns=['a', 'b'])
+        ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
         >>> df
-              a    b
-        0  24.0  1.0
-        1  21.0  2.0
-        2  25.0  3.0
-        3  33.0  4.0
-        4  26.0  5.0
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
 
         On a DataFrame:
 
@@ -1627,20 +1627,20 @@ class Frame(object, metaclass=ABCMeta):
 
         >>> df['a'].median()
         25.0
-        >>> (df['a'] + 100).median()
-        125.0
+        >>> (df['b'] + 100).median()
+        103.0
 
         For multi-index columns,
 
         >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
         >>> df
-              x    y
-              a    b
-        0  24.0  1.0
-        1  21.0  2.0
-        2  25.0  3.0
-        3  33.0  4.0
-        4  26.0  5.0
+              x  y
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
 
         On a DataFrame:
 
@@ -1661,8 +1661,8 @@ class Frame(object, metaclass=ABCMeta):
 
         >>> df[('x', 'a')].median()
         25.0
-        >>> (df[('x', 'a')] + 100).median()
-        125.0
+        >>> (df[('y', 'b')] + 100).median()
+        103.0
         """
         if not isinstance(accuracy, int):
             raise ValueError(
@@ -1670,9 +1670,9 @@ class Frame(object, metaclass=ABCMeta):
             )
 
         def median(spark_column, spark_type):
-            if isinstance(spark_type, BooleanType):
-                spark_column = spark_column.cast(LongType())
-            elif not isinstance(spark_type, NumericType):
+            if isinstance(spark_type, (BooleanType, NumericType)):
+                spark_column = spark_column.cast(DoubleType())
+            else:
                 raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
             return SF.percentile_approx(spark_column, 0.5, accuracy)
 

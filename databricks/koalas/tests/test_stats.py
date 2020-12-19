@@ -195,30 +195,29 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
 
-        self.assertTrue(isinstance(kdf.sum(numeric_only=True), ks.Series))
-
-        self.assertEqual(
-            len(kdf[["i", "s"]].max(numeric_only=True)), len(pdf[["i", "s"]].max(numeric_only=True))
+        self.assert_eq(
+            kdf[["i", "s"]].max(numeric_only=True), pdf[["i", "s"]].max(numeric_only=True)
         )
-        self.assertEqual(
-            len(kdf[["b", "s"]].max(numeric_only=True)), len(pdf[["b", "s"]].max(numeric_only=True))
+        self.assert_eq(
+            kdf[["b", "s"]].max(numeric_only=True), pdf[["b", "s"]].max(numeric_only=True)
         )
-        self.assertEqual(
-            len(kdf[["i", "s"]].min(numeric_only=True)), len(pdf[["i", "s"]].min(numeric_only=True))
+        self.assert_eq(
+            kdf[["i", "s"]].min(numeric_only=True), pdf[["i", "s"]].min(numeric_only=True)
         )
-        self.assertEqual(
-            len(kdf[["b", "s"]].min(numeric_only=True)), len(pdf[["b", "s"]].min(numeric_only=True))
+        self.assert_eq(
+            kdf[["b", "s"]].min(numeric_only=True), pdf[["b", "s"]].min(numeric_only=True)
         )
-        self.assertEqual(len(kdf.count(numeric_only=True)), len(pdf.count(numeric_only=True)))
+        self.assert_eq(kdf.count(numeric_only=True), pdf.count(numeric_only=True))
 
-        self.assertEqual(len(kdf.sum(numeric_only=True)), len(pdf.sum(numeric_only=True)))
-        self.assertEqual(len(kdf.mean(numeric_only=True)), len(pdf.mean(numeric_only=True)))
+        self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+        self.assert_eq(kdf.mean(numeric_only=True), pdf.mean(numeric_only=True))
 
-        self.assertEqual(len(kdf.var(numeric_only=True)), len(pdf.var(numeric_only=True)))
-        self.assertEqual(len(kdf.std(numeric_only=True)), len(pdf.std(numeric_only=True)))
+        self.assert_eq(kdf.var(numeric_only=True), pdf.var(numeric_only=True), check_exact=False)
+        self.assert_eq(kdf.std(numeric_only=True), pdf.std(numeric_only=True), check_exact=False)
 
-        self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
-        self.assertEqual(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
+        self.assert_eq(len(kdf.median(numeric_only=True)), len(pdf.median(numeric_only=True)))
+        self.assert_eq(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
+        self.assert_eq(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
 
     def test_numeric_only_unsupported(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
