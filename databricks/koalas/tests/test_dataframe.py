@@ -2363,15 +2363,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             res = df1.combine_first(df2)
         self.assert_eq(res, pdf1.combine_first(pdf2))
 
-        midx_pdf1 = pd.DataFrame(
-            {"A": [None, 0], "B": [None, 4]}
-        )
+        midx_pdf1 = pd.DataFrame({"A": [None, 0], "B": [None, 4]})
         midx_pdf1.columns = pd.MultiIndex.from_tuples([("A", "willow"), ("B", "pine")])
-        midx_pdf2 = pd.DataFrame(
-            {"B": [3, 3], "C": [1, 1]}
-        )
+        midx_pdf2 = pd.DataFrame({"B": [3, 3], "C": [1, 1]})
         midx_pdf2.columns = pd.MultiIndex.from_tuples([("B", "pine"), ("C", "oak")])
-        
 
         midx_df1 = ks.from_pandas(midx_pdf1)
         midx_df2 = ks.from_pandas(midx_pdf2)
