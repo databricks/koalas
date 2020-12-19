@@ -1405,8 +1405,7 @@ class Frame(object, metaclass=ABCMeta):
             generated for each row.
         numeric_only : bool, default None
             If True, include only float, int, boolean columns. This parameter is mainly for
-            pandas compatibility. False is supported; however, the columns should
-            be all numeric or all non-numeric.
+            pandas compatibility.
 
         Returns
         -------
