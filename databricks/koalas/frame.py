@@ -7294,6 +7294,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> reset_option("compute.ops_on_diff_frames")
         """
+        if not isinstance(other, DataFrame):
+            raise ValueError("`combine_first` only allows `DataFrame` for parameter `other`")
+
+        if same_anchor(self, other):
+            return self
 
         update_columns = set(self._internal.column_labels).intersection(
             set(other._internal.column_labels)
@@ -7302,26 +7307,31 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         combined_df = combine_frames(self, other)
         column_labels = combined_df._internal.column_labels
-        updated_sdf = combined_df._internal.resolved_copy.spark_frame
-        spark_columns = combined_df._internal.spark_columns
+        updated_sdf = combined_df._internal.spark_frame
 
         for column_label in column_labels:
-            if (column_label[1],) in update_columns:
+            if column_label[1:] in update_columns:
                 if column_label[0] == "this":
-                    column_name = column_label[1]
+                    column_name = self._internal.spark_column_name_for(column_label[1:])
                     final_spark_columns.append(column_name)
 
-                    old_col = scol_for(updated_sdf, "__this_" + column_label[1])
-                    new_col = scol_for(updated_sdf, ("__that_" + column_label[1]))
+                    old_col = scol_for(updated_sdf, "__this_" + column_name)
+                    new_col = scol_for(updated_sdf, ("__that_" + column_name))
                     cond = F.when(old_col.isNull(), new_col).otherwise(old_col).alias(column_name)
+                    spark_columns = updated_sdf.columns
                     updated_sdf = updated_sdf.select(*spark_columns, cond)
-                    spark_columns.append(column_name)
+
             else:
-                column_name = combined_df._internal.spark_column_name_for(column_label)
-                col = scol_for(updated_sdf, column_name)
-                updated_sdf = updated_sdf.select(*spark_columns, col.alias(column_name[7:]))
-                spark_columns.append(column_name[7:])
-                final_spark_columns.append(column_name[7:])
+                if column_label[0] == "this":
+                    column_name = self._internal.spark_column_name_for(column_label[1:])
+                    col = scol_for(updated_sdf, "__this_" + column_name)
+                else:
+                    column_name = other._internal.spark_column_name_for(column_label[1:])
+                    col = scol_for(updated_sdf, "__that_" + column_name)
+
+                spark_columns = updated_sdf.columns
+                updated_sdf = updated_sdf.select(*spark_columns, col.alias(column_name))
+                final_spark_columns.append(column_name)
 
         updated_sdf = updated_sdf.select(*final_spark_columns)
 

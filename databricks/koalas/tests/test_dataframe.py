@@ -2352,6 +2352,33 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.replace({("X", "B"): {0: 100, 4: 400}}), pdf.replace({("X", "B"): {0: 100, 4: 400}})
         )
 
+    def test_combine_first(self):
+        pdf1 = pd.DataFrame({"A": [None, 0], "B": [4, None]})
+        pdf2 = pd.DataFrame({"C": [3, 3], "B": [1, 1]})
+
+        df1 = ks.from_pandas(pdf1)
+        df2 = ks.from_pandas(pdf2)
+
+        with option_context("compute.ops_on_diff_frames", True):
+            res = df1.combine_first(df2)
+        self.assert_eq(res, pdf1.combine_first(pdf2))
+
+        midx_pdf1 = pd.DataFrame(
+            {"A": [None, 0], "B": [None, 4]}
+        )
+        midx_pdf1.columns = pd.MultiIndex.from_tuples([("A", "willow"), ("B", "pine")])
+        midx_pdf2 = pd.DataFrame(
+            {"B": [3, 3], "C": [1, 1]}
+        )
+        midx_pdf2.columns = pd.MultiIndex.from_tuples([("B", "pine"), ("C", "oak")])
+        
+
+        midx_df1 = ks.from_pandas(midx_pdf1)
+        midx_df2 = ks.from_pandas(midx_pdf2)
+        with option_context("compute.ops_on_diff_frames", True):
+            midx_res = midx_df1.combine_first(midx_df2)
+        self.assert_eq(midx_res, midx_pdf1.combine_first(midx_pdf2))
+
     def test_update(self):
         # check base function
         def get_data(left_columns=None, right_columns=None):
