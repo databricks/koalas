@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -223,10 +224,17 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
-        self.assert_eq(
-            kdf[["i", "b"]].sum(numeric_only=False), pdf[["i", "b"]].sum(numeric_only=False)
-        )
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+            self.assert_eq(
+                kdf[["i", "b"]].sum(numeric_only=False), pdf[["i", "b"]].sum(numeric_only=False)
+            )
+        else:
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True).astype(int))
+            self.assert_eq(
+                kdf[["i", "b"]].sum(numeric_only=False),
+                pdf[["i", "b"]].sum(numeric_only=False).astype(int),
+            )
 
         with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
             kdf.sum(numeric_only=False)
