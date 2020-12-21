@@ -30,9 +30,8 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 import pyspark
-from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import DataType, DoubleType, FloatType
+from pyspark.sql.types import BooleanType, DoubleType, FloatType, LongType, NumericType
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
@@ -1088,7 +1087,9 @@ class Frame(object, metaclass=ABCMeta):
             kdf._to_internal_pandas(), self.to_excel, f, args
         )
 
-    def mean(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
+    def mean(
+        self, axis: Union[int, str] = None, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
         """
         Return the mean of the values.
 
@@ -1129,11 +1130,21 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].mean()
         2.0
         """
+
+        def mean(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return F.mean(spark_column)
+
         return self._reduce_for_stat_function(
-            F.mean, name="mean", numeric_only=numeric_only, axis=axis
+            mean, name="mean", axis=axis, numeric_only=numeric_only
         )
 
-    def sum(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
+    def sum(
+        self, axis: Union[int, str] = None, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
 
@@ -1174,11 +1185,19 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].sum()
         6.0
         """
-        return self._reduce_for_stat_function(
-            F.sum, name="sum", numeric_only=numeric_only, axis=axis
-        )
 
-    def skew(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
+        def sum(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return F.sum(spark_column)
+
+        return self._reduce_for_stat_function(sum, name="sum", axis=axis, numeric_only=numeric_only)
+
+    def skew(
+        self, axis: Union[int, str] = None, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
         """
         Return unbiased skew normalized by N-1.
 
@@ -1212,11 +1231,21 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].skew()
         0.0
         """
+
+        def skew(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return F.skewness(spark_column)
+
         return self._reduce_for_stat_function(
-            F.skewness, name="skew", numeric_only=numeric_only, axis=axis
+            skew, name="skew", axis=axis, numeric_only=numeric_only
         )
 
-    def kurtosis(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
+    def kurtosis(
+        self, axis: Union[int, str] = None, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
         Normalized by N-1.
@@ -1251,13 +1280,23 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].kurtosis()
         -1.5
         """
+
+        def kurtosis(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return F.kurtosis(spark_column)
+
         return self._reduce_for_stat_function(
-            F.kurtosis, name="kurtosis", numeric_only=numeric_only, axis=axis
+            kurtosis, name="kurtosis", axis=axis, numeric_only=numeric_only
         )
 
     kurt = kurtosis
 
-    def min(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
+    def min(
+        self, axis: Union[int, str] = None, numeric_only: bool = None
+    ) -> Union[Scalar, "Series"]:
         """
         Return the minimum of the values.
 
@@ -1300,10 +1339,12 @@ class Frame(object, metaclass=ABCMeta):
         1.0
         """
         return self._reduce_for_stat_function(
-            F.min, name="min", numeric_only=numeric_only, axis=axis
+            F.min, name="min", axis=axis, numeric_only=numeric_only
         )
 
-    def max(self, axis=None, numeric_only=None) -> Union[Scalar, "Series"]:
+    def max(
+        self, axis: Union[int, str] = None, numeric_only: bool = None
+    ) -> Union[Scalar, "Series"]:
         """
         Return the maximum of the values.
 
@@ -1346,10 +1387,94 @@ class Frame(object, metaclass=ABCMeta):
         3.0
         """
         return self._reduce_for_stat_function(
-            F.max, name="max", numeric_only=numeric_only, axis=axis
+            F.max, name="max", axis=axis, numeric_only=numeric_only
         )
 
-    def std(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
+    def count(
+        self, axis: Union[int, str] = None, numeric_only: bool = None
+    ) -> Union[Scalar, "Series"]:
+        """
+        Count non-NA cells for each column.
+
+        The values `None`, `NaN` are considered NA.
+
+        Parameters
+        ----------
+        axis : {0 or ‘index’, 1 or ‘columns’}, default 0
+            If 0 or ‘index’ counts are generated for each column. If 1 or ‘columns’ counts are
+            generated for each row.
+        numeric_only : bool, default None
+            If True, include only float, int, boolean columns. This parameter is mainly for
+            pandas compatibility.
+
+        Returns
+        -------
+        max : scalar for a Series, and a Series for a DataFrame.
+
+        See Also
+        --------
+        DataFrame.shape: Number of DataFrame rows and columns (including NA
+            elements).
+        DataFrame.isna: Boolean same-sized DataFrame showing places of NA
+            elements.
+
+        Examples
+        --------
+        Constructing DataFrame from a dictionary:
+
+        >>> df = ks.DataFrame({"Person":
+        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
+        ...                    "Age": [24., np.nan, 21., 33, 26],
+        ...                    "Single": [False, True, True, True, False]},
+        ...                   columns=["Person", "Age", "Single"])
+        >>> df
+          Person   Age  Single
+        0   John  24.0   False
+        1   Myla   NaN    True
+        2  Lewis  21.0    True
+        3   John  33.0    True
+        4   Myla  26.0   False
+
+        Notice the uncounted NA values:
+
+        >>> df.count()
+        Person    5
+        Age       4
+        Single    5
+        dtype: int64
+
+        >>> df.count(axis=1)
+        0    3
+        1    2
+        2    3
+        3    3
+        4    3
+        dtype: int64
+
+        On a Series:
+
+        >>> df['Person'].count()
+        5
+
+        >>> df['Age'].count()
+        4
+        """
+
+        def count(spark_column, spark_type):
+            # Special handle floating point types because Spark's count treats nan as a valid value,
+            # whereas pandas count doesn't include nan.
+            if isinstance(spark_type, (FloatType, DoubleType)):
+                return F.count(F.nanvl(spark_column, F.lit(None)))
+            else:
+                return F.count(spark_column)
+
+        return self._reduce_for_stat_function(
+            count, name="count", axis=axis, numeric_only=numeric_only
+        )
+
+    def std(
+        self, axis: Union[int, str] = None, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
 
@@ -1390,11 +1515,19 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].std()
         1.0
         """
-        return self._reduce_for_stat_function(
-            F.stddev, name="std", numeric_only=numeric_only, axis=axis
-        )
 
-    def var(self, axis=None, numeric_only=True) -> Union[Scalar, "Series"]:
+        def std(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return F.stddev(spark_column)
+
+        return self._reduce_for_stat_function(std, name="std", axis=axis, numeric_only=numeric_only)
+
+    def var(
+        self, axis: Union[int, str] = None, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
 
@@ -1435,8 +1568,115 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].var()
         1.0
         """
+
+        def var(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return F.variance(spark_column)
+
+        return self._reduce_for_stat_function(var, name="var", axis=axis, numeric_only=numeric_only)
+
+    def median(
+        self, axis: Union[int, str] = None, numeric_only: bool = True, accuracy: int = 10000
+    ) -> Union[Scalar, "Series"]:
+        """
+        Return the median of the values for the requested axis.
+
+        .. note:: Unlike pandas', the median in Koalas is an approximated median based upon
+            approximate percentile computation because computing median across a large dataset
+            is extremely expensive.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
+        accuracy : int, optional
+            Default accuracy of approximation. Larger value means better accuracy.
+            The relative error can be deduced by 1.0 / accuracy.
+
+        Returns
+        -------
+        median : scalar or Series
+
+        Examples
+        --------
+        >>> df = ks.DataFrame({
+        ...     'a': [24., 21., 25., 33., 26.], 'b': [1, 2, 3, 4, 5]}, columns=['a', 'b'])
+        >>> df
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
+
+        On a DataFrame:
+
+        >>> df.median()
+        a    25.0
+        b     3.0
+        dtype: float64
+
+        On a Series:
+
+        >>> df['a'].median()
+        25.0
+        >>> (df['b'] + 100).median()
+        103.0
+
+        For multi-index columns,
+
+        >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
+        >>> df
+              x  y
+              a  b
+        0  24.0  1
+        1  21.0  2
+        2  25.0  3
+        3  33.0  4
+        4  26.0  5
+
+        On a DataFrame:
+
+        >>> df.median()
+        x  a    25.0
+        y  b     3.0
+        dtype: float64
+
+        >>> df.median(axis=1)
+        0    12.5
+        1    11.5
+        2    14.0
+        3    18.5
+        4    15.5
+        dtype: float64
+
+        On a Series:
+
+        >>> df[('x', 'a')].median()
+        25.0
+        >>> (df[('y', 'b')] + 100).median()
+        103.0
+        """
+        if not isinstance(accuracy, int):
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
+            )
+
+        def median(spark_column, spark_type):
+            if isinstance(spark_type, (BooleanType, NumericType)):
+                spark_column = spark_column.cast(DoubleType())
+            else:
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+            return SF.percentile_approx(spark_column, 0.5, accuracy)
+
         return self._reduce_for_stat_function(
-            F.variance, name="var", numeric_only=numeric_only, axis=axis
+            median, name="median", numeric_only=numeric_only, axis=axis
         )
 
     @property
@@ -1894,101 +2134,6 @@ class Frame(object, metaclass=ABCMeta):
             return last_valid_row[0]
         else:
             return tuple(last_valid_row)
-
-    def median(self, axis=None, numeric_only=True, accuracy=10000) -> Union[Scalar, "Series"]:
-        """
-        Return the median of the values for the requested axis.
-
-        .. note:: Unlike pandas', the median in Koalas is an approximated median based upon
-            approximate percentile computation because computing median across a large dataset
-            is extremely expensive.
-
-        Parameters
-        ----------
-        axis : {index (0), columns (1)}
-            Axis for the function to be applied on.
-        numeric_only : bool, default True
-            Include only float, int, boolean columns. False is not supported. This parameter
-            is mainly for pandas compatibility.
-        accuracy : int, optional
-            Default accuracy of approximation. Larger value means better accuracy.
-            The relative error can be deduced by 1.0 / accuracy.
-
-        Returns
-        -------
-        median : scalar or Series
-
-        Examples
-        --------
-        >>> df = ks.DataFrame({
-        ...     'a': [24., 21., 25., 33., 26.], 'b': [1., 2., 3., 4., 5.]}, columns=['a', 'b'])
-        >>> df
-              a    b
-        0  24.0  1.0
-        1  21.0  2.0
-        2  25.0  3.0
-        3  33.0  4.0
-        4  26.0  5.0
-
-        On a DataFrame:
-
-        >>> df.median()
-        a    25.0
-        b     3.0
-        dtype: float64
-
-        On a Series:
-
-        >>> df['a'].median()
-        25.0
-        >>> (df['a'] + 100).median()
-        125.0
-
-        For multi-index columns,
-
-        >>> df.columns = pd.MultiIndex.from_tuples([('x', 'a'), ('y', 'b')])
-        >>> df
-              x    y
-              a    b
-        0  24.0  1.0
-        1  21.0  2.0
-        2  25.0  3.0
-        3  33.0  4.0
-        4  26.0  5.0
-
-        On a DataFrame:
-
-        >>> df.median()
-        x  a    25.0
-        y  b     3.0
-        dtype: float64
-
-        >>> df.median(axis=1)
-        0    12.5
-        1    11.5
-        2    14.0
-        3    18.5
-        4    15.5
-        dtype: float64
-
-        On a Series:
-
-        >>> df[('x', 'a')].median()
-        25.0
-        >>> (df[('x', 'a')] + 100).median()
-        125.0
-        """
-        if not isinstance(accuracy, int):
-            raise ValueError(
-                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
-            )
-
-        return self._reduce_for_stat_function(
-            lambda scol: SF.percentile_approx(scol, 0.5, accuracy),
-            name="median",
-            numeric_only=numeric_only,
-            axis=axis,
-        )
 
     # TODO: 'center', 'win_type', 'on', 'axis' parameter should be implemented.
     def rolling(self, window, min_periods=None) -> Rolling:
@@ -2601,12 +2746,3 @@ class Frame(object, metaclass=ABCMeta):
             "The truth value of a {0} is ambiguous. "
             "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
         )
-
-    @staticmethod
-    def _count_expr(col: spark.Column, spark_type: DataType) -> spark.Column:
-        # Special handle floating point types because Spark's count treats nan as a valid value,
-        # whereas pandas count doesn't include nan.
-        if isinstance(spark_type, (FloatType, DoubleType)):
-            return F.count(F.nanvl(col, F.lit(None)))
-        else:
-            return F.count(col)
