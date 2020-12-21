@@ -605,7 +605,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return [self.index, self.columns]
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, min_count=0):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
@@ -632,21 +632,27 @@ class DataFrame(Frame, Generic[T]):
             new_column_labels = []
             num_args = len(signature(sfun).parameters)
             for label in self._internal.column_labels:
-                col_sdf = self._internal.spark_column_for(label)
-                col_type = self._internal.spark_type_for(label)
+                spark_column = self._internal.spark_column_for(label)
+                spark_type = self._internal.spark_type_for(label)
 
-                is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
+                is_numeric_or_boolean = isinstance(spark_type, (NumericType, BooleanType))
                 keep_column = not numeric_only or is_numeric_or_boolean
 
                 if keep_column:
                     if num_args == 1:
                         # Only pass in the column if sfun accepts only one arg
-                        col_sdf = sfun(col_sdf)
+                        scol = sfun(spark_column)
                     else:  # must be 2
                         assert num_args == 2
                         # Pass in both the column and its data type if sfun accepts two args
-                        col_sdf = sfun(col_sdf, col_type)
-                    exprs.append(col_sdf.alias(name_like_string(label)))
+                        scol = sfun(spark_column, spark_type)
+
+                    if min_count > 0:
+                        scol = F.when(
+                            Frame._count_expr(spark_column, spark_type) < min_count, F.lit(np.nan)
+                        ).otherwise(scol)
+
+                    exprs.append(scol.alias(name_like_string(label)))
                     new_column_labels.append(label)
 
             if len(exprs) == 1:
@@ -665,17 +671,23 @@ class DataFrame(Frame, Generic[T]):
                 return first_series(DataFrame(internal).transpose())
 
         else:
+            kwargs = {}
+            if min_count > 0:
+                kwargs["min_count"] = min_count
+
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
-            pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
+            pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only, **kwargs)
             if len(pdf) <= limit:
                 return Series(pser)
 
             @pandas_udf(returnType=as_spark_type(pser.dtype.type))
             def calculate_columns_axis(*cols):
-                return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
+                return getattr(pd.concat(cols, axis=1), name)(
+                    axis=axis, numeric_only=numeric_only, **kwargs
+                )
 
             sdf = self._internal.spark_frame.select(
                 calculate_columns_axis(*self._internal.data_spark_columns).alias(

@@ -5830,7 +5830,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kser
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None, min_count=0):
         """
         Applies sfun to the column and returns a scalar
 
@@ -5847,15 +5847,22 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
-        scol = self.spark.column
+        spark_column = self.spark.column
         spark_type = self.spark.data_type
+
         if num_args == 1:
             # Only pass in the column if sfun accepts only one arg
-            scol = sfun(scol)
+            scol = sfun(spark_column)
         else:  # must be 2
             assert num_args == 2
             # Pass in both the column and its data type if sfun accepts two args
-            scol = sfun(scol, spark_type)
+            scol = sfun(spark_column, spark_type)
+
+        if min_count > 0:
+            scol = F.when(
+                Frame._count_expr(spark_column, spark_type) < min_count, F.lit(np.nan)
+            ).otherwise(scol)
+
         return unpack_scalar(self._internal.spark_frame.select(scol))
 
     def __getitem__(self, key):
