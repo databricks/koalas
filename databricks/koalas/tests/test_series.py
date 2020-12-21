@@ -1240,6 +1240,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
             ks.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(q=["a"])
 
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+            ks.Series(["a", "b", "c"]).quantile()
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+            ks.Series(["a", "b", "c"]).quantile([0.25, 0.5, 0.75])
+
     def test_idxmax(self):
         pser = pd.Series(data=[1, 4, 5], index=["A", "B", "C"])
         kser = ks.Series(pser)

@@ -43,7 +43,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     @property
     def pdf(self):
         return pd.DataFrame(
-            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0]},
             index=np.random.rand(9),
         )
 
@@ -4238,17 +4238,46 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.keys(), pdf.keys())
 
     def test_quantile(self):
-        kdf = ks.from_pandas(self.pdf)
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
 
         with self.assertRaisesRegex(
             NotImplementedError, 'axis should be either 0 or "index" currently.'
         ):
             kdf.quantile(0.5, axis=1)
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            kdf.quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            kdf.quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+            kdf.quantile(q=["a"])
 
-        with self.assertRaisesRegex(
-            NotImplementedError, "quantile currently doesn't supports numeric_only"
-        ):
+        self.assert_eq(kdf.quantile(0.5, numeric_only=False), pdf.quantile(0.5, numeric_only=False))
+        self.assert_eq(
+            kdf.quantile([0.25, 0.5, 0.75], numeric_only=False),
+            pdf.quantile([0.25, 0.5, 0.75], numeric_only=False),
+        )
+
+        # multi-index column
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+
+        pdf = pd.DataFrame({"x": ["a", "b", "c"]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
             kdf.quantile(0.5, numeric_only=False)
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+            kdf.quantile([0.25, 0.5, 0.75], numeric_only=False)
 
     def test_pct_change(self):
         pdf = pd.DataFrame(
