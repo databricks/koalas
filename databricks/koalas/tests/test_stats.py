@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -28,7 +29,7 @@ from databricks.koalas.testing.utils import (
 
 class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def _test_stat_functions(self, pdf_or_pser, kdf_or_kser):
-        functions = ["max", "min", "mean", "sum"]
+        functions = ["max", "min", "mean", "sum", "count"]
         for funcname in functions:
             self.assert_eq(getattr(kdf_or_kser, funcname)(), getattr(pdf_or_pser, funcname)())
 
@@ -47,7 +48,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             getattr(kdf_or_kser, funcname)()
 
     def test_stat_functions(self):
-        pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1, 2, 3, 4]})
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [1, 2, 3, 4], "C": [1, np.nan, 3, np.nan]})
         kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf.A, kdf.A)
         self._test_stat_functions(pdf, kdf)
@@ -168,6 +169,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.min(), pdf.min())
         self.assert_eq(kdf.max(), pdf.max())
+        self.assert_eq(kdf.count(), pdf.count())
 
         self.assert_eq(kdf.sum(), pdf.sum())
         self.assert_eq(kdf.mean(), pdf.mean())
@@ -181,6 +183,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kser.min(), pser.min())
         self.assert_eq(kser.max(), pser.max())
+        self.assert_eq(kser.count(), pser.count())
 
         self.assert_eq(kser.sum(), pser.sum())
         self.assert_eq(kser.mean(), pser.mean())
@@ -192,22 +195,52 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
 
-        self.assertTrue(isinstance(kdf.sum(numeric_only=True), ks.Series))
+        self.assert_eq(
+            kdf[["i", "s"]].max(numeric_only=True), pdf[["i", "s"]].max(numeric_only=True)
+        )
+        self.assert_eq(
+            kdf[["b", "s"]].max(numeric_only=True), pdf[["b", "s"]].max(numeric_only=True)
+        )
+        self.assert_eq(
+            kdf[["i", "s"]].min(numeric_only=True), pdf[["i", "s"]].min(numeric_only=True)
+        )
+        self.assert_eq(
+            kdf[["b", "s"]].min(numeric_only=True), pdf[["b", "s"]].min(numeric_only=True)
+        )
+        self.assert_eq(kdf.count(numeric_only=True), pdf.count(numeric_only=True))
 
-        self.assertEqual(len(kdf.sum(numeric_only=True)), len(pdf.sum(numeric_only=True)))
-        self.assertEqual(len(kdf.mean(numeric_only=True)), len(pdf.mean(numeric_only=True)))
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+        else:
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True).astype(int))
 
-        self.assertEqual(len(kdf.var(numeric_only=True)), len(pdf.var(numeric_only=True)))
-        self.assertEqual(len(kdf.std(numeric_only=True)), len(pdf.std(numeric_only=True)))
+        self.assert_eq(kdf.mean(numeric_only=True), pdf.mean(numeric_only=True))
 
-        self.assertEqual(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
-        self.assertEqual(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
+        self.assert_eq(kdf.var(numeric_only=True), pdf.var(numeric_only=True), check_exact=False)
+        self.assert_eq(kdf.std(numeric_only=True), pdf.std(numeric_only=True), check_exact=False)
+
+        self.assert_eq(len(kdf.median(numeric_only=True)), len(pdf.median(numeric_only=True)))
+        self.assert_eq(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
+        self.assert_eq(len(kdf.skew(numeric_only=True)), len(pdf.skew(numeric_only=True)))
 
     def test_numeric_only_unsupported(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
         kdf = ks.from_pandas(pdf)
 
-        with self.assertRaisesRegex(
-            ValueError, "Disabling 'numeric_only' parameter is not supported"
-        ):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+            self.assert_eq(
+                kdf[["i", "b"]].sum(numeric_only=False), pdf[["i", "b"]].sum(numeric_only=False)
+            )
+        else:
+            self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True).astype(int))
+            self.assert_eq(
+                kdf[["i", "b"]].sum(numeric_only=False),
+                pdf[["i", "b"]].sum(numeric_only=False).astype(int),
+            )
+
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
             kdf.sum(numeric_only=False)
+
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+            kdf.s.sum()
