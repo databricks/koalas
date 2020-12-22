@@ -73,7 +73,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, min_count=0):
         pass
 
     @property
@@ -1143,7 +1143,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def sum(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
@@ -1155,6 +1155,9 @@ class Frame(object, metaclass=ABCMeta):
         numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
+        min_count : int, default 0
+            The required number of valid values to perform the operation. If fewer than
+             ``min_count`` non-NA values are present the result will be NA.
 
         Returns
         -------
@@ -1163,27 +1166,44 @@ class Frame(object, metaclass=ABCMeta):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, np.nan, 0.3, np.nan]},
         ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
         >>> df.sum()
         a    6.0
-        b    0.6
+        b    0.4
         dtype: float64
 
         >>> df.sum(axis=1)
         0    1.1
-        1    2.2
+        1    2.0
         2    3.3
         3    0.0
+        dtype: float64
+
+        >>> df.sum(min_count=3)
+        a    6.0
+        b    NaN
+        dtype: float64
+
+        >>> df.sum(axis=1, min_count=1)
+        0    1.1
+        1    2.0
+        2    3.3
+        3    NaN
         dtype: float64
 
         On a Series:
 
         >>> df['a'].sum()
         6.0
+
+        >>> df['a'].sum(min_count=3)
+        6.0
+        >>> df['b'].sum(min_count=3)
+        nan
         """
 
         def sum(spark_column, spark_type):
@@ -1191,9 +1211,11 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.sum(spark_column)
+            return F.coalesce(F.sum(spark_column), F.lit(0))
 
-        return self._reduce_for_stat_function(sum, name="sum", axis=axis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            sum, name="sum", axis=axis, numeric_only=numeric_only, min_count=min_count
+        )
 
     def skew(
         self, axis: Union[int, str] = None, numeric_only: bool = True
@@ -1460,16 +1482,8 @@ class Frame(object, metaclass=ABCMeta):
         4
         """
 
-        def count(spark_column, spark_type):
-            # Special handle floating point types because Spark's count treats nan as a valid value,
-            # whereas pandas count doesn't include nan.
-            if isinstance(spark_type, (FloatType, DoubleType)):
-                return F.count(F.nanvl(spark_column, F.lit(None)))
-            else:
-                return F.count(spark_column)
-
         return self._reduce_for_stat_function(
-            count, name="count", axis=axis, numeric_only=numeric_only
+            Frame._count_expr, name="count", axis=axis, numeric_only=numeric_only
         )
 
     def std(
@@ -2746,3 +2760,12 @@ class Frame(object, metaclass=ABCMeta):
             "The truth value of a {0} is ambiguous. "
             "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
         )
+
+    @staticmethod
+    def _count_expr(spark_column, spark_type):
+        # Special handle floating point types because Spark's count treats nan as a valid value,
+        # whereas pandas count doesn't include nan.
+        if isinstance(spark_type, (FloatType, DoubleType)):
+            return F.count(F.nanvl(spark_column, F.lit(None)))
+        else:
+            return F.count(spark_column)
