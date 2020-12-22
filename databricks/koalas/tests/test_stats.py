@@ -94,11 +94,11 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def test_abs(self):
         pdf = pd.DataFrame(
             {
-                "A": [1, -2, 3, -4, 5],
-                "B": [1.0, -2, 3, -4, 5],
-                "C": [-6.0, -7, -8, -9, 10],
-                "D": ["a", "b", "c", "d", "e"],
-                "E": [True, False, False, True, True],
+                "A": [1, -2, np.nan, -4, 5],
+                "B": [1.0, -2, np.nan, -4, 5],
+                "C": [-6.0, -7, -8, np.nan, 10],
+                "D": ["a", "b", "c", "d", np.nan],
+                "E": [True, np.nan, False, True, True],
             }
         )
         kdf = ks.from_pandas(pdf)
