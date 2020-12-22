@@ -53,6 +53,10 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self._test_stat_functions(pdf.A, kdf.A)
         self._test_stat_functions(pdf, kdf)
 
+        # empty
+        self._test_stat_functions(pdf.A.loc[[]], kdf.A.loc[[]])
+        self._test_stat_functions(pdf.loc[[]], kdf.loc[[]])
+
     def test_stat_functions_multiindex_column(self):
         arrays = [np.array(["A", "A", "B", "B"]), np.array(["one", "two", "one", "two"])]
         pdf = pd.DataFrame(np.random.randn(3, 4), index=["A", "B", "C"], columns=arrays)
@@ -69,6 +73,23 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
         self._test_stat_functions(pdf, kdf)
+
+    def test_sum(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3, np.nan], "b": [0.1, np.nan, 0.3, np.nan]})
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.sum(), pdf.sum())
+        self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
+        self.assert_eq(kdf.sum(min_count=3), pdf.sum(min_count=3))
+        self.assert_eq(kdf.sum(axis=1, min_count=1), pdf.sum(axis=1, min_count=1))
+        self.assert_eq(kdf.loc[[]].sum(), pdf.loc[[]].sum())
+        self.assert_eq(kdf.loc[[]].sum(min_count=1), pdf.loc[[]].sum(min_count=1))
+
+        self.assert_eq(kdf["a"].sum(), pdf["a"].sum())
+        self.assert_eq(kdf["a"].sum(min_count=3), pdf["a"].sum(min_count=3))
+        self.assert_eq(kdf["b"].sum(min_count=3), pdf["b"].sum(min_count=3))
+        self.assert_eq(kdf["a"].loc[[]].sum(), pdf["a"].loc[[]].sum())
+        self.assert_eq(kdf["a"].loc[[]].sum(min_count=1), pdf["a"].loc[[]].sum(min_count=1))
 
     def test_abs(self):
         pdf = pd.DataFrame(

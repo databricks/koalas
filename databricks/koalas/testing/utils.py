@@ -264,6 +264,8 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             self.assertTrue(len(left) == len(right))
             for litem, ritem in zip(left, right):
                 self.assert_eq(litem, ritem, check_exact=check_exact, almost=almost)
+        elif (lobj is not None and pd.isna(lobj)) and (robj is not None and pd.isna(robj)):
+            pass
         else:
             if almost:
                 self.assertAlmostEqual(lobj, robj)
