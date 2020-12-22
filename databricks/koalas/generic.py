@@ -1289,7 +1289,7 @@ class Frame(object, metaclass=ABCMeta):
 
         def prod(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
-                scol = F.min(F.coalesce(spark_column, F.lit(True))).cast("long")
+                scol = F.min(F.coalesce(spark_column, F.lit(True))).cast(LongType())
             elif isinstance(spark_type, NumericType):
                 num_zeros = F.sum(F.when(spark_column == 0, 1).otherwise(0))
                 sign = F.when(
@@ -1301,7 +1301,7 @@ class Frame(object, metaclass=ABCMeta):
                 )
 
                 if isinstance(spark_type, IntegralType):
-                    scol = F.round(scol).cast("long")
+                    scol = F.round(scol).cast(LongType())
             else:
                 raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
 
