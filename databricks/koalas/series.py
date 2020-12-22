@@ -3299,12 +3299,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             def quantile(spark_column, spark_type):
                 if isinstance(spark_type, (BooleanType, NumericType)):
-                    spark_column = spark_column.cast(DoubleType())
+                    return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
                 else:
                     raise TypeError(
                         "Could not convert {} to numeric".format(spark_type.simpleString())
                     )
-                return SF.percentile_approx(spark_column, q, accuracy)
 
             return self._reduce_for_stat_function(quantile, name="quantile")
 
