@@ -1233,6 +1233,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.round(1.5)
 
     def test_quantile(self):
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.quantile(0.5), pser.quantile(0.5))
+        self.assert_eq(kser.quantile([0.25, 0.5, 0.75]), pser.quantile([0.25, 0.5, 0.75]))
+
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
             ks.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(accuracy="a")
         with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):

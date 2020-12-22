@@ -4243,6 +4243,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
         self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
 
+        self.assert_eq(kdf.loc[[]].quantile(0.5), pdf.loc[[]].quantile(0.5))
+        self.assert_eq(
+            kdf.loc[[]].quantile([0.25, 0.5, 0.75]), pdf.loc[[]].quantile([0.25, 0.5, 0.75])
+        )
+
         with self.assertRaisesRegex(
             NotImplementedError, 'axis should be either 0 or "index" currently.'
         ):
