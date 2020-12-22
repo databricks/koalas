@@ -4271,8 +4271,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"x": ["a", "b", "c"]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
-        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+            self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+        else:
+            self.assert_eq(kdf.quantile(0.5), pd.Series(name=0.5))
+            self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pd.DataFrame(index=[0.25, 0.5, 0.75]))
 
         with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
             kdf.quantile(0.5, numeric_only=False)
