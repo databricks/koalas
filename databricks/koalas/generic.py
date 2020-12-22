@@ -31,7 +31,14 @@ from pandas.api.types import is_list_like
 
 import pyspark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, DoubleType, FloatType, LongType, NumericType
+from pyspark.sql.types import (
+    BooleanType,
+    DoubleType,
+    FloatType,
+    IntegralType,
+    LongType,
+    NumericType,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
@@ -1216,6 +1223,95 @@ class Frame(object, metaclass=ABCMeta):
         return self._reduce_for_stat_function(
             sum, name="sum", axis=axis, numeric_only=numeric_only, min_count=min_count
         )
+
+    def product(
+        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
+    ) -> Union[Scalar, "Series"]:
+        """
+        Return the product of the values.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
+        min_count : int, default 0
+            The required number of valid values to perform the operation. If fewer than
+            ``min_count`` non-NA values are present the result will be NA.
+
+        Examples
+        --------
+        On a DataFrame:
+
+        Non-numeric type column is not included to the result.
+
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4, 5],
+        ...                     'B': [10, 20, 30, 40, 50],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A   B  C
+        0  1  10  a
+        1  2  20  b
+        2  3  30  c
+        3  4  40  d
+        4  5  50  e
+
+        >>> kdf.prod()
+        A         120
+        B    12000000
+        dtype: int64
+
+        If there is no numeric type columns, returns empty Series.
+
+        >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
+        Series([], dtype: float64)
+
+        On a Series:
+
+        >>> ks.Series([1, 2, 3, 4, 5]).prod()
+        120
+
+        By default, the product of an empty or all-NA Series is ``1``
+
+        >>> ks.Series([]).prod()
+        1.0
+
+        This can be controlled with the ``min_count`` parameter
+
+        >>> ks.Series([]).prod(min_count=1)
+        nan
+        """
+
+        def prod(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                scol = F.min(F.coalesce(spark_column, F.lit(True))).cast("long")
+            elif isinstance(spark_type, NumericType):
+                num_zeros = F.sum(F.when(spark_column == 0, 1).otherwise(0))
+                sign = F.when(
+                    F.sum(F.when(spark_column < 0, 1).otherwise(0)) % 2 == 0, 1
+                ).otherwise(-1)
+
+                scol = F.when(num_zeros > 0, 0).otherwise(
+                    sign * F.exp(F.sum(F.log(F.abs(spark_column))))
+                )
+
+                if isinstance(spark_type, IntegralType):
+                    scol = F.round(scol).cast("long")
+            else:
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+
+            return F.coalesce(scol, F.lit(1))
+
+        return self._reduce_for_stat_function(
+            prod, name="prod", axis=axis, numeric_only=numeric_only, min_count=min_count
+        )
+
+    prod = product
 
     def skew(
         self, axis: Union[int, str] = None, numeric_only: bool = True
