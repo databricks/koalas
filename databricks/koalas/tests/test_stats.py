@@ -98,12 +98,22 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                 "B": [1.0, -2, 3, -4, 5],
                 "C": [-6.0, -7, -8, -9, 10],
                 "D": ["a", "b", "c", "d", "e"],
+                "E": [True, False, False, True, True],
             }
         )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.A.abs(), pdf.A.abs())
         self.assert_eq(kdf.B.abs(), pdf.B.abs())
+        self.assert_eq(kdf.E.abs(), pdf.E.abs())
+        # pandas' bug?
+        # self.assert_eq(kdf[["B", "C", "E"]].abs(), pdf[["B", "C", "E"]].abs())
         self.assert_eq(kdf[["B", "C"]].abs(), pdf[["B", "C"]].abs())
+        self.assert_eq(kdf[["E"]].abs(), pdf[["E"]].abs())
+
+        with self.assertRaisesRegex(TypeError, "bad operand type for abs\\(\\): string"):
+            kdf.abs()
+        with self.assertRaisesRegex(TypeError, "bad operand type for abs\\(\\): string"):
+            kdf.D.abs()
 
     def test_axis_on_dataframe(self):
         # The number of each count is intentionally big

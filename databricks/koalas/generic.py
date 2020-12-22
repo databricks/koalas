@@ -1757,7 +1757,18 @@ class Frame(object, metaclass=ABCMeta):
         2  6  30   30
         3  7  40   50
         """
-        return self._apply_series_op(lambda kser: kser._with_new_scol(F.abs(kser.spark.column)))
+
+        def abs(kser):
+            if isinstance(kser.spark.data_type, BooleanType):
+                return kser
+            elif isinstance(kser.spark.data_type, NumericType):
+                return kser.spark.transform(F.abs)
+            else:
+                raise TypeError(
+                    "bad operand type for abs(): {}".format(kser.spark.data_type.simpleString())
+                )
+
+        return self._apply_series_op(abs)
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
