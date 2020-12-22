@@ -649,8 +649,8 @@ class DataFrame(Frame, Generic[T]):
 
                     if min_count > 0:
                         scol = F.when(
-                            Frame._count_expr(spark_column, spark_type) < min_count, F.lit(np.nan)
-                        ).otherwise(scol)
+                            Frame._count_expr(spark_column, spark_type) >= min_count, scol
+                        )
 
                     exprs.append(scol.alias(name_like_string(label)))
                     new_column_labels.append(label)

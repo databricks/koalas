@@ -1211,7 +1211,7 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.sum(spark_column)
+            return F.coalesce(F.sum(spark_column), F.lit(0))
 
         return self._reduce_for_stat_function(
             sum, name="sum", axis=axis, numeric_only=numeric_only, min_count=min_count

@@ -5859,11 +5859,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol = sfun(spark_column, spark_type)
 
         if min_count > 0:
-            scol = F.when(
-                Frame._count_expr(spark_column, spark_type) < min_count, F.lit(np.nan)
-            ).otherwise(scol)
+            scol = F.when(Frame._count_expr(spark_column, spark_type) >= min_count, scol)
 
-        return unpack_scalar(self._internal.spark_frame.select(scol))
+        result = unpack_scalar(self._internal.spark_frame.select(scol))
+        return result if result is not None else np.nan
 
     def __getitem__(self, key):
         try:
