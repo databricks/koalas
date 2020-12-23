@@ -1183,6 +1183,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumsum(), kser.cumsum())
         self.assert_eq(pser.cumsum(skipna=False), kser.cumsum(skipna=False))
 
+        # bool
+        pser = pd.Series([True, True, False, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumsum().astype(int), kser.cumsum())
+        self.assert_eq(pser.cumsum(skipna=False).astype(int), kser.cumsum(skipna=False))
+
     def test_cumprod(self):
         pser = pd.Series([1.0, None, 1.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
@@ -1203,8 +1209,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumprod(), kser.cumprod())
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
 
-        with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
-            ks.Series([0, 1]).cumprod().to_pandas()
+        # including zero
+        pser = pd.Series([1, 2, 0, 3])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
+
+        # including negative values
+        pser = pd.Series([1, -1, -2])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
+
+        # bool
+        pser = pd.Series([True, True, False, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False).astype(int), kser.cumprod(skipna=False))
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):

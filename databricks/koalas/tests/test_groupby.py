@@ -1420,9 +1420,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
     def test_cumprod(self):
         pdf = pd.DataFrame(
             {
-                "a": [1, 2, 3, 4, 5, 6] * 3,
+                "a": [1, 2, -3, 4, -5, 6] * 3,
                 "b": [1, 1, 2, 3, 5, 8] * 3,
-                "c": [1, 4, 9, 16, 25, 36] * 3,
+                "c": [1, 0, 9, 16, 25, 36] * 3,
             },
             index=np.random.rand(6 * 3),
         )
@@ -1431,52 +1431,52 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby("b").cumprod().sort_index(),
             pdf.groupby("b").cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(["a", "b"]).cumprod().sort_index(),
             pdf.groupby(["a", "b"]).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(["b"])["a"].cumprod().sort_index(),
             pdf.groupby(["b"])["a"].cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(["b"])[["a", "c"]].cumprod().sort_index(),
             pdf.groupby(["b"])[["a", "c"]].cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 3).cumprod().sort_index(),
             pdf.groupby(pdf.b // 3).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby(kdf.b // 3)["a"].cumprod().sort_index(),
             pdf.groupby(pdf.b // 3)["a"].cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby("b").cumprod().sum().sort_index(),
             pdf.groupby("b").cumprod().sum().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.a.rename().groupby(kdf.b).cumprod().sort_index(),
             pdf.a.rename().groupby(pdf.b).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.a.groupby(kdf.b.rename()).cumprod().sort_index(),
             pdf.a.groupby(pdf.b.rename()).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.a.rename().groupby(kdf.b.rename()).cumprod().sort_index(),
             pdf.a.rename().groupby(pdf.b.rename()).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
 
         # multi-index columns
@@ -1487,12 +1487,12 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.groupby(("x", "b")).cumprod().sort_index(),
             pdf.groupby(("x", "b")).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
         self.assert_eq(
             kdf.groupby([("x", "a"), ("x", "b")]).cumprod().sort_index(),
             pdf.groupby([("x", "a"), ("x", "b")]).cumprod().sort_index(),
-            almost=True,
+            check_exact=False,
         )
 
         kdf = ks.DataFrame([["a"], ["b"], ["c"]], columns=["A"])
