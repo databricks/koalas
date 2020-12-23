@@ -2983,7 +2983,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_cumprod(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
             pdf = pd.DataFrame(
-                [[2.0, 1.0, 1], [5, None, 2], [1.0, 1.0, 3], [2.0, 4.0, 4], [4.0, 9.0, 5]],
+                [[2.0, 1.0, 1], [5, None, 2], [1.0, -1.0, -3], [2.0, 0, 4], [4.0, 9.0, 5]],
                 columns=list("ABC"),
                 index=np.random.rand(5),
             )
@@ -2991,7 +2991,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self._test_cumprod(pdf, kdf)
         else:
             pdf = pd.DataFrame(
-                [[2, 1, 1], [5, 1, 2], [1, 1, 3], [2, 4, 4], [4, 9, 5]],
+                [[2, 1, 1], [5, 1, 2], [1, -1, -3], [2, 0, 4], [4, 9, 5]],
                 columns=list("ABC"),
                 index=np.random.rand(5),
             )
