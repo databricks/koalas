@@ -4254,9 +4254,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.quantile(0.5, axis=1)
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
             kdf.quantile(accuracy="a")
-        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
             kdf.quantile(q="a")
-        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
             kdf.quantile(q=["a"])
 
         self.assert_eq(kdf.quantile(0.5, numeric_only=False), pdf.quantile(0.5, numeric_only=False))
