@@ -1799,14 +1799,13 @@ class Frame(object, metaclass=ABCMeta):
 
         def median(spark_column, spark_type):
             if isinstance(spark_type, (BooleanType, NumericType)):
-                spark_column = spark_column.cast(DoubleType())
+                return SF.percentile_approx(spark_column.cast(DoubleType()), 0.5, accuracy)
             else:
                 raise TypeError(
                     "Could not convert {} to numeric".format(
                         spark_type_to_python_type(spark_type).__name__
                     )
                 )
-            return SF.percentile_approx(spark_column, 0.5, accuracy)
 
         return self._reduce_for_stat_function(
             median, name="median", numeric_only=numeric_only, axis=axis
