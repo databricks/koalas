@@ -3701,7 +3701,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
-    def insert(self, loc: int, column, value: "Series", allow_duplicates:bool=False) -> None:
+    def insert(
+        self, loc: int, column, value: Union[int, "Series", List], allow_duplicates: bool = False
+    ) -> None:
         """
         Insert column into DataFrame at specified location.
 
@@ -3717,27 +3719,36 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         value : int, Series, or array-like
         allow_duplicates : bool, optional
         """
+        if not isinstance(loc, int):
+            raise TypeError("loc must be int")
 
-        combined = combine_frames(self, value)
+        if isinstance(value, int):
+            combined = self.copy()
+            that_scol = F.lit(value)
+        else:
+            if not isinstance(value, ks.Series):
+                value = ks.Series(value)
 
-        that_scol = combined["that"]._internal.spark_column_for(value._column_label)
+            combined = combine_frames(self, value)
 
-        data_spark_columns = combined._internal.data_spark_columns
+            that_scol = combined["that"]._internal.spark_column_for(value._column_label)
+
+        data_spark_columns = combined._internal.data_spark_columns.copy()
         data_spark_columns.insert(loc, that_scol)
-        data_spark_columns = data_spark_columns[:-1]
+        if not isinstance(value, int):
+            data_spark_columns = data_spark_columns[:-1]
 
-        column_labels = self._internal.column_labels
+        column_labels = self._internal.column_labels.copy()
         column_labels.insert(loc, tuple([column]))
 
         internal = combined._internal.with_new_columns(
             scols_or_ksers=data_spark_columns,
             column_labels=column_labels,
             column_label_names=self._internal.column_label_names,
-            keep_order=False
+            keep_order=False,
         )
 
-        self._update_internal_frame(internal, requires_same_anchor=False)
-
+        self._update_internal_frame(internal, requires_same_anchor=isinstance(value, ks.Series))
 
     # TODO: add frep and axis parqameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
