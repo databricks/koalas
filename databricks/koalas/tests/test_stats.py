@@ -33,7 +33,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         for funcname in functions:
             self.assert_eq(getattr(kdf_or_kser, funcname)(), getattr(pdf_or_pser, funcname)())
 
-        functions = ["std", "var"]
+        functions = ["std", "var", "product"]
         for funcname in functions:
             self.assert_eq(
                 getattr(kdf_or_kser, funcname)(),
@@ -91,19 +91,51 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf["a"].loc[[]].sum(), pdf["a"].loc[[]].sum())
         self.assert_eq(kdf["a"].loc[[]].sum(min_count=1), pdf["a"].loc[[]].sum(min_count=1))
 
+    def test_product(self):
+        pdf = pd.DataFrame(
+            {"a": [1, -2, -3, np.nan], "b": [0.1, np.nan, -0.3, np.nan], "c": [10, 20, 0, -10]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.product(), pdf.product(), check_exact=False)
+        self.assert_eq(kdf.product(axis=1), pdf.product(axis=1))
+        self.assert_eq(kdf.product(min_count=3), pdf.product(min_count=3), check_exact=False)
+        self.assert_eq(kdf.product(axis=1, min_count=1), pdf.product(axis=1, min_count=1))
+        self.assert_eq(kdf.loc[[]].product(), pdf.loc[[]].product())
+        self.assert_eq(kdf.loc[[]].product(min_count=1), pdf.loc[[]].product(min_count=1))
+
+        self.assert_eq(kdf["a"].product(), pdf["a"].product(), check_exact=False)
+        self.assert_eq(
+            kdf["a"].product(min_count=3), pdf["a"].product(min_count=3), check_exact=False
+        )
+        self.assert_eq(kdf["b"].product(min_count=3), pdf["b"].product(min_count=3))
+        self.assert_eq(kdf["c"].product(min_count=3), pdf["c"].product(min_count=3))
+        self.assert_eq(kdf["a"].loc[[]].product(), pdf["a"].loc[[]].product())
+        self.assert_eq(kdf["a"].loc[[]].product(min_count=1), pdf["a"].loc[[]].product(min_count=1))
+
     def test_abs(self):
         pdf = pd.DataFrame(
             {
-                "A": [1, -2, 3, -4, 5],
-                "B": [1.0, -2, 3, -4, 5],
-                "C": [-6.0, -7, -8, -9, 10],
-                "D": ["a", "b", "c", "d", "e"],
+                "A": [1, -2, np.nan, -4, 5],
+                "B": [1.0, -2, np.nan, -4, 5],
+                "C": [-6.0, -7, -8, np.nan, 10],
+                "D": ["a", "b", "c", "d", np.nan],
+                "E": [True, np.nan, False, True, True],
             }
         )
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.A.abs(), pdf.A.abs())
         self.assert_eq(kdf.B.abs(), pdf.B.abs())
+        self.assert_eq(kdf.E.abs(), pdf.E.abs())
+        # pandas' bug?
+        # self.assert_eq(kdf[["B", "C", "E"]].abs(), pdf[["B", "C", "E"]].abs())
         self.assert_eq(kdf[["B", "C"]].abs(), pdf[["B", "C"]].abs())
+        self.assert_eq(kdf[["E"]].abs(), pdf[["E"]].abs())
+
+        with self.assertRaisesRegex(TypeError, "bad operand type for abs\\(\\): string"):
+            kdf.abs()
+        with self.assertRaisesRegex(TypeError, "bad operand type for abs\\(\\): string"):
+            kdf.D.abs()
 
     def test_axis_on_dataframe(self):
         # The number of each count is intentionally big
@@ -127,6 +159,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
             self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
             self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
+            self.assert_eq(kdf.product(axis=1), pdf.product(axis=1))
             self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
             self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
             self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
@@ -193,6 +226,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.count(), pdf.count())
 
         self.assert_eq(kdf.sum(), pdf.sum())
+        self.assert_eq(kdf.product(), pdf.product())
         self.assert_eq(kdf.mean(), pdf.mean())
 
         self.assert_eq(kdf.var(), pdf.var(), check_exact=False)
@@ -207,6 +241,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.count(), pser.count())
 
         self.assert_eq(kser.sum(), pser.sum())
+        self.assert_eq(kser.product(), pser.product())
         self.assert_eq(kser.mean(), pser.mean())
 
         self.assert_eq(kser.var(), pser.var(), almost=True)
@@ -232,8 +267,12 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
             self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True))
+            self.assert_eq(kdf.product(numeric_only=True), pdf.product(numeric_only=True))
         else:
             self.assert_eq(kdf.sum(numeric_only=True), pdf.sum(numeric_only=True).astype(int))
+            self.assert_eq(
+                kdf.product(numeric_only=True), pdf.product(numeric_only=True).astype(int)
+            )
 
         self.assert_eq(kdf.mean(numeric_only=True), pdf.mean(numeric_only=True))
 

@@ -5246,61 +5246,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self.to_frame().tail(n=n)).rename(self.name)
 
-    def product(self, min_count=0) -> Union[int, float]:
-        """
-        Return the product of the values.
-
-        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
-            trick. Therefore, it only works for positive numbers.
-
-        Parameters
-        ----------
-        min_count : int, default 0
-            The required number of valid values to perform the operation. If fewer than
-            ``min_count`` non-NA values are present the result will be NA.
-
-        Examples
-        --------
-        >>> ks.Series([1, 2, 3, 4, 5]).prod()
-        120
-
-        By default, the product of an empty or all-NA Series is ``1``
-
-        >>> ks.Series([]).prod()
-        1.0
-
-        This can be controlled with the ``min_count`` parameter
-
-        >>> ks.Series([]).prod(min_count=1)
-        nan
-        """
-        # When number of valid values is fewer than `min_count`, pandas returns np.nan
-        if (min_count > 0) and (len(self.dropna()) < min_count):
-            return np.nan
-
-        data_type = self.spark.data_type
-        if isinstance(data_type, BooleanType):
-            return self.all()
-        elif isinstance(data_type, NumericType):
-            spark_frame = self._internal.spark_frame
-            spark_column = self.spark.column
-
-            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
-            spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
-
-            result = spark_frame.head(1)[0][0]
-            if result is None:
-                # When Series is empty, pandas returns 1.0
-                return 1.0
-            elif isinstance(data_type, IntegralType):
-                return int(round(result))
-            else:
-                return result
-        else:
-            raise TypeError("cannot perform prod with type {}".format(self.dtype))
-
-    prod = product
-
     def explode(self) -> "Series":
         """
         Transform each element of a list-like to a row.
@@ -5752,26 +5697,44 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(scol)
 
+    def _cumsum(self, skipna, part_cols=()):
+        kser = self
+        if isinstance(kser.spark.data_type, BooleanType):
+            kser = kser.spark.transform(lambda scol: scol.cast(LongType()))
+        elif not isinstance(kser.spark.data_type, NumericType):
+            raise TypeError(
+                "Could not convert {} to numeric".format(kser.spark.data_type.simpleString())
+            )
+        return kser._cum(F.sum, skipna, part_cols)
+
     def _cumprod(self, skipna, part_cols=()):
-        from pyspark.sql.functions import pandas_udf
+        if isinstance(self.spark.data_type, BooleanType):
+            scol = self._cum(
+                lambda scol: F.min(F.coalesce(scol, F.lit(True))), skipna, part_cols
+            ).spark.column.cast(LongType())
+        elif isinstance(self.spark.data_type, NumericType):
+            num_zeros = self._cum(
+                lambda scol: F.sum(F.when(scol == 0, 1).otherwise(0)), skipna, part_cols
+            ).spark.column
+            num_negatives = self._cum(
+                lambda scol: F.sum(F.when(scol < 0, 1).otherwise(0)), skipna, part_cols
+            ).spark.column
+            sign = F.when(num_negatives % 2 == 0, 1).otherwise(-1)
 
-        data_type = self.spark.data_type
+            abs_prod = F.exp(
+                self._cum(lambda scol: F.sum(F.log(F.abs(scol))), skipna, part_cols).spark.column
+            )
 
-        def cumprod(scol):
-            @pandas_udf(returnType=data_type)
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
-                    "values should be bigger than 0: %s" % s
-                )
-                return s
+            scol = F.when(num_zeros > 0, 0).otherwise(sign * abs_prod)
 
-            return F.sum(F.log(negative_check(scol)))
+            if isinstance(self.spark.data_type, IntegralType):
+                scol = F.round(scol).cast(LongType())
+        else:
+            raise TypeError(
+                "Could not convert {} to numeric".format(self.spark.data_type.simpleString())
+            )
 
-        kser = self._cum(cumprod, skipna, part_cols)
-        result = kser._with_new_scol(F.exp(kser.spark.column))
-        if isinstance(data_type, IntegralType):
-            result = result.spark.transform(lambda col: F.round(col).cast(LongType()))
-        return result
+        return self._with_new_scol(scol)
 
     # ----------------------------------------------------------------------
     # Accessor Methods

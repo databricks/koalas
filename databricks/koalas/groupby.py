@@ -931,7 +931,7 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols),
+            lambda sg: sg._kser._cumsum(True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
             numeric_only=True,
         )
