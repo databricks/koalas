@@ -3722,6 +3722,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(loc, int):
             raise TypeError("loc must be int")
 
+        assert allow_duplicates is False
+
         if isinstance(value, int):
             combined = self.copy()
             that_scol = F.lit(value)
