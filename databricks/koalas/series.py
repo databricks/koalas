@@ -36,6 +36,7 @@ import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
 from pyspark.sql.types import (
+    BooleanType,
     DoubleType,
     FloatType,
     IntegerType,
