@@ -44,7 +44,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame
 from databricks.koalas.spark import functions as SF
-from databricks.koalas.typedef import Scalar
+from databricks.koalas.typedef import Scalar, spark_type_to_python_type
 from databricks.koalas.utils import (
     is_name_like_tuple,
     is_name_like_value,
@@ -1133,7 +1133,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return F.mean(spark_column)
 
         return self._reduce_for_stat_function(
@@ -1208,7 +1212,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return F.coalesce(F.sum(spark_column), F.lit(0))
 
         return self._reduce_for_stat_function(
@@ -1294,7 +1302,11 @@ class Frame(object, metaclass=ABCMeta):
                 if isinstance(spark_type, IntegralType):
                     scol = F.round(scol).cast(LongType())
             else:
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
 
             return F.coalesce(scol, F.lit(1))
 
@@ -1345,7 +1357,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return F.skewness(spark_column)
 
         return self._reduce_for_stat_function(
@@ -1394,7 +1410,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return F.kurtosis(spark_column)
 
         return self._reduce_for_stat_function(
@@ -1621,7 +1641,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return F.stddev(spark_column)
 
         return self._reduce_for_stat_function(std, name="std", axis=axis, numeric_only=numeric_only)
@@ -1674,7 +1698,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return F.variance(spark_column)
 
         return self._reduce_for_stat_function(var, name="var", axis=axis, numeric_only=numeric_only)
@@ -1773,7 +1801,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, (BooleanType, NumericType)):
                 spark_column = spark_column.cast(DoubleType())
             else:
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} to numeric".format(
+                        spark_type_to_python_type(spark_type).__name__
+                    )
+                )
             return SF.percentile_approx(spark_column, 0.5, accuracy)
 
         return self._reduce_for_stat_function(
@@ -1852,7 +1884,9 @@ class Frame(object, metaclass=ABCMeta):
                 return kser.spark.transform(F.abs)
             else:
                 raise TypeError(
-                    "bad operand type for abs(): {}".format(kser.spark.data_type.simpleString())
+                    "bad operand type for abs(): {}".format(
+                        spark_type_to_python_type(kser.spark.data_type).__name__
+                    )
                 )
 
         return self._apply_series_op(abs)

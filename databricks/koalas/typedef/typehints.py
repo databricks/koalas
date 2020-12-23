@@ -103,7 +103,7 @@ def as_spark_type(tpe) -> types.DataType:
     """
     # TODO: Add "boolean" and "string" types.
     # ArrayType
-    if tpe in (np.ndarray,):
+    if tpe in (list, np.ndarray,):
         return types.ArrayType(types.StringType())
     elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):
         return types.ArrayType(as_spark_type(tpe.__args__[0]))
@@ -142,7 +142,46 @@ def as_spark_type(tpe) -> types.DataType:
         raise TypeError("Type %s was not understood." % tpe)
 
 
-def spark_type_to_pandas_dtype(spark_type):
+def spark_type_to_python_type(spark_type: types.DataType) -> type:
+    """ Return the given Spark DataType to Python type. """
+    # ArrayType
+    if isinstance(spark_type, types.ArrayType):
+        return list
+    # BinaryType
+    elif isinstance(spark_type, types.BinaryType):
+        return bytes
+    # BooleanType
+    elif isinstance(spark_type, types.BooleanType):
+        return bool
+    # DateType
+    elif isinstance(spark_type, types.DateType):
+        return datetime.date
+    # NumericType
+    elif isinstance(spark_type, types.ByteType):
+        return np.int8
+    elif isinstance(spark_type, types.DecimalType):
+        return decimal.Decimal
+    elif isinstance(spark_type, types.DoubleType):
+        return float
+    elif isinstance(spark_type, types.FloatType):
+        return np.float32
+    elif isinstance(spark_type, types.IntegerType):
+        return np.int32
+    elif isinstance(spark_type, types.LongType):
+        return int
+    elif isinstance(spark_type, types.ShortType):
+        return np.int16
+    # StringType
+    elif isinstance(spark_type, types.StringType):
+        return str
+    # TimestampType
+    elif isinstance(spark_type, types.TimestampType):
+        return datetime.datetime
+    else:
+        raise TypeError("Type %s was not understood." % spark_type.simpleString())
+
+
+def spark_type_to_pandas_dtype(spark_type: types.DataType) -> np.dtype:
     """ Return the given Spark DataType to pandas dtype. """
     if isinstance(spark_type, (types.DateType, types.StructType, types.UserDefinedType)):
         return np.dtype("object")

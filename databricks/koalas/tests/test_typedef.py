@@ -40,7 +40,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from databricks.koalas.typedef import infer_return_type, as_spark_type
+from databricks.koalas.typedef import infer_return_type, as_spark_type, spark_type_to_python_type
 from databricks import koalas as ks
 
 
@@ -246,7 +246,15 @@ class TypeHintTests(unittest.TestCase):
             # DecimalType
             decimal.Decimal: DecimalType(38, 18),
             # ArrayType
+            list: ArrayType(StringType()),
             np.ndarray: ArrayType(StringType()),
+        }
+
+        for numpy_or_python_type, spark_type in type_mapper.items():
+            self.assertEqual(as_spark_type(numpy_or_python_type), spark_type)
+            self.assertEqual(as_spark_type(spark_type_to_python_type(spark_type)), spark_type)
+
+        type_mapper = {
             List[bytes]: ArrayType(BinaryType()),
             List[np.character]: ArrayType(BinaryType()),
             List[np.bytes_]: ArrayType(BinaryType()),
@@ -274,3 +282,4 @@ class TypeHintTests(unittest.TestCase):
 
         for numpy_or_python_type, spark_type in type_mapper.items():
             self.assertEqual(as_spark_type(numpy_or_python_type), spark_type)
+            self.assertEqual(spark_type_to_python_type(spark_type), list)

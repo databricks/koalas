@@ -2217,9 +2217,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(min_count=1), kser.prod(min_count=1))
 
-        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert str to numeric"):
             ks.Series(["a", "b", "c"]).prod()
-        with self.assertRaisesRegex(TypeError, "Could not convert timestamp to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert datetime to numeric"):
             ks.Series([pd.Timestamp("2016-01-01") for _ in range(3)]).prod()
 
     def test_hasnans(self):

@@ -82,7 +82,13 @@ from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkSeriesMethods
 from databricks.koalas.strings import StringMethods
-from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType, Scalar
+from databricks.koalas.typedef import (
+    infer_return_type,
+    spark_type_to_python_type,
+    SeriesType,
+    ScalarType,
+    Scalar,
+)
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -5743,7 +5749,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             kser = kser.spark.transform(lambda scol: scol.cast(LongType()))
         elif not isinstance(kser.spark.data_type, NumericType):
             raise TypeError(
-                "Could not convert {} to numeric".format(kser.spark.data_type.simpleString())
+                "Could not convert {} to numeric".format(
+                    spark_type_to_python_type(kser.spark.data_type).__name__
+                )
             )
         return kser._cum(F.sum, skipna, part_cols)
 
@@ -5771,7 +5779,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 scol = F.round(scol).cast(LongType())
         else:
             raise TypeError(
-                "Could not convert {} to numeric".format(self.spark.data_type.simpleString())
+                "Could not convert {} to numeric".format(
+                    spark_type_to_python_type(self.spark.data_type).__name__
+                )
             )
 
         return self._with_new_scol(scol)
