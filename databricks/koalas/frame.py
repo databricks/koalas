@@ -10191,7 +10191,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for v in q if isinstance(q, list) else [q]:
             if not isinstance(v, float):
                 raise ValueError(
-                    "q must be a float of an array of floats; however, [%s] found." % type(v)
+                    "q must be a float or an array of floats; however, [%s] found." % type(v)
                 )
             if v < 0.0 or v > 1.0:
                 raise ValueError("percentiles should all be in the interval [0, 1].")
@@ -10233,7 +10233,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return DataFrame(index=q)
 
             sdf = self._internal.spark_frame.select(percentile_cols)
-            # Here, after select percntile cols, a spark_frame looks like below:
+            # Here, after select percentile cols, a spark_frame looks like below:
             # +---------+---------+
             # |        a|        b|
             # +---------+---------+

@@ -3292,7 +3292,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             if not isinstance(q, float):
                 raise ValueError(
-                    "q must be a float of an array of floats; however, [%s] found." % type(q)
+                    "q must be a float or an array of floats; however, [%s] found." % type(q)
                 )
             if q < 0.0 or q > 1.0:
                 raise ValueError("percentiles should all be in the interval [0, 1].")
