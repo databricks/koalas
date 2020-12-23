@@ -160,9 +160,7 @@ class Frame(object, metaclass=ABCMeta):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._apply_series_op(
-            lambda kser: kser._cum(F.min, skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.min, skipna), should_resolve=True)
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
@@ -223,9 +221,7 @@ class Frame(object, metaclass=ABCMeta):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._apply_series_op(
-            lambda kser: kser._cum(F.max, skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.max, skipna), should_resolve=True)
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
@@ -286,9 +282,7 @@ class Frame(object, metaclass=ABCMeta):
         2    6.0
         Name: A, dtype: float64
         """
-        return self._apply_series_op(
-            lambda kser: kser._cum(F.sum, skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cumsum(skipna), should_resolve=True)
 
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
@@ -355,11 +349,8 @@ class Frame(object, metaclass=ABCMeta):
         1     6.0
         2    24.0
         Name: A, dtype: float64
-
         """
-        return self._apply_series_op(
-            lambda kser: kser._cumprod(skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cumprod(skipna), should_resolve=True)
 
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
