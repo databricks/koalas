@@ -477,6 +477,15 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
+    def test_insert(self):
+        pdf = pd.DataFrame([1, 2, 3])
+        kdf = ks.from_pandas(pdf)
+        pser = pd.Series([4, 5, 6])
+        kser = ks.from_pandas(pser)
+
+        self.assertEqual(kdf.insert(1, 'x', kser), pdf.insert(1, 'x', pser))
+        self.assertEqual(kdf.insert(0, 'y', kser), pdf.insert(0, 'y', pser))
+
     def test_compare(self):
         if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
             pser1 = pd.Series(["b", "c", np.nan, "g", np.nan])

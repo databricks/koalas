@@ -84,6 +84,7 @@ from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFrameMethods
 from databricks.koalas.utils import (
     align_diff_frames,
+    combine_frames,
     column_labels_level,
     default_session,
     is_name_like_tuple,
@@ -539,6 +540,8 @@ class DataFrame(Frame, Generic[T]):
 
         kseries = {}
 
+        print(self._internal.column_labels)
+        print(internal.column_labels)
         for old_label, new_label in zip_longest(
             self._internal.column_labels, internal.column_labels
         ):
@@ -3698,7 +3701,45 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     notna = notnull
 
-    # TODO: add frep and axis parameter
+    def insert(self, loc: int, column, value: "Series", allow_duplicates:bool=False) -> None:
+        """
+        Insert column into DataFrame at specified location.
+
+        Raises a ValueError if `column` is already contained in the DataFrame,
+        unless `allow_duplicates` is set to True.
+
+        Parameters
+        ----------
+        loc : int
+            Insertion index. Must verify 0 <= loc <= len(columns).
+        column : str, number, or hashable object
+            Label of the inserted column.
+        value : int, Series, or array-like
+        allow_duplicates : bool, optional
+        """
+
+        combined = combine_frames(self, value)
+
+        that_scol = combined["that"]._internal.spark_column_for(value._column_label)
+
+        data_spark_columns = combined._internal.data_spark_columns
+        data_spark_columns.insert(loc, that_scol)
+        data_spark_columns = data_spark_columns[:-1]
+
+        column_labels = self._internal.column_labels
+        column_labels.insert(loc, tuple([column]))
+
+        internal = combined._internal.with_new_columns(
+            scols_or_ksers=data_spark_columns,
+            column_labels=column_labels,
+            column_label_names=self._internal.column_label_names,
+            keep_order=False
+        )
+
+        self._update_internal_frame(internal, requires_same_anchor=False)
+
+
+    # TODO: add frep and axis parqameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
         """
         Shift DataFrame by desired number of periods.
