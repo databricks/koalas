@@ -3308,7 +3308,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
                 else:
                     raise TypeError(
-                        "Could not convert {} to numeric".format(spark_type.simpleString())
+                        "Could not convert {} to numeric".format(
+                            spark_type_to_python_type(spark_type).__name__
+                        )
                     )
 
             return self._reduce_for_stat_function(quantile, name="quantile")
