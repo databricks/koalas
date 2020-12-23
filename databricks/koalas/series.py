@@ -21,10 +21,10 @@ import re
 import inspect
 import sys
 import warnings
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
-from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Generic, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 import matplotlib
 import numpy as np
@@ -3234,7 +3234,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return self._with_new_scol(scol)
 
     # TODO: add 'interpolation' parameter.
-    def quantile(self, q=0.5, accuracy=10000) -> Union[Scalar, "Series"]:
+    def quantile(
+        self, q: Union[float, Iterable[float]] = 0.5, accuracy: int = 10000
+    ) -> Union[Scalar, "Series"]:
         """
         Return value at the given quantile.
 
@@ -3261,91 +3263,49 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         --------
         >>> s = ks.Series([1, 2, 3, 4, 5])
         >>> s.quantile(.5)
-        3
+        3.0
 
         >>> (s + 1).quantile(.5)
-        4
+        4.0
 
         >>> s.quantile([.25, .5, .75])
-        0.25    2
-        0.5     3
-        0.75    4
-        dtype: int64
+        0.25    2.0
+        0.50    3.0
+        0.75    4.0
+        dtype: float64
 
         >>> (s + 1).quantile([.25, .5, .75])
-        0.25    3
-        0.5     4
-        0.75    5
-        dtype: int64
+        0.25    3.0
+        0.50    4.0
+        0.75    5.0
+        dtype: float64
         """
-        if not isinstance(accuracy, int):
-            raise ValueError(
-                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
-            )
-
         if isinstance(q, Iterable):
-            q = list(q)
-
-        for v in q if isinstance(q, list) else [q]:
-            if not isinstance(v, float):
+            return first_series(
+                self.to_frame().quantile(q=q, axis=0, numeric_only=False, accuracy=accuracy)
+            ).rename(self.name)
+        else:
+            if not isinstance(accuracy, int):
                 raise ValueError(
-                    "q must be a float of an array of floats; however, [%s] found." % type(v)
+                    "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
                 )
-            if v < 0.0 or v > 1.0:
+
+            if not isinstance(q, float):
+                raise ValueError(
+                    "q must be a float or an array of floats; however, [%s] found." % type(q)
+                )
+            if q < 0.0 or q > 1.0:
                 raise ValueError("percentiles should all be in the interval [0, 1].")
 
-        if isinstance(q, list):
-            quantiles = q
-            # TODO: avoid to use dataframe. After this, anchor will be lost.
-
-            # First calculate the percentiles and map it to each `quantiles`
-            # by creating each entry as a struct. So, it becomes an array of
-            # structs as below:
-            #
-            # +--------------------------------+
-            # | arrays                         |
-            # +--------------------------------+
-            # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
-            # +--------------------------------+
-            percentile_col = SF.percentile_approx(self.spark.column, quantiles, accuracy)
-            sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
-
-            internal_index_column = SPARK_DEFAULT_INDEX_NAME
-            value_column = "value"
-            cols = []
-            for i, quantile in enumerate(quantiles):
-                cols.append(
-                    F.struct(
-                        F.lit("%s" % quantile).alias(internal_index_column),
-                        F.expr("percentiles[%s]" % i).alias(value_column),
+            def quantile(spark_column, spark_type):
+                if isinstance(spark_type, (BooleanType, NumericType)):
+                    return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
+                else:
+                    raise TypeError(
+                        "Could not convert {} to numeric".format(spark_type.simpleString())
                     )
-                )
-            sdf = sdf.select(F.array(*cols).alias("arrays"))
 
-            # And then, explode it and manually set the index.
-            #
-            # +-----------------+-----+
-            # |__index_level_0__|value|
-            # +-----------------+-----+
-            # | 0.25            |    2|
-            # |  0.5            |    3|
-            # | 0.75            |    4|
-            # +-----------------+-----+
-            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
-
-            internal = InternalFrame(
-                spark_frame=sdf,
-                index_spark_columns=[scol_for(sdf, internal_index_column)],
-                column_labels=None,
-                data_spark_columns=[scol_for(sdf, value_column)],
-                column_label_names=None,
-            )
-
-            return DataFrame(internal)[value_column].rename(self.name)
-        else:
-            return self._reduce_for_stat_function(
-                lambda scol: SF.percentile_approx(scol, q, accuracy), name="quantile"
-            )
+            return self._reduce_for_stat_function(quantile, name="quantile")
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method="average", ascending=True) -> "Series":

@@ -10120,7 +10120,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(
-        self, q=0.5, axis=0, numeric_only=True, accuracy=10000
+        self,
+        q: Union[float, Iterable[float]] = 0.5,
+        axis: Union[int, str] = 0,
+        numeric_only: bool = True,
+        accuracy: int = 10000,
     ) -> Union["DataFrame", "Series"]:
         """
         Return value at the given quantile.
@@ -10133,7 +10137,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         q : float or array-like, default 0.5 (50% quantile)
             0 <= q <= 1, the quantile(s) to compute.
-        axis : int, default 0 or 'index'
+        axis : int or str, default 0 or 'index'
             Can only be set to 0 at the moment.
         numeric_only : bool, default True
             If False, the quantile of datetime and timedelta data will be computed as well.
@@ -10162,86 +10166,113 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  5  0
 
         >>> kdf.quantile(.5)
-        a    3
-        b    7
-        Name: 0.5, dtype: int64
+        a    3.0
+        b    7.0
+        Name: 0.5, dtype: float64
 
         >>> kdf.quantile([.25, .5, .75])
-              a  b
-        0.25  2  6
-        0.5   3  7
-        0.75  4  8
+                a    b
+        0.25  2.0  6.0
+        0.50  3.0  7.0
+        0.75  4.0  8.0
         """
-        result_as_series = False
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        if numeric_only is not True:
-            raise NotImplementedError("quantile currently doesn't supports numeric_only")
-        if isinstance(q, float):
-            result_as_series = True
-            key = str(q)
-            q = (q,)
 
-        quantiles = q
-        # First calculate the percentiles from all columns and map it to each `quantiles`
-        # by creating each entry as a struct. So, it becomes an array of structs as below:
-        #
-        # +-----------------------------------------+
-        # |                                   arrays|
-        # +-----------------------------------------+
-        # |[[0.25, 2, 6], [0.5, 3, 7], [0.75, 4, 8]]|
-        # +-----------------------------------------+
-
-        percentile_cols = []
-        for scol, column_name in zip(
-            self._internal.data_spark_columns, self._internal.data_spark_column_names
-        ):
-            percentile_cols.append(
-                SF.percentile_approx(scol, quantiles, accuracy).alias(column_name)
+        if not isinstance(accuracy, int):
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
             )
 
-        sdf = self._internal.spark_frame.select(percentile_cols)
-        # Here, after select percntile cols, a spark_frame looks like below:
-        # +---------+---------+
-        # |        a|        b|
-        # +---------+---------+
-        # |[2, 3, 4]|[6, 7, 8]|
-        # +---------+---------+
+        if isinstance(q, Iterable):
+            q = list(q)
 
-        cols_dict = OrderedDict()  # type: OrderedDict
-        for column in self._internal.data_spark_column_names:
-            cols_dict[column] = list()
-            for i in range(len(quantiles)):
-                cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
+        for v in q if isinstance(q, list) else [q]:
+            if not isinstance(v, float):
+                raise ValueError(
+                    "q must be a float or an array of floats; however, [%s] found." % type(v)
+                )
+            if v < 0.0 or v > 1.0:
+                raise ValueError("percentiles should all be in the interval [0, 1].")
 
-        internal_index_column = SPARK_DEFAULT_INDEX_NAME
-        cols = []
-        for i, col in enumerate(zip(*cols_dict.values())):
-            cols.append(F.struct(F.lit("%s" % quantiles[i]).alias(internal_index_column), *col))
-        sdf = sdf.select(F.array(*cols).alias("arrays"))
+        def quantile(spark_column, spark_type):
+            if isinstance(spark_type, (BooleanType, NumericType)):
+                return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
+            else:
+                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
 
-        # And then, explode it and manually set the index.
-        # +-----------------+---+---+
-        # |__index_level_0__|  a|  b|
-        # +-----------------+---+---+
-        # |             0.25|  2|  6|
-        # |              0.5|  3|  7|
-        # |             0.75|  4|  8|
-        # +-----------------+---+---+
-        sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+        if isinstance(q, list):
+            # First calculate the percentiles from all columns and map it to each `quantiles`
+            # by creating each entry as a struct. So, it becomes an array of structs as below:
+            #
+            # +-----------------------------------------+
+            # |                                   arrays|
+            # +-----------------------------------------+
+            # |[[0.25, 2, 6], [0.5, 3, 7], [0.75, 4, 8]]|
+            # +-----------------------------------------+
 
-        internal = self._internal.copy(
-            spark_frame=sdf,
-            index_spark_columns=[scol_for(sdf, internal_index_column)],
-            index_names=[None],
-            data_spark_columns=[
-                scol_for(sdf, col) for col in self._internal.data_spark_column_names
-            ],
-            column_label_names=None,
-        )
+            percentile_cols = []
+            percentile_col_names = []
+            column_labels = []
+            for label, column in zip(
+                self._internal.column_labels, self._internal.data_spark_column_names
+            ):
+                spark_type = self._internal.spark_type_for(label)
 
-        return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
+                is_numeric_or_boolean = isinstance(spark_type, (NumericType, BooleanType))
+                keep_column = not numeric_only or is_numeric_or_boolean
+
+                if keep_column:
+                    percentile_col = quantile(self._internal.spark_column_for(label), spark_type)
+                    percentile_cols.append(percentile_col.alias(column))
+                    percentile_col_names.append(column)
+                    column_labels.append(label)
+
+            if len(percentile_cols) == 0:
+                return DataFrame(index=q)
+
+            sdf = self._internal.spark_frame.select(percentile_cols)
+            # Here, after select percentile cols, a spark_frame looks like below:
+            # +---------+---------+
+            # |        a|        b|
+            # +---------+---------+
+            # |[2, 3, 4]|[6, 7, 8]|
+            # +---------+---------+
+
+            cols_dict = OrderedDict()  # type: OrderedDict
+            for column in percentile_col_names:
+                cols_dict[column] = list()
+                for i in range(len(q)):
+                    cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
+
+            internal_index_column = SPARK_DEFAULT_INDEX_NAME
+            cols = []
+            for i, col in enumerate(zip(*cols_dict.values())):
+                cols.append(F.struct(F.lit(q[i]).alias(internal_index_column), *col))
+            sdf = sdf.select(F.array(*cols).alias("arrays"))
+
+            # And then, explode it and manually set the index.
+            # +-----------------+---+---+
+            # |__index_level_0__|  a|  b|
+            # +-----------------+---+---+
+            # |             0.25|  2|  6|
+            # |              0.5|  3|  7|
+            # |             0.75|  4|  8|
+            # +-----------------+---+---+
+            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+
+            internal = InternalFrame(
+                spark_frame=sdf,
+                index_spark_columns=[scol_for(sdf, internal_index_column)],
+                column_labels=column_labels,
+                data_spark_columns=[scol_for(sdf, col) for col in percentile_col_names],
+            )
+            return DataFrame(internal)
+        else:
+            return self._reduce_for_stat_function(
+                quantile, name="quantile", numeric_only=numeric_only
+            ).rename(q)
 
     def query(self, expr, inplace=False) -> Optional["DataFrame"]:
         """
