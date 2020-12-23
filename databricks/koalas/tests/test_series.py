@@ -2202,28 +2202,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([10, 20, 30, 40, 50])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(min_count=5), kser.prod(min_count=5))
-        # Using `repr` since the result of below will be `np.nan`.
-        self.assert_eq(repr(pser.prod(min_count=6)), repr(kser.prod(min_count=6)))
+        self.assert_eq(pser.prod(min_count=6), kser.prod(min_count=6))
 
         pser = pd.Series([10, np.nan, 30, np.nan, 50])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(min_count=3), kser.prod(min_count=3), almost=True)
-        # ditto.
-        self.assert_eq(repr(pser.prod(min_count=4)), repr(kser.prod(min_count=4)))
+        self.assert_eq(pser.prod(min_count=4), kser.prod(min_count=4))
 
         pser = pd.Series([np.nan, np.nan, np.nan])
         kser = ks.from_pandas(pser)
-        # ditto.
-        self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
+        self.assert_eq(pser.prod(min_count=1), kser.prod(min_count=1))
 
         pser = pd.Series([])
         kser = ks.from_pandas(pser)
-        # ditto.
-        self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
+        self.assert_eq(pser.prod(min_count=1), kser.prod(min_count=1))
 
-        with self.assertRaisesRegex(TypeError, "cannot perform prod with type object"):
+        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
             ks.Series(["a", "b", "c"]).prod()
-        with self.assertRaisesRegex(TypeError, "cannot perform prod with type datetime64"):
+        with self.assertRaisesRegex(TypeError, "Could not convert timestamp to numeric"):
             ks.Series([pd.Timestamp("2016-01-01") for _ in range(3)]).prod()
 
     def test_hasnans(self):
