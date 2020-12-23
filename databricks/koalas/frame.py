@@ -10137,7 +10137,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         q : float or array-like, default 0.5 (50% quantile)
             0 <= q <= 1, the quantile(s) to compute.
-        axis : int, default 0 or 'index'
+        axis : int or str, default 0 or 'index'
             Can only be set to 0 at the moment.
         numeric_only : bool, default True
             If False, the quantile of datetime and timedelta data will be computed as well.
