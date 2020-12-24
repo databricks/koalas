@@ -80,7 +80,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, min_count=0):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, **kwargs):
         pass
 
     @property
@@ -1574,7 +1574,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def std(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
     ) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
@@ -1583,6 +1583,9 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
         numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
@@ -1611,23 +1614,37 @@ class Frame(object, metaclass=ABCMeta):
         3         NaN
         dtype: float64
 
+        >>> df.std(ddof=0)
+        a    0.816497
+        b    0.081650
+        dtype: float64
+
         On a Series:
 
         >>> df['a'].std()
         1.0
+
+        >>> df['a'].std(ddof=0)
+        0.816496580927726
         """
+        assert ddof in (0, 1)
 
         def std(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.stddev(spark_column)
+            if ddof == 0:
+                return F.stddev_pop(spark_column)
+            else:
+                return F.stddev_samp(spark_column)
 
-        return self._reduce_for_stat_function(std, name="std", axis=axis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            std, name="std", axis=axis, numeric_only=numeric_only, ddof=ddof
+        )
 
     def var(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
@@ -1636,6 +1653,9 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
         numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
@@ -1664,20 +1684,34 @@ class Frame(object, metaclass=ABCMeta):
         3      NaN
         dtype: float64
 
+        >>> df.var(ddof=0)
+        a    0.666667
+        b    0.006667
+        dtype: float64
+
         On a Series:
 
         >>> df['a'].var()
         1.0
+
+        >>> df['a'].var(ddof=0)
+        0.6666666666666666
         """
+        assert ddof in (0, 1)
 
         def var(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.variance(spark_column)
+            if ddof == 0:
+                return F.var_pop(spark_column)
+            else:
+                return F.var_samp(spark_column)
 
-        return self._reduce_for_stat_function(var, name="var", axis=axis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            var, name="var", axis=axis, numeric_only=numeric_only, ddof=ddof
+        )
 
     def median(
         self, axis: Union[int, str] = None, numeric_only: bool = True, accuracy: int = 10000
