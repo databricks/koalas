@@ -5767,7 +5767,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kser
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None, min_count=0):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None, **kwargs):
         """
         Applies sfun to the column and returns a scalar
 
@@ -5795,6 +5795,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             # Pass in both the column and its data type if sfun accepts two args
             scol = sfun(spark_column, spark_type)
 
+        min_count = kwargs.get("min_count", 0)
         if min_count > 0:
             scol = F.when(Frame._count_expr(spark_column, spark_type) >= min_count, scol)
 
