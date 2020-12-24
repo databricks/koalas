@@ -44,7 +44,7 @@ from databricks import koalas as ks  # For running doctests and reference resolu
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame
 from databricks.koalas.spark import functions as SF
-from databricks.koalas.typedef import Scalar, spark_type_to_python_type
+from databricks.koalas.typedef import Scalar, spark_type_to_pandas_dtype
 from databricks.koalas.utils import (
     is_name_like_tuple,
     is_name_like_value,
@@ -1134,8 +1134,8 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
             return F.mean(spark_column)
@@ -1213,8 +1213,8 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
             return F.coalesce(F.sum(spark_column), F.lit(0))
@@ -1303,8 +1303,8 @@ class Frame(object, metaclass=ABCMeta):
                     scol = F.round(scol).cast(LongType())
             else:
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
 
@@ -1358,8 +1358,8 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
             return F.skewness(spark_column)
@@ -1411,8 +1411,8 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
             return F.kurtosis(spark_column)
@@ -1642,8 +1642,8 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
             return F.stddev(spark_column)
@@ -1699,8 +1699,8 @@ class Frame(object, metaclass=ABCMeta):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
             return F.variance(spark_column)
@@ -1802,8 +1802,8 @@ class Frame(object, metaclass=ABCMeta):
                 return SF.percentile_approx(spark_column.cast(DoubleType()), 0.5, accuracy)
             else:
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
 
@@ -1883,8 +1883,9 @@ class Frame(object, metaclass=ABCMeta):
                 return kser.spark.transform(F.abs)
             else:
                 raise TypeError(
-                    "bad operand type for abs(): {}".format(
-                        spark_type_to_python_type(kser.spark.data_type).__name__
+                    "bad operand type for abs(): {} ({})".format(
+                        spark_type_to_pandas_dtype(kser.spark.data_type),
+                        kser.spark.data_type.simpleString(),
                     )
                 )
 

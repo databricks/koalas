@@ -110,7 +110,6 @@ from databricks.koalas.typedef import (
     as_spark_type,
     infer_return_type,
     spark_type_to_pandas_dtype,
-    spark_type_to_python_type,
     DataFrameType,
     SeriesType,
 )
@@ -10202,8 +10201,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
             else:
                 raise TypeError(
-                    "Could not convert {} to numeric".format(
-                        spark_type_to_python_type(spark_type).__name__
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
                     )
                 )
 

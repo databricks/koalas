@@ -4283,9 +4283,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.quantile(0.5), pd.Series(name=0.5))
             self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pd.DataFrame(index=[0.25, 0.5, 0.75]))
 
-        with self.assertRaisesRegex(TypeError, "Could not convert str to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             kdf.quantile(0.5, numeric_only=False)
-        with self.assertRaisesRegex(TypeError, "Could not convert str to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             kdf.quantile([0.25, 0.5, 0.75], numeric_only=False)
 
     def test_pct_change(self):

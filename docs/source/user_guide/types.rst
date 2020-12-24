@@ -164,9 +164,9 @@ np.ndarray    ArrayType(StringType())
 
 The table below shows which Python data types are matched to which PySpark data types internally in Koalas.
 
-================= =======================
+================= ===================
 Python            PySpark
-================= =======================
+================= ===================
 bytes             BinaryType
 int               LongType
 float             DoubleType
@@ -175,8 +175,7 @@ bool              BooleanType
 datetime.datetime TimestampType
 datetime.date     DateType
 decimal.Decimal   DecimalType(38, 18)
-list              ArrayType(StringType())
-================= =======================
+================= ===================
 
 For decimal type, Koalas uses Spark's system default precision and scale.
 

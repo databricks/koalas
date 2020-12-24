@@ -1267,9 +1267,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
             ks.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(q=["a"])
 
-        with self.assertRaisesRegex(TypeError, "Could not convert str to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             ks.Series(["a", "b", "c"]).quantile()
-        with self.assertRaisesRegex(TypeError, "Could not convert str to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             ks.Series(["a", "b", "c"]).quantile([0.25, 0.5, 0.75])
 
     def test_idxmax(self):
@@ -2228,9 +2228,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(min_count=1), kser.prod(min_count=1))
 
-        with self.assertRaisesRegex(TypeError, "Could not convert str to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             ks.Series(["a", "b", "c"]).prod()
-        with self.assertRaisesRegex(TypeError, "Could not convert datetime to numeric"):
+        with self.assertRaisesRegex(
+            TypeError, "Could not convert datetime64\\[ns\\] \\(timestamp\\) to numeric"
+        ):
             ks.Series([pd.Timestamp("2016-01-01") for _ in range(3)]).prod()
 
     def test_hasnans(self):
