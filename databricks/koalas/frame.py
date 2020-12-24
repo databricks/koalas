@@ -18,7 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from collections import OrderedDict, defaultdict, namedtuple
-from collections.abc import Mapping
+from collections.abc import Mapping, Sized
 from distutils.version import LooseVersion
 import re
 import warnings
@@ -115,6 +115,7 @@ from databricks.koalas.typedef import (
     spark_type_to_pandas_dtype,
     DataFrameType,
     SeriesType,
+    Scalar,
 )
 from databricks.koalas.plot import KoalasPlotAccessor
 
@@ -3702,7 +3703,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     notna = notnull
 
     def insert(
-        self, loc: int, column, value: Union[int, "Series", List], allow_duplicates: bool = False
+        self,
+        loc: int,
+        column,
+        value: Union[Scalar, "Series", Iterable],
+        allow_duplicates: bool = False,
     ) -> None:
         """
         Insert column into DataFrame at specified location.
@@ -3722,22 +3727,39 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(loc, int):
             raise TypeError("loc must be int")
 
+        assert 0 <= loc <= len(self.columns)
+
+        if not is_name_like_value(column):
+            raise ValueError(
+                "'column' should be a scalar value or tuple that contains scalar values"
+            )
+
+        if column in self.columns:
+            raise ValueError("cannot insert %s, already exists" % column)
+
         assert allow_duplicates is False
 
-        if isinstance(value, int):
+        is_value_scalar = isinstance(value, Scalar.__args__)  # type: ignore
+
+        if is_value_scalar:
             combined = self.copy()
             that_scol = F.lit(value)
         else:
+            if len(cast(Sized, value)) != len(cast(Sized, self)):
+                raise ValueError(
+                    "Length of values %s does not match length of index %s"
+                    % (cast(Sized, value), len(cast(Sized, self)))
+                )
+
             if not isinstance(value, ks.Series):
                 value = ks.Series(value)
 
             combined = combine_frames(self, value)
-
             that_scol = combined["that"]._internal.spark_column_for(value._column_label)
 
         data_spark_columns = combined._internal.data_spark_columns.copy()
         data_spark_columns.insert(loc, that_scol)
-        if not isinstance(value, int):
+        if not is_value_scalar:
             data_spark_columns = data_spark_columns[:-1]
 
         column_labels = self._internal.column_labels.copy()
