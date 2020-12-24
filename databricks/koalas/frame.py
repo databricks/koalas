@@ -603,7 +603,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return [self.index, self.columns]
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, min_count=0):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, **kwargs):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
@@ -626,6 +626,8 @@ class DataFrame(Frame, Generic[T]):
 
         axis = validate_axis(axis)
         if axis == 0:
+            min_count = kwargs.get("min_count", 0)
+
             exprs = [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)]
             new_column_labels = []
             num_args = len(signature(sfun).parameters)
@@ -669,10 +671,6 @@ class DataFrame(Frame, Generic[T]):
                 return first_series(DataFrame(internal).transpose())
 
         else:
-            kwargs = {}
-            if min_count > 0:
-                kwargs["min_count"] = min_count
-
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
