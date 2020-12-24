@@ -41,6 +41,14 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                 check_exact=False,
             )
 
+        functions = ["std", "var"]
+        for funcname in functions:
+            self.assert_eq(
+                getattr(kdf_or_kser, funcname)(ddof=0),
+                getattr(pdf_or_pser, funcname)(ddof=0),
+                check_exact=False,
+            )
+
         # NOTE: To test skew, kurt, and median, just make sure they run.
         #       The numbers are different in spark and pandas.
         functions = ["skew", "kurt", "median"]
@@ -155,7 +163,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
             self.assert_eq(kdf.var(axis=1), pdf.var(axis=1))
+            self.assert_eq(kdf.var(axis=1, ddof=0), pdf.var(axis=1, ddof=0))
             self.assert_eq(kdf.std(axis=1), pdf.std(axis=1))
+            self.assert_eq(kdf.std(axis=1, ddof=0), pdf.std(axis=1, ddof=0))
             self.assert_eq(kdf.max(axis=1), pdf.max(axis=1))
             self.assert_eq(kdf.min(axis=1), pdf.min(axis=1))
             self.assert_eq(kdf.sum(axis=1), pdf.sum(axis=1))
@@ -230,7 +240,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.mean(), pdf.mean())
 
         self.assert_eq(kdf.var(), pdf.var(), check_exact=False)
+        self.assert_eq(kdf.var(ddof=0), pdf.var(ddof=0), check_exact=False)
         self.assert_eq(kdf.std(), pdf.std(), check_exact=False)
+        self.assert_eq(kdf.std(ddof=0), pdf.std(ddof=0), check_exact=False)
 
     def test_stats_on_boolean_series(self):
         pser = pd.Series([True, False, True])
@@ -245,7 +257,9 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.mean(), pser.mean())
 
         self.assert_eq(kser.var(), pser.var(), almost=True)
+        self.assert_eq(kser.var(ddof=0), pser.var(ddof=0), almost=True)
         self.assert_eq(kser.std(), pser.std(), almost=True)
+        self.assert_eq(kser.std(ddof=0), pser.std(ddof=0), almost=True)
 
     def test_stats_on_non_numeric_columns_should_be_discarded_if_numeric_only_is_true(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
@@ -277,7 +291,17 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.mean(numeric_only=True), pdf.mean(numeric_only=True))
 
         self.assert_eq(kdf.var(numeric_only=True), pdf.var(numeric_only=True), check_exact=False)
+        self.assert_eq(
+            kdf.var(ddof=0, numeric_only=True),
+            pdf.var(ddof=0, numeric_only=True),
+            check_exact=False,
+        )
         self.assert_eq(kdf.std(numeric_only=True), pdf.std(numeric_only=True), check_exact=False)
+        self.assert_eq(
+            kdf.std(ddof=0, numeric_only=True),
+            pdf.std(ddof=0, numeric_only=True),
+            check_exact=False,
+        )
 
         self.assert_eq(len(kdf.median(numeric_only=True)), len(pdf.median(numeric_only=True)))
         self.assert_eq(len(kdf.kurtosis(numeric_only=True)), len(pdf.kurtosis(numeric_only=True)))
