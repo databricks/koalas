@@ -140,9 +140,13 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[["B", "C"]].abs(), pdf[["B", "C"]].abs())
         self.assert_eq(kdf[["E"]].abs(), pdf[["E"]].abs())
 
-        with self.assertRaisesRegex(TypeError, "bad operand type for abs\\(\\): string"):
+        with self.assertRaisesRegex(
+            TypeError, "bad operand type for abs\\(\\): object \\(string\\)"
+        ):
             kdf.abs()
-        with self.assertRaisesRegex(TypeError, "bad operand type for abs\\(\\): string"):
+        with self.assertRaisesRegex(
+            TypeError, "bad operand type for abs\\(\\): object \\(string\\)"
+        ):
             kdf.D.abs()
 
     def test_axis_on_dataframe(self):
@@ -331,8 +335,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                 pdf[["i", "b"]].sum(numeric_only=False).astype(int),
             )
 
-        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             kdf.sum(numeric_only=False)
 
-        with self.assertRaisesRegex(TypeError, "Could not convert string to numeric"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             kdf.s.sum()

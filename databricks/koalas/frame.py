@@ -10198,7 +10198,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if isinstance(spark_type, (BooleanType, NumericType)):
                 return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
             else:
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
 
         if isinstance(q, list):
             # First calculate the percentiles from all columns and map it to each `quantiles`
