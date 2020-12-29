@@ -49,7 +49,7 @@ class CachedAccessor:
         if obj is None:
             return self._accessor
         accessor_obj = self._accessor(obj)
-        setattr(obj, self._name, accessor_obj)
+        object.__setattr__(obj, self._name, accessor_obj)
         return accessor_obj
 
 
