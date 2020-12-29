@@ -6,6 +6,8 @@ Type Support In Koalas
 
 In this chapter, we will briefly show you how data types change when converting Koalas DataFrame from/to PySpark DataFrame or pandas DataFrame.
 
+.. note::
+    Koalas doesn't support mixed type because PySpark doesn't support it for now.
 
 Type casting between PySpark and Koalas
 ---------------------------------------
