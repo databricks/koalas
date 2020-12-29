@@ -452,6 +452,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf, pdf)
 
+        kdf.w = 10.0
+        pdf.w = 10.0
+
+        self.assert_eq(kdf, pdf)
+
         kdf[1] = 1.0
         pdf[1] = 1.0
 
