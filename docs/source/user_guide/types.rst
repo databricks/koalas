@@ -6,9 +6,6 @@ Type Support In Koalas
 
 In this chapter, we will briefly show you how data types change when converting Koalas DataFrame from/to PySpark DataFrame or pandas DataFrame.
 
-.. note::
-    Koalas doesn't support mixed type because PySpark doesn't support it for now.
-
 Type casting between PySpark and Koalas
 ---------------------------------------
 
@@ -217,3 +214,14 @@ You can also check the underlying PySpark data type of `Series` or schema of `Da
      |-- d: double (nullable = false)
      |-- s: string (nullable = false)
      |-- b: boolean (nullable = false)
+
+.. note::
+    Koalas currently does not support multiple types of data in single column.
+    This is because Koalas uses Spark DataFrame internally and Spark DataFrame does not support multiple types of data in single column.
+
+.. code-block:: python
+
+    >>> ks.Series([1, "A"])
+    Traceback (most recent call last):
+    ...
+    TypeError: an integer is required (got type str)
