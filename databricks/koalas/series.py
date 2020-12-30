@@ -378,7 +378,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             self._anchor = anchor
             self._col_label = anchor._internal.column_labels[0]
-            anchor._kseries = {self._column_label: self}
+            object.__setattr__(anchor, "_kseries", {self._column_label: self})
 
     @property
     def _kdf(self) -> DataFrame:
@@ -398,7 +398,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             [self._column_label],
         )
         self._anchor = kdf
-        kdf._kseries = {self._column_label: self}
+        object.__setattr__(kdf, "_kseries", {self._column_label: self})
 
     def _with_new_scol(self, scol: spark.Column) -> "Series":
         """

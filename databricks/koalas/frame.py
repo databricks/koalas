@@ -86,6 +86,7 @@ from databricks.koalas.utils import (
     default_session,
     is_name_like_tuple,
     is_name_like_value,
+    is_testing,
     name_like_string,
     same_anchor,
     scol_for,
@@ -11097,9 +11098,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if (key,) in self._internal.column_labels:
             self[key] = value
         else:
-            warnings.warn(
-                "Koalas doesn't allow columns to be created via a new attribute name", UserWarning
-            )
+            msg = "Koalas doesn't allow columns to be created via a new attribute name"
+            if is_testing():
+                raise AssertionError(msg)
+            else:
+                warnings.warn(msg, UserWarning)
 
     def __len__(self):
         return self._internal.resolved_copy.spark_frame.count()
