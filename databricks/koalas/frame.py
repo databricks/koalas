@@ -541,8 +541,6 @@ class DataFrame(Frame, Generic[T]):
 
         kseries = {}
 
-        print(self._internal.column_labels)
-        print(internal.column_labels)
         for old_label, new_label in zip_longest(
             self._internal.column_labels, internal.column_labels
         ):
