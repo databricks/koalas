@@ -173,131 +173,35 @@ class KoalasPlotAccessor(PandasObject):
             return KoalasPlotAccessor._backends[backend]
 
         module = KoalasPlotAccessor._find_backend(backend)
+
+        if backend == "plotly":
+            from databricks.koalas.plot.plotly import plot_plotly
+
+            module.plot = plot_plotly(module.plot)
+
         KoalasPlotAccessor._backends[backend] = module
         return module
 
-    @staticmethod
-    def _format_args(backend_name, data, kind, kwargs):
-        """
-        Format the arguments.
-        Assigns default values to plotting functions.
-        Maps the argument to the appropriate backend.
-        """
-        from databricks.koalas import DataFrame, Series
-
-        data_preprocessor_map = {
-            "pie": TopNPlot().get_top_n,
-            "bar": TopNPlot().get_top_n,
-            "barh": TopNPlot().get_top_n,
-            "scatter": TopNPlot().get_top_n,
-            "area": SampledPlot().get_sampled,
-            "line": SampledPlot().get_sampled,
-        }
-        # make the arguments values of matplotlib compatible with that of plotting backend
-        args_map = {
-            "plotly": {
-                "logx": "log_x",
-                "logy": "log_y",
-                "xlim": "range_x",
-                "ylim": "range_y",
-                "yerr": "error_y",
-                "xerr": "error_x",
-            }
-        }
-
-        if isinstance(data, Series):
-            positional_args = {
-                ("ax", None),
-                ("figsize", None),
-                ("use_index", True),
-                ("title", None),
-                ("grid", None),
-                ("legend", False),
-                ("style", None),
-                ("logx", False),
-                ("logy", False),
-                ("loglog", False),
-                ("xticks", None),
-                ("yticks", None),
-                ("xlim", None),
-                ("ylim", None),
-                ("rot", None),
-                ("fontsize", None),
-                ("colormap", None),
-                ("table", False),
-                ("yerr", None),
-                ("xerr", None),
-                ("label", None),
-                ("secondary_y", False),
-            }
-        elif isinstance(data, DataFrame):
-            positional_args = {
-                ("x", None),
-                ("y", None),
-                ("ax", None),
-                ("subplots", None),
-                ("sharex", None),
-                ("sharey", False),
-                ("layout", None),
-                ("figsize", None),
-                ("use_index", True),
-                ("title", None),
-                ("grid", None),
-                ("legend", True),
-                ("style", None),
-                ("logx", False),
-                ("logy", False),
-                ("loglog", False),
-                ("xticks", None),
-                ("yticks", None),
-                ("xlim", None),
-                ("ylim", None),
-                ("rot", None),
-                ("fontsize", None),
-                ("colormap", None),
-                ("table", False),
-                ("yerr", None),
-                ("xerr", None),
-                ("secondary_y", False),
-                ("sort_columns", False),
-            }
-        # removing keys that are not required
-        attrs_to_ignore = ["self", "kind", "data", "data", "kwargs", "backend"]
-        # no need to map and remove anything  if the backend is the default
-        for temp in attrs_to_ignore:
-            kwargs.pop(temp, None)
-
-        for arg, def_val in positional_args:
-            # map the argument if possible
-            if backend_name != "databricks.koalas.plot":
-                if backend_name in args_map:
-                    if arg in kwargs and arg in args_map[backend_name]:
-                        kwargs[args_map[backend_name][arg]] = kwargs.pop(arg)
-                # remove argument is default and not mapped
-                if arg in kwargs and kwargs[arg] == def_val:
-                    kwargs.pop(arg, None)
-            else:
-                if arg not in kwargs:
-                    kwargs[arg] = def_val
-
-        if backend_name != "databricks.koalas.plot":
-            data = data_preprocessor_map[kind](data)
-
-        if backend_name == "plotly" and kind == "area" and "stacked" in kwargs:
-            del kwargs["stacked"]
-
-        return data, kwargs
-
     def __call__(self, kind="line", backend=None, **kwargs):
-
-        positional_args = locals()
         plot_backend = KoalasPlotAccessor._get_plot_backend(backend)
-        args = {**positional_args, **kwargs}
-        # when using another backend, let the backend take the charge
-        plot_data, kwds = self._format_args(plot_backend.__name__, self.data, kind, args)
+        plot_data = self.data
 
         if plot_backend.__name__ != "databricks.koalas.plot":
-            return plot_backend.plot(plot_data, kind=kind, **kwds)
+            data_preprocessor_map = {
+                "pie": TopNPlot().get_top_n,
+                "bar": TopNPlot().get_top_n,
+                "barh": TopNPlot().get_top_n,
+                "scatter": TopNPlot().get_top_n,
+                "area": SampledPlot().get_sampled,
+                "line": SampledPlot().get_sampled,
+            }
+            if not data_preprocessor_map[kind]:
+                raise NotImplementedError(
+                    "'%s' plot is not supported with '%s' plot "
+                    "backend yet." % (kind, plot_backend.__name__)
+                )
+            plot_data = data_preprocessor_map[kind](plot_data)
+            return plot_backend.plot(plot_data, kind=kind, **kwargs)
 
         if kind not in KoalasPlotAccessor._koalas_all_kinds:
             raise ValueError("{} is not a valid plot kind".format(kind))
@@ -308,11 +212,11 @@ class KoalasPlotAccessor(PandasObject):
         if isinstance(self.data, Series):
             if kind not in KoalasPlotAccessor._series_kinds:
                 return unsupported_function(class_name="pd.Series", method_name=kind)()
-            return plot_series(data=self.data, kind=kind, **kwds)
+            return plot_series(data=self.data, kind=kind, **kwargs)
         elif isinstance(self.data, DataFrame):
             if kind not in KoalasPlotAccessor._dataframe_kinds:
                 return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
-            return plot_frame(data=self.data, kind=kind, **kwds)
+            return plot_frame(data=self.data, kind=kind, **kwargs)
 
     def line(self, x=None, y=None, **kwargs):
         """
@@ -583,7 +487,7 @@ class KoalasPlotAccessor(PandasObject):
         precision: scalar, default = 0.01
             This argument is used by Koalas to compute approximate statistics
             for building a boxplot. Use *smaller* values to get more precise
-            statistics.
+            statistics (matplotlib-only).
 
         Returns
         -------
@@ -754,7 +658,7 @@ class KoalasPlotAccessor(PandasObject):
 
     density = kde
 
-    def area(self, x=None, y=None, stacked=True, **kwds):
+    def area(self, x=None, y=None, **kwds):
         """
         Draw a stacked area plot.
 
@@ -769,7 +673,7 @@ class KoalasPlotAccessor(PandasObject):
             Column to plot. By default uses all columns.
         stacked : bool, default True
             Area plots are stacked by default. Set to False to create a
-            unstacked plot.
+            unstacked plot (matplotlib-only).
         **kwds : optional
             Additional keyword arguments are documented in
             :meth:`DataFrame.plot`.
@@ -814,9 +718,9 @@ class KoalasPlotAccessor(PandasObject):
         if isinstance(self.data, Series):
             return self(kind="area", **kwds)
         elif isinstance(self.data, DataFrame):
-            return self(kind="area", x=x, y=y, stacked=stacked, **kwds)
+            return self(kind="area", x=x, y=y, **kwds)
 
-    def pie(self, y=None, **kwds):
+    def pie(self, **kwds):
         """
         Generate a pie plot.
 
@@ -830,7 +734,7 @@ class KoalasPlotAccessor(PandasObject):
         ----------
         y : int or label, optional
             Label or position of the column to plot.
-            If not provided, ``subplots=True`` argument must be passed.
+            If not provided, ``subplots=True`` argument must be passed (matplotlib-only).
         **kwds
             Keyword arguments to pass on to :meth:`Koalas.Series.plot`.
 
@@ -866,11 +770,17 @@ class KoalasPlotAccessor(PandasObject):
             return self(kind="pie", **kwds)
         else:
             # pandas will raise an error if y is None and subplots if not True
-            if isinstance(self.data, DataFrame) and y is None and not kwds.get("subplots", False):
-                raise ValueError("pie requires either y column or 'subplots=True'")
-            return self(kind="pie", y=y, **kwds)
+            if (
+                isinstance(self.data, DataFrame)
+                and kwds.get("y", None) is None
+                and not kwds.get("subplots", False)
+            ):
+                raise ValueError(
+                    "pie requires either y column or 'subplots=True' (matplotlib-only)"
+                )
+            return self(kind="pie", **kwds)
 
-    def scatter(self, x, y, s=None, c=None, **kwds):
+    def scatter(self, x, y, **kwds):
         """
         Create a scatter plot with varying marker point size and color.
 
@@ -890,7 +800,9 @@ class KoalasPlotAccessor(PandasObject):
             The column name or column position to be used as vertical
             coordinates for each point.
         s : scalar or array_like, optional
+            (matplotlib-only).
         c : str, int or array_like, optional
+            (matplotlib-only).
 
         **kwds: Optional
             Keyword arguments to pass on to :meth:`databricks.koalas.DataFrame.plot`.
@@ -930,7 +842,7 @@ class KoalasPlotAccessor(PandasObject):
             ...                       c='species',
             ...                       colormap='viridis')
         """
-        return self(kind="scatter", x=x, y=y, s=s, c=c, **kwds)
+        return self(kind="scatter", x=x, y=y, **kwds)
 
     def hexbin(self, **kwds):
         return unsupported_function(class_name="pd.DataFrame", method_name="hexbin")()

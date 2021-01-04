@@ -43,7 +43,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     @property
     def pdf(self):
         return pd.DataFrame(
-            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0]},
             index=np.random.rand(9),
         )
 
@@ -449,6 +449,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf["w"] = 1.0
         pdf["w"] = 1.0
+
+        self.assert_eq(kdf, pdf)
+
+        kdf.w = 10.0
+        pdf.w = 10.0
 
         self.assert_eq(kdf, pdf)
 
@@ -2385,7 +2390,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser, pser)
 
         pdf = pd.DataFrame(
-            {"A": [0, 1, 2, 3, 4], "B": [5, 6, 7, 8, 9], "C": ["a", "b", "c", "d", "e"]},
+            {"A": [0, 1, 2, 3, np.nan], "B": [5, 6, 7, 8, np.nan], "C": ["a", "b", "c", "d", None]},
             index=np.random.rand(5),
         )
         kdf = ks.from_pandas(pdf)
@@ -2399,10 +2404,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kdf.replace({0: 10, 1: 100, 7: 200}), pdf.replace({0: 10, 1: 100, 7: 200}))
 
-        self.assert_eq(kdf.replace({"A": 0, "B": 5}, 100), pdf.replace({"A": 0, "B": 5}, 100))
+        self.assert_eq(
+            kdf.replace({"A": [0, np.nan], "B": [5, np.nan]}, 100),
+            pdf.replace({"A": [0, np.nan], "B": [5, np.nan]}, 100),
+        )
 
-        self.assert_eq(kdf.replace({"A": {0: 100, 4: 400}}), pdf.replace({"A": {0: 100, 4: 400}}))
-        self.assert_eq(kdf.replace({"X": {0: 100, 4: 400}}), pdf.replace({"X": {0: 100, 4: 400}}))
+        self.assert_eq(
+            kdf.replace({"A": {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({"A": {0: 100, 4: 400, np.nan: 700}}),
+        )
+        self.assert_eq(
+            kdf.replace({"X": {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({"X": {0: 100, 4: 400, np.nan: 700}}),
+        )
+
+        self.assert_eq(kdf.replace({"C": ["a", None]}, "e"), pdf.replace({"C": ["a", None]}, "e"))
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("X", "A"), ("X", "B"), ("Y", "C")])
@@ -2419,15 +2435,21 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.replace({0: 10, 1: 100, 7: 200}), pdf.replace({0: 10, 1: 100, 7: 200}))
 
         self.assert_eq(
-            kdf.replace({("X", "A"): 0, ("X", "B"): 5}, 100),
-            pdf.replace({("X", "A"): 0, ("X", "B"): 5}, 100),
+            kdf.replace({("X", "A"): [0, np.nan], ("X", "B"): 5}, 100),
+            pdf.replace({("X", "A"): [0, np.nan], ("X", "B"): 5}, 100),
         )
 
         self.assert_eq(
-            kdf.replace({("X", "A"): {0: 100, 4: 400}}), pdf.replace({("X", "A"): {0: 100, 4: 400}})
+            kdf.replace({("X", "A"): {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({("X", "A"): {0: 100, 4: 400, np.nan: 700}}),
         )
         self.assert_eq(
-            kdf.replace({("X", "B"): {0: 100, 4: 400}}), pdf.replace({("X", "B"): {0: 100, 4: 400}})
+            kdf.replace({("X", "B"): {0: 100, 4: 400, np.nan: 700}}),
+            pdf.replace({("X", "B"): {0: 100, 4: 400, np.nan: 700}}),
+        )
+
+        self.assert_eq(
+            kdf.replace({("Y", "C"): ["a", None]}, "e"), pdf.replace({("Y", "C"): ["a", None]}, "e")
         )
 
     def test_update(self):
@@ -2966,7 +2988,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_cumprod(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
             pdf = pd.DataFrame(
-                [[2.0, 1.0, 1], [5, None, 2], [1.0, 1.0, 3], [2.0, 4.0, 4], [4.0, 9.0, 5]],
+                [[2.0, 1.0, 1], [5, None, 2], [1.0, -1.0, -3], [2.0, 0, 4], [4.0, 9.0, 5]],
                 columns=list("ABC"),
                 index=np.random.rand(5),
             )
@@ -2974,7 +2996,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self._test_cumprod(pdf, kdf)
         else:
             pdf = pd.DataFrame(
-                [[2, 1, 1], [5, 1, 2], [1, 1, 3], [2, 4, 4], [4, 9, 5]],
+                [[2, 1, 1], [5, 1, 2], [1, -1, -3], [2, 0, 4], [4, 9, 5]],
                 columns=list("ABC"),
                 index=np.random.rand(5),
             )
@@ -4221,17 +4243,55 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.keys(), pdf.keys())
 
     def test_quantile(self):
-        kdf = ks.from_pandas(self.pdf)
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+
+        self.assert_eq(kdf.loc[[]].quantile(0.5), pdf.loc[[]].quantile(0.5))
+        self.assert_eq(
+            kdf.loc[[]].quantile([0.25, 0.5, 0.75]), pdf.loc[[]].quantile([0.25, 0.5, 0.75])
+        )
 
         with self.assertRaisesRegex(
             NotImplementedError, 'axis should be either 0 or "index" currently.'
         ):
             kdf.quantile(0.5, axis=1)
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            kdf.quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
+            kdf.quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
+            kdf.quantile(q=["a"])
 
-        with self.assertRaisesRegex(
-            NotImplementedError, "quantile currently doesn't supports numeric_only"
-        ):
+        self.assert_eq(kdf.quantile(0.5, numeric_only=False), pdf.quantile(0.5, numeric_only=False))
+        self.assert_eq(
+            kdf.quantile([0.25, 0.5, 0.75], numeric_only=False),
+            pdf.quantile([0.25, 0.5, 0.75], numeric_only=False),
+        )
+
+        # multi-index column
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+
+        pdf = pd.DataFrame({"x": ["a", "b", "c"]})
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+            self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+        else:
+            self.assert_eq(kdf.quantile(0.5), pd.Series(name=0.5))
+            self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pd.DataFrame(index=[0.25, 0.5, 0.75]))
+
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             kdf.quantile(0.5, numeric_only=False)
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
+            kdf.quantile([0.25, 0.5, 0.75], numeric_only=False)
 
     def test_pct_change(self):
         pdf = pd.DataFrame(

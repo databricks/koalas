@@ -207,7 +207,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 for lval, rval in zip(left[lcol].dropna(), right[rcol].dropna()):
                     self.assertAlmostEqual(lval, rval, msg=msg)
             self.assertEqual(left.columns.names, right.columns.names, msg=msg)
-        elif isinstance(left, pd.Series) and isinstance(left, pd.Series):
+        elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
             msg = (
                 "Series are not almost equal: "
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
@@ -219,7 +219,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 self.assertEqual(lnull, rnull, msg=msg)
             for lval, rval in zip(left.dropna(), right.dropna()):
                 self.assertAlmostEqual(lval, rval, msg=msg)
-        elif isinstance(left, pd.MultiIndex) and isinstance(left, pd.MultiIndex):
+        elif isinstance(left, pd.MultiIndex) and isinstance(right, pd.MultiIndex):
             msg = (
                 "MultiIndices are not almost equal: "
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
@@ -228,7 +228,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             self.assertEqual(len(left), len(right), msg=msg)
             for lval, rval in zip(left, right):
                 self.assertAlmostEqual(lval, rval, msg=msg)
-        elif isinstance(left, pd.Index) and isinstance(left, pd.Index):
+        elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
             msg = (
                 "Indices are not almost equal: "
                 + "\n\nLeft:\n%s\n%s" % (left, left.dtype)
@@ -264,6 +264,8 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
             self.assertTrue(len(left) == len(right))
             for litem, ritem in zip(left, right):
                 self.assert_eq(litem, ritem, check_exact=check_exact, almost=almost)
+        elif (lobj is not None and pd.isna(lobj)) and (robj is not None and pd.isna(robj)):
+            pass
         else:
             if almost:
                 self.assertAlmostEqual(lobj, robj)

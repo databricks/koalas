@@ -21,11 +21,11 @@ import re
 import inspect
 import sys
 import warnings
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
 from itertools import chain
-from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Generic, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 import matplotlib
 import numpy as np
@@ -83,7 +83,13 @@ from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkSeriesMethods
 from databricks.koalas.strings import StringMethods
-from databricks.koalas.typedef import infer_return_type, SeriesType, ScalarType, Scalar
+from databricks.koalas.typedef import (
+    infer_return_type,
+    spark_type_to_pandas_dtype,
+    SeriesType,
+    ScalarType,
+    Scalar,
+)
 
 
 # This regular expression pattern is complied and defined here to avoid to compile the same
@@ -373,7 +379,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             self._anchor = anchor
             self._col_label = anchor._internal.column_labels[0]
-            anchor._kseries = {self._column_label: self}
+            object.__setattr__(anchor, "_kseries", {self._column_label: self})
 
     @property
     def _kdf(self) -> DataFrame:
@@ -393,7 +399,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             [self._column_label],
         )
         self._anchor = kdf
-        kdf._kseries = {self._column_label: self}
+        object.__setattr__(kdf, "_kseries", {self._column_label: self})
 
     def _with_new_scol(self, scol: spark.Column) -> "Series":
         """
@@ -2938,32 +2944,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return self.sort_values(ascending=False).head(n)
 
-    def count(self) -> int:
-        """
-        Return number of non-NA/null observations in the Series.
-
-        Returns
-        -------
-        nobs : int
-
-        Examples
-        --------
-        Constructing DataFrame from a dictionary:
-
-        >>> df = ks.DataFrame({"Person":
-        ...                    ["John", "Myla", "Lewis", "John", "Myla"],
-        ...                    "Age": [24., np.nan, 21., 33, 26]})
-
-        Notice the uncounted NA values:
-
-        >>> df['Person'].count()
-        5
-
-        >>> df['Age'].count()
-        4
-        """
-        return self._reduce_for_stat_function(Frame._count_expr, name="count")
-
     def append(
         self, to_append: "Series", ignore_index: bool = False, verify_integrity: bool = False
     ) -> "Series":
@@ -3391,7 +3371,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return self._with_new_scol(scol)
 
     # TODO: add 'interpolation' parameter.
-    def quantile(self, q=0.5, accuracy=10000) -> Union[Scalar, "Series"]:
+    def quantile(
+        self, q: Union[float, Iterable[float]] = 0.5, accuracy: int = 10000
+    ) -> Union[Scalar, "Series"]:
         """
         Return value at the given quantile.
 
@@ -3418,91 +3400,51 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         --------
         >>> s = ks.Series([1, 2, 3, 4, 5])
         >>> s.quantile(.5)
-        3
+        3.0
 
         >>> (s + 1).quantile(.5)
-        4
+        4.0
 
         >>> s.quantile([.25, .5, .75])
-        0.25    2
-        0.5     3
-        0.75    4
-        dtype: int64
+        0.25    2.0
+        0.50    3.0
+        0.75    4.0
+        dtype: float64
 
         >>> (s + 1).quantile([.25, .5, .75])
-        0.25    3
-        0.5     4
-        0.75    5
-        dtype: int64
+        0.25    3.0
+        0.50    4.0
+        0.75    5.0
+        dtype: float64
         """
-        if not isinstance(accuracy, int):
-            raise ValueError(
-                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
-            )
-
         if isinstance(q, Iterable):
-            q = list(q)
-
-        for v in q if isinstance(q, list) else [q]:
-            if not isinstance(v, float):
+            return first_series(
+                self.to_frame().quantile(q=q, axis=0, numeric_only=False, accuracy=accuracy)
+            ).rename(self.name)
+        else:
+            if not isinstance(accuracy, int):
                 raise ValueError(
-                    "q must be a float of an array of floats; however, [%s] found." % type(v)
+                    "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
                 )
-            if v < 0.0 or v > 1.0:
+
+            if not isinstance(q, float):
+                raise ValueError(
+                    "q must be a float or an array of floats; however, [%s] found." % type(q)
+                )
+            if q < 0.0 or q > 1.0:
                 raise ValueError("percentiles should all be in the interval [0, 1].")
 
-        if isinstance(q, list):
-            quantiles = q
-            # TODO: avoid to use dataframe. After this, anchor will be lost.
-
-            # First calculate the percentiles and map it to each `quantiles`
-            # by creating each entry as a struct. So, it becomes an array of
-            # structs as below:
-            #
-            # +--------------------------------+
-            # | arrays                         |
-            # +--------------------------------+
-            # |[[0.25, 2], [0.5, 3], [0.75, 4]]|
-            # +--------------------------------+
-            percentile_col = SF.percentile_approx(self.spark.column, quantiles, accuracy)
-            sdf = self._internal.spark_frame.select(percentile_col.alias("percentiles"))
-
-            internal_index_column = SPARK_DEFAULT_INDEX_NAME
-            value_column = "value"
-            cols = []
-            for i, quantile in enumerate(quantiles):
-                cols.append(
-                    F.struct(
-                        F.lit("%s" % quantile).alias(internal_index_column),
-                        F.expr("percentiles[%s]" % i).alias(value_column),
+            def quantile(spark_column, spark_type):
+                if isinstance(spark_type, (BooleanType, NumericType)):
+                    return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
+                else:
+                    raise TypeError(
+                        "Could not convert {} ({}) to numeric".format(
+                            spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                        )
                     )
-                )
-            sdf = sdf.select(F.array(*cols).alias("arrays"))
 
-            # And then, explode it and manually set the index.
-            #
-            # +-----------------+-----+
-            # |__index_level_0__|value|
-            # +-----------------+-----+
-            # | 0.25            |    2|
-            # |  0.5            |    3|
-            # | 0.75            |    4|
-            # +-----------------+-----+
-            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
-
-            internal = InternalFrame(
-                spark_frame=sdf,
-                index_spark_columns=[scol_for(sdf, internal_index_column)],
-                column_labels=None,
-                data_spark_columns=[scol_for(sdf, value_column)],
-                column_label_names=None,
-            )
-
-            return DataFrame(internal)[value_column].rename(self.name)
-        else:
-            return self._reduce_for_stat_function(
-                lambda scol: SF.percentile_approx(scol, q, accuracy), name="quantile"
-            )
+            return self._reduce_for_stat_function(quantile, name="quantile")
 
     # TODO: add axis, numeric_only, pct, na_option parameter
     def rank(self, method="average", ascending=True) -> "Series":
@@ -4405,7 +4347,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         dtype: float64
         """
         if to_replace is None:
-            return self
+            return self.fillna(method="ffill")
         if not isinstance(to_replace, (str, list, dict, int, float)):
             raise ValueError("'to_replace' should be one of str, list, dict, int, float")
         if regex:
@@ -4424,14 +4366,23 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 current = self.spark.column
             else:
                 for to_replace_, value in to_replace.items():
+                    cond = (
+                        (F.isnan(self.spark.column) | self.spark.column.isNull())
+                        if pd.isna(to_replace_)
+                        else (self.spark.column == F.lit(to_replace_))
+                    )
                     if is_start:
-                        current = F.when(self.spark.column == F.lit(to_replace_), value)
+                        current = F.when(cond, value)
                         is_start = False
                     else:
-                        current = current.when(self.spark.column == F.lit(to_replace_), value)
+                        current = current.when(cond, value)
                 current = current.otherwise(self.spark.column)
         else:
-            current = F.when(self.spark.column.isin(to_replace), value).otherwise(self.spark.column)
+            cond = self.spark.column.isin(to_replace)
+            # to_replace may be a scalar
+            if np.array(pd.isna(to_replace)).any():
+                cond = cond | F.isnan(self.spark.column) | self.spark.column.isNull()
+            current = F.when(cond, value).otherwise(self.spark.column)
 
         return self._with_new_scol(current)
 
@@ -5434,61 +5385,6 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self.to_frame().tail(n=n)).rename(self.name)
 
-    def product(self, min_count=0) -> Union[int, float]:
-        """
-        Return the product of the values.
-
-        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
-            trick. Therefore, it only works for positive numbers.
-
-        Parameters
-        ----------
-        min_count : int, default 0
-            The required number of valid values to perform the operation. If fewer than
-            ``min_count`` non-NA values are present the result will be NA.
-
-        Examples
-        --------
-        >>> ks.Series([1, 2, 3, 4, 5]).prod()
-        120
-
-        By default, the product of an empty or all-NA Series is ``1``
-
-        >>> ks.Series([]).prod()
-        1.0
-
-        This can be controlled with the ``min_count`` parameter
-
-        >>> ks.Series([]).prod(min_count=1)
-        nan
-        """
-        # When number of valid values is fewer than `min_count`, pandas returns np.nan
-        if (min_count > 0) and (len(self.dropna()) < min_count):
-            return np.nan
-
-        data_type = self.spark.data_type
-        if isinstance(data_type, BooleanType):
-            return self.all()
-        elif isinstance(data_type, NumericType):
-            spark_frame = self._internal.spark_frame
-            spark_column = self.spark.column
-
-            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
-            spark_frame = spark_frame.select(F.exp(F.sum(F.log(cond))))
-
-            result = spark_frame.head(1)[0][0]
-            if result is None:
-                # When Series is empty, pandas returns 1.0
-                return 1.0
-            elif isinstance(data_type, IntegralType):
-                return int(round(result))
-            else:
-                return result
-        else:
-            raise TypeError("cannot perform prod with type {}".format(self.dtype))
-
-    prod = product
-
     def explode(self) -> "Series":
         """
         Transform each element of a list-like to a row.
@@ -5940,26 +5836,50 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         return self._with_new_scol(scol)
 
-    def _cumprod(self, skipna, part_cols=()):
-        from pyspark.sql.functions import pandas_udf
-
-        data_type = self.spark.data_type
-
-        def cumprod(scol):
-            @pandas_udf(returnType=data_type)
-            def negative_check(s):
-                assert len(s) == 0 or ((s > 0) | (s.isnull())).all(), (
-                    "values should be bigger than 0: %s" % s
+    def _cumsum(self, skipna, part_cols=()):
+        kser = self
+        if isinstance(kser.spark.data_type, BooleanType):
+            kser = kser.spark.transform(lambda scol: scol.cast(LongType()))
+        elif not isinstance(kser.spark.data_type, NumericType):
+            raise TypeError(
+                "Could not convert {} ({}) to numeric".format(
+                    spark_type_to_pandas_dtype(kser.spark.data_type),
+                    kser.spark.data_type.simpleString(),
                 )
-                return s
+            )
+        return kser._cum(F.sum, skipna, part_cols)
 
-            return F.sum(F.log(negative_check(scol)))
+    def _cumprod(self, skipna, part_cols=()):
+        if isinstance(self.spark.data_type, BooleanType):
+            scol = self._cum(
+                lambda scol: F.min(F.coalesce(scol, F.lit(True))), skipna, part_cols
+            ).spark.column.cast(LongType())
+        elif isinstance(self.spark.data_type, NumericType):
+            num_zeros = self._cum(
+                lambda scol: F.sum(F.when(scol == 0, 1).otherwise(0)), skipna, part_cols
+            ).spark.column
+            num_negatives = self._cum(
+                lambda scol: F.sum(F.when(scol < 0, 1).otherwise(0)), skipna, part_cols
+            ).spark.column
+            sign = F.when(num_negatives % 2 == 0, 1).otherwise(-1)
 
-        kser = self._cum(cumprod, skipna, part_cols)
-        result = kser._with_new_scol(F.exp(kser.spark.column))
-        if isinstance(data_type, IntegralType):
-            result = result.spark.transform(lambda col: F.round(col).cast(LongType()))
-        return result
+            abs_prod = F.exp(
+                self._cum(lambda scol: F.sum(F.log(F.abs(scol))), skipna, part_cols).spark.column
+            )
+
+            scol = F.when(num_zeros > 0, 0).otherwise(sign * abs_prod)
+
+            if isinstance(self.spark.data_type, IntegralType):
+                scol = F.round(scol).cast(LongType())
+        else:
+            raise TypeError(
+                "Could not convert {} ({}) to numeric".format(
+                    spark_type_to_pandas_dtype(self.spark.data_type),
+                    self.spark.data_type.simpleString(),
+                )
+            )
+
+        return self._with_new_scol(scol)
 
     # ----------------------------------------------------------------------
     # Accessor Methods
@@ -5978,7 +5898,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         else:
             return kser
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=None, **kwargs):
         """
         Applies sfun to the column and returns a scalar
 
@@ -5995,21 +5915,23 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         if axis == 1:
             raise ValueError("Series does not support columns axis.")
         num_args = len(signature(sfun).parameters)
-        scol = self.spark.column
+        spark_column = self.spark.column
         spark_type = self.spark.data_type
-        if isinstance(spark_type, BooleanType) and sfun.__name__ not in ("min", "max"):
-            # Stat functions cannot be used with boolean values by default
-            # Thus, cast to integer (true to 1 and false to 0)
-            # Exclude the min and max methods though since those work with booleans
-            scol = scol.cast("integer")
+
         if num_args == 1:
             # Only pass in the column if sfun accepts only one arg
-            scol = sfun(scol)
+            scol = sfun(spark_column)
         else:  # must be 2
             assert num_args == 2
             # Pass in both the column and its data type if sfun accepts two args
-            scol = sfun(scol, spark_type)
-        return unpack_scalar(self._internal.spark_frame.select(scol))
+            scol = sfun(spark_column, spark_type)
+
+        min_count = kwargs.get("min_count", 0)
+        if min_count > 0:
+            scol = F.when(Frame._count_expr(spark_column, spark_type) >= min_count, scol)
+
+        result = unpack_scalar(self._internal.spark_frame.select(scol))
+        return result if result is not None else np.nan
 
     def __getitem__(self, key):
         try:

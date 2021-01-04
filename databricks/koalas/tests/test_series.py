@@ -1183,6 +1183,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumsum(), kser.cumsum())
         self.assert_eq(pser.cumsum(skipna=False), kser.cumsum(skipna=False))
 
+        # bool
+        pser = pd.Series([True, True, False, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumsum().astype(int), kser.cumsum())
+        self.assert_eq(pser.cumsum(skipna=False).astype(int), kser.cumsum(skipna=False))
+
     def test_cumprod(self):
         pser = pd.Series([1.0, None, 1.0, 4.0, 9.0])
         kser = ks.from_pandas(pser)
@@ -1203,8 +1209,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.cumprod(), kser.cumprod())
         self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
 
-        with self.assertRaisesRegex(Exception, "values should be bigger than 0"):
-            ks.Series([0, 1]).cumprod().to_pandas()
+        # including zero
+        pser = pd.Series([1, 2, 0, 3])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
+
+        # including negative values
+        pser = pd.Series([1, -1, -2])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False), kser.cumprod(skipna=False))
+
+        # bool
+        pser = pd.Series([True, True, False, True])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.cumprod(), kser.cumprod())
+        self.assert_eq(pser.cumprod(skipna=False).astype(int), kser.cumprod(skipna=False))
 
     def test_median(self):
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
@@ -1233,12 +1254,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.round(1.5)
 
     def test_quantile(self):
+        pser = pd.Series([])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.quantile(0.5), pser.quantile(0.5))
+        self.assert_eq(kser.quantile([0.25, 0.5, 0.75]), pser.quantile([0.25, 0.5, 0.75]))
+
         with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
             ks.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(accuracy="a")
-        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
             ks.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(q="a")
-        with self.assertRaisesRegex(ValueError, "q must be a float of an array of floats;"):
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
             ks.Series([24.0, 21.0, 25.0, 33.0, 26.0]).quantile(q=["a"])
+
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
+            ks.Series(["a", "b", "c"]).quantile()
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
+            ks.Series(["a", "b", "c"]).quantile([0.25, 0.5, 0.75])
 
     def test_idxmax(self):
         pser = pd.Series(data=[1, 4, 5], index=["A", "B", "C"])
@@ -1448,11 +1480,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.pop(("lama", "speed", "x"))
 
     def test_replace(self):
-        pser = pd.Series([10, 20, 15, 30, 45], name="x")
+        pser = pd.Series([10, 20, 15, 30, np.nan], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.replace(), pser.replace())
         self.assert_eq(kser.replace({}), pser.replace({}))
+
+        self.assert_eq(kser.replace(np.nan, 45), pser.replace(np.nan, 45))
 
         msg = "'to_replace' should be one of str, list, dict, int, float"
         with self.assertRaisesRegex(ValueError, msg):
@@ -2179,28 +2213,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([10, 20, 30, 40, 50])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(min_count=5), kser.prod(min_count=5))
-        # Using `repr` since the result of below will be `np.nan`.
-        self.assert_eq(repr(pser.prod(min_count=6)), repr(kser.prod(min_count=6)))
+        self.assert_eq(pser.prod(min_count=6), kser.prod(min_count=6))
 
         pser = pd.Series([10, np.nan, 30, np.nan, 50])
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.prod(min_count=3), kser.prod(min_count=3), almost=True)
-        # ditto.
-        self.assert_eq(repr(pser.prod(min_count=4)), repr(kser.prod(min_count=4)))
+        self.assert_eq(pser.prod(min_count=4), kser.prod(min_count=4))
 
         pser = pd.Series([np.nan, np.nan, np.nan])
         kser = ks.from_pandas(pser)
-        # ditto.
-        self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
+        self.assert_eq(pser.prod(min_count=1), kser.prod(min_count=1))
 
         pser = pd.Series([])
         kser = ks.from_pandas(pser)
-        # ditto.
-        self.assert_eq(repr(pser.prod(min_count=1)), repr(kser.prod(min_count=1)))
+        self.assert_eq(pser.prod(min_count=1), kser.prod(min_count=1))
 
-        with self.assertRaisesRegex(TypeError, "cannot perform prod with type object"):
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             ks.Series(["a", "b", "c"]).prod()
-        with self.assertRaisesRegex(TypeError, "cannot perform prod with type datetime64"):
+        with self.assertRaisesRegex(
+            TypeError, "Could not convert datetime64\\[ns\\] \\(timestamp\\) to numeric"
+        ):
             ks.Series([pd.Timestamp("2016-01-01") for _ in range(3)]).prod()
 
     def test_hasnans(self):
