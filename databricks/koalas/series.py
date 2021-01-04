@@ -1951,7 +1951,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    0
         3    2
         4    1
-        dtype: int64
+        dtype: int32
         >>> uniques
         Index(['a', 'b', 'c'], dtype='object')
 
@@ -1962,7 +1962,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    0
         3    2
         4    1
-        dtype: int64
+        dtype: int32
         >>> uniques
         Index(['a', 'b', 'c', None], dtype='object')
 
@@ -1973,7 +1973,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2    0
         3    2
         4    1
-        dtype: int64
+        dtype: int32
         >>> uniques
         Index(['a', 'b', 'c'], dtype='object')
         """
