@@ -1880,6 +1880,11 @@ class Frame(object, metaclass=ABCMeta):
         b    0.57735
         dtype: float64
 
+        >>> kdf.sem(ddof=0)
+        a    0.471405
+        b    0.471405
+        dtype: float64
+
         >>> kdf.sem(axis=1)
         0    1.5
         1    1.5
@@ -1897,6 +1902,9 @@ class Frame(object, metaclass=ABCMeta):
 
         >>> kser.sem()
         0.5773502691896258
+
+        >>> kser.sem(ddof=0)
+        0.47140452079103173
         """
         assert ddof in (0, 1)
 
