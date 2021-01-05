@@ -3788,7 +3788,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if not isinstance(value, ks.Series):
                 value = ks.Series(value)
 
-            if same_anchor(self, value):
+            if same_anchor(self, cast(ks.Series, value)):
                 combined = self
                 that_scol = value.spark.column
             else:
@@ -3797,7 +3797,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         data_spark_columns = combined._internal.data_spark_columns.copy()
         data_spark_columns.insert(loc, that_scol)
-        if not is_value_scalar and not same_anchor(self, value):
+        if not is_value_scalar and not same_anchor(self, cast(ks.Series, value)):
             data_spark_columns = data_spark_columns[:-1]
 
         column_labels = self._internal.column_labels.copy()
