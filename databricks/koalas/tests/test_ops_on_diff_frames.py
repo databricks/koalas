@@ -481,6 +481,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame([1, 2, 3])
         kdf = ks.from_pandas(pdf)
 
+        # Inserta a Series (with a different anchor)
         pser = pd.Series([4, 5, 6])
         kser = ks.from_pandas(pser)
 
@@ -488,30 +489,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.insert(1, "y", pser)
         self.assert_eq(kdf, pdf)
 
+        # Inserts a list
         kdf.insert(0, "a", [7, 8, 9])
         pdf.insert(0, "a", [7, 8, 9])
         self.assert_eq(kdf, pdf)
-
-        kdf.insert(1, "b", 10)
-        pdf.insert(1, "b", 10)
-        self.assert_eq(kdf, pdf, almost=True)
-
-        kdf.insert(2, "c", 0.1)
-        pdf.insert(2, "c", 0.1)
-        self.assert_eq(kdf, pdf, almost=True)
-
-        kdf.insert(3, "d", kdf.y + 1)
-        pdf.insert(3, "d", pdf.y + 1)
-        self.assert_eq(kdf, pdf, almost=True)
-
-        self.assertRaises(ValueError, lambda: kdf.insert(0, "y", kser))
-        self.assertRaises(ValueError, lambda: kdf.insert(1, "y", kser))
-        self.assertRaises(ValueError, lambda: kdf.insert(0, list("abc"), kser))
-        self.assertRaises(ValueError, lambda: kdf.insert(0, "d", [7, 8, 9, 10]))
-        self.assertRaises(ValueError, lambda: kdf.insert(0, "d", ks.Series([7, 8])))
-
-        self.assertRaises(AssertionError, lambda: kdf.insert(100, "y", kser))
-        self.assertRaises(AssertionError, lambda: kdf.insert(1, "y", kser, allow_duplicates=True))
 
     def test_compare(self):
         if LooseVersion(pd.__version__) >= LooseVersion("1.1"):

@@ -88,6 +88,34 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         index_cols = pdf.columns[column_mask]
         self.assert_eq(kdf[index_cols], pdf[index_cols])
 
+    def test_insert(self):
+        pdf = pd.DataFrame([1, 2, 3])
+        kdf = ks.from_pandas(pdf)
+
+        # Inserts a Scalar
+        kdf.insert(1, "b", 10)
+        pdf.insert(1, "b", 10)
+        self.assert_eq(kdf, pdf, almost=True)
+
+        kdf.insert(2, "c", 0.1)
+        pdf.insert(2, "c", 0.1)
+        self.assert_eq(kdf, pdf, almost=True)
+
+        # Inserts a Series with the same anchor
+        kdf.insert(3, "d", kdf.b + 1)
+        pdf.insert(3, "d", pdf.b + 1)
+        self.assert_eq(kdf, pdf, almost=True)
+
+        kser = ks.Series([4, 5, 6])
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "y", kser))
+        self.assertRaises(ValueError, lambda: kdf.insert(1, "y", kser))
+        self.assertRaises(ValueError, lambda: kdf.insert(0, list("abc"), kser))
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "d", [7, 8, 9, 10]))
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "d", ks.Series([7, 8])))
+
+        self.assertRaises(AssertionError, lambda: kdf.insert(100, "y", kser))
+        self.assertRaises(AssertionError, lambda: kdf.insert(1, "y", kser, allow_duplicates=True))
+
     def test_inplace(self):
         pdf, kdf = self.df_pair
 
