@@ -3721,6 +3721,43 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             Label of the inserted column.
         value : int, Series, or array-like
         allow_duplicates : bool, optional
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame([1, 2, 3])
+        >>> kdf
+           0
+        0  1
+        1  2
+        2  3
+        >>> set_option("compute.ops_on_diff_frames", False)
+        >>> kdf = ks.DataFrame([1, 2, 3])
+        >>> kdf
+           0
+        0  1
+        1  2
+        2  3
+        >>> kdf.insert(0, 'x', 4)
+        >>> kdf
+           x  0
+        0  4  1
+        1  4  2
+        2  4  3
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+        >>> kdf.insert(1, 'y', [5, 6, 7])
+        >>> kdf
+           x  y  0
+        0  4  5  1
+        1  4  6  2
+        2  4  7  3
+        >>> kdf.insert(2, 'z', ks.Series([8, 9, 10]))
+        >>> kdf
+           x  y   z  0
+        0  4  5   8  1
+        1  4  6   9  2
+        2  4  7  10  3
+        >>> reset_option("compute.ops_on_diff_frames")
         """
         if not isinstance(loc, int):
             raise TypeError("loc must be int")
