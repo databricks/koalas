@@ -215,3 +215,14 @@ You can also check the underlying PySpark data type of `Series` or schema of `Da
      |-- d: double (nullable = false)
      |-- s: string (nullable = false)
      |-- b: boolean (nullable = false)
+
+.. note::
+
+    Koalas currently does not support multiple types of data in single column.
+
+    .. code-block:: python
+    
+        >>> ks.Series([1, "A"])
+        Traceback (most recent call last):
+        ...
+        TypeError: an integer is required (got type str)
