@@ -3774,6 +3774,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise ValueError("cannot insert %s, already exists" % column)
 
         is_value_scalar = isinstance(value, Scalar.__args__)  # type: ignore
+        is_same_achor = False
 
         if is_value_scalar:
             combined = self.copy()
@@ -3788,7 +3789,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if not isinstance(value, ks.Series):
                 value = ks.Series(value)
 
-            if same_anchor(self, cast(ks.Series, value)):
+            is_same_achor = same_anchor(self, cast(ks.Series, value))
+            if is_same_achor:
                 combined = self
                 that_scol = value.spark.column
             else:
@@ -3797,7 +3799,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         data_spark_columns = combined._internal.data_spark_columns.copy()
         data_spark_columns.insert(loc, that_scol)
-        if not is_value_scalar and not same_anchor(self, cast(ks.Series, value)):
+        if not is_value_scalar and not is_same_achor:
             data_spark_columns = data_spark_columns[:-1]
 
         column_labels = self._internal.column_labels.copy()
