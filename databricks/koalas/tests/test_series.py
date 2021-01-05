@@ -1775,6 +1775,17 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b))
 
+    def test_mode(self):
+        pser = pd.Series([0, 0, 1, 1, 1, np.nan, np.nan, np.nan])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.mode(), pser.mode())
+        self.assert_eq(kser.mode(False).sort_values().values, pser.mode(False).sort_values().values)
+
+        pser.name = "x"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.mode(), pser.mode())
+        self.assert_eq(kser.mode(False).sort_values().values, pser.mode(False).sort_values().values)
+
     def test_rmod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
         kser = ks.from_pandas(pser)
