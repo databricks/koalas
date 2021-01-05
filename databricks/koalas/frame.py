@@ -3763,6 +3763,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise TypeError("loc must be int")
 
         assert 0 <= loc <= len(self.columns)
+        assert allow_duplicates is False
 
         if not is_name_like_value(column):
             raise ValueError(
@@ -3771,8 +3772,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if column in self.columns:
             raise ValueError("cannot insert %s, already exists" % column)
-
-        assert allow_duplicates is False
 
         is_value_scalar = isinstance(value, Scalar.__args__)  # type: ignore
 
