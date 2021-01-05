@@ -1850,7 +1850,7 @@ class Frame(object, metaclass=ABCMeta):
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased standard error of the mean over requested axis.
-    
+
         Parameters
         ----------
         axis : {index (0), columns (1)}
@@ -1919,7 +1919,9 @@ class Frame(object, metaclass=ABCMeta):
                 Frame._count_expr(spark_column, spark_type), 0.5
             )
 
-        return self._reduce_for_stat_function(sem, name="sem", numeric_only=numeric_only, axis=axis)
+        return self._reduce_for_stat_function(
+            sem, name="sem", numeric_only=numeric_only, axis=axis, ddof=ddof
+        )
 
     @property
     def size(self) -> int:
