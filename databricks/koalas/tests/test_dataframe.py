@@ -5120,3 +5120,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             # Test `inplace=True`
             kdf.backfill(inplace=True)
             self.assert_eq(expected, kdf)
+
+    def test_sem(self):
+        pdf = pd.DataFrame(
+            {
+                "A": [None, 3, None, None],
+                "B": [2, 4, None, 3],
+                "C": [None, None, None, 1],
+                "D": [3, -1, 5, 4],
+                "E": ["a", "b", "c", "d"],
+                "F": [True, False, True, False],
+            },
+            columns=["A", "B", "C", "D", "E", "F"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.sem(), kdf.sem())
+        self.assert_eq(pdf.sem(axis=1), kdf.sem(axis=1))

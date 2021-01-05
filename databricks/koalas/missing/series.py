@@ -52,7 +52,6 @@ class MissingPandasLikeSeries(object):
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
     searchsorted = _unsupported_function("searchsorted")
-    sem = _unsupported_function("sem")
     set_axis = _unsupported_function("set_axis")
     slice_shift = _unsupported_function("slice_shift")
     to_hdf = _unsupported_function("to_hdf")

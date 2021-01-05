@@ -2509,3 +2509,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             # Test `inplace=True`
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
+
+    def test_sem(self):
+        pser = pd.Series([None, 3, None, None])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.sem(), kser.sem())
+
+        pser = pd.Series([2, 4, None, 3])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.sem(), kser.sem())
+
+        pser = pd.Series([None, None, None, 1])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.sem(), kser.sem())
+
+        pser = pd.Series([3, -1, 5, 4])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.sem(), kser.sem())
+
+        pser = pd.Series([True, False, True, False])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(pser.sem(), kser.sem())
+
+        kser = ks.Series(["a", "b", "c", "d"])
+        with self.assertRaisesRegex(TypeError, "Could not convert object"):
+            kser.sem()
