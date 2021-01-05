@@ -430,18 +430,27 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._reduce_for_stat_function(F.min, only_numeric=False)
 
-    # TODO: sync the doc and implement `ddof`.
-    def std(self) -> Union[DataFrame, Series]:
+    # TODO: sync the doc.
+    def std(self, ddof: int = 1) -> Union[DataFrame, Series]:
         """
         Compute standard deviation of groups, excluding missing values.
+
+        Parameters
+        ----------
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
 
         See Also
         --------
         databricks.koalas.Series.groupby
         databricks.koalas.DataFrame.groupby
         """
+        assert ddof in (0, 1)
 
-        return self._reduce_for_stat_function(F.stddev, only_numeric=True)
+        return self._reduce_for_stat_function(
+            F.stddev_pop if ddof == 0 else F.stddev_samp, only_numeric=True
+        )
 
     def sum(self) -> Union[DataFrame, Series]:
         """

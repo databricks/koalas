@@ -2754,3 +2754,26 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(("x", "a")).tail(100000).sort_index(),
             kdf.groupby(("x", "a")).tail(100000).sort_index(),
         )
+
+    def test_ddof(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 1, 1, 1, 2, 2, 2, 3, 3, 3] * 3,
+                "b": [2, 3, 1, 4, 6, 9, 8, 10, 7, 5] * 3,
+                "c": [3, 5, 2, 5, 1, 2, 6, 4, 3, 6] * 3,
+            },
+            index=np.random.rand(10 * 3),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        for ddof in (0, 1):
+            self.assert_eq(
+                pdf.groupby("a").std(ddof=ddof).sort_index(),
+                kdf.groupby("a").std(ddof=ddof).sort_index(),
+                check_exact=False,
+            )
+            self.assert_eq(
+                pdf.groupby("a")["b"].std(ddof=ddof).sort_index(),
+                kdf.groupby("a")["b"].std(ddof=ddof).sort_index(),
+                check_exact=False,
+            )
