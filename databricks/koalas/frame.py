@@ -3788,12 +3788,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if not isinstance(value, ks.Series):
                 value = ks.Series(value)
 
-            combined = combine_frames(self, value)
-            that_scol = combined["that"]._internal.spark_column_for(value._column_label)
+            if same_anchor(self, value):
+                combined = self
+                that_scol = value.spark.column
+            else:
+                combined = combine_frames(self, value)
+                that_scol = combined["that"]._internal.spark_column_for(value._column_label)
 
         data_spark_columns = combined._internal.data_spark_columns.copy()
         data_spark_columns.insert(loc, that_scol)
-        if not is_value_scalar:
+        if not is_value_scalar and not same_anchor(self, value):
             data_spark_columns = data_spark_columns[:-1]
 
         column_labels = self._internal.column_labels.copy()

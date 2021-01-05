@@ -500,6 +500,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.insert(2, "c", 0.1)
         self.assert_eq(kdf, pdf, almost=True)
 
+        kdf.insert(3, "d", kdf.y + 1)
+        pdf.insert(3, "d", pdf.y + 1)
+        self.assert_eq(kdf, pdf, almost=True)
+
         self.assertRaises(ValueError, lambda: kdf.insert(0, "y", kser))
         self.assertRaises(ValueError, lambda: kdf.insert(1, "y", kser))
         self.assertRaises(ValueError, lambda: kdf.insert(0, list("abc"), kser))
