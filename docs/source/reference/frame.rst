@@ -226,6 +226,7 @@ Combining / joining / merging
    DataFrame.merge
    DataFrame.join
    DataFrame.update
+   DataFrame.insert
 
 Time series-related
 -------------------

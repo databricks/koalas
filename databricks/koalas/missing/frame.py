@@ -50,7 +50,6 @@ class _MissingPandasLikeDataFrame(object):
     ewm = _unsupported_function("ewm")
     first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
-    insert = _unsupported_function("insert")
     interpolate = _unsupported_function("interpolate")
     last = _unsupported_function("last")
     lookup = _unsupported_function("lookup")
