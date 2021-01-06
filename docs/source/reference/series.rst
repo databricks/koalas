@@ -140,6 +140,7 @@ Computations / Descriptive Stats
    Series.is_unique
    Series.quantile
    Series.rank
+   Series.sem
    Series.skew
    Series.std
    Series.sum
