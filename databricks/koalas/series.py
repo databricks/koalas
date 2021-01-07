@@ -4025,9 +4025,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         sdf = sdf_most_value.select(
             F.col(SPARK_DEFAULT_INDEX_NAME).alias(SPARK_DEFAULT_SERIES_NAME)
         )
-        internal = InternalFrame(
-            spark_frame=sdf, index_spark_columns=None, column_labels=[self._column_label]
-        )
+        internal = InternalFrame(spark_frame=sdf, index_spark_columns=None, column_labels=[None])
 
         return first_series(DataFrame(internal))
 

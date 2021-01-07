@@ -1775,6 +1775,27 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.a.mod(kdf.b), pdf.a.mod(pdf.b))
 
+    def test_mode(self):
+        pser = pd.Series([0, 0, 1, 1, 1, np.nan, np.nan, np.nan])
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.mode(), pser.mode())
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            # The `dropna` argument is added in pandas 0.24.
+            self.assert_eq(
+                kser.mode(dropna=False).sort_values().reset_index(drop=True),
+                pser.mode(dropna=False).sort_values().reset_index(drop=True),
+            )
+
+        pser.name = "x"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.mode(), pser.mode())
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            # The `dropna` argument is added in pandas 0.24.
+            self.assert_eq(
+                kser.mode(dropna=False).sort_values().reset_index(drop=True),
+                pser.mode(dropna=False).sort_values().reset_index(drop=True),
+            )
+
     def test_rmod(self):
         pser = pd.Series([100, None, -300, None, 500, -700], name="Koalas")
         kser = ks.from_pandas(pser)
