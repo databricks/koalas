@@ -1782,7 +1782,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `dropna` argument is added in pandas 0.24.
             self.assert_eq(
-                kser.mode(False).sort_values().values, pser.mode(False).sort_values().values
+                kser.mode(dropna=False).sort_values().reset_index(drop=True),
+                pser.mode(dropna=False).sort_values().reset_index(drop=True),
             )
 
         pser.name = "x"
@@ -1791,7 +1792,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
             # The `dropna` argument is added in pandas 0.24.
             self.assert_eq(
-                kser.mode(False).sort_values().values, pser.mode(False).sort_values().values
+                kser.mode(dropna=False).sort_values().reset_index(drop=True),
+                pser.mode(dropna=False).sort_values().reset_index(drop=True),
             )
 
     def test_rmod(self):
