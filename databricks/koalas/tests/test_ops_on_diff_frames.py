@@ -481,7 +481,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame([1, 2, 3])
         kdf = ks.from_pandas(pdf)
 
-        # Inserta a Series (with a different anchor)
+        # Inserts a Series (with a different anchor)
         pser = pd.Series([4, 5, 6])
         kser = ks.from_pandas(pser)
 
