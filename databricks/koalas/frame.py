@@ -697,6 +697,31 @@ class DataFrame(Frame, Generic[T]):
             )
             return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
 
+    def mode(self, dropna=True):
+        sdf = self._internal.spark_frame
+
+        def f(col):
+            if dropna:
+                sdf_dropna = sdf.select(col).dropna()
+            else:
+                sdf_dropna = sdf
+            count_df = sdf_dropna.groupBy(col).count()
+            most_value = count_df.orderBy("count", ascending=False).first()[1]
+            sdf_most_value = count_df.filter('count == {}'.format(most_value))
+            return sdf_most_value.select(col)
+
+        def g(sdf):
+            return sdf.withColumn('row_index', F.row_number().over(Window.orderBy(F.monotonically_increasing_id())))
+
+        new_sdf = None
+        for data_scol_name in self._internal.data_spark_column_names:
+            if new_sdf is None:
+                new_sdf = g(f(data_scol_name))
+            else:
+                new_sdf = new_sdf.join(g(f(data_scol_name)), on=['row_index'], how='outer')
+        new_sdf = new_sdf.drop('row_index')
+        return DataFrame(new_sdf)
+
     def _kser_for(self, label):
         """
         Create Series with a proper column label.

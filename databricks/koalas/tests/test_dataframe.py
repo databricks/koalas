@@ -1601,6 +1601,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq((kdf + "a").xs(("mammal", "dog", 4)), (pdf + "a").xs(("mammal", "dog", 4)))
         self.assert_eq((kdf + "a").xs(2, level=2), (pdf + "a").xs(2, level=2))
 
+    def test_mode(self):
+        pdf = pd.DataFrame(
+            [("bird", 2, 2), ("mammal", 4, np.nan), ("arthropod", 8, 0), ("bird", 2, np.nan)],
+            index=("falcon", "horse", "spider", "ostrich"),
+            columns=("species", "legs", "wings"),
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf.mode(), pdf.mode())
+        self.assert_eq(kdf.mode(dropna=False), pdf.mode(dropna=False))
+
     def test_missing(self):
         kdf = self.kdf
 
