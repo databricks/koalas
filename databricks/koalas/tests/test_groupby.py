@@ -2767,6 +2767,7 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         for ddof in (0, 1):
+            # std
             self.assert_eq(
                 pdf.groupby("a").std(ddof=ddof).sort_index(),
                 kdf.groupby("a").std(ddof=ddof).sort_index(),
@@ -2775,5 +2776,16 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 pdf.groupby("a")["b"].std(ddof=ddof).sort_index(),
                 kdf.groupby("a")["b"].std(ddof=ddof).sort_index(),
+                check_exact=False,
+            )
+            # var
+            self.assert_eq(
+                pdf.groupby("a").var(ddof=ddof).sort_index(),
+                kdf.groupby("a").var(ddof=ddof).sort_index(),
+                check_exact=False,
+            )
+            self.assert_eq(
+                pdf.groupby("a")["b"].var(ddof=ddof).sort_index(),
+                kdf.groupby("a")["b"].var(ddof=ddof).sort_index(),
                 check_exact=False,
             )

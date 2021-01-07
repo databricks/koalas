@@ -463,17 +463,27 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._reduce_for_stat_function(F.sum, only_numeric=True)
 
-    # TODO: sync the doc and implement `ddof`.
-    def var(self) -> Union[DataFrame, Series]:
+    # TODO: sync the doc.
+    def var(self, ddof: int = 1) -> Union[DataFrame, Series]:
         """
         Compute variance of groups, excluding missing values.
+
+        Parameters
+        ----------
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
 
         See Also
         --------
         databricks.koalas.Series.groupby
         databricks.koalas.DataFrame.groupby
         """
-        return self._reduce_for_stat_function(F.variance, only_numeric=True)
+        assert ddof in (0, 1)
+
+        return self._reduce_for_stat_function(
+            F.var_pop if ddof == 0 else F.var_samp, only_numeric=True
+        )
 
     # TODO: skipna should be implemented.
     def all(self) -> Union[DataFrame, Series]:
