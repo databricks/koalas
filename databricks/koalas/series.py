@@ -1933,7 +1933,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             An Series that's an indexer into `uniques`.
             ``uniques.take(codes)`` will have the same values as `values`.
         uniques : Index
-            The unique valid values. When `values` is koalas object, an
+            The unique valid values. When `values` is Koalas object, an
             `Index` is returned.
 
             .. note ::
