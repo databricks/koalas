@@ -1196,10 +1196,11 @@ class IndexingTest(ReusedSQLTestCase):
         pser = pdf.a
         kser = kdf.a
 
-        pser.iloc[[1]] = -pdf.b
-        kser.iloc[[1]] = -kdf.b
-        self.assert_eq(kser, pser)
-        self.assert_eq(kdf, pdf)
+        with self.assertRaisesRegex(
+            ValueError,
+            "cannot set using a list-like indexer with a different length than the value",
+        ):
+            kser.iloc[[1]] = -kdf.b
 
         with self.assertRaisesRegex(ValueError, "Incompatible indexer with DataFrame"):
             kser.iloc[1] = kdf[["b"]]
