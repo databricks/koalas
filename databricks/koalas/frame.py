@@ -697,31 +697,6 @@ class DataFrame(Frame, Generic[T]):
             )
             return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
 
-    def mode(self, dropna=True):
-        sdf = self._internal.spark_frame
-
-        def f(col):
-            if dropna:
-                sdf_dropna = sdf.select(col).dropna()
-            else:
-                sdf_dropna = sdf
-            count_df = sdf_dropna.groupBy(col).count()
-            most_value = count_df.orderBy("count", ascending=False).first()[1]
-            sdf_most_value = count_df.filter('count == {}'.format(most_value))
-            return sdf_most_value.select(col)
-
-        def g(sdf):
-            return sdf.withColumn('row_index', F.row_number().over(Window.orderBy(F.monotonically_increasing_id())))
-
-        new_sdf = None
-        for data_scol_name in self._internal.data_spark_column_names:
-            if new_sdf is None:
-                new_sdf = g(f(data_scol_name))
-            else:
-                new_sdf = new_sdf.join(g(f(data_scol_name)), on=['row_index'], how='outer')
-        new_sdf = new_sdf.drop('row_index')
-        return DataFrame(new_sdf)
-
     def _kser_for(self, label):
         """
         Create Series with a proper column label.
@@ -3249,6 +3224,58 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         cond_inversed = cond._apply_series_op(lambda kser: ~kser)
         return self.where(cond_inversed, other)
+
+    def mode(self, dropna: bool = True) -> "DataFrame":
+        """
+        Get the mode(s) of each element along the selected axis.
+
+        The mode of a set of values is the value that appears most often.
+        It can be multiple values.
+
+        Parameters
+        ----------
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            The axis to iterate over while searching for the mode:
+
+            * 0 or 'index' : get mode of each column
+            * 1 or 'columns' : get mode of each row.
+
+        numeric_only : bool, default False
+            If True, only apply to numeric columns.
+        dropna : bool, default True
+            Don't consider counts of NaN/NaT.
+
+        Returns
+        -------
+        DataFrame
+            The modes of each column or row.
+
+        See Also
+        --------
+        Series.mode : Return the highest frequency value in a Series.
+        Series.value_counts : Return the counts of values in a Series.
+        """
+
+        def scol_mode(col):
+            if dropna:
+                sdf_dropna = self._internal.spark_frame.select(col).dropna()
+            else:
+                sdf_dropna = self._internal.spark_frame
+            count_df = sdf_dropna.groupBy(col).count()
+            most_value = count_df.orderBy("count", ascending=False).first()[1]
+            sdf_most_value = count_df.filter("count == {}".format(most_value))
+            return sdf_most_value.select(col).withColumn(
+                "row_index", F.row_number().over(Window.orderBy(F.monotonically_increasing_id()))
+            )
+
+        new_sdf = None
+        for data_scol_name in self._internal.data_spark_column_names:
+            if new_sdf is None:
+                new_sdf = scol_mode(data_scol_name)
+            else:
+                new_sdf = new_sdf.join(scol_mode(data_scol_name), on=["row_index"], how="outer")
+
+        return DataFrame(new_sdf.drop("row_index"))
 
     @property
     def index(self) -> "Index":
