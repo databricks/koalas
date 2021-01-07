@@ -1610,6 +1610,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
         self.assert_eq(kdf.mode(), pdf.mode())
         self.assert_eq(kdf.mode(dropna=False), pdf.mode(dropna=False))
+        self.assert_eq(kdf.mode(numeric_only=True), pdf.mode(numeric_only=True))
 
     def test_missing(self):
         kdf = self.kdf

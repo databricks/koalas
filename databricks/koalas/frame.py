@@ -3225,7 +3225,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cond_inversed = cond._apply_series_op(lambda kser: ~kser)
         return self.where(cond_inversed, other)
 
-    def mode(self, dropna: bool = True) -> "DataFrame":
+    def mode(self, numeric_only: bool = False, dropna: bool = True) -> "DataFrame":
         """
         Get the mode(s) of each element along the selected axis.
 
@@ -3255,27 +3255,17 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Series.mode : Return the highest frequency value in a Series.
         Series.value_counts : Return the counts of values in a Series.
         """
+        data = self if not numeric_only else self._get_numeric_data()
+        return data.apply(lambda kser: kser.mode(dropna=dropna))
 
-        def scol_mode(col):
-            if dropna:
-                sdf_dropna = self._internal.spark_frame.select(col).dropna()
-            else:
-                sdf_dropna = self._internal.spark_frame
-            count_df = sdf_dropna.groupBy(col).count()
-            most_value = count_df.orderBy("count", ascending=False).first()[1]
-            sdf_most_value = count_df.filter("count == {}".format(most_value))
-            return sdf_most_value.select(col).withColumn(
-                "row_index", F.row_number().over(Window.orderBy(F.monotonically_increasing_id()))
-            )
-
-        new_sdf = None
-        for data_scol_name in self._internal.data_spark_column_names:
-            if new_sdf is None:
-                new_sdf = scol_mode(data_scol_name)
-            else:
-                new_sdf = new_sdf.join(scol_mode(data_scol_name), on=["row_index"], how="outer")
-
-        return DataFrame(new_sdf.drop("row_index"))
+    def _get_numeric_data(self):
+        data = self.copy()
+        for label in self._internal.column_labels:
+            spark_type = self._internal.spark_type_for(label)
+            is_numeric_or_boolean = isinstance(spark_type, (NumericType, BooleanType))
+            if not is_numeric_or_boolean:
+                data = data.drop(label)
+        return data
 
     @property
     def index(self) -> "Index":
