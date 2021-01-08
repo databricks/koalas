@@ -105,6 +105,7 @@ def align_diff_index(func, this_index: "Index", *args) -> "Index":
                     ]
                 ),
             )
+            .sort_index()
             .to_frame(DEFAULT_SERIES_NAME)
             .set_index(DEFAULT_SERIES_NAME)
             .index.rename(this_index.name)
