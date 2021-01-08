@@ -231,7 +231,7 @@ class SeriesPlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
         bins = KoalasHistPlot._get_bins(kdf[["a"]].to_spark(), 10)
 
         expected_histogram = np.array([5, 4, 1, 0, 0, 0, 0, 0, 0, 1])
-        histogram = KoalasHistPlot._compute_hist(kdf[["a"]].to_spark(), bins)
+        histogram = next(KoalasHistPlot._compute_hist(kdf[["a"]], bins))
         self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
         self.assert_eq(pd.Series(expected_histogram, name="__a_bucket"), histogram, almost=True)
 
