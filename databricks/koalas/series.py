@@ -2003,28 +2003,21 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
 
         uniques_list = first_series(uniq_pdf).tolist()
-        uniques_list = sorted(uniques_list, key=lambda x: (x is None, x))
+        uniques_list = sorted(uniques_list, key=lambda x: (pd.isna(x), x))
 
-        # Constructs `unique_to_code` mapping unique to code
+        # Constructs `unique_to_code` mapping non-na unique to code
         unique_to_code = {}
         if na_sentinel is not None:
-            unique_to_code = {np.nan: na_sentinel}
             na_sentinel_code = na_sentinel
         code = 0
         for unique in uniques_list:
             if unique not in unique_to_code:
-                if unique is None and na_sentinel is not None:
-                    continue
-
-                if unique is None:
-                    na_sentinel_code = code
+                if pd.isna(unique):
+                    if na_sentinel is None:
+                        na_sentinel_code = code
                 else:
                     unique_to_code[unique] = code
                 code += 1
-
-        sdf = self._internal.resolved_copy.spark_frame
-        scol_name = self._internal.data_spark_column_names[0]
-        new_scol_name = cast(str, verify_temp_column_name(sdf, "__new_column__"))
 
         kvs = list(
             chain(*([(F.lit(unique), F.lit(code)) for unique, code in unique_to_code.items()]))
@@ -2038,7 +2031,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         codes = first_series(DataFrame(internal))
 
         if na_sentinel is not None:
-            uniques = ks.Index([x for x in uniques_list if x is not None])
+            # Drops the NaN from the uniques of the values
+            uniques = ks.Index([x for x in uniques_list if not pd.isna(x)])
         else:
             uniques = ks.Index(uniques_list)
 

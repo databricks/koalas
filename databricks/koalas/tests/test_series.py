@@ -2328,10 +2328,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pcodes.tolist(), kcodes.to_list())
         self.assert_eq(puniques, kuniques)
 
+        pser = pd.Series([1, None, 3, 2, 1])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
         is_lower_pandas_version = LooseVersion(pd.__version__) < LooseVersion("1.1.2")
+
+        pser = pd.Series(["a", "b", "a", np.nan])
+        kser = ks.from_pandas(pser)
 
         pcodes, puniques = pser.factorize(sort=True, na_sentinel=-2)
         kcodes, kuniques = kser.factorize(na_sentinel=-2)
+
         self.assert_eq(
             [0, 1, 0, -2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
         )
