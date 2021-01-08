@@ -2026,7 +2026,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         map_scol = F.create_map(kvs)
         null_scol = F.when(self.spark.column.isNull(), F.lit(na_sentinel_code))
         mapped_scol = map_scol.getItem(self.spark.column)
-        internal = self._internal.with_new_columns([null_scol.otherwise(mapped_scol)])
+
+        new_col = verify_temp_column_name(self.to_frame(), "__new_col__")
+        internal = self._internal.with_new_columns(
+            [null_scol.otherwise(mapped_scol).alias(new_col)]
+        )
 
         codes = first_series(DataFrame(internal))
 
