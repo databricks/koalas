@@ -2321,6 +2321,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pcodes.tolist(), kcodes.to_list())
         self.assert_eq(puniques, kuniques)
 
+        #
+        # Deals with None and np.nan
+        #
         pser = pd.Series(["a", "b", "a", np.nan])
         kser = ks.from_pandas(pser)
         pcodes, puniques = pser.factorize(sort=True)
@@ -2335,23 +2338,49 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pcodes.tolist(), kcodes.to_list())
         self.assert_eq(puniques, kuniques)
 
+        pser = pd.Series(["a", None, "a"])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series([None, np.nan])
+        kser = ks.from_pandas(pser)
+        kcodes, kuniques = kser.factorize()
+        # pandas: [-1, -1]
+        self.assert_eq(["-1", "-1"], kcodes.to_list())
+        # pandas: Float64Index([], dtype='float64')
+        self.assert_eq(pd.Index([]), kuniques)
+
+        pser = pd.Series([np.nan, np.nan])
+        kser = ks.from_pandas(pser)
+        kcodes, kuniques = kser.factorize()
+        # pandas: [-1, -1]
+        self.assert_eq(["-1", "-1"], kcodes.to_list())
+        # pandas: Float64Index([], dtype='float64')
+        self.assert_eq(pd.Index([]), kuniques)
+
+        #
+        # Deals with na_sentinel
+        #
         is_lower_pandas_version = LooseVersion(pd.__version__) < LooseVersion("1.1.2")
 
-        pser = pd.Series(["a", "b", "a", np.nan])
+        pser = pd.Series(["a", "b", "a", np.nan, None])
         kser = ks.from_pandas(pser)
 
         pcodes, puniques = pser.factorize(sort=True, na_sentinel=-2)
         kcodes, kuniques = kser.factorize(na_sentinel=-2)
 
         self.assert_eq(
-            [0, 1, 0, -2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
+            [0, 1, 0, -2, -2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
         )
         self.assert_eq(puniques, kuniques)
 
         pcodes, puniques = pser.factorize(sort=True, na_sentinel=2)
         kcodes, kuniques = kser.factorize(na_sentinel=2)
         self.assert_eq(
-            [0, 1, 0, 2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
+            [0, 1, 0, 2, 2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
         )
         self.assert_eq(puniques, kuniques)
 

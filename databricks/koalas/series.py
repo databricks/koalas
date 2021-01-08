@@ -2031,7 +2031,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         if na_sentinel is not None:
             # Drops the NaN from the uniques of the values
-            uniques = ks.Index([x for x in uniques_list if not pd.isna(x)])
+            non_na_list = [x for x in uniques_list if not pd.isna(x)]
+            if len(non_na_list) == 0:
+                uniques = pd.Index(non_na_list)
+            else:
+                uniques = ks.Index(non_na_list)
         else:
             uniques = ks.Index(uniques_list)
 
