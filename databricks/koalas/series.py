@@ -2011,13 +2011,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             na_sentinel_code = na_sentinel
         code = 0
         for unique in uniques_list:
-            if unique not in unique_to_code:
-                if pd.isna(unique):
-                    if na_sentinel is None:
-                        na_sentinel_code = code
-                else:
-                    unique_to_code[unique] = code
-                code += 1
+            if pd.isna(unique):
+                if na_sentinel is None:
+                    na_sentinel_code = code
+            else:
+                unique_to_code[unique] = code
+            code += 1
 
         kvs = list(
             chain(*([(F.lit(unique), F.lit(code)) for unique, code in unique_to_code.items()]))
