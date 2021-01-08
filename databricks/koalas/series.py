@@ -1916,7 +1916,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def factorize(
         self, sort: bool = True, na_sentinel: Optional[int] = -1
-    ) -> Tuple[pd.Series, "ks.Index"]:
+    ) -> Tuple["Series", pd.Index]:
         """
         Encode the object as an enumerated type or categorical variable.
         This method is useful for obtaining a numeric representation of an
