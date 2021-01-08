@@ -1274,16 +1274,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser1.repeat(kser2).sort_index(), pser1.repeat(pser2).sort_index())
 
     def test_series_ops(self):
-        pser1 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
-        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7])
-        pidx1 = pd.Index([0, 1, 2, 3, 4, 5, 6])
+        pser1 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x", index=[11, 12, 13, 14, 15, 16, 17])
+        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7], index=[11, 12, 13, 14, 15, 16, 17])
+        pidx1 = pd.Index([10, 11, 12, 13, 14, 15, 16])
         kser1 = ks.from_pandas(pser1)
         kser2 = ks.from_pandas(pser2)
         kidx1 = ks.from_pandas(pidx1)
 
         self.assert_eq((kser1 + 1 + 10 * kser2).sort_index(), (pser1 + 1 + 10 * pser2).sort_index())
-        self.assert_eq((kser1 + 1 + 10 * kidx1).sort_index(), (pser1 + 1 + 10 * pidx1).sort_index())
-        self.assert_eq((kidx1 + 1 + 10 * kser1).sort_index(), (pidx1 + 1 + 10 * pser1).sort_index())
+        self.assert_eq(kser1 + 1 + 10 * kidx1, pser1 + 1 + 10 * pidx1)
+        self.assert_eq(kidx1 + 1 + 10 * kser1, pidx1 + 1 + 10 * pser1)
 
         pidx2 = pd.Index([11, 12, 13])
         kidx2 = ks.from_pandas(pidx2)

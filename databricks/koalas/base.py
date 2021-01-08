@@ -128,15 +128,14 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Serie
                 for col in cols
             ]
 
-            combined = combine_frames(this, *that, how="full")
-
-            self_series = first_series(
-                combined["this"].set_index(combined["this"]._internal.column_labels[:-1])
+            combined = combine_frames(this, *that, how="full").sort_index()
+            combined = combined.set_index(
+                combined._internal.column_labels[: this_index_ops._internal.index_level]
             )
-            self_series.index.names = this_index_ops._internal.index_names
+            combined.index.names = this_index_ops._internal.index_names
 
             return column_op(func)(
-                self_series,
+                first_series(combined["this"]),
                 *[
                     combined["that"]._kser_for(label)
                     for label in combined["that"]._internal.column_labels
@@ -150,7 +149,7 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Serie
                 [col.to_series() if isinstance(col, Index) else col for col in cols]
             ]
 
-            combined = combine_frames(this, that_frame.reset_index())
+            combined = combine_frames(this, that_frame.reset_index()).sort_index()
 
             self_index = combined["this"].set_index(combined["this"]._internal.column_labels).index
 
