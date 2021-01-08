@@ -673,6 +673,7 @@ class DataFrame(Frame, Generic[T]):
         else:
             # Here we execute with the first 1000 to get the return type.
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
+            numeric_only = None if name in ["sum", "product", "prod"] else numeric_only
             limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
             pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only, **kwargs)
