@@ -23,8 +23,7 @@ from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 
-from databricks.koalas.plot import TopNPlot, SampledPlot
-from pyspark.ml.feature import Bucketizer
+from databricks.koalas.plot import TopNPlotBase, SampledPlotBase, HistogramPlotBase
 from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 
@@ -61,7 +60,7 @@ else:
     _all_kinds = PlotAccessor._all_kinds
 
 
-class KoalasBarPlot(PandasBarPlot, TopNPlot):
+class KoalasBarPlot(PandasBarPlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -442,34 +441,13 @@ class KoalasBoxPlot(PandasBoxPlot):
         return fliers
 
 
-class KoalasHistPlot(PandasHistPlot):
+class KoalasHistPlot(PandasHistPlot, HistogramPlotBase):
     def _args_adjust(self):
         if is_list_like(self.bottom):
             self.bottom = np.array(self.bottom)
 
     def _compute_plot_data(self):
-        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
-        from databricks.koalas.series import Series
-
-        data = self.data
-        if isinstance(data, Series):
-            data = data.to_frame()
-
-        numeric_data = data.select_dtypes(
-            include=["byte", "decimal", "integer", "float", "long", "double", np.datetime64]
-        )
-
-        # no empty frames or series allowed
-        if len(numeric_data.columns) == 0:
-            raise TypeError(
-                "Empty {0!r}: no numeric data to " "plot".format(numeric_data.__class__.__name__)
-            )
-
-        if is_integer(self.bins):
-            # computes boundaries for the column
-            self.bins = self._get_bins(data.to_spark(), self.bins)
-
-        self.data = numeric_data
+        self.data, self.bins = HistogramPlotBase.prepare_hist_data(self.data, self.bins)
 
     def _make_plot(self):
         # TODO: this logic is similar with KdePlot. Might have to deduplicate it.
@@ -477,7 +455,7 @@ class KoalasHistPlot(PandasHistPlot):
         # Use 1 for now to save the computation.
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
-        output_series = KoalasHistPlot._compute_hist(self.data, self.bins)
+        output_series = HistogramPlotBase.compute_hist(self.data, self.bins)
 
         for (i, label), y in zip(enumerate(self.data._internal.column_labels), output_series):
             ax = self._get_ax(i)
@@ -510,145 +488,8 @@ class KoalasHistPlot(PandasHistPlot):
         cls._update_stacker(ax, stacking_id, n)
         return patches
 
-    @staticmethod
-    def _get_bins(sdf, bins):
-        # 'data' is a Spark DataFrame that selects all columns.
-        if len(sdf.columns) > 1:
-            min_col = F.least(*map(F.min, sdf))
-            max_col = F.greatest(*map(F.max, sdf))
-        else:
-            min_col = F.min(sdf.columns[-1])
-            max_col = F.max(sdf.columns[-1])
-        boundaries = sdf.select(min_col, max_col).first()
 
-        # divides the boundaries into bins
-        if boundaries[0] == boundaries[1]:
-            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
-
-        return np.linspace(boundaries[0], boundaries[1], bins + 1)
-
-    @staticmethod
-    def _compute_hist(kdf, bins):
-        # 'data' is a Spark DataFrame that selects one column.
-        assert isinstance(bins, (np.ndarray, np.generic))
-
-        sdf = kdf._internal.spark_frame
-        scols = []
-        for label in kdf._internal.column_labels:
-            scols.append(kdf._internal.spark_column_for(label))
-        sdf = sdf.select(*scols)
-
-        # 1. Make the bucket output flat to:
-        #     +----------+-------+
-        #     |__group_id|buckets|
-        #     +----------+-------+
-        #     |0         |0.0    |
-        #     |0         |0.0    |
-        #     |0         |1.0    |
-        #     |0         |2.0    |
-        #     |0         |3.0    |
-        #     |0         |3.0    |
-        #     |1         |0.0    |
-        #     |1         |1.0    |
-        #     |1         |1.0    |
-        #     |1         |2.0    |
-        #     |1         |1.0    |
-        #     |1         |0.0    |
-        #     +----------+-------+
-        colnames = sdf.columns
-        bucket_names = ["__{}_bucket".format(colname) for colname in colnames]
-
-        output_df = None
-        for group_id, (colname, bucket_name) in enumerate(zip(colnames, bucket_names)):
-            # creates a Bucketizer to get corresponding bin of each value
-            bucketizer = Bucketizer(
-                splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
-            )
-
-            bucket_df = bucketizer.transform(sdf)
-            if output_df is None:
-                output_df = bucket_df.select(
-                    F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
-                )
-            else:
-                output_df = output_df.union(
-                    bucket_df.select(
-                        F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
-                    )
-                )
-
-        # 2. Calculate the count based on each group and bucket.
-        #     +----------+-------+------+
-        #     |__group_id|buckets| count|
-        #     +----------+-------+------+
-        #     |0         |0.0    |2     |
-        #     |0         |1.0    |1     |
-        #     |0         |2.0    |1     |
-        #     |0         |3.0    |2     |
-        #     |1         |0.0    |2     |
-        #     |1         |1.0    |3     |
-        #     |1         |2.0    |1     |
-        #     +----------+-------+------+
-        result = (
-            output_df.groupby("__group_id", "__bucket")
-            .agg(F.count("*").alias("count"))
-            .toPandas()
-            .sort_values(by=["__group_id", "__bucket"])
-        )
-
-        # 3. Fill empty bins and calculate based on each group id. From:
-        #     +----------+--------+------+
-        #     |__group_id|__bucket| count|
-        #     +----------+--------+------+
-        #     |0         |0.0     |2     |
-        #     |0         |1.0     |1     |
-        #     |0         |2.0     |1     |
-        #     |0         |3.0     |2     |
-        #     +----------+--------+------+
-        #     +----------+--------+------+
-        #     |__group_id|__bucket| count|
-        #     +----------+--------+------+
-        #     |1         |0.0     |2     |
-        #     |1         |1.0     |3     |
-        #     |1         |2.0     |1     |
-        #     +----------+--------+------+
-        #
-        # to:
-        #     +-----------------+
-        #     |__values1__bucket|
-        #     +-----------------+
-        #     |2                |
-        #     |1                |
-        #     |1                |
-        #     |2                |
-        #     |0                |
-        #     +-----------------+
-        #     +-----------------+
-        #     |__values2__bucket|
-        #     +-----------------+
-        #     |2                |
-        #     |3                |
-        #     |1                |
-        #     |0                |
-        #     |0                |
-        #     +-----------------+
-        output_series = []
-        for i, bucket_name in enumerate(bucket_names):
-            current_bucket_result = result[result["__group_id"] == i]
-            # generates a pandas DF with one row for each bin
-            # we need this as some of the bins may be empty
-            indexes = pd.DataFrame({"__bucket": np.arange(0, len(bins) - 1)})
-            # merges the bins with counts on it and fills remaining ones with zeros
-            pdf = indexes.merge(current_bucket_result, how="left", on=["__bucket"]).fillna(0)[
-                ["count"]
-            ]
-            pdf.columns = [bucket_name]
-            output_series.append(pdf[bucket_name])
-
-        return output_series
-
-
-class KoalasPiePlot(PandasPiePlot, TopNPlot):
+class KoalasPiePlot(PandasPiePlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -657,7 +498,7 @@ class KoalasPiePlot(PandasPiePlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasAreaPlot(PandasAreaPlot, SampledPlot):
+class KoalasAreaPlot(PandasAreaPlot, SampledPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_sampled(data), **kwargs)
 
@@ -666,7 +507,7 @@ class KoalasAreaPlot(PandasAreaPlot, SampledPlot):
         super()._make_plot()
 
 
-class KoalasLinePlot(PandasLinePlot, SampledPlot):
+class KoalasLinePlot(PandasLinePlot, SampledPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_sampled(data), **kwargs)
 
@@ -675,7 +516,7 @@ class KoalasLinePlot(PandasLinePlot, SampledPlot):
         super()._make_plot()
 
 
-class KoalasBarhPlot(PandasBarhPlot, TopNPlot):
+class KoalasBarhPlot(PandasBarhPlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -684,7 +525,7 @@ class KoalasBarhPlot(PandasBarhPlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasScatterPlot(PandasScatterPlot, TopNPlot):
+class KoalasScatterPlot(PandasScatterPlot, TopNPlotBase):
     def __init__(self, data, x, y, **kwargs):
         super().__init__(self.get_top_n(data), x, y, **kwargs)
 

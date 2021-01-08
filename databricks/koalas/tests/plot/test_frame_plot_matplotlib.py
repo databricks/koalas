@@ -24,7 +24,6 @@ import numpy as np
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
-from databricks.koalas.plot import KoalasHistPlot
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
@@ -405,32 +404,6 @@ class DataFramePlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
         pdf1.columns = columns
         kdf1.columns = columns
         check_hist_plot(pdf1, kdf1)
-
-    def test_compute_hist(self):
-        expected_bins = np.linspace(1, 50, 11)
-        kdf = ks.DataFrame(
-            {
-                "a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],
-                "b": [50, 50, 30, 30, 30, 24, 10, 5, 4, 3, 1],
-            }
-        )
-
-        bins = KoalasHistPlot._get_bins(kdf.to_spark(), 10)
-        self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
-
-        expected_histograms = [
-            np.array([5, 4, 1, 0, 0, 0, 0, 0, 0, 1]),
-            np.array([4, 1, 0, 0, 1, 3, 0, 0, 0, 2]),
-        ]
-        histograms = KoalasHistPlot._compute_hist(kdf, bins)
-        expected_names = ["__a_bucket", "__b_bucket"]
-
-        for histogram, expected_histogram, expected_name in zip(
-            histograms, expected_histograms, expected_names
-        ):
-            self.assert_eq(
-                pd.Series(expected_histogram, name=expected_name), histogram, almost=True
-            )
 
     def test_kde_plot(self):
         def moving_average(a, n=10):
