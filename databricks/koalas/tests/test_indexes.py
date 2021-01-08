@@ -1583,14 +1583,26 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # other = MultiIndex
         pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kmidx = ks.from_pandas(pmidx)
-        self.assert_eq(
-            pidx.intersection(pmidx), kidx.intersection(kmidx).sort_values(), almost=True
-        )
-        self.assert_eq(
-            (pidx + 1).intersection(pmidx),
-            (kidx + 1).intersection(kmidx).sort_values(),
-            almost=True,
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+            self.assert_eq(
+                kidx.intersection(kmidx).sort_values(),
+                kidx._kdf.head(0).index.rename(None),
+                almost=True,
+            )
+            self.assert_eq(
+                (kidx + 1).intersection(kmidx).sort_values(),
+                kidx._kdf.head(0).index.rename(None),
+                almost=True,
+            )
+        else:
+            self.assert_eq(
+                pidx.intersection(pmidx), kidx.intersection(kmidx).sort_values(), almost=True
+            )
+            self.assert_eq(
+                (pidx + 1).intersection(pmidx),
+                (kidx + 1).intersection(kmidx).sort_values(),
+                almost=True,
+            )
 
         # other = Series
         pser = pd.Series([3, 4, 5, 6])
