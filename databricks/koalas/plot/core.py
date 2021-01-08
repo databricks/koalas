@@ -18,6 +18,8 @@ import importlib
 
 import pandas as pd
 import numpy as np
+
+from databricks.koalas.utils import name_like_string
 from pyspark.ml.feature import Bucketizer
 from pyspark.sql import functions as F
 from pandas.core.base import PandasObject
@@ -143,8 +145,11 @@ class HistogramPlotBase:
 
         sdf = kdf._internal.spark_frame
         scols = []
+        input_column_names = []
         for label in kdf._internal.column_labels:
-            scols.append(kdf._internal.spark_column_for(label))
+            input_column_name = name_like_string(label)
+            input_column_names.append(input_column_name)
+            scols.append(kdf._internal.spark_column_for(label).alias(input_column_name))
         sdf = sdf.select(*scols)
 
         # 1. Make the bucket output flat to:
@@ -243,7 +248,7 @@ class HistogramPlotBase:
         #     |0                |
         #     +-----------------+
         output_series = []
-        for i, bucket_name in enumerate(bucket_names):
+        for i, (input_column_name, bucket_name) in enumerate(zip(input_column_names, bucket_names)):
             current_bucket_result = result[result["__group_id"] == i]
             # generates a pandas DF with one row for each bin
             # we need this as some of the bins may be empty
@@ -252,8 +257,8 @@ class HistogramPlotBase:
             pdf = indexes.merge(current_bucket_result, how="left", on=["__bucket"]).fillna(0)[
                 ["count"]
             ]
-            pdf.columns = [bucket_name]
-            output_series.append(pdf[bucket_name])
+            pdf.columns = [input_column_name]
+            output_series.append(pdf[input_column_name])
 
         return output_series
 
@@ -363,6 +368,8 @@ class KoalasPlotAccessor(PandasObject):
                 "scatter": TopNPlotBase().get_top_n,
                 "area": SampledPlotBase().get_sampled,
                 "line": SampledPlotBase().get_sampled,
+                # if histogram is not supported, the backend will throw an exception
+                "hist": lambda data: data,
             }
             if not data_preprocessor_map[kind]:
                 raise NotImplementedError(
