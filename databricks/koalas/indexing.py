@@ -1563,11 +1563,6 @@ class iLocIndexer(LocIndexerLike):
             )
 
     def __setitem__(self, key, value):
-        if is_list_like(key) and is_list_like(value):
-            if len(key) != len(value):
-                raise ValueError(
-                    "cannot set using a list-like indexer with a different length than the value"
-                )
         super().__setitem__(key, value)
         # Update again with resolved_copy to drop extra columns.
         self._kdf._update_internal_frame(
