@@ -1914,7 +1914,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
         )._kser_for(self._column_label)
 
-    def factorize(self, sort: bool = True, na_sentinel: Optional[int] = -1):
+    def factorize(
+        self, sort: bool = True, na_sentinel: Optional[int] = -1
+    ) -> Tuple[pd.Series, "ks.Index"]:
         """
         Encode the object as an enumerated type or categorical variable.
         This method is useful for obtaining a numeric representation of an
@@ -1930,11 +1932,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Returns
         -------
         codes : Series
-            An Series that's an indexer into `uniques`.
+            A Series that's an indexer into `uniques`.
             ``uniques.take(codes)`` will have the same values as `values`.
         uniques : Index
-            The unique valid values. When `values` is Koalas object, an
-            `Index` is returned.
+            The unique valid values.
 
             .. note ::
 
@@ -2031,13 +2032,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         if na_sentinel is not None:
             # Drops the NaN from the uniques of the values
-            non_na_list = [x for x in uniques_list if not pd.isna(x)]
-            if len(non_na_list) == 0:
-                uniques = pd.Index(non_na_list)
-            else:
-                uniques = ks.Index(non_na_list)
-        else:
-            uniques = ks.Index(uniques_list)
+            uniques_list = [x for x in uniques_list if not pd.isna(x)]
+
+        uniques = pd.Index(uniques_list)
 
         return codes, uniques
 
