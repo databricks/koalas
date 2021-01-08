@@ -1196,6 +1196,11 @@ class IndexingTest(ReusedSQLTestCase):
         pser = pdf.a
         kser = kdf.a
 
+        pser.iloc[[0, 1, 2]] = -pdf.b
+        kser.iloc[[0, 1, 2]] = -kdf.b
+        self.assert_eq(kser, pser)
+        self.assert_eq(kdf, pdf)
+
         # TODO: matching the behavior with pandas 1.2 and uncomment below test.
         # with self.assertRaisesRegex(
         #     ValueError,

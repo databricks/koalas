@@ -1595,34 +1595,52 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # other = Series
         pser = pd.Series([3, 4, 5, 6])
         kser = ks.from_pandas(pser)
-        self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
-        self.assert_eq((pidx + 1).intersection(pser), (kidx + 1).intersection(kser).sort_values())
+        if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+            self.assert_eq(kidx.intersection(kser).sort_values(), ks.Index([3, 4], name="Koalas"))
+            self.assert_eq(
+                (kidx + 1).intersection(kser).sort_values(), ks.Index([3, 4, 5], name="Koalas")
+            )
+        else:
+            self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
+            self.assert_eq(
+                (pidx + 1).intersection(pser), (kidx + 1).intersection(kser).sort_values()
+            )
 
         pser_different_name = pd.Series([3, 4, 5, 6], name="Databricks")
         kser_different_name = ks.from_pandas(pser_different_name)
-        self.assert_eq(
-            pidx.intersection(pser_different_name),
-            kidx.intersection(kser_different_name).sort_values(),
-        )
-        self.assert_eq(
-            (pidx + 1).intersection(pser_different_name),
-            (kidx + 1).intersection(kser_different_name).sort_values(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+            self.assert_eq(
+                kidx.intersection(kser_different_name).sort_values(),
+                ks.Index([3, 4], name="Koalas"),
+            )
+            self.assert_eq(
+                (kidx + 1).intersection(kser_different_name).sort_values(),
+                ks.Index([3, 4, 5], name="Koalas"),
+            )
+        else:
+            self.assert_eq(
+                pidx.intersection(pser_different_name),
+                kidx.intersection(kser_different_name).sort_values(),
+            )
+            self.assert_eq(
+                (pidx + 1).intersection(pser_different_name),
+                (kidx + 1).intersection(kser_different_name).sort_values(),
+            )
 
-        # other = list
-        other = [3, 4, 5, 6]
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
-        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
-
-        # other = tuple
-        other = (3, 4, 5, 6)
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
-        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
-
-        # other = dict
-        other = {3: None, 4: None, 5: None, 6: None}
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
-        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
+        others = ([3, 4, 5, 6], (3, 4, 5, 6), {3: None, 4: None, 5: None, 6: None})
+        for other in others:
+            if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+                self.assert_eq(
+                    kidx.intersection(other).sort_values(), ks.Index([3, 4], name="Koalas")
+                )
+                self.assert_eq(
+                    (kidx + 1).intersection(other).sort_values(), ks.Index([3, 4, 5], name="Koalas")
+                )
+            else:
+                self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
+                self.assert_eq(
+                    (pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values()
+                )
 
         # MultiIndex / other = Index
         self.assert_eq(
