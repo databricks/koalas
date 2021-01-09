@@ -2024,12 +2024,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
 
         map_scol = F.create_map(kvs)
-        null_scol = F.when(self.spark.column.isNull(), F.lit(na_sentinel_code))
-        mapped_scol = map_scol.getItem(self.spark.column)
 
-        new_col = verify_temp_column_name(self.to_frame(), "__new_col__")
+        scol = self.spark.column
+        if isinstance(self.spark.data_type, (FloatType, DoubleType)):
+            cond = scol.isNull() | F.isnan(scol)
+        else:
+            cond = scol.isNull()
+
+        null_scol = F.when(cond, F.lit(na_sentinel_code))
+        mapped_scol = map_scol.getItem(scol)
+        new_scol = null_scol.otherwise(mapped_scol)
+
         internal = self._internal.with_new_columns(
-            [null_scol.otherwise(mapped_scol).alias(new_col)]
+            [new_scol.alias(self._internal.data_spark_column_names[0])]
         )
 
         codes = first_series(DataFrame(internal))
