@@ -1996,12 +1996,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     )
                 )
         else:
-            raise ValueError(
-                "Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option' "
-                "to restrict the total number of unique values of the current Series."
-                "Note that, before changing the 'compute.max_rows', "
-                "this operation is considerably expensive."
-            )
+            uniq_pdf = uniq_sdf.toPandas()
 
         uniques_list = first_series(uniq_pdf).tolist()
         uniques_list = sorted(uniques_list, key=lambda x: (pd.isna(x), x))
