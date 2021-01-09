@@ -3225,7 +3225,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         cond_inversed = cond._apply_series_op(lambda kser: ~kser)
         return self.where(cond_inversed, other)
 
-    def mode(self, numeric_only: bool = False, dropna: bool = True) -> "DataFrame":
+    # TODO: Support axis as 1 or 'columns'
+    def mode(
+        self, axis: Union[int, str] = 0, numeric_only: bool = False, dropna: bool = True
+    ) -> "DataFrame":
         """
         Get the mode(s) of each element along the selected axis.
 
@@ -3255,6 +3258,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Series.mode : Return the highest frequency value in a Series.
         Series.value_counts : Return the counts of values in a Series.
         """
+        axis = validate_axis(axis)
+        assert axis == 0
+
         data = self if not numeric_only else self._get_numeric_data()
         return data.apply(lambda kser: kser.mode(dropna=dropna))
 
