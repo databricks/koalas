@@ -1934,7 +1934,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         codes : Series
             A Series that's an indexer into `uniques`.
             ``uniques.take(codes)`` will have the same values as `values`.
-        uniques : Index
+        uniques : pd.Index
             The unique valid values.
 
             .. note ::
