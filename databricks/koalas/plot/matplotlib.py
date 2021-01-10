@@ -530,88 +530,16 @@ class KoalasHistPlot(PandasHistPlot):
 
     @staticmethod
     def _compute_hist(kdf, bins):
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
-            sdf = kdf._internal.spark_frame
-            for i, label in enumerate(kdf._internal.column_labels):
-                # 'y' is a Spark DataFrame that selects one column.
-                yield KoalasHistPlot._compute_hist_single_column(
-                    sdf.select(kdf._internal.spark_column_for(label)), bins
-                )
-        else:
-            sdf = kdf._internal.spark_frame
-            scols = []
-            for i, label in enumerate(kdf._internal.column_labels):
-                scols.append(kdf._internal.spark_column_for(label))
-
-            for output in KoalasHistPlot._compute_hist_multi_columns(sdf.select(*scols), bins):
-                yield output
-
-    @staticmethod
-    def _compute_hist_single_column(sdf, bins):
         # 'data' is a Spark DataFrame that selects one column.
         assert isinstance(bins, (np.ndarray, np.generic))
 
-        colname = sdf.columns[-1]
+        sdf = kdf._internal.spark_frame
+        scols = []
+        for label in kdf._internal.column_labels:
+            scols.append(kdf._internal.spark_column_for(label))
+        sdf = sdf.select(*scols)
 
-        bucket_name = "__{}_bucket".format(colname)
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(
-            splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
-        )
-        # after bucketing values, groups and counts them
-        result = (
-            bucketizer.transform(sdf)
-            .select(bucket_name)
-            .groupby(bucket_name)
-            .agg(F.count("*").alias("count"))
-            .toPandas()
-            .sort_values(by=bucket_name)
-        )
-
-        # generates a pandas DF with one row for each bin
-        # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1), "bucket": bins[:-1]})
-        # merges the bins with counts on it and fills remaining ones with zeros
-        pdf = indexes.merge(result, how="left", on=[bucket_name]).fillna(0)[["count"]]
-        pdf.columns = [bucket_name]
-
-        return pdf[bucket_name]
-
-    @staticmethod
-    def _compute_hist_multi_columns(sdf, bins):
-        """
-        It can calculate histogram with multiple columns in single pass. `_compute_hist_v1` can
-        only be able to do it each job for each column.
-        """
-
-        # 'data' is a Spark DataFrame that selects one column.
-        assert isinstance(bins, (np.ndarray, np.generic))
-
-        colnames = sdf.columns
-
-        bucket_names = ["__{}_bucket".format(colname) for colname in colnames]
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(
-            splitsArray=[bins] * len(colnames),
-            inputCols=colnames,
-            outputCols=bucket_names,
-            handleInvalid="skip",
-        )
-
-        # 1. Make the bucket output flat. For example from
-        #     +-------+-------+-----------------+-----------------+
-        #     |values1|values2|__values1__bucket|__values2__bucket|
-        #     +-------+-------+-----------------+-----------------+
-        #     |0.1    |0.0    |0.0              |0.0              |
-        #     |0.4    |1.0    |0.0              |1.0              |
-        #     |1.2    |1.3    |1.0              |1.0              |
-        #     |1.5    |NaN    |2.0              |2.0              |
-        #     |NaN    |1.0    |3.0              |1.0              |
-        #     |NaN    |0.0    |3.0              |0.0              |
-        #     +-------+-------+-----------------+-----------------+
-        #
-        # to:
-        #
+        # 1. Make the bucket output flat to:
         #     +----------+-------+
         #     |__group_id|buckets|
         #     +----------+-------+
@@ -628,20 +556,47 @@ class KoalasHistPlot(PandasHistPlot):
         #     |1         |1.0    |
         #     |1         |0.0    |
         #     +----------+-------+
-        bucket_df = bucketizer.transform(sdf)
-        output_df = None
 
-        for group_id, bucket_name in enumerate(bucket_names):
-            if output_df is None:
-                output_df = bucket_df.select(
+        def flat_bucket_df(left, right):
+            assert right is not None
+            if left is None:
+                return right.select(
                     F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
                 )
             else:
-                output_df = output_df.union(
-                    bucket_df.select(
+                return left.union(
+                    right.select(
                         F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
                     )
                 )
+
+        colnames = sdf.columns
+        bucket_names = ["__{}_bucket".format(colname) for colname in colnames]
+
+        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+            # creates a Bucketizer to get corresponding bin of each value
+            bucketizer = Bucketizer(
+                splitsArray=[bins] * len(colnames),
+                inputCols=colnames,
+                outputCols=bucket_names,
+                handleInvalid="skip",
+            )
+
+            bucket_df = bucketizer.transform(sdf)
+            output_df = None
+
+            for group_id, bucket_name in enumerate(bucket_names):
+                output_df = flat_bucket_df(output_df, bucket_df)
+        else:
+            output_df = None
+            for group_id, (colname, bucket_name) in enumerate(zip(colnames, bucket_names)):
+                # creates a Bucketizer to get corresponding bin of each value
+                bucketizer = Bucketizer(
+                    splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
+                )
+
+                bucket_df = bucketizer.transform(sdf)
+                output_df = flat_bucket_df(output_df, bucket_df)
 
         # 2. Calculate the count based on each group and bucket.
         #     +----------+-------+------+
