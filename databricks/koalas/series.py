@@ -2018,17 +2018,20 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             chain(*([(F.lit(unique), F.lit(code)) for unique, code in unique_to_code.items()]))
         )
 
-        map_scol = F.create_map(kvs)
-
         scol = self.spark.column
+
         if isinstance(self.spark.data_type, (FloatType, DoubleType)):
             cond = scol.isNull() | F.isnan(scol)
         else:
             cond = scol.isNull()
-
         null_scol = F.when(cond, F.lit(na_sentinel_code))
-        mapped_scol = map_scol.getItem(scol)
-        new_scol = null_scol.otherwise(mapped_scol)
+
+        map_scol = None if len(kvs) <= 0 else F.create_map(kvs)
+
+        if map_scol is not None:
+            new_scol = null_scol.otherwise(map_scol.getItem(scol))
+        else:
+            new_scol = null_scol
 
         internal = self._internal.with_new_columns(
             [new_scol.alias(self._internal.data_spark_column_names[0])]
