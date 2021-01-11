@@ -3261,8 +3261,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         axis = validate_axis(axis)
         assert axis == 0
 
+        def mode(kser, dropna):
+            return kser.mode(dropna=dropna)
+
         data = self if not numeric_only else self._get_numeric_data()
-        return data.apply(lambda kser: kser.mode(dropna=dropna))
+
+        return data.apply(mode, dropna=dropna)
 
     def _get_numeric_data(self):
         data = self.copy()
