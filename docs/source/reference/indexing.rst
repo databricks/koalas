@@ -51,6 +51,7 @@ Modifying and computations
    Index.delete
    Index.equals
    Index.identical
+   Index.insert
    Index.is_boolean
    Index.is_categorical
    Index.is_floating
@@ -101,6 +102,7 @@ Conversion
 
    Index.astype
    Index.item
+   Index.to_list
    Index.to_series
    Index.to_frame
    Index.view
@@ -138,6 +140,7 @@ Combining / joining / set operations
    :toctree: api/
 
    Index.append
+   Index.intersection
    Index.union
    Index.difference
    Index.symmetric_difference
@@ -217,6 +220,7 @@ MultiIndex Modifying and computations
 
    MultiIndex.equals
    MultiIndex.identical
+   MultiIndex.insert
    MultiIndex.drop
    MultiIndex.copy
    MultiIndex.delete
@@ -234,6 +238,7 @@ MultiIndex Combining / joining / set operations
    :toctree: api/
 
    MultiIndex.append
+   MultiIndex.intersection
    MultiIndex.union
    MultiIndex.difference
    MultiIndex.symmetric_difference
@@ -245,6 +250,7 @@ MultiIndex Conversion
 
    MultiIndex.astype
    MultiIndex.item
+   MultiIndex.to_list
    MultiIndex.to_series
    MultiIndex.to_frame
    MultiIndex.view

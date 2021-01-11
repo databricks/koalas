@@ -49,8 +49,6 @@ class MissingPandasLikeIndex(object):
     get_slice_bound = _unsupported_function("get_slice_bound")
     get_value = _unsupported_function("get_value")
     groupby = _unsupported_function("groupby")
-    insert = _unsupported_function("insert")
-    intersection = _unsupported_function("intersection")
     is_ = _unsupported_function("is_")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
     join = _unsupported_function("join")
@@ -77,8 +75,6 @@ class MissingPandasLikeIndex(object):
 
     # Functions we won't support.
     memory_usage = common.memory_usage(_unsupported_function)
-    to_list = common.to_list(_unsupported_function)
-    tolist = common.tolist(_unsupported_function)
     __iter__ = common.__iter__(_unsupported_function)
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
@@ -117,8 +113,6 @@ class MissingPandasLikeMultiIndex(object):
     get_slice_bound = _unsupported_function("get_slice_bound")
     get_value = _unsupported_function("get_value")
     groupby = _unsupported_function("groupby")
-    insert = _unsupported_function("insert")
-    intersection = _unsupported_function("intersection")
     is_ = _unsupported_function("is_")
     is_lexsorted = _unsupported_function("is_lexsorted")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
@@ -165,8 +159,6 @@ class MissingPandasLikeMultiIndex(object):
 
     # Properties we won't support.
     memory_usage = common.memory_usage(_unsupported_function)
-    to_list = common.to_list(_unsupported_function)
-    tolist = common.tolist(_unsupported_function)
 
     if LooseVersion(pd.__version__) < LooseVersion("1.0"):
         # Deprecated properties

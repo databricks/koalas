@@ -39,18 +39,24 @@ VERSION = __version__  # noqa
 setup(
     name='koalas',
     version=VERSION,
-    packages=['databricks', 'databricks.koalas', 'databricks.koalas.missing',
-              'databricks.koalas.spark', 'databricks.koalas.typedef',
-              'databricks.koalas.usage_logging'],
+    packages=[
+        'databricks',
+        'databricks.koalas',
+        'databricks.koalas.missing',
+        'databricks.koalas.plot',
+        'databricks.koalas.spark',
+        'databricks.koalas.typedef',
+        'databricks.koalas.usage_logging'],
     extras_require={
         'spark': ['pyspark>=2.4.0'],
         'mlflow': ['mlflow>=1.0'],
+        'plotly': ['plotly>=4.8'],
     },
     python_requires='>=3.5,<3.9',
     install_requires=[
         'pandas>=0.23.2',
         'pyarrow>=0.10',
-        'numpy>=1.14,<1.19.0',
+        'numpy>=1.14',
         'matplotlib>=3.0.0,<3.3.0',
     ],
     author="Databricks",

@@ -51,6 +51,7 @@ Computations / Descriptive Stats
    GroupBy.last
    GroupBy.max
    GroupBy.mean
+   GroupBy.median
    GroupBy.min
    GroupBy.rank
    GroupBy.std
@@ -67,6 +68,14 @@ Computations / Descriptive Stats
    GroupBy.head
    GroupBy.backfill
    GroupBy.shift
+   GroupBy.tail
+
+The following methods are available only for `DataFrameGroupBy` objects.
+
+.. autosummary::
+   :toctree: api/
+
+   DataFrameGroupBy.describe
 
 The following methods are available only for `SeriesGroupBy` objects.
 

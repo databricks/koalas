@@ -19,6 +19,7 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.namespace import _get_index_map
 
 
 class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
@@ -43,7 +44,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kmidx, pmidx)
 
-        expected_error_message = "Unknown data type: {}".format(type(kidx))
+        expected_error_message = "Unknown data type: {}".format(type(kidx).__name__)
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.from_pandas(kidx)
 
@@ -205,24 +206,11 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         pdf4.columns = columns
         kdf4.columns = columns
 
-        pdf5 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
-        pdf6 = pd.DataFrame({"C": [1, 2, 3]}, index=[1, 3, 5])
-        kdf5 = ks.from_pandas(pdf5)
-        kdf6 = ks.from_pandas(pdf6)
-
         ignore_indexes = [True, False]
         joins = ["inner", "outer"]
 
         objs = [
-            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
-            # TODO: ([kdf1, kdf2.C], [pdf1, pdf2.C]),
-            ([kdf1.A, kdf2], [pdf1.A, pdf2]),
-            ([kdf1.A, kdf2.C], [pdf1.A, pdf2.C]),
             ([kdf1.A, kdf1.A.rename("B")], [pdf1.A, pdf1.A.rename("B")]),
-            ([kdf3[("X", "A")], kdf4[("X", "C")]], [pdf3[("X", "A")], pdf4[("X", "C")]]),
-            ([kdf3, kdf4[("X", "C")]], [pdf3, pdf4[("X", "C")]]),
-            ([kdf3[("X", "A")], kdf4], [pdf3[("X", "A")], pdf4]),
-            ([kdf3, kdf4], [pdf3, pdf4]),
             ([kdf3[("X", "A")], kdf3[("X", "B")]], [pdf3[("X", "A")], pdf3[("X", "B")]],),
             (
                 [kdf3[("X", "A")], kdf3[("X", "B")].rename("ABC")],
@@ -232,8 +220,6 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
                 [kdf3[("X", "A")].rename("ABC"), kdf3[("X", "B")]],
                 [pdf3[("X", "A")].rename("ABC"), pdf3[("X", "B")]],
             ),
-            ([kdf5, kdf6], [pdf5, pdf6]),
-            ([kdf6, kdf5], [pdf6, pdf5]),
         ]
 
         for ignore_index, join in itertools.product(ignore_indexes, joins):
@@ -254,6 +240,27 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, ks.broadcast(kdf))
 
         kser = ks.Series([1, 2, 3])
-        expected_error_message = "Invalid type : expected DataFrame got {}".format(type(kser))
+        expected_error_message = "Invalid type : expected DataFrame got {}".format(
+            type(kser).__name__
+        )
         with self.assertRaisesRegex(ValueError, expected_error_message):
             ks.broadcast(kser)
+
+    def test_get_index_map(self):
+        kdf = ks.DataFrame({"year": [2015, 2016], "month": [2, 3], "day": [4, 5]})
+        sdf = kdf.to_spark()
+        self.assertEqual(_get_index_map(sdf), (None, None))
+
+        def check(actual, expected):
+            actual_scols, actual_labels = actual
+            expected_column_names, expected_labels = expected
+            self.assertEqual(len(actual_scols), len(expected_column_names))
+            for actual_scol, expected_column_name in zip(actual_scols, expected_column_names):
+                expected_scol = sdf[expected_column_name]
+                self.assertTrue(actual_scol._jc.equals(expected_scol._jc))
+            self.assertEqual(actual_labels, expected_labels)
+
+        check(_get_index_map(sdf, "year"), (["year"], [("year",)]))
+        check(_get_index_map(sdf, ["year", "month"]), (["year", "month"], [("year",), ("month",)]))
+
+        self.assertRaises(KeyError, lambda: _get_index_map(sdf, ["year", "hour"]))

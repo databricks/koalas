@@ -2,10 +2,11 @@
 pandas>=0.23.2
 pyarrow>=0.10
 matplotlib>=3.0.0,<3.3.0
-numpy>=1.14,<1.19.0
+numpy>=1.14
 
 # Optional dependencies in Koalas.
 mlflow>=1.0
+plotly>=4.8
 
 # Documentation build.
 sphinx>=2.0.0,<3.1.0
@@ -13,7 +14,7 @@ nbsphinx
 # Temporarily exclude nbconvert 6.0 that is a dependency from nbsphinx.
 # It causes Read the Docs build fails
 nbconvert!=6.0.*
-numpydoc==0.8
+numpydoc>=1.1.0
 pypandoc
 ipython
 pydata-sphinx-theme
@@ -30,5 +31,8 @@ pytest
 pytest-cov
 scikit-learn
 openpyxl
-xlrd
-plotly>=4.8
+# xlrd dropped xlsx support. pandas 0.25 added a way to continue supporting xlsx
+# by leveraging openpyxl, see also
+# https://stackoverflow.com/questions/65254535/xlrd-biffh-xlrderror-excel-xlsx-file-not-supported
+# We can remove this upperbound when our minimum pandas version is 0.25+.
+xlrd<2.0.0

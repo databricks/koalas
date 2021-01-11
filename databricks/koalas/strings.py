@@ -17,13 +17,15 @@
 """
 String functions on Koalas Series
 """
-from typing import Union, TYPE_CHECKING
+from typing import Union, TYPE_CHECKING, cast, Optional, List
 
 import numpy as np
 
 from pyspark.sql.types import StringType, BinaryType, ArrayType, LongType, MapType
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
+
+from databricks.koalas.spark import functions as SF
 
 if TYPE_CHECKING:
     import databricks.koalas as ks
@@ -974,7 +976,7 @@ class StringMethods(object):
         3    2
         4    2
         5    0
-        dtype: int32
+        dtype: int64
         """
 
         def pandas_count(s) -> "ks.Series[int]":
@@ -1035,25 +1037,25 @@ class StringMethods(object):
         0    0
         1    2
         2    1
-        dtype: int32
+        dtype: int64
 
         >>> s.str.find('a', start=2)
         0   -1
         1    2
         2    3
-        dtype: int32
+        dtype: int64
 
         >>> s.str.find('a', end=1)
         0    0
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
 
         >>> s.str.find('a', start=2, end=2)
         0   -1
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
         """
 
         def pandas_find(s) -> "ks.Series[int]":
@@ -1487,11 +1489,7 @@ class StringMethods(object):
         """
         if not isinstance(repeats, int):
             raise ValueError("repeats expects an int parameter")
-
-        def pandas_repeat(s) -> "ks.Series[str]":
-            return s.str.repeat(repeats=repeats)
-
-        return self._data.koalas.transform_batch(pandas_repeat)
+        return self._data.spark.transform(lambda c: SF.repeat(col=c, n=repeats))
 
     def replace(self, pat, repl, n=-1, case=None, flags=0, regex=True) -> "ks.Series":
         """
@@ -1616,25 +1614,25 @@ class StringMethods(object):
         0    0
         1    2
         2    5
-        dtype: int32
+        dtype: int64
 
         >>> s.str.rfind('a', start=2)
         0   -1
         1    2
         2    5
-        dtype: int32
+        dtype: int64
 
         >>> s.str.rfind('a', end=1)
         0    0
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
 
         >>> s.str.rfind('a', start=2, end=2)
         0   -1
         1   -1
         2   -1
-        dtype: int32
+        dtype: int64
         """
 
         def pandas_rfind(s) -> "ks.Series[int]":
@@ -2001,7 +1999,9 @@ class StringMethods(object):
             scol = kdf._internal.data_spark_columns[0]
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
-            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            internal = kdf._internal.with_new_columns(
+                spark_columns, cast(Optional[List], column_labels)
+            )
             return DataFrame(internal)
         else:
             return kser
@@ -2135,7 +2135,9 @@ class StringMethods(object):
             scol = kdf._internal.data_spark_columns[0]
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
-            internal = kdf._internal.with_new_columns(spark_columns, column_labels)
+            internal = kdf._internal.with_new_columns(
+                spark_columns, cast(Optional[List], column_labels)
+            )
             return DataFrame(internal)
         else:
             return kser

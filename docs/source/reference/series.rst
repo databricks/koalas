@@ -140,6 +140,7 @@ Computations / Descriptive Stats
    Series.is_unique
    Series.quantile
    Series.rank
+   Series.sem
    Series.skew
    Series.std
    Series.sum
@@ -170,9 +171,13 @@ Reindexing / Selection / Label manipulation
    Series.idxmin
    Series.isin
    Series.rename
+   Series.rename_axis
    Series.reindex
+   Series.reindex_like
    Series.reset_index
    Series.sample
+   Series.swaplevel
+   Series.swapaxes
    Series.take
    Series.tail
    Series.where
@@ -215,6 +220,7 @@ Combining / joining / merging
    :toctree: api/
 
    Series.append
+   Series.compare
    Series.replace
    Series.update
 

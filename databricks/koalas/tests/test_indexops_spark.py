@@ -59,7 +59,3 @@ class SparkIndexOpsMethodsTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(AnalysisException, "cannot resolve.*non-existent.*"):
             self.kser.spark.transform(lambda scol: F.col("non-existent"))
-
-    def test_index_apply_negative(self):
-        with self.assertRaisesRegex(NotImplementedError, "Index does not support spark.apply yet"):
-            ks.range(10).index.spark.apply(lambda scol: scol)

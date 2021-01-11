@@ -34,7 +34,6 @@ Try the Koalas 10 minutes tutorial on a live Jupyter notebook [here](https://myb
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/koalas.svg)](https://anaconda.org/conda-forge/koalas)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/databricks/koalas/master?filepath=docs%2Fsource%2Fgetting_started%2F10min.ipynb)
 [![Downloads](https://pepy.tech/badge/koalas)](https://pepy.tech/project/koalas)
-[![License](https://img.shields.io/badge/License-Apache%202-brightgreen.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
 ## Getting Started
@@ -53,21 +52,7 @@ pip install koalas
 
 See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for more details.
 
-If you are a Databricks Runtime user, you can install Koalas using the Libraries tab on the cluster UI, or using `dbutils` in a notebook as below for the regular Databricks Runtime,
-
-```python
-dbutils.library.installPyPI("koalas")
-dbutils.library.restartPython()
-```
-
-For Databricks Runtime for Machine Learning 6.0 and above, you can install it as follows.
-
-```sh
-%sh
-pip install koalas
-```
-
-Note that Koalas requires Databricks Runtime 5.x or above. In the future, we will package Koalas out-of-the-box in both the regular Databricks Runtime and Databricks Runtime for Machine Learning.
+For Databricks Runtime users, Koalas is pre-installed in Databricks Runtime 7.1 and above, or you can follow these [steps](https://docs.databricks.com/libraries/index.html) to install a library on Databricks.
 
 Lastly, if your PyArrow version is 0.15+ and your PySpark version is lower than 3.0, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
 Koalas will try its best to set it for you but it is impossible to set it if there is a Spark context already launched.
