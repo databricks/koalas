@@ -24,7 +24,6 @@ from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 
 from databricks.koalas.plot import TopNPlot, SampledPlot
-import pyspark
 from pyspark.ml.feature import Bucketizer
 from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
@@ -556,47 +555,27 @@ class KoalasHistPlot(PandasHistPlot):
         #     |1         |1.0    |
         #     |1         |0.0    |
         #     +----------+-------+
-
-        def flat_bucket_df(left, right):
-            assert right is not None
-            if left is None:
-                return right.select(
-                    F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
-                )
-            else:
-                return left.union(
-                    right.select(
-                        F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
-                    )
-                )
-
         colnames = sdf.columns
         bucket_names = ["__{}_bucket".format(colname) for colname in colnames]
 
-        if LooseVersion(pyspark.__version__) >= LooseVersion("3.0.0"):
+        output_df = None
+        for group_id, (colname, bucket_name) in enumerate(zip(colnames, bucket_names)):
             # creates a Bucketizer to get corresponding bin of each value
             bucketizer = Bucketizer(
-                splitsArray=[bins] * len(colnames),
-                inputCols=colnames,
-                outputCols=bucket_names,
-                handleInvalid="skip",
+                splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
             )
 
             bucket_df = bucketizer.transform(sdf)
-            output_df = None
-
-            for group_id, bucket_name in enumerate(bucket_names):
-                output_df = flat_bucket_df(output_df, bucket_df)
-        else:
-            output_df = None
-            for group_id, (colname, bucket_name) in enumerate(zip(colnames, bucket_names)):
-                # creates a Bucketizer to get corresponding bin of each value
-                bucketizer = Bucketizer(
-                    splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
+            if output_df is None:
+                output_df = bucket_df.select(
+                    F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
                 )
-
-                bucket_df = bucketizer.transform(sdf)
-                output_df = flat_bucket_df(output_df, bucket_df)
+            else:
+                output_df = output_df.union(
+                    bucket_df.select(
+                        F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
+                    )
+                )
 
         # 2. Calculate the count based on each group and bucket.
         #     +----------+-------+------+
