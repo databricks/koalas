@@ -54,7 +54,6 @@ class _MissingPandasLikeDataFrame(object):
     interpolate = _unsupported_function("interpolate")
     last = _unsupported_function("last")
     lookup = _unsupported_function("lookup")
-    mode = _unsupported_function("mode")
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
     set_axis = _unsupported_function("set_axis")

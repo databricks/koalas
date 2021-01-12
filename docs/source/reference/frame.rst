@@ -155,6 +155,7 @@ Computations / Descriptive Stats
    DataFrame.round
    DataFrame.diff
    DataFrame.eval
+   DataFrame.mode
 
 Reindexing / Selection / Label manipulation
 -------------------------------------------
