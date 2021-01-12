@@ -1997,8 +1997,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 )
         else:
             uniq_pdf = uniq_sdf.toPandas()
-
-        uniques_list = first_series(uniq_pdf).tolist()
+        # pandas takes both NaN and null in Spark to np.nan, so de-duplication is required
+        uniq_series = first_series(uniq_pdf).drop_duplicates()
+        uniques_list = uniq_series.tolist()
         uniques_list = sorted(uniques_list, key=lambda x: (pd.isna(x), x))
 
         # Constructs `unique_to_code` mapping non-na unique to code

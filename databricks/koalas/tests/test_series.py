@@ -2298,14 +2298,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pcodes.tolist(), kcodes.to_list())
         self.assert_eq(puniques, kuniques)
 
-        pser = pd.Series(["a", "b", "a", "b"], name="ser")
-        kser = ks.from_pandas(pser)
-        pcodes, puniques = pser.factorize(sort=True)
-        kcodes, kuniques = kser.factorize()
-        self.assert_eq(pcodes.tolist(), kcodes.to_list())
-        self.assert_eq(puniques, kuniques)
-
-        pser = pd.Series(["a", "b", "a", "b"], index=["w", "x", "y", "z"])
+        pser = pd.Series(["a", "b", "a", "b"], name="ser", index=["w", "x", "y", "z"])
         kser = ks.from_pandas(pser)
         pcodes, puniques = pser.factorize(sort=True)
         kcodes, kuniques = kser.factorize()
@@ -2372,16 +2365,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pcodes, puniques = pser.factorize(sort=True, na_sentinel=-2)
         kcodes, kuniques = kser.factorize(na_sentinel=-2)
 
-        self.assert_eq(
-            [0, 1, 0, -2, -2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
-        )
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
         self.assert_eq(puniques, kuniques)
 
         pcodes, puniques = pser.factorize(sort=True, na_sentinel=2)
         kcodes, kuniques = kser.factorize(na_sentinel=2)
-        self.assert_eq(
-            [0, 1, 0, 2, 2] if is_lower_pandas_version else pcodes.tolist(), kcodes.to_list()
-        )
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
         self.assert_eq(puniques, kuniques)
 
         if not is_lower_pandas_version:
@@ -2390,6 +2379,13 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(pcodes.tolist(), kcodes.to_list())
             # puniques is Index(['a', 'b', nan], dtype='object')
             self.assert_eq(ks.Index(["a", "b", None]), kuniques)
+
+            kser = ks.Series([1, 2, np.nan, 4, 5])  # Arrow takes np.nan as null
+            kser.loc[3] = np.nan  # Spark takes np.nan as NaN
+            kcodes, kuniques = kser.factorize(na_sentinel=None)
+            pcodes, puniques = kser.to_pandas().factorize(sort=True, na_sentinel=None)
+            self.assert_eq(pcodes.tolist(), kcodes.to_list())
+            self.assert_eq(puniques, kuniques)
 
     def test_pad(self):
         pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
