@@ -2356,6 +2356,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         #
         # Deals with na_sentinel
+        # Please note that we follow the behavior of pandas versions >= 1.1.2,
         #
         is_lower_pandas_version = LooseVersion(pd.__version__) < LooseVersion("1.1.2")
 
