@@ -3257,6 +3257,34 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         Series.mode : Return the highest frequency value in a Series.
         Series.value_counts : Return the counts of values in a Series.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame(
+        ...     [("bird", 2, 2), ("mammal", 4, np.nan), ("arthropod", 8, 0), ("bird", 2, np.nan)],
+        ...     index=("falcon", "horse", "spider", "ostrich"),
+        ...     columns=("species", "legs", "wings"),
+        ... )
+        >>> kdf
+                   species  legs  wings
+        falcon        bird     2    2.0
+        horse       mammal     4    NaN
+        spider   arthropod     8    0.0
+        ostrich       bird     2    NaN
+
+        >>> kdf.mode()
+          species  legs  wings
+        0    bird   2.0    0.0
+        1    None   NaN    2.0
+
+        >>> kdf.mode(dropna=False)
+          species  legs wings
+        0    bird     2  None
+
+        >>> kdf.mode(numeric_only=True)
+           legs  wings
+        0   2.0    0.0
+        1   NaN    2.0
         """
         axis = validate_axis(axis)
         assert axis == 0
