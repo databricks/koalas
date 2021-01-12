@@ -33,7 +33,6 @@ import pyspark
 from pyspark.ml.linalg import SparseVector
 
 from databricks import koalas as ks
-from databricks.koalas import Series
 from databricks.koalas.testing.utils import (
     ReusedSQLTestCase,
     SQLTestUtils,
@@ -52,12 +51,15 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def kser(self):
         return ks.from_pandas(self.pser)
 
-    def test_series(self):
+    def test_series_ops(self):
+        pser = self.pser
         kser = self.kser
 
-        self.assertTrue(isinstance(kser, Series))
-
-        self.assert_eq(kser + 1, self.pser + 1)
+        self.assert_eq(kser + 1, pser + 1)
+        self.assert_eq(1 + kser, 1 + pser)
+        self.assert_eq(kser + 1 + 10 * kser, pser + 1 + 10 * pser)
+        self.assert_eq(kser + 1 + 10 * kser.index, pser + 1 + 10 * pser.index)
+        self.assert_eq(kser.index + 1 + 10 * kser, pser.index + 1 + 10 * pser)
 
     def test_series_tuple_name(self):
         pser = self.pser

@@ -41,20 +41,142 @@ from pyspark.sql.types import (
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
+from databricks.koalas.config import get_option, option_context
 from databricks.koalas.internal import (
     InternalFrame,
+    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
-from databricks.koalas.utils import scol_for, validate_axis
+from databricks.koalas.utils import (
+    combine_frames,
+    same_anchor,
+    scol_for,
+    validate_axis,
+    ERROR_MESSAGE_CANNOT_COMBINE,
+)
 from databricks.koalas.frame import DataFrame
 
 if TYPE_CHECKING:
     from databricks.koalas.indexes import Index
     from databricks.koalas.series import Series
+
+
+def should_alignment_for_column_op(self: "IndexOpsMixin", other: "IndexOpsMixin") -> bool:
+    from databricks.koalas.series import Series
+
+    if isinstance(self, Series) and isinstance(other, Series):
+        return not same_anchor(self, other)
+    else:
+        return self._internal.spark_frame is not other._internal.spark_frame
+
+
+def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "IndexOpsMixin":
+    """
+    Align the `IndexOpsMixin` objects and apply the function.
+
+    Parameters
+    ----------
+    func : The function to apply
+    this_index_ops : IndexOpsMixin
+        A base `IndexOpsMixin` object
+    args : list of other arguments including other `IndexOpsMixin` objects
+
+    Returns
+    -------
+    `Index` if all `this_index_ops` and arguments are `Index`; otherwise `Series`
+    """
+    from databricks.koalas.indexes import Index
+    from databricks.koalas.series import Series, first_series
+
+    cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
+
+    if isinstance(this_index_ops, Series) and all(isinstance(col, Series) for col in cols):
+        combined = combine_frames(this_index_ops.to_frame(), *cols, how="full")
+
+        return column_op(func)(
+            combined["this"]._kser_for(combined["this"]._internal.column_labels[0]),
+            *[
+                combined["that"]._kser_for(label)
+                for label in combined["that"]._internal.column_labels
+            ]
+        )
+    else:
+        # This could cause as many counts, reset_index calls, joins for combining
+        # as the number of `Index`s in `args`. So far it's fine since we can assume the ops
+        # only work between at most two `Index`s. We might need to fix it in the future.
+
+        self_len = len(this_index_ops)
+        if any(len(col) != self_len for col in args if isinstance(col, IndexOpsMixin)):
+            raise ValueError("operands could not be broadcast together with shapes")
+
+        with option_context("compute.default_index_type", "distributed-sequence"):
+            if isinstance(this_index_ops, Index) and all(isinstance(col, Index) for col in cols):
+                return (
+                    cast(
+                        Series,
+                        column_op(func)(
+                            this_index_ops.to_series().reset_index(drop=True),
+                            *[
+                                arg.to_series().reset_index(drop=True)
+                                if isinstance(arg, Index)
+                                else arg
+                                for arg in args
+                            ]
+                        ),
+                    )
+                    .sort_index()
+                    .to_frame(DEFAULT_SERIES_NAME)
+                    .set_index(DEFAULT_SERIES_NAME)
+                    .index.rename(this_index_ops.name)
+                )
+            elif isinstance(this_index_ops, Series):
+                this = this_index_ops.reset_index()
+                that = [
+                    cast(Series, col.to_series() if isinstance(col, Index) else col).reset_index(
+                        drop=True
+                    )
+                    for col in cols
+                ]
+
+                combined = combine_frames(this, *that, how="full").sort_index()
+                combined = combined.set_index(
+                    combined._internal.column_labels[: this_index_ops._internal.index_level]
+                )
+                combined.index.names = this_index_ops._internal.index_names
+
+                return column_op(func)(
+                    first_series(combined["this"]),
+                    *[
+                        combined["that"]._kser_for(label)
+                        for label in combined["that"]._internal.column_labels
+                    ]
+                )
+            else:
+                this = cast(Index, this_index_ops).to_frame().reset_index(drop=True)
+
+                that_series = next(col for col in cols if isinstance(col, Series))
+                that_frame = that_series._kdf[
+                    [col.to_series() if isinstance(col, Index) else col for col in cols]
+                ]
+
+                combined = combine_frames(this, that_frame.reset_index()).sort_index()
+
+                self_index = (
+                    combined["this"].set_index(combined["this"]._internal.column_labels).index
+                )
+
+                other = combined["that"].set_index(
+                    combined["that"]._internal.column_labels[: that_series._internal.index_level]
+                )
+                other.index.names = that_series._internal.index_names
+
+                return column_op(func)(
+                    self_index, *[other._kser_for(label) for label in other._internal.column_labels]
+                )
 
 
 def booleanize_null(left_scol, scol, f) -> Column:
@@ -94,27 +216,28 @@ def column_op(f):
 
     @wraps(f)
     def wrapper(self, *args):
+        from databricks.koalas.series import Series
+
         # It is possible for the function `f` takes other arguments than Spark Column.
         # To cover this case, explicitly check if the argument is Koalas Series and
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
 
-        # TODO: support ops between different types.
-        assert all(
-            type(self) == type(col) for col in cols
-        ), "All arguments must be the same types: [{}, {}]".format(
-            type(self).__name__, ", ".join(type(col).__name__ for col in cols)
-        )
-
-        if all(not self._need_alignment_for_column_op(col) for col in cols):
+        if all(not should_alignment_for_column_op(self, col) for col in cols):
             # Same DataFrame anchors
             args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self.spark.column, *args)
             scol = booleanize_null(self.spark.column, scol, f)
 
-            index_ops = self._with_new_scol(scol)
+            if isinstance(self, Series) or not any(isinstance(col, Series) for col in cols):
+                index_ops = self._with_new_scol(scol)
+            else:
+                kser = next(col for col in cols if isinstance(col, Series))
+                index_ops = kser._with_new_scol(scol)
+        elif get_option("compute.ops_on_diff_frames"):
+            index_ops = align_diff_index_ops(f, self, *args)
         else:
-            index_ops = self._align_and_column_op(f, *args)
+            raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
 
         if not all(self.name == col.name for col in cols):
             index_ops = index_ops.rename(None)
@@ -181,14 +304,6 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self.spark.column
 
     spark_column.__doc__ = SparkIndexOpsMethods.column.__doc__
-
-    @abstractmethod
-    def _need_alignment_for_column_op(self, other: "IndexOpsMixin") -> bool:
-        pass
-
-    @abstractmethod
-    def _align_and_column_op(self, f, *args) -> "IndexOpsMixin":
-        pass
 
     # arithmetic operators
     __neg__ = column_op(Column.__neg__)
