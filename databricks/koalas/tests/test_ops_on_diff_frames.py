@@ -487,12 +487,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf.insert(1, "y", kser)
         pdf.insert(1, "y", pser)
-        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
         # Inserts a list
         kdf.insert(0, "a", [7, 8, 9])
         pdf.insert(0, "a", [7, 8, 9])
-        self.assert_eq(kdf, pdf)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_compare(self):
         if LooseVersion(pd.__version__) >= LooseVersion("1.1"):

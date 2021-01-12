@@ -95,16 +95,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Inserts a Scalar
         kdf.insert(1, "b", 10)
         pdf.insert(1, "b", 10)
-        self.assert_eq(kdf, pdf, almost=True)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
 
         kdf.insert(2, "c", 0.1)
         pdf.insert(2, "c", 0.1)
-        self.assert_eq(kdf, pdf, almost=True)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
 
         # Inserts a Series with the same anchor
         kdf.insert(3, "d", kdf.b + 1)
         pdf.insert(3, "d", pdf.b + 1)
-        self.assert_eq(kdf, pdf, almost=True)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
 
         kser = ks.Series([4, 5, 6])
         self.assertRaises(ValueError, lambda: kdf.insert(0, "y", kser))

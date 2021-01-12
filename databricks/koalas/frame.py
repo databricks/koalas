@@ -3725,13 +3725,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> kdf = ks.DataFrame([1, 2, 3])
-        >>> kdf
+        >>> kdf.sort_index()
            0
         0  1
         1  2
         2  3
         >>> kdf.insert(0, 'x', 4)
-        >>> kdf
+        >>> kdf.sort_index()
            x  0
         0  4  1
         1  4  2
@@ -3741,14 +3741,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> set_option("compute.ops_on_diff_frames", True)
 
         >>> kdf.insert(1, 'y', [5, 6, 7])
-        >>> kdf
+        >>> kdf.sort_index()
            x  y  0
         0  4  5  1
         1  4  6  2
         2  4  7  3
 
         >>> kdf.insert(2, 'z', ks.Series([8, 9, 10]))
-        >>> kdf
+        >>> kdf.sort_index()
            x  y   z  0
         0  4  5   8  1
         1  4  6   9  2
