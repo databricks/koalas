@@ -15,13 +15,16 @@
 #
 import unittest
 from distutils.version import LooseVersion
+import pprint
 
 import pandas as pd
+import numpy as np
 from plotly import express
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.utils import name_like_string
 
 
 @unittest.skipIf(
@@ -128,3 +131,25 @@ class SeriesPlotPlotlyTest(ReusedSQLTestCase, TestUtils):
         # self.assertEqual(
         #     kdf["a"].plot(kind="pie"), express.pie(pdf, values=pdf.columns[0], names=pdf.index),
         # )
+
+    def test_hist_plot(self):
+        def check_hist_plot(kser):
+            bins = np.array([1.0, 5.9, 10.8, 15.7, 20.6, 25.5, 30.4, 35.3, 40.2, 45.1, 50.0])
+            bins = 0.5 * (bins[:-1] + bins[1:])
+            data = pd.Series(
+                np.array([5.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,]), name=kser.name
+            )
+            fig = express.bar(
+                x=bins, y=data, labels={"x": name_like_string(data.name), "y": "count"}
+            )
+
+            self.assertEqual(
+                pprint.pformat(kser.plot(kind="hist").to_dict()), pprint.pformat(fig.to_dict())
+            )
+
+        kdf1 = self.kdf1
+        check_hist_plot(kdf1["a"])
+
+        columns = pd.MultiIndex.from_tuples([("x", "y")])
+        kdf1.columns = columns
+        check_hist_plot(kdf1[("x", "y")])

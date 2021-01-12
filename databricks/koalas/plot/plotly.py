@@ -62,19 +62,9 @@ def plot_histogram(data, **kwargs):
     import plotly.graph_objs as go
     from databricks import koalas as ks
 
-    assert "bins" in kwargs
-    bins = kwargs["bins"]
-    data, bins = HistogramPlotBase.prepare_hist_data(data, bins)
-
-    is_single_column = False
-    if isinstance(data, ks.Series):
-        is_single_column = True
-        kdf = data.to_frame()
-    elif isinstance(data, ks.DataFrame):
-        kdf = data
-    else:
-        raise RuntimeError("Unexpected type: [%s]" % type(data))
-
+    bins = kwargs.get("bins", 10)
+    is_single_column = isinstance(data, ks.Series)
+    kdf, bins = HistogramPlotBase.prepare_hist_data(data, bins)
     output_series = HistogramPlotBase.compute_hist(kdf, bins)
     bins = 0.5 * (bins[:-1] + bins[1:])
     if is_single_column:
