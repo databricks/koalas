@@ -477,12 +477,9 @@ class KoalasHistPlot(PandasHistPlot):
         # Use 1 for now to save the computation.
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
+        output_series = KoalasHistPlot._compute_hist(self.data, self.bins)
 
-        sdf = self.data._internal.spark_frame
-
-        for i, label in enumerate(self.data._internal.column_labels):
-            # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.spark_column_for(label))
+        for (i, label), y in zip(enumerate(self.data._internal.column_labels), output_series):
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()
@@ -493,11 +490,6 @@ class KoalasHistPlot(PandasHistPlot):
             style, kwds = self._apply_style_colors(colors, kwds, i, label)
             if style is not None:
                 kwds["style"] = style
-
-            # 'y' is a Spark DataFrame that selects one column.
-            # here, we manually calculates the weights separately via Spark
-            # and assign it directly to histogram plot.
-            y = KoalasHistPlot._compute_hist(y, self.bins)  # now y is a pandas Series.
 
             kwds = self._make_plot_keywords(kwds, y)
             artists = self._plot(ax, y, column_num=i, stacking_id=stacking_id, **kwds)
@@ -536,35 +528,124 @@ class KoalasHistPlot(PandasHistPlot):
         return np.linspace(boundaries[0], boundaries[1], bins + 1)
 
     @staticmethod
-    def _compute_hist(sdf, bins):
+    def _compute_hist(kdf, bins):
         # 'data' is a Spark DataFrame that selects one column.
         assert isinstance(bins, (np.ndarray, np.generic))
 
-        colname = sdf.columns[-1]
+        sdf = kdf._internal.spark_frame
+        scols = []
+        for label in kdf._internal.column_labels:
+            scols.append(kdf._internal.spark_column_for(label))
+        sdf = sdf.select(*scols)
 
-        bucket_name = "__{}_bucket".format(colname)
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(
-            splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
-        )
-        # after bucketing values, groups and counts them
+        # 1. Make the bucket output flat to:
+        #     +----------+-------+
+        #     |__group_id|buckets|
+        #     +----------+-------+
+        #     |0         |0.0    |
+        #     |0         |0.0    |
+        #     |0         |1.0    |
+        #     |0         |2.0    |
+        #     |0         |3.0    |
+        #     |0         |3.0    |
+        #     |1         |0.0    |
+        #     |1         |1.0    |
+        #     |1         |1.0    |
+        #     |1         |2.0    |
+        #     |1         |1.0    |
+        #     |1         |0.0    |
+        #     +----------+-------+
+        colnames = sdf.columns
+        bucket_names = ["__{}_bucket".format(colname) for colname in colnames]
+
+        output_df = None
+        for group_id, (colname, bucket_name) in enumerate(zip(colnames, bucket_names)):
+            # creates a Bucketizer to get corresponding bin of each value
+            bucketizer = Bucketizer(
+                splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
+            )
+
+            bucket_df = bucketizer.transform(sdf)
+            if output_df is None:
+                output_df = bucket_df.select(
+                    F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
+                )
+            else:
+                output_df = output_df.union(
+                    bucket_df.select(
+                        F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
+                    )
+                )
+
+        # 2. Calculate the count based on each group and bucket.
+        #     +----------+-------+------+
+        #     |__group_id|buckets| count|
+        #     +----------+-------+------+
+        #     |0         |0.0    |2     |
+        #     |0         |1.0    |1     |
+        #     |0         |2.0    |1     |
+        #     |0         |3.0    |2     |
+        #     |1         |0.0    |2     |
+        #     |1         |1.0    |3     |
+        #     |1         |2.0    |1     |
+        #     +----------+-------+------+
         result = (
-            bucketizer.transform(sdf)
-            .select(bucket_name)
-            .groupby(bucket_name)
+            output_df.groupby("__group_id", "__bucket")
             .agg(F.count("*").alias("count"))
             .toPandas()
-            .sort_values(by=bucket_name)
+            .sort_values(by=["__group_id", "__bucket"])
         )
 
-        # generates a pandas DF with one row for each bin
-        # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1), "bucket": bins[:-1]})
-        # merges the bins with counts on it and fills remaining ones with zeros
-        pdf = indexes.merge(result, how="left", on=[bucket_name]).fillna(0)[["count"]]
-        pdf.columns = [bucket_name]
+        # 3. Fill empty bins and calculate based on each group id. From:
+        #     +----------+--------+------+
+        #     |__group_id|__bucket| count|
+        #     +----------+--------+------+
+        #     |0         |0.0     |2     |
+        #     |0         |1.0     |1     |
+        #     |0         |2.0     |1     |
+        #     |0         |3.0     |2     |
+        #     +----------+--------+------+
+        #     +----------+--------+------+
+        #     |__group_id|__bucket| count|
+        #     +----------+--------+------+
+        #     |1         |0.0     |2     |
+        #     |1         |1.0     |3     |
+        #     |1         |2.0     |1     |
+        #     +----------+--------+------+
+        #
+        # to:
+        #     +-----------------+
+        #     |__values1__bucket|
+        #     +-----------------+
+        #     |2                |
+        #     |1                |
+        #     |1                |
+        #     |2                |
+        #     |0                |
+        #     +-----------------+
+        #     +-----------------+
+        #     |__values2__bucket|
+        #     +-----------------+
+        #     |2                |
+        #     |3                |
+        #     |1                |
+        #     |0                |
+        #     |0                |
+        #     +-----------------+
+        output_series = []
+        for i, bucket_name in enumerate(bucket_names):
+            current_bucket_result = result[result["__group_id"] == i]
+            # generates a pandas DF with one row for each bin
+            # we need this as some of the bins may be empty
+            indexes = pd.DataFrame({"__bucket": np.arange(0, len(bins) - 1)})
+            # merges the bins with counts on it and fills remaining ones with zeros
+            pdf = indexes.merge(current_bucket_result, how="left", on=["__bucket"]).fillna(0)[
+                ["count"]
+            ]
+            pdf.columns = [bucket_name]
+            output_series.append(pdf[bucket_name])
 
-        return pdf[bucket_name]
+        return output_series
 
 
 class KoalasPiePlot(PandasPiePlot, TopNPlot):
