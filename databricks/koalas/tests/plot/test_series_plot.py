@@ -28,7 +28,7 @@ class SeriesPlotTest(unittest.TestCase):
             self.assertEqual(ks.options.plotting.backend, plot_backend)
 
             module = KoalasPlotAccessor._get_plot_backend(plot_backend)
-            self.assertEqual(module.__name__, plot_backend)
+            self.assertEqual(module.__name__, "databricks.koalas.plot.plotly")
 
     def test_plot_backends_incorrect(self):
         fake_plot_backend = "none_plotting_module"

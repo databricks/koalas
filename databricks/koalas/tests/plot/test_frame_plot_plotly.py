@@ -20,7 +20,6 @@ import pprint
 import pandas as pd
 import numpy as np
 from plotly import express
-from plotly.subplots import make_subplots
 import plotly.graph_objs as go
 
 from databricks import koalas as ks
@@ -182,23 +181,38 @@ class DataFramePlotPlotlyTest(ReusedSQLTestCase, TestUtils):
     def test_hist_plot(self):
         def check_hist_plot(kdf):
             bins = np.array([1.0, 5.9, 10.8, 15.7, 20.6, 25.5, 30.4, 35.3, 40.2, 45.1, 50.0])
-            bins = 0.5 * (bins[:-1] + bins[1:])
             data = [
                 np.array([5.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,]),
                 np.array([4.0, 3.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,]),
             ]
-
-            fig = make_subplots(rows=1, cols=len(data))
-            fig.add_trace(
-                go.Bar(x=bins, y=data[0], name=name_like_string(kdf.columns[0]),), row=1, col=1
-            )
-            fig.add_trace(
-                go.Bar(x=bins, y=data[1], name=name_like_string(kdf.columns[1]),), row=1, col=2
-            )
-            fig["layout"]["xaxis"]["title"] = name_like_string(kdf.columns[0])
+            prev = bins[0]
+            text_bins = []
+            for b in bins[1:]:
+                text_bins.append("[%s, %s)" % (prev, b))
+                prev = b
+            text_bins[-1] = text_bins[-1][:-1] + "]"
+            bins = 0.5 * (bins[:-1] + bins[1:])
+            name_a = name_like_string(kdf.columns[0])
+            name_b = name_like_string(kdf.columns[1])
+            bars = [
+                go.Bar(
+                    x=bins,
+                    y=data[0],
+                    name=name_a,
+                    text=text_bins,
+                    hovertemplate=("variable=" + name_a + "<br>value=%{text}<br>count=%{y}"),
+                ),
+                go.Bar(
+                    x=bins,
+                    y=data[1],
+                    name=name_b,
+                    text=text_bins,
+                    hovertemplate=("variable=" + name_b + "<br>value=%{text}<br>count=%{y}"),
+                ),
+            ]
+            fig = go.Figure(data=bars, layout=go.Layout(barmode="stack"))
+            fig["layout"]["xaxis"]["title"] = "value"
             fig["layout"]["yaxis"]["title"] = "count"
-            fig["layout"]["xaxis2"]["title"] = name_like_string(kdf.columns[1])
-            fig["layout"]["yaxis2"]["title"] = "count"
 
             self.assertEqual(
                 pprint.pformat(kdf.plot(kind="hist").to_dict()), pprint.pformat(fig.to_dict())

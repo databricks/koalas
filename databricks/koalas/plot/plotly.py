@@ -15,22 +15,21 @@
 #
 import pandas as pd
 
-from databricks.koalas.plot import HistogramPlotBase
+from databricks.koalas.plot import HistogramPlotBase, name_like_string
 
 
-def plot_plotly(origin_plot):
-    def plot(data, kind, **kwargs):
-        # Koalas specific plots
-        if kind == "pie":
-            return plot_pie(data, **kwargs)
-        if kind == "hist":
-            # Note that here data is a Koalas DataFrame or Series unlike other type of plots.
-            return plot_histogram(data, **kwargs)
+def plot(data, kind, **kwargs):
+    import plotly
 
-        # Other plots.
-        return origin_plot(data, kind, **kwargs)
+    # Koalas specific plots
+    if kind == "pie":
+        return plot_pie(data, **kwargs)
+    if kind == "hist":
+        # Note that here data is a Koalas DataFrame or Series unlike other type of plots.
+        return plot_histogram(data, **kwargs)
 
-    return plot
+    # Other plots.
+    return plotly.plot(data, kind, **kwargs)
 
 
 def plot_pie(data, **kwargs):
@@ -40,7 +39,6 @@ def plot_pie(data, **kwargs):
         pdf = data.to_frame()
         return express.pie(pdf, values=pdf.columns[0], names=pdf.index, **kwargs)
     elif isinstance(data, pd.DataFrame):
-        # DataFrame
         values = kwargs.pop("y", None)
         default_names = None
         if values is not None:
@@ -57,37 +55,38 @@ def plot_pie(data, **kwargs):
 
 
 def plot_histogram(data, **kwargs):
-    from plotly import express
-    from plotly.subplots import make_subplots
     import plotly.graph_objs as go
-    from databricks import koalas as ks
 
     bins = kwargs.get("bins", 10)
-    is_single_column = isinstance(data, ks.Series)
     kdf, bins = HistogramPlotBase.prepare_hist_data(data, bins)
+    assert len(bins) > 2, "the number of buckets must be higher than 2."
     output_series = HistogramPlotBase.compute_hist(kdf, bins)
+    prev = float("%.9f" % bins[0])  # to make it prettier, truncate.
+    text_bins = []
+    for b in bins[1:]:
+        norm_b = float("%.9f" % b)
+        text_bins.append("[%s, %s)" % (prev, norm_b))
+        prev = norm_b
+    text_bins[-1] = text_bins[-1][:-1] + "]"  # replace ) to ] for the last bucket.
+
     bins = 0.5 * (bins[:-1] + bins[1:])
-    if is_single_column:
-        output_series = list(output_series)
-        assert len(output_series) == 1
-        output_series = output_series[0]
-        return express.bar(
-            x=bins, y=output_series, labels={"x": str(output_series.name), "y": "count"}
+
+    output_series = list(output_series)
+    bars = []
+    for series in output_series:
+        bars.append(
+            go.Bar(
+                x=bins,
+                y=series,
+                name=name_like_string(series.name),
+                text=text_bins,
+                hovertemplate=(
+                    "variable=" + name_like_string(series.name) + "<br>value=%{text}<br>count=%{y}"
+                ),
+            )
         )
-    else:
-        output_series = list(output_series)
-        fig = make_subplots(rows=1, cols=len(output_series))
 
-        for i, series in enumerate(output_series):
-            fig.add_trace(go.Bar(x=bins, y=series, name=series.name,), row=1, col=i + 1)
-
-        for i, series in enumerate(output_series):
-            if i == 0:
-                xaxis = "xaxis"
-                yaxis = "yaxis"
-            else:
-                xaxis = "xaxis%s" % (i + 1)
-                yaxis = "yaxis%s" % (i + 1)
-            fig["layout"][xaxis]["title"] = str(series.name)
-            fig["layout"][yaxis]["title"] = "count"
-        return fig
+    fig = go.Figure(data=bars, layout=go.Layout(barmode="stack"))
+    fig["layout"]["xaxis"]["title"] = "value"
+    fig["layout"]["yaxis"]["title"] = "count"
+    return fig

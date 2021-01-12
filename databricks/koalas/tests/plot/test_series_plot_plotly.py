@@ -20,6 +20,7 @@ import pprint
 import pandas as pd
 import numpy as np
 from plotly import express
+import plotly.graph_objs as go
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
@@ -135,13 +136,27 @@ class SeriesPlotPlotlyTest(ReusedSQLTestCase, TestUtils):
     def test_hist_plot(self):
         def check_hist_plot(kser):
             bins = np.array([1.0, 5.9, 10.8, 15.7, 20.6, 25.5, 30.4, 35.3, 40.2, 45.1, 50.0])
+            data = np.array([5.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,])
+            prev = bins[0]
+            text_bins = []
+            for b in bins[1:]:
+                text_bins.append("[%s, %s)" % (prev, b))
+                prev = b
+            text_bins[-1] = text_bins[-1][:-1] + "]"
             bins = 0.5 * (bins[:-1] + bins[1:])
-            data = pd.Series(
-                np.array([5.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,]), name=kser.name
-            )
-            fig = express.bar(
-                x=bins, y=data, labels={"x": name_like_string(data.name), "y": "count"}
-            )
+            name_a = name_like_string(kser.name)
+            bars = [
+                go.Bar(
+                    x=bins,
+                    y=data,
+                    name=name_a,
+                    text=text_bins,
+                    hovertemplate=("variable=" + name_a + "<br>value=%{text}<br>count=%{y}"),
+                ),
+            ]
+            fig = go.Figure(data=bars, layout=go.Layout(barmode="stack"))
+            fig["layout"]["xaxis"]["title"] = "value"
+            fig["layout"]["yaxis"]["title"] = "count"
 
             self.assertEqual(
                 pprint.pformat(kser.plot(kind="hist").to_dict()), pprint.pformat(fig.to_dict())
