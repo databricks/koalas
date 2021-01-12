@@ -23,8 +23,7 @@ from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 
-from databricks.koalas.plot import TopNPlot, SampledPlot
-from pyspark.ml.feature import Bucketizer
+from databricks.koalas.plot import TopNPlotBase, SampledPlotBase, HistogramPlotBase
 from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 
@@ -61,7 +60,7 @@ else:
     _all_kinds = PlotAccessor._all_kinds
 
 
-class KoalasBarPlot(PandasBarPlot, TopNPlot):
+class KoalasBarPlot(PandasBarPlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -442,34 +441,13 @@ class KoalasBoxPlot(PandasBoxPlot):
         return fliers
 
 
-class KoalasHistPlot(PandasHistPlot):
+class KoalasHistPlot(PandasHistPlot, HistogramPlotBase):
     def _args_adjust(self):
         if is_list_like(self.bottom):
             self.bottom = np.array(self.bottom)
 
     def _compute_plot_data(self):
-        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
-        from databricks.koalas.series import Series
-
-        data = self.data
-        if isinstance(data, Series):
-            data = data.to_frame()
-
-        numeric_data = data.select_dtypes(
-            include=["byte", "decimal", "integer", "float", "long", "double", np.datetime64]
-        )
-
-        # no empty frames or series allowed
-        if len(numeric_data.columns) == 0:
-            raise TypeError(
-                "Empty {0!r}: no numeric data to " "plot".format(numeric_data.__class__.__name__)
-            )
-
-        if is_integer(self.bins):
-            # computes boundaries for the column
-            self.bins = self._get_bins(data.to_spark(), self.bins)
-
-        self.data = numeric_data
+        self.data, self.bins = HistogramPlotBase.prepare_hist_data(self.data, self.bins)
 
     def _make_plot(self):
         # TODO: this logic is similar with KdePlot. Might have to deduplicate it.
@@ -477,12 +455,9 @@ class KoalasHistPlot(PandasHistPlot):
         # Use 1 for now to save the computation.
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
+        output_series = HistogramPlotBase.compute_hist(self.data, self.bins)
 
-        sdf = self.data._internal.spark_frame
-
-        for i, label in enumerate(self.data._internal.column_labels):
-            # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.spark_column_for(label))
+        for (i, label), y in zip(enumerate(self.data._internal.column_labels), output_series):
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()
@@ -493,11 +468,6 @@ class KoalasHistPlot(PandasHistPlot):
             style, kwds = self._apply_style_colors(colors, kwds, i, label)
             if style is not None:
                 kwds["style"] = style
-
-            # 'y' is a Spark DataFrame that selects one column.
-            # here, we manually calculates the weights separately via Spark
-            # and assign it directly to histogram plot.
-            y = KoalasHistPlot._compute_hist(y, self.bins)  # now y is a pandas Series.
 
             kwds = self._make_plot_keywords(kwds, y)
             artists = self._plot(ax, y, column_num=i, stacking_id=stacking_id, **kwds)
@@ -518,56 +488,8 @@ class KoalasHistPlot(PandasHistPlot):
         cls._update_stacker(ax, stacking_id, n)
         return patches
 
-    @staticmethod
-    def _get_bins(sdf, bins):
-        # 'data' is a Spark DataFrame that selects all columns.
-        if len(sdf.columns) > 1:
-            min_col = F.least(*map(F.min, sdf))
-            max_col = F.greatest(*map(F.max, sdf))
-        else:
-            min_col = F.min(sdf.columns[-1])
-            max_col = F.max(sdf.columns[-1])
-        boundaries = sdf.select(min_col, max_col).first()
 
-        # divides the boundaries into bins
-        if boundaries[0] == boundaries[1]:
-            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
-
-        return np.linspace(boundaries[0], boundaries[1], bins + 1)
-
-    @staticmethod
-    def _compute_hist(sdf, bins):
-        # 'data' is a Spark DataFrame that selects one column.
-        assert isinstance(bins, (np.ndarray, np.generic))
-
-        colname = sdf.columns[-1]
-
-        bucket_name = "__{}_bucket".format(colname)
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(
-            splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
-        )
-        # after bucketing values, groups and counts them
-        result = (
-            bucketizer.transform(sdf)
-            .select(bucket_name)
-            .groupby(bucket_name)
-            .agg(F.count("*").alias("count"))
-            .toPandas()
-            .sort_values(by=bucket_name)
-        )
-
-        # generates a pandas DF with one row for each bin
-        # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1), "bucket": bins[:-1]})
-        # merges the bins with counts on it and fills remaining ones with zeros
-        pdf = indexes.merge(result, how="left", on=[bucket_name]).fillna(0)[["count"]]
-        pdf.columns = [bucket_name]
-
-        return pdf[bucket_name]
-
-
-class KoalasPiePlot(PandasPiePlot, TopNPlot):
+class KoalasPiePlot(PandasPiePlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -576,7 +498,7 @@ class KoalasPiePlot(PandasPiePlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasAreaPlot(PandasAreaPlot, SampledPlot):
+class KoalasAreaPlot(PandasAreaPlot, SampledPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_sampled(data), **kwargs)
 
@@ -585,7 +507,7 @@ class KoalasAreaPlot(PandasAreaPlot, SampledPlot):
         super()._make_plot()
 
 
-class KoalasLinePlot(PandasLinePlot, SampledPlot):
+class KoalasLinePlot(PandasLinePlot, SampledPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_sampled(data), **kwargs)
 
@@ -594,7 +516,7 @@ class KoalasLinePlot(PandasLinePlot, SampledPlot):
         super()._make_plot()
 
 
-class KoalasBarhPlot(PandasBarhPlot, TopNPlot):
+class KoalasBarhPlot(PandasBarhPlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -603,7 +525,7 @@ class KoalasBarhPlot(PandasBarhPlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasScatterPlot(PandasScatterPlot, TopNPlot):
+class KoalasScatterPlot(PandasScatterPlot, TopNPlotBase):
     def __init__(self, data, x, y, **kwargs):
         super().__init__(self.get_top_n(data), x, y, **kwargs)
 
