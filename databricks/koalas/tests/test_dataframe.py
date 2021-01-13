@@ -2242,10 +2242,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
         join_kdf = kdf1.join(kdf2, on="B", lsuffix="_left")
-        join_kdf = join_kdf.sort_values(by=list(join_kdf.columns)).reset_index(drop=True)
+        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
 
         self.assert_eq(join_pdf, join_kdf)
-        return
+
         # check basic function
         pdf1 = pd.DataFrame(
             {"key": ["K0", "K1", "K2", "K3"], "A": ["A0", "A1", "A2", "A3"]}, columns=["key", "A"]

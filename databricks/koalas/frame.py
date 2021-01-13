@@ -7331,6 +7331,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> join_kdf.index
         Int64Index([0, 1, 2, 3], dtype='int64')
         """
+
         if isinstance(right, ks.Series):
             common = list(self.columns.intersection([right.name]))
         else:
@@ -7341,6 +7342,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
 
         need_set_index = False
+
         if on:
             if not is_list_like(on):
                 on = [on]  # type: ignore
@@ -7349,23 +7351,23 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     'len(left_on) must equal the number of levels in the index of "right"'
                 )
 
-            need_set_index = len(set(on) & set(self.index.names)) == 0
-        # if need_set_index:
-        #     self = self.set_index(on)
-        # join_kdf = self.merge(
-        #     right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
-        # )
+            if set(right.index.names) != set(on):
+                return self.merge(
+                    right,
+                    left_on=on,
+                    left_index=on is None,
+                    right_index=True,
+                    how=how,
+                    suffixes=(lsuffix, rsuffix),
+                )
 
+            need_set_index = len(set(on) & set(self.index.names)) == 0
+        if need_set_index:
+            self = self.set_index(on)
         join_kdf = self.merge(
-            right,
-            left_on=on,
-            left_index=on is None,
-            right_index=True,
-            how=how,
-            suffixes=(lsuffix, rsuffix),
+            right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
         )
-        return join_kdf.reset_index(drop=True)
-        # return join_kdf.reset_index() if need_set_index else join_kdf
+        return join_kdf.reset_index() if need_set_index else join_kdf
 
     def append(
         self,
