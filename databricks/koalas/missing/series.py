@@ -44,7 +44,6 @@ class MissingPandasLikeSeries(object):
     convert_dtypes = _unsupported_function("convert_dtypes")
     cov = _unsupported_function("cov")
     ewm = _unsupported_function("ewm")
-    factorize = _unsupported_function("factorize")
     first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")

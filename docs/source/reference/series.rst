@@ -213,6 +213,7 @@ Reshaping, sorting, transposing
    Series.explode
    Series.repeat
    Series.squeeze
+   Series.factorize
 
 Combining / joining / merging
 -----------------------------

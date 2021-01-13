@@ -2306,6 +2306,113 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.first_valid_index(), kser.first_valid_index())
 
+    def test_factorize(self):
+        pser = pd.Series(["a", "b", "a", "b"])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series([5, 1, 5, 1])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = (pser + 1).factorize(sort=True)
+        kcodes, kuniques = (kser + 1).factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series(["a", "b", "a", "b"], name="ser", index=["w", "x", "y", "z"])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series(
+            ["a", "b", "a", "b"], index=pd.MultiIndex.from_arrays([[4, 3, 2, 1], [1, 2, 3, 4]])
+        )
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        #
+        # Deals with None and np.nan
+        #
+        pser = pd.Series(["a", "b", "a", np.nan])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series([1, None, 3, 2, 1])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series(["a", None, "a"])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize(sort=True)
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pser = pd.Series([None, np.nan])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize()
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes, kcodes.to_list())
+        # pandas: Float64Index([], dtype='float64')
+        self.assert_eq(pd.Index([]), kuniques)
+
+        pser = pd.Series([np.nan, np.nan])
+        kser = ks.from_pandas(pser)
+        pcodes, puniques = pser.factorize()
+        kcodes, kuniques = kser.factorize()
+        self.assert_eq(pcodes, kcodes.to_list())
+        # pandas: Float64Index([], dtype='float64')
+        self.assert_eq(pd.Index([]), kuniques)
+
+        #
+        # Deals with na_sentinel
+        #
+        # pandas >= 1.1.2 support na_sentinel=None
+        # pandas >= 0.24 support na_sentinel not to be -1
+        #
+        pd_below_1_1_2 = LooseVersion(pd.__version__) < LooseVersion("1.1.2")
+        pd_below_0_24 = LooseVersion(pd.__version__) < LooseVersion("0.24")
+
+        pser = pd.Series(["a", "b", "a", np.nan, None])
+        kser = ks.from_pandas(pser)
+
+        pcodes, puniques = pser.factorize(sort=True, na_sentinel=-2)
+        kcodes, kuniques = kser.factorize(na_sentinel=-2)
+        self.assert_eq([0, 1, 0, -2, -2] if pd_below_0_24 else pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pcodes, puniques = pser.factorize(sort=True, na_sentinel=2)
+        kcodes, kuniques = kser.factorize(na_sentinel=2)
+        self.assert_eq([0, 1, 0, 2, 2] if pd_below_0_24 else pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        if not pd_below_1_1_2:
+            pcodes, puniques = pser.factorize(sort=True, na_sentinel=None)
+            kcodes, kuniques = kser.factorize(na_sentinel=None)
+            self.assert_eq(pcodes.tolist(), kcodes.to_list())
+            # puniques is Index(['a', 'b', nan], dtype='object')
+            self.assert_eq(ks.Index(["a", "b", None]), kuniques)
+
+            kser = ks.Series([1, 2, np.nan, 4, 5])  # Arrow takes np.nan as null
+            kser.loc[3] = np.nan  # Spark takes np.nan as NaN
+            kcodes, kuniques = kser.factorize(na_sentinel=None)
+            pcodes, puniques = kser.to_pandas().factorize(sort=True, na_sentinel=None)
+            self.assert_eq(pcodes.tolist(), kcodes.to_list())
+            self.assert_eq(puniques, kuniques)
+
     def test_pad(self):
         pser = pd.Series([np.nan, 2, 3, 4, np.nan, 6], name="x")
         kser = ks.from_pandas(pser)
