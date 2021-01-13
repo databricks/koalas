@@ -31,7 +31,7 @@ from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
 from pyspark.sql.functions import PandasUDFType, pandas_udf
-from pyspark.sql.types import BooleanType, DataType, StructField, StructType, LongType
+from pyspark.sql.types import BooleanType, DataType, IntegralType, StructField, StructType, LongType
 
 try:
     from pyspark.sql.types import to_arrow_type
@@ -825,6 +825,8 @@ class InternalFrame(object):
                 if field.nullable and pdf[field.name].isnull().all():
                     if isinstance(field.dataType, BooleanType):
                         pdf[field.name] = pdf[field.name].astype(np.object)
+                    elif isinstance(field.dataType, IntegralType):
+                        pdf[field.name] = pdf[field.name].astype(np.float64)
                     else:
                         pdf[field.name] = pdf[field.name].astype(
                             spark_type_to_pandas_dtype(field.dataType)
