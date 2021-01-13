@@ -23,7 +23,12 @@ from matplotlib.axes._base import _process_plot_format
 from pandas.core.dtypes.inference import is_integer, is_list_like
 from pandas.io.formats.printing import pprint_thing
 
-from databricks.koalas.plot import TopNPlotBase, SampledPlotBase, HistogramPlotBase
+from databricks.koalas.plot import (
+    TopNPlotBase,
+    SampledPlotBase,
+    HistogramPlotBase,
+    unsupported_function,
+)
 from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 
@@ -628,6 +633,26 @@ _klasses = [
     KoalasKdePlot,
 ]
 _plot_klass = {getattr(klass, "_kind"): klass for klass in _klasses}
+_common_kinds = {"area", "bar", "barh", "box", "hist", "kde", "line", "pie"}
+_series_kinds = _common_kinds.union(set())
+_dataframe_kinds = _common_kinds.union({"scatter", "hexbin"})
+_koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
+
+
+def plot_koalas(data, kind, **kwargs):
+    if kind not in _koalas_all_kinds:
+        raise ValueError("{} is not a valid plot kind".format(kind))
+
+    from databricks.koalas import DataFrame, Series
+
+    if isinstance(data, Series):
+        if kind not in _series_kinds:
+            return unsupported_function(class_name="pd.Series", method_name=kind)()
+        return plot_series(data=data, kind=kind, **kwargs)
+    elif isinstance(data, DataFrame):
+        if kind not in _dataframe_kinds:
+            return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
+        return plot_frame(data=data, kind=kind, **kwargs)
 
 
 def plot_series(
