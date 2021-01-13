@@ -350,8 +350,8 @@ class KoalasPlotAccessor(PandasObject):
                 from databricks.koalas.plot import plotly as module
             except ImportError:
                 raise ImportError(
-                    "matplotlib is required for plotting when the "
-                    "default backend 'matplotlib' is selected."
+                    "plotly is required for plotting when the "
+                    "default backend 'plotly' is selected."
                 ) from None
 
             KoalasPlotAccessor._backends["plotly"] = module
