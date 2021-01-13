@@ -1608,9 +1608,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             columns=("species", "legs", "wings"),
         )
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf.mode(), pdf.mode())
-        self.assert_eq(kdf.mode(dropna=False), pdf.mode(dropna=False))
-        self.assert_eq(kdf.mode(numeric_only=True), pdf.mode(numeric_only=True))
+        self.assert_eq(kdf.mode().sort_index(), pdf.mode().sort_index())
+        self.assert_eq(kdf.mode(dropna=False).sort_index(), pdf.mode(dropna=False).sort_index())
+        self.assert_eq(
+            kdf.mode(numeric_only=True).sort_index(), pdf.mode(numeric_only=True).sort_index()
+        )
 
     def test_missing(self):
         kdf = self.kdf
