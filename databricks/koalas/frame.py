@@ -3279,7 +3279,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         >>> kdf.mode(dropna=False)
           species  legs wings
-        0    bird     2  None
+        0    bird     2  NaN
 
         >>> kdf.mode(numeric_only=True)
            legs  wings
