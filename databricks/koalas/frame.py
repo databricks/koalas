@@ -3291,6 +3291,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         data = self if not numeric_only else self._get_numeric_data()
 
+        new_scol = verify_temp_column_name(data._internal.spark_frame, "__row_index__")
+
         def scol_mode(col):
             if dropna:
                 sdf_dropna = data._internal.spark_frame.select(col).dropna()
@@ -3298,9 +3300,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf_dropna = data._internal.spark_frame
             count_df = sdf_dropna.groupBy(col).count()
             most_value = count_df.orderBy("count", ascending=False).first()[1]
-            sdf_most_value = count_df.filter("count == {}".format(most_value))
-            return sdf_most_value.select(col).withColumn(
-                "row_index", F.row_number().over(Window.orderBy(F.monotonically_increasing_id()))
+            sdf_most_value = count_df.filter("count == {}".format(most_value)).select(col)
+
+            return sdf_most_value.withColumn(
+                new_scol, F.row_number().over(Window.orderBy(F.monotonically_increasing_id()))
             )
 
         new_sdf = None
@@ -3308,9 +3311,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if new_sdf is None:
                 new_sdf = scol_mode(data_scol_name)
             else:
-                new_sdf = new_sdf.join(scol_mode(data_scol_name), on=["row_index"], how="outer")
+                new_sdf = new_sdf.join(scol_mode(data_scol_name), on=[new_scol], how="outer")
 
-        return DataFrame(new_sdf.drop("row_index"))
+        return DataFrame(new_sdf.drop(new_scol))
 
     def _get_numeric_data(self):
         data = self.copy()
