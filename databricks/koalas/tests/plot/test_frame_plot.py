@@ -81,7 +81,7 @@ class DataFramePlotTest(ReusedSQLTestCase):
         expected_histogram = np.array([5, 4, 1, 0, 0, 0, 0, 0, 0, 1])
         histogram = HistogramPlotBase.compute_hist(kdf[["a"]], bins)[0]
         self.assert_eq(pd.Series(expected_bins), pd.Series(bins))
-        self.assert_eq(pd.Series(expected_histogram, name="__a_bucket"), histogram, almost=True)
+        self.assert_eq(pd.Series(expected_histogram, name="a"), histogram, almost=True)
 
     def test_compute_hist_multi_columns(self):
         expected_bins = np.linspace(1, 50, 11)
@@ -100,7 +100,7 @@ class DataFramePlotTest(ReusedSQLTestCase):
             np.array([4, 1, 0, 0, 1, 3, 0, 0, 0, 2]),
         ]
         histograms = HistogramPlotBase.compute_hist(kdf, bins)
-        expected_names = ["__a_bucket", "__b_bucket"]
+        expected_names = ["a", "b"]
 
         for histogram, expected_histogram, expected_name in zip(
             histograms, expected_histograms, expected_names

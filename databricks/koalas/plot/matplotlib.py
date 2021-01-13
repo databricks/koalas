@@ -16,7 +16,7 @@
 
 from distutils.version import LooseVersion
 
-import matplotlib
+import matplotlib as mat
 import numpy as np
 import pandas as pd
 from matplotlib.axes._base import _process_plot_format
@@ -111,9 +111,7 @@ class KoalasBoxPlot(PandasBoxPlot):
             if dictionary is None:
                 dictionary = dict()
             for prop_dict in properties:
-                dictionary.setdefault(
-                    prop_dict, matplotlib.rcParams[rc_str.format(rc_name, prop_dict)]
-                )
+                dictionary.setdefault(prop_dict, mat.rcParams[rc_str.format(rc_name, prop_dict)])
             return dictionary
 
         # Common property dictionaries loading from rc
@@ -203,7 +201,7 @@ class KoalasBoxPlot(PandasBoxPlot):
         if manage_ticks is not None:
             should_manage_ticks = manage_ticks
 
-        if LooseVersion(matplotlib.__version__) < LooseVersion("3.1.0"):
+        if LooseVersion(mat.__version__) < LooseVersion("3.1.0"):
             extra_args = {"manage_xticks": should_manage_ticks}
         else:
             extra_args = {"manage_ticks": should_manage_ticks}
@@ -333,26 +331,26 @@ class KoalasBoxPlot(PandasBoxPlot):
     ):
         # Missing arguments default to rcParams.
         if whis is None:
-            whis = matplotlib.rcParams["boxplot.whiskers"]
+            whis = mat.rcParams["boxplot.whiskers"]
         if bootstrap is None:
-            bootstrap = matplotlib.rcParams["boxplot.bootstrap"]
+            bootstrap = mat.rcParams["boxplot.bootstrap"]
 
         if notch is None:
-            notch = matplotlib.rcParams["boxplot.notch"]
+            notch = mat.rcParams["boxplot.notch"]
         if vert is None:
-            vert = matplotlib.rcParams["boxplot.vertical"]
+            vert = mat.rcParams["boxplot.vertical"]
         if patch_artist is None:
-            patch_artist = matplotlib.rcParams["boxplot.patchartist"]
+            patch_artist = mat.rcParams["boxplot.patchartist"]
         if meanline is None:
-            meanline = matplotlib.rcParams["boxplot.meanline"]
+            meanline = mat.rcParams["boxplot.meanline"]
         if showmeans is None:
-            showmeans = matplotlib.rcParams["boxplot.showmeans"]
+            showmeans = mat.rcParams["boxplot.showmeans"]
         if showcaps is None:
-            showcaps = matplotlib.rcParams["boxplot.showcaps"]
+            showcaps = mat.rcParams["boxplot.showcaps"]
         if showbox is None:
-            showbox = matplotlib.rcParams["boxplot.showbox"]
+            showbox = mat.rcParams["boxplot.showbox"]
         if showfliers is None:
-            showfliers = matplotlib.rcParams["boxplot.showfliers"]
+            showfliers = mat.rcParams["boxplot.showfliers"]
 
         return dict(
             whis=whis,

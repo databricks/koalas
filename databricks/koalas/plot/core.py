@@ -25,6 +25,7 @@ from pandas.core.dtypes.inference import is_integer
 
 from databricks.koalas.missing import unsupported_function
 from databricks.koalas.config import get_option
+from databricks.koalas.utils import name_like_string
 
 
 class TopNPlotBase:
@@ -143,8 +144,11 @@ class HistogramPlotBase:
 
         sdf = kdf._internal.spark_frame
         scols = []
+        input_column_names = []
         for label in kdf._internal.column_labels:
-            scols.append(kdf._internal.spark_column_for(label))
+            input_column_name = name_like_string(label)
+            input_column_names.append(input_column_name)
+            scols.append(kdf._internal.spark_column_for(label).alias(input_column_name))
         sdf = sdf.select(*scols)
 
         # 1. Make the bucket output flat to:
@@ -243,7 +247,7 @@ class HistogramPlotBase:
         #     |0                |
         #     +-----------------+
         output_series = []
-        for i, bucket_name in enumerate(bucket_names):
+        for i, (input_column_name, bucket_name) in enumerate(zip(input_column_names, bucket_names)):
             current_bucket_result = result[result["__group_id"] == i]
             # generates a pandas DF with one row for each bin
             # we need this as some of the bins may be empty
@@ -252,8 +256,8 @@ class HistogramPlotBase:
             pdf = indexes.merge(current_bucket_result, how="left", on=["__bucket"]).fillna(0)[
                 ["count"]
             ]
-            pdf.columns = [bucket_name]
-            output_series.append(pdf[bucket_name])
+            pdf.columns = [input_column_name]
+            output_series.append(pdf[input_column_name])
 
         return output_series
 
@@ -325,11 +329,12 @@ class KoalasPlotAccessor(PandasObject):
 
         backend = backend or get_option("plotting.backend")
 
+        # TODO: leverage koalas_plotting_backends, and remove the codes below.
         if backend == "matplotlib":
             # Because matplotlib is an optional dependency and first-party backend,
             # we need to attempt an import here to raise an ImportError if needed.
             try:
-                import databricks.koalas.plot as module
+                from databricks.koalas.plot import matplotlib as module
             except ImportError:
                 raise ImportError(
                     "matplotlib is required for plotting when the "
@@ -338,16 +343,23 @@ class KoalasPlotAccessor(PandasObject):
 
             KoalasPlotAccessor._backends["matplotlib"] = module
 
+        if backend == "plotly":
+            try:
+                # test if plotly can be imported
+                import plotly  # noqa: F401
+                from databricks.koalas.plot import plotly as module
+            except ImportError:
+                raise ImportError(
+                    "plotly is required for plotting when the "
+                    "default backend 'plotly' is selected."
+                ) from None
+
+            KoalasPlotAccessor._backends["plotly"] = module
+
         if backend in KoalasPlotAccessor._backends:
             return KoalasPlotAccessor._backends[backend]
 
         module = KoalasPlotAccessor._find_backend(backend)
-
-        if backend == "plotly":
-            from databricks.koalas.plot.plotly import plot_plotly
-
-            module.plot = plot_plotly(module.plot)
-
         KoalasPlotAccessor._backends[backend] = module
         return module
 
@@ -355,7 +367,9 @@ class KoalasPlotAccessor(PandasObject):
         plot_backend = KoalasPlotAccessor._get_plot_backend(backend)
         plot_data = self.data
 
-        if plot_backend.__name__ != "databricks.koalas.plot":
+        # TODO: make 'databricks.koalas.plot.matplotlib' module to implement
+        #    plot interface.
+        if plot_backend.__name__ != "databricks.koalas.plot.matplotlib":
             data_preprocessor_map = {
                 "pie": TopNPlotBase().get_top_n,
                 "bar": TopNPlotBase().get_top_n,
@@ -363,6 +377,8 @@ class KoalasPlotAccessor(PandasObject):
                 "scatter": TopNPlotBase().get_top_n,
                 "area": SampledPlotBase().get_sampled,
                 "line": SampledPlotBase().get_sampled,
+                # if histogram is not supported, the backend will throw an exception
+                "hist": lambda data: data,
             }
             if not data_preprocessor_map[kind]:
                 raise NotImplementedError(
