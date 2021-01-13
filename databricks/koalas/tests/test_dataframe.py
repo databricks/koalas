@@ -2233,6 +2233,19 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.add_suffix("first_series"), kdf.add_suffix("first_series"))
 
     def test_join(self):
+        pdf1 = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
+        pdf2 = pd.DataFrame({"B": [11, 12, 13], "C": [14, 15, 16]})
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        join_pdf = pdf1.join(pdf2, on="B", lsuffix="_left")
+        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+
+        join_kdf = kdf1.join(kdf2, on="B", lsuffix="_left")
+        join_kdf = join_kdf.sort_values(by=list(join_kdf.columns)).reset_index(drop=True)
+
+        self.assert_eq(join_pdf, join_kdf)
+        return
         # check basic function
         pdf1 = pd.DataFrame(
             {"key": ["K0", "K1", "K2", "K3"], "A": ["A0", "A1", "A2", "A3"]}, columns=["key", "A"]

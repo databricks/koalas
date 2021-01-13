@@ -7350,12 +7350,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
 
             need_set_index = len(set(on) & set(self.index.names)) == 0
-        if need_set_index:
-            self = self.set_index(on)
+        # if need_set_index:
+        #     self = self.set_index(on)
+        # join_kdf = self.merge(
+        #     right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
+        # )
+
         join_kdf = self.merge(
-            right, left_index=True, right_index=True, how=how, suffixes=(lsuffix, rsuffix)
+            right,
+            left_on=on,
+            left_index=on is None,
+            right_index=True,
+            how=how,
+            suffixes=(lsuffix, rsuffix),
         )
-        return join_kdf.reset_index() if need_set_index else join_kdf
+        return join_kdf.reset_index(drop=True)
+        # return join_kdf.reset_index() if need_set_index else join_kdf
 
     def append(
         self,
