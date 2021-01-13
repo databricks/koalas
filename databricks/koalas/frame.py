@@ -3272,16 +3272,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spider   arthropod     8    0.0
         ostrich       bird     2    NaN
 
-        >>> kdf.mode().sort_index()
+        >>> kdf.mode().sort_values(by=list(kdf.columns)).reset_index(drop=True)
           species  legs  wings
         0    bird   2.0    0.0
         1    None   NaN    2.0
 
-        >>> kdf.mode(dropna=False).sort_index()
+        >>> kdf.mode(dropna=False)
           species  legs wings
         0    bird     2  NaN
 
-        >>> kdf.mode(numeric_only=True).sort_index()
+        >>> kdf.mode(numeric_only=True).sort_values(by='legs').reset_index(drop=True)
            legs  wings
         0   2.0    0.0
         1   NaN    2.0
