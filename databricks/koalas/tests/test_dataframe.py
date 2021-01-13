@@ -410,13 +410,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [None, None, None, "a"],
+                "b": [None, None, None, 1],
+                "c": [None, None, None] + list(np.arange(1, 2).astype("i1")),
+                "d": [None, None, None, 1.0],
+                "e": [None, None, None, True],
+                "f": [None, None, None] + list(pd.date_range("20130101", periods=1)),
+            },
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.iloc[:-1], pdf.iloc[:-1])
+
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+            self.assert_eq(kdf.iloc[:-1], pdf.iloc[:-1])
 
         pdf = pd.DataFrame(
             {
                 "a": pd.Series([None, None, None], dtype="float64"),
                 "b": pd.Series([None, None, None], dtype="str"),
             },
-            index=np.random.rand(3),
         )
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
@@ -427,14 +442,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_nullable_object(self):
         pdf = pd.DataFrame(
             {
-                "a": list("abc") + [np.nan],
-                "b": list(range(1, 4)) + [np.nan],
-                "c": list(np.arange(3, 6).astype("i1")) + [np.nan],
-                "d": list(np.arange(4.0, 7.0, dtype="float64")) + [np.nan],
-                "e": [True, False, True, np.nan],
-                "f": list(pd.date_range("20130101", periods=3)) + [np.nan],
+                "a": list("abc") + [np.nan, None],
+                "b": list(range(1, 4)) + [np.nan, None],
+                "c": list(np.arange(3, 6).astype("i1")) + [np.nan, None],
+                "d": list(np.arange(4.0, 7.0, dtype="float64")) + [np.nan, None],
+                "e": [True, False, True, np.nan, None],
+                "f": list(pd.date_range("20130101", periods=3)) + [np.nan, None],
             },
-            index=np.random.rand(4),
+            index=np.random.rand(5),
         )
 
         kdf = ks.from_pandas(pdf)
