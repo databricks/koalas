@@ -7352,10 +7352,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 )
 
             if set(right.index.names) != set(on):
+                # If the column `on` is not the index of `right`,
+                # use the column `on` from self as the join key
                 return self.merge(
                     right,
                     left_on=on,
-                    left_index=on is None,
+                    left_index=False,
                     right_index=True,
                     how=how,
                     suffixes=(lsuffix, rsuffix),

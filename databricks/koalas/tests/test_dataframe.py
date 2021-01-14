@@ -2238,13 +2238,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf1 = ks.from_pandas(pdf1)
         kdf2 = ks.from_pandas(pdf2)
 
-        join_pdf = pdf1.join(pdf2, on="B", lsuffix="_left")
-        join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
+        hows = ["left", "inner"]
+        for how in hows:
+            join_pdf = pdf1.join(pdf2, on="B", lsuffix="_left", how=how)
+            join_pdf.sort_values(by=list(join_pdf.columns), inplace=True)
 
-        join_kdf = kdf1.join(kdf2, on="B", lsuffix="_left")
-        join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
+            join_kdf = kdf1.join(kdf2, on="B", lsuffix="_left", how=how)
+            join_kdf.sort_values(by=list(join_kdf.columns), inplace=True)
 
-        self.assert_eq(join_pdf, join_kdf)
+            self.assert_eq(join_pdf, join_kdf)
 
         # check basic function
         pdf1 = pd.DataFrame(
