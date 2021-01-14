@@ -274,12 +274,14 @@ class KoalasPlotAccessor(PandasObject):
     ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
     """
 
-    # from databricks.koalas import DataFrame, Series
-
-    _common_kinds = {"area", "bar", "barh", "box", "hist", "kde", "line", "pie"}
-    _series_kinds = _common_kinds.union(set())
-    _dataframe_kinds = _common_kinds.union({"scatter", "hexbin"})
-    _koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
+    pandas_plot_data_map = {
+        "pie": TopNPlotBase().get_top_n,
+        "bar": TopNPlotBase().get_top_n,
+        "barh": TopNPlotBase().get_top_n,
+        "scatter": TopNPlotBase().get_top_n,
+        "area": SampledPlotBase().get_sampled,
+        "line": SampledPlotBase().get_sampled,
+    }
     _backends = {}  # type: ignore
 
     def __init__(self, data):
@@ -290,18 +292,6 @@ class KoalasPlotAccessor(PandasObject):
         """
         Find a Koalas plotting backend
         """
-        # function copied from pandas.plotting._core
-
-        # Delay import for performance.
-        import pkg_resources
-
-        for entry_point in pkg_resources.iter_entry_points("koalas_plotting_backends"):
-            if entry_point.name == "matplotlib":
-                # matplotlib is an optional dependency. When
-                # missing, this would raise.
-                continue
-            KoalasPlotAccessor._backends[entry_point.name] = entry_point.load()
-
         try:
             return KoalasPlotAccessor._backends[backend]
         except KeyError:
@@ -311,7 +301,7 @@ class KoalasPlotAccessor(PandasObject):
                 # We re-raise later on.
                 pass
             else:
-                if hasattr(module, "plot"):
+                if hasattr(module, "plot") or hasattr(module, "plot_koalas"):
                     # Validate that the interface is implemented when the option
                     # is set, rather than at plot time.
                     KoalasPlotAccessor._backends[backend] = module
@@ -325,15 +315,17 @@ class KoalasPlotAccessor(PandasObject):
 
     @staticmethod
     def _get_plot_backend(backend=None):
-        # function copied from pandas.plotting._core
-
         backend = backend or get_option("plotting.backend")
+        # Shortcut
+        if backend in KoalasPlotAccessor._backends:
+            return KoalasPlotAccessor._backends[backend]
 
-        # TODO: leverage koalas_plotting_backends, and remove the codes below.
         if backend == "matplotlib":
             # Because matplotlib is an optional dependency and first-party backend,
             # we need to attempt an import here to raise an ImportError if needed.
             try:
+                # test if matplotlib can be imported
+                import matplotlib  # noqa: F401
                 from databricks.koalas.plot import matplotlib as module
             except ImportError:
                 raise ImportError(
@@ -342,8 +334,7 @@ class KoalasPlotAccessor(PandasObject):
                 ) from None
 
             KoalasPlotAccessor._backends["matplotlib"] = module
-
-        if backend == "plotly":
+        elif backend == "plotly":
             try:
                 # test if plotly can be imported
                 import plotly  # noqa: F401
@@ -355,53 +346,28 @@ class KoalasPlotAccessor(PandasObject):
                 ) from None
 
             KoalasPlotAccessor._backends["plotly"] = module
-
-        if backend in KoalasPlotAccessor._backends:
-            return KoalasPlotAccessor._backends[backend]
-
-        module = KoalasPlotAccessor._find_backend(backend)
-        KoalasPlotAccessor._backends[backend] = module
+        else:
+            module = KoalasPlotAccessor._find_backend(backend)
+            KoalasPlotAccessor._backends[backend] = module
         return module
 
     def __call__(self, kind="line", backend=None, **kwargs):
         plot_backend = KoalasPlotAccessor._get_plot_backend(backend)
         plot_data = self.data
 
-        # TODO: make 'databricks.koalas.plot.matplotlib' module to implement
-        #    plot interface.
-        if plot_backend.__name__ != "databricks.koalas.plot.matplotlib":
-            data_preprocessor_map = {
-                "pie": TopNPlotBase().get_top_n,
-                "bar": TopNPlotBase().get_top_n,
-                "barh": TopNPlotBase().get_top_n,
-                "scatter": TopNPlotBase().get_top_n,
-                "area": SampledPlotBase().get_sampled,
-                "line": SampledPlotBase().get_sampled,
-                # if histogram is not supported, the backend will throw an exception
-                "hist": lambda data: data,
-            }
-            if not data_preprocessor_map[kind]:
+        kind = {"density": "kde"}.get(kind, kind)
+        if hasattr(plot_backend, "plot_koalas"):
+            # use if there's koalas specific method.
+            return plot_backend.plot_koalas(plot_data, kind=kind, **kwargs)
+        else:
+            # fallback to use pandas'
+            if not KoalasPlotAccessor.pandas_plot_data_map[kind]:
                 raise NotImplementedError(
                     "'%s' plot is not supported with '%s' plot "
                     "backend yet." % (kind, plot_backend.__name__)
                 )
-            plot_data = data_preprocessor_map[kind](plot_data)
+            plot_data = KoalasPlotAccessor.pandas_plot_data_map[kind](plot_data)
             return plot_backend.plot(plot_data, kind=kind, **kwargs)
-
-        if kind not in KoalasPlotAccessor._koalas_all_kinds:
-            raise ValueError("{} is not a valid plot kind".format(kind))
-
-        from databricks.koalas import DataFrame, Series
-        from databricks.koalas.plot.matplotlib import plot_series, plot_frame
-
-        if isinstance(self.data, Series):
-            if kind not in KoalasPlotAccessor._series_kinds:
-                return unsupported_function(class_name="pd.Series", method_name=kind)()
-            return plot_series(data=self.data, kind=kind, **kwargs)
-        elif isinstance(self.data, DataFrame):
-            if kind not in KoalasPlotAccessor._dataframe_kinds:
-                return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
-            return plot_frame(data=self.data, kind=kind, **kwargs)
 
     def line(self, x=None, y=None, **kwargs):
         """

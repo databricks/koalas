@@ -15,10 +15,10 @@
 #
 import pandas as pd
 
-from databricks.koalas.plot import HistogramPlotBase, name_like_string
+from databricks.koalas.plot import HistogramPlotBase, name_like_string, KoalasPlotAccessor
 
 
-def plot(data, kind, **kwargs):
+def plot_koalas(data, kind, **kwargs):
     import plotly
 
     # Koalas specific plots
@@ -29,11 +29,13 @@ def plot(data, kind, **kwargs):
         return plot_histogram(data, **kwargs)
 
     # Other plots.
-    return plotly.plot(data, kind, **kwargs)
+    return plotly.plot(KoalasPlotAccessor.pandas_plot_data_map[kind](data), kind, **kwargs)
 
 
 def plot_pie(data, **kwargs):
     from plotly import express
+
+    data = KoalasPlotAccessor.pandas_plot_data_map["pie"](data)
 
     if isinstance(data, pd.Series):
         pdf = data.to_frame()
