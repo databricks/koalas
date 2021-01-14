@@ -13,26 +13,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from typing import TYPE_CHECKING, Union
+
 import pandas as pd
 
-from databricks.koalas.plot import HistogramPlotBase, name_like_string, KoalasPlotAccessor
+from databricks.koalas.plot import (
+    HistogramPlotBase,
+    name_like_string,
+    KoalasPlotAccessor,
+    BoxPlotBase,
+)
+
+if TYPE_CHECKING:
+    import databricks.koalas as ks
 
 
-def plot_koalas(data, kind, **kwargs):
+def plot_koalas(data: Union["ks.DataFrame", "ks.Series"], kind: str, **kwargs):
     import plotly
 
     # Koalas specific plots
     if kind == "pie":
         return plot_pie(data, **kwargs)
     if kind == "hist":
-        # Note that here data is a Koalas DataFrame or Series unlike other type of plots.
         return plot_histogram(data, **kwargs)
+    if kind == "box":
+        return plot_box(data, **kwargs)
 
     # Other plots.
     return plotly.plot(KoalasPlotAccessor.pandas_plot_data_map[kind](data), kind, **kwargs)
 
 
-def plot_pie(data, **kwargs):
+def plot_pie(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
     from plotly import express
 
     data = KoalasPlotAccessor.pandas_plot_data_map["pie"](data)
@@ -50,13 +61,13 @@ def plot_pie(data, **kwargs):
             data,
             values=kwargs.pop("values", values),
             names=kwargs.pop("names", default_names),
-            **kwargs
+            **kwargs,
         )
     else:
         raise RuntimeError("Unexpected type: [%s]" % type(data))
 
 
-def plot_histogram(data, **kwargs):
+def plot_histogram(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
     import plotly.graph_objs as go
 
     bins = kwargs.get("bins", 10)
@@ -91,4 +102,72 @@ def plot_histogram(data, **kwargs):
     fig = go.Figure(data=bars, layout=go.Layout(barmode="stack"))
     fig["layout"]["xaxis"]["title"] = "value"
     fig["layout"]["yaxis"]["title"] = "count"
+    return fig
+
+
+def plot_box(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
+    import plotly.graph_objs as go
+    import databricks.koalas as ks
+
+    if isinstance(data, ks.DataFrame):
+        raise RuntimeError(
+            "plotly does not support a box plot with Koalas DataFrame. Use Series instead."
+        )
+
+    # 'whis' isn't actually an argument in plotly (but in matplotlib). But seems like
+    # plotly doesn't expose the reach of the whiskers to the beyond the first and
+    # third quartiles (?). Looks they use default 1.5.
+    whis = kwargs.pop("whis", 1.5)
+    # 'precision' is Koalas specific to control precision for approx_percentile
+    precision = kwargs.pop("precision", 0.01)
+
+    # Plotly options
+    boxpoints = kwargs.pop("boxpoints", "suspectedoutliers")
+    notched = kwargs.pop("notched", False)
+    if boxpoints not in ["suspectedoutliers", False]:
+        raise ValueError(
+            "plotly plotting backend does not support 'boxpoints' set to '%s'. "
+            "Set to 'suspectedoutliers' or False." % boxpoints
+        )
+    if notched:
+        raise ValueError(
+            "plotly plotting backend does not support 'notched' set to '%s'. "
+            "Set to False." % notched
+        )
+
+    colname = name_like_string(data.name)
+    spark_column_name = data._internal.spark_column_name_for(data._column_label)
+
+    # Computes mean, median, Q1 and Q3 with approx_percentile and precision
+    col_stats, col_fences = BoxPlotBase.compute_stats(data, spark_column_name, whis, precision)
+
+    # Creates a column to flag rows as outliers or not
+    outliers = BoxPlotBase.outliers(data, spark_column_name, *col_fences)
+
+    # Computes min and max values of non-outliers - the whiskers
+    whiskers = BoxPlotBase.calc_whiskers(spark_column_name, outliers)
+
+    fliers = None
+    if boxpoints:
+        fliers = BoxPlotBase.get_fliers(spark_column_name, outliers, whiskers[0])
+        fliers = [fliers] if len(fliers) > 0 else None
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Box(
+            name=colname,
+            q1=[col_stats["q1"]],
+            median=[col_stats["med"]],
+            q3=[col_stats["q3"]],
+            mean=[col_stats["mean"]],
+            lowerfence=[whiskers[0]],
+            upperfence=[whiskers[1]],
+            y=fliers,
+            boxpoints=boxpoints,
+            notched=notched,
+            **kwargs,  # this is for workarounds. Box takes different options from express.box.
+        )
+    )
+    fig["layout"]["xaxis"]["title"] = colname
+    fig["layout"]["yaxis"]["title"] = "value"
     return fig

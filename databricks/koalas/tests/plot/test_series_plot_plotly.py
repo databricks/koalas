@@ -168,3 +168,41 @@ class SeriesPlotPlotlyTest(ReusedSQLTestCase, TestUtils):
         columns = pd.MultiIndex.from_tuples([("x", "y")])
         kdf1.columns = columns
         check_hist_plot(kdf1[("x", "y")])
+
+    def test_pox_plot(self):
+        def check_pox_plot(kser):
+            fig = go.Figure()
+            fig.add_trace(
+                go.Box(
+                    name=name_like_string(kser.name),
+                    q1=[3],
+                    median=[6],
+                    q3=[9],
+                    mean=[10.0],
+                    lowerfence=[1],
+                    upperfence=[15],
+                    y=[[50]],
+                    boxpoints="suspectedoutliers",
+                    notched=False,
+                )
+            )
+            fig["layout"]["xaxis"]["title"] = name_like_string(kser.name)
+            fig["layout"]["yaxis"]["title"] = "value"
+
+            self.assertEqual(
+                pprint.pformat(kser.plot(kind="box").to_dict()), pprint.pformat(fig.to_dict())
+            )
+
+        kdf1 = self.kdf1
+        check_pox_plot(kdf1["a"])
+
+        columns = pd.MultiIndex.from_tuples([("x", "y")])
+        kdf1.columns = columns
+        check_pox_plot(kdf1[("x", "y")])
+
+    def test_pox_plot_arguments(self):
+        with self.assertRaisesRegex(ValueError, "does not support"):
+            self.kdf1.a.plot.box(boxpoints="all")
+        with self.assertRaisesRegex(ValueError, "does not support"):
+            self.kdf1.a.plot.box(notched=True)
+        self.kdf1.a.plot.box(hovertext="abc")  # other arguments should not throw an exception
