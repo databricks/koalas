@@ -7331,7 +7331,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> join_kdf.index
         Int64Index([0, 1, 2, 3], dtype='int64')
         """
-
         if isinstance(right, ks.Series):
             common = list(self.columns.intersection([right.name]))
         else:
@@ -7342,7 +7341,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
 
         need_set_index = False
-
         if on:
             if not is_list_like(on):
                 on = [on]  # type: ignore
