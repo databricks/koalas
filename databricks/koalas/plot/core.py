@@ -324,7 +324,7 @@ class KoalasPlotAccessor(PandasObject):
             # Because matplotlib is an optional dependency and first-party backend,
             # we need to attempt an import here to raise an ImportError if needed.
             try:
-                # test if plotly can be imported
+                # test if matplotlib can be imported
                 import matplotlib  # noqa: F401
                 from databricks.koalas.plot import matplotlib as module
             except ImportError:
