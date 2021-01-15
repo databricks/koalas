@@ -98,6 +98,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf.insert(1, "b", 10)
         pdf.insert(1, "b", 10)
         self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+
+        kdf.b = kdf.b + 1
+        pdf.b = pdf.b + 1
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+
         kdf.insert(2, "c", 0.1)
         pdf.insert(2, "c", 0.1)
         self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)

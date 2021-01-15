@@ -3778,7 +3778,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf[column] = value
         columns = kdf.columns[:-1].insert(loc, kdf.columns[-1])
         kdf = kdf[columns]
-        self._update_internal_frame(kdf._internal)
+        self._update_internal_frame(kdf._internal, requires_same_anchor=False)
 
     # TODO: add frep and axis parqameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
