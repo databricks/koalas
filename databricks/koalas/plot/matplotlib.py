@@ -20,7 +20,7 @@ import matplotlib as mat
 import numpy as np
 import pandas as pd
 from matplotlib.axes._base import _process_plot_format
-from pandas.core.dtypes.inference import is_integer, is_list_like
+from pandas.core.dtypes.inference import is_list_like
 from pandas.io.formats.printing import pprint_thing
 
 from databricks.koalas.plot import (
@@ -29,9 +29,8 @@ from databricks.koalas.plot import (
     HistogramPlotBase,
     BoxPlotBase,
     unsupported_function,
+    KdePlotBase,
 )
-from pyspark.mllib.stat import KernelDensity
-from pyspark.sql import functions as F
 
 
 if LooseVersion(pd.__version__) < LooseVersion("0.25"):
@@ -463,7 +462,7 @@ class KoalasScatterPlot(PandasScatterPlot, TopNPlotBase):
         super()._make_plot()
 
 
-class KoalasKdePlot(PandasKdePlot):
+class KoalasKdePlot(PandasKdePlot, KdePlotBase):
     def _compute_plot_data(self):
         from databricks.koalas.series import Series
 
@@ -510,39 +509,13 @@ class KoalasKdePlot(PandasKdePlot):
             self._add_legend_handle(artists[0], label, index=i)
 
     def _get_ind(self, y):
-        # 'y' is a Spark DataFrame that selects one column.
-        if self.ind is None:
-            min_val, max_val = y.select(F.min(y.columns[-1]), F.max(y.columns[-1])).first()
-
-            sample_range = max_val - min_val
-            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, 1000,)
-        elif is_integer(self.ind):
-            min_val, max_val = y.select(F.min(y.columns[-1]), F.max(y.columns[-1])).first()
-
-            sample_range = np.nanmax(y) - np.nanmin(y)
-            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, self.ind,)
-        else:
-            ind = self.ind
-        return ind
+        return KdePlotBase.get_ind(y, self.ind)
 
     @classmethod
     def _plot(
         cls, ax, y, style=None, bw_method=None, ind=None, column_num=None, stacking_id=None, **kwds
     ):
-        # 'y' is a Spark DataFrame that selects one column.
-
-        # Using RDD is slow so we might have to change it to Dataset based implementation
-        # once Spark has that implementation.
-        sample = y.rdd.map(lambda x: float(x[0]))
-        kd = KernelDensity()
-        kd.setSample(sample)
-
-        assert isinstance(bw_method, (int, float)), "'bw_method' must be set as a scalar number."
-
-        if bw_method is not None:
-            # Match the bandwidth with Spark.
-            kd.setBandwidth(float(bw_method))
-        y = kd.estimate(list(map(float, ind)))
+        y = KdePlotBase.compute_kde(y, bw_method=bw_method, ind=ind)
         lines = PandasMPLPlot._plot(ax, ind, y, style=style, **kwds)
         return lines
 
