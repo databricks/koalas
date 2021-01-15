@@ -27,7 +27,6 @@ from databricks.koalas.plot import (
     TopNPlotBase,
     SampledPlotBase,
     HistogramPlotBase,
-    BoxPlotBase,
     unsupported_function,
 )
 from pyspark.mllib.stat import KernelDensity
@@ -75,7 +74,7 @@ class KoalasBarPlot(PandasBarPlot, TopNPlotBase):
         return ax.bar(x, y, w, bottom=start, log=log, **kwds)
 
 
-class KoalasBoxPlot(PandasBoxPlot, BoxPlotBase):
+class KoalasBoxPlot(PandasBoxPlot):
     def boxplot(
         self,
         ax,
@@ -262,16 +261,18 @@ class KoalasBoxPlot(PandasBoxPlot, BoxPlotBase):
         precision = self.kwds.get("precision", 0.01)
 
         # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        col_stats, col_fences = BoxPlotBase.compute_stats(data, spark_column_name, whis, precision)
+        col_stats, col_fences = KoalasBoxPlot._compute_stats(
+            data, spark_column_name, whis, precision
+        )
 
         # # Creates a column to flag rows as outliers or not
-        outliers = BoxPlotBase.outliers(data, spark_column_name, *col_fences)
+        outliers = KoalasBoxPlot._outliers(data, spark_column_name, *col_fences)
 
         # # Computes min and max values of non-outliers - the whiskers
-        whiskers = BoxPlotBase.calc_whiskers(spark_column_name, outliers)
+        whiskers = KoalasBoxPlot._calc_whiskers(spark_column_name, outliers)
 
         if showfliers:
-            fliers = BoxPlotBase.get_fliers(spark_column_name, outliers, whiskers[0])
+            fliers = KoalasBoxPlot._get_fliers(spark_column_name, outliers, whiskers[0])
         else:
             fliers = []
 
@@ -368,6 +369,79 @@ class KoalasBoxPlot(PandasBoxPlot, BoxPlotBase):
             showbox=showbox,
             showfliers=showfliers,
         )
+
+    @staticmethod
+    def _compute_stats(data, colname, whis, precision):
+        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
+        pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
+            *[
+                F.expr(
+                    "approx_percentile(`{}`, {}, {})".format(colname, q, int(1.0 / precision))
+                ).alias("{}_{}%".format(colname, int(q * 100)))
+                for q in [0.25, 0.50, 0.75]
+            ],
+            F.mean("`%s`" % colname).alias("{}_mean".format(colname)),
+        ).toPandas()
+
+        # Computes IQR and Tukey's fences
+        iqr = "{}_iqr".format(colname)
+        p75 = "{}_75%".format(colname)
+        p25 = "{}_25%".format(colname)
+        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
+        pdf.loc[:, "{}_lfence".format(colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
+        pdf.loc[:, "{}_ufence".format(colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
+
+        qnames = ["25%", "50%", "75%", "mean", "lfence", "ufence"]
+        col_summ = pdf[["{}_{}".format(colname, q) for q in qnames]]
+        col_summ.columns = qnames
+        lfence, ufence = col_summ["lfence"], col_summ["ufence"]
+
+        stats = {
+            "mean": col_summ["mean"].values[0],
+            "med": col_summ["50%"].values[0],
+            "q1": col_summ["25%"].values[0],
+            "q3": col_summ["75%"].values[0],
+        }
+
+        return stats, (lfence.values[0], ufence.values[0])
+
+    @staticmethod
+    def _outliers(data, colname, lfence, ufence):
+        # Builds expression to identify outliers
+        expression = F.col("`%s`" % colname).between(lfence, ufence)
+        # Creates a column to flag rows as outliers or not
+        return data._kdf._internal.resolved_copy.spark_frame.withColumn(
+            "__{}_outlier".format(colname), ~expression
+        )
+
+    @staticmethod
+    def _calc_whiskers(colname, outliers):
+        # Computes min and max values of non-outliers - the whiskers
+        minmax = (
+            outliers.filter("not `__{}_outlier`".format(colname))
+            .agg(F.min("`%s`" % colname).alias("min"), F.max(colname).alias("max"))
+            .toPandas()
+        )
+        return minmax.iloc[0][["min", "max"]].values
+
+    @staticmethod
+    def _get_fliers(colname, outliers, min_val):
+        # Filters only the outliers, should "showfliers" be True
+        fliers_df = outliers.filter("`__{}_outlier`".format(colname))
+
+        # If shows fliers, takes the top 1k with highest absolute values
+        # Here we normalize the values by subtracting the minimum value from
+        # each, and use absolute values.
+        order_col = F.abs(F.col("`{}`".format(colname)) - min_val.item())
+        fliers = (
+            fliers_df.select(F.col("`{}`".format(colname)))
+            .orderBy(order_col)
+            .limit(1001)
+            .toPandas()[colname]
+            .values
+        )
+
+        return fliers
 
 
 class KoalasHistPlot(PandasHistPlot, HistogramPlotBase):
