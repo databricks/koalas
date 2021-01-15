@@ -3791,7 +3791,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 combined = self
                 that_scol = value.spark.column
             else:
-                combined = combine_frames(self, value)
+                combined = combine_frames(self, value, how="left")
                 that_scol = combined["that"]._internal.spark_column_for(value._column_label)
 
         data_spark_columns = combined._internal.data_spark_columns.copy()
@@ -3800,7 +3800,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_spark_columns = data_spark_columns[:-1]
 
         column_labels = self._internal.column_labels.copy()
-        column_labels.insert(loc, tuple([column]))
+
+        column = column if is_name_like_tuple(column) else (column,)
+        while len(column) < len(column_labels[0]):
+            column += ("",)
+
+        column_labels.insert(loc, column)
 
         internal = combined._internal.with_new_columns(
             scols_or_ksers=data_spark_columns,

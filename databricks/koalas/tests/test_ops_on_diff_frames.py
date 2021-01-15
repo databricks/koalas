@@ -478,13 +478,15 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
     def test_insert(self):
+        #
+        # Basic operations
+        #
         pdf = pd.DataFrame([1, 2, 3])
         kdf = ks.from_pandas(pdf)
 
-        # Inserts a Series (with a different anchor)
+        # Inserts a Series with the same index
         pser = pd.Series([4, 5, 6])
         kser = ks.from_pandas(pser)
-
         kdf.insert(1, "y", kser)
         pdf.insert(1, "y", pser)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
@@ -492,6 +494,34 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         # Inserts a list
         kdf.insert(0, "a", [7, 8, 9])
         pdf.insert(0, "a", [7, 8, 9])
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
+        #
+        # DataFrame with Index
+        #
+        pdf = pd.DataFrame([1, 2, 3], index=[10, 20, 30])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pd.Series([4, 5, 6])
+        kser = ks.from_pandas(pser)
+        kdf.insert(1, "y", kser)
+        pdf.insert(1, "y", pser)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
+        #
+        # DataFrame with MultiIndex as columns
+        #
+        pdf = pd.DataFrame({("x", "a"): [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pd.Series([4, 5, 6])
+        kser = ks.from_pandas(pser)
+        kdf.insert(1, ("y", ""), kser)
+        pdf.insert(1, ("y", ""), pser)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
+        kdf.insert(1, "z", kser)
+        pdf.insert(1, "z", pser)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
     def test_compare(self):
