@@ -3780,6 +3780,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf = kdf[columns]
         self._update_internal_frame(kdf._internal, requires_same_anchor=False)
 
+    # TODO: add frep and axis parameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
         """
         Shift DataFrame by desired number of periods.
