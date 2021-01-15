@@ -18,7 +18,7 @@
 A wrapper class for Spark DataFrame to behave similar to pandas DataFrame.
 """
 from collections import OrderedDict, defaultdict, namedtuple
-from collections.abc import Mapping, Sized
+from collections.abc import Mapping
 from distutils.version import LooseVersion
 import re
 import warnings
@@ -84,7 +84,6 @@ from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFrameMethods
 from databricks.koalas.utils import (
     align_diff_frames,
-    combine_frames,
     column_labels_level,
     default_session,
     is_name_like_tuple,
