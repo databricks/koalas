@@ -3764,57 +3764,24 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         if not is_name_like_value(column):
             raise ValueError(
-                "'column' should be a scalar value or tuple that contains scalar values"
+                '"column" should be a scalar value or tuple that contains scalar values'
             )
+
+        if is_name_like_tuple(column):
+            if len(column) != len(self.columns.levels):
+                # To be consistent with pandas
+                raise ValueError('"column" must have length equal to number of column levels.')
 
         if column in self.columns:
             raise ValueError("cannot insert %s, already exists" % column)
 
-        is_value_scalar = isinstance(value, Scalar.__args__)  # type: ignore
-        is_same_achor = False
-
-        if is_value_scalar:
-            combined = self.copy()
-            that_scol = F.lit(value)
-        else:
-            if len(cast(Sized, value)) != len(cast(Sized, self)):
-                raise ValueError(
-                    "Length of values %s does not match length of index %s"
-                    % (cast(Sized, value), len(cast(Sized, self)))
-                )
-
-            if not isinstance(value, ks.Series):
-                value = ks.Series(value)
-
-            is_same_achor = same_anchor(self, cast(ks.Series, value))
-            if is_same_achor:
-                combined = self
-                that_scol = value.spark.column
-            else:
-                combined = combine_frames(self, value, how="left")
-                that_scol = combined["that"]._internal.spark_column_for(value._column_label)
-
-        data_spark_columns = combined._internal.data_spark_columns.copy()
-        data_spark_columns.insert(loc, that_scol)
-        if not is_value_scalar and not is_same_achor:
-            data_spark_columns = data_spark_columns[:-1]
-
-        column_labels = self._internal.column_labels.copy()
-
-        column = column if is_name_like_tuple(column) else (column,)
-        while len(column) < len(column_labels[0]):
-            column += ("",)
-
-        column_labels.insert(loc, column)
-
-        internal = combined._internal.with_new_columns(
-            scols_or_ksers=data_spark_columns,
-            column_labels=column_labels,
-            column_label_names=self._internal.column_label_names,
-            keep_order=False,
+        kdf = self.copy()
+        kdf[column] = value
+        columns = kdf.columns[:-1].insert(loc, kdf.columns[-1])
+        kdf = kdf[columns]
+        self._update_internal_frame(
+            kdf._internal, requires_same_anchor=isinstance(value, ks.Series)
         )
-
-        self._update_internal_frame(internal, requires_same_anchor=isinstance(value, ks.Series))
 
     # TODO: add frep and axis parqameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
