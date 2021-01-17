@@ -19,6 +19,7 @@ import importlib
 import pandas as pd
 import numpy as np
 from pyspark.ml.feature import Bucketizer
+from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import functions as F
 from pandas.core.base import PandasObject
 from pandas.core.dtypes.inference import is_integer
@@ -335,6 +336,41 @@ class BoxPlotBase:
         )
 
         return fliers
+
+
+class KdePlotBase:
+    @staticmethod
+    def get_ind(sdf, ind):
+        # 'sdf' is a Spark DataFrame that selects one column.
+
+        if ind is None:
+            min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
+
+            sample_range = max_val - min_val
+            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, 1000,)
+        elif is_integer(ind):
+            min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
+
+            sample_range = min_val - max_val
+            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, ind,)
+        return ind
+
+    @staticmethod
+    def compute_kde(sdf, bw_method=None, ind=None):
+        # 'sdf' is a Spark DataFrame that selects one column.
+
+        # Using RDD is slow so we might have to change it to Dataset based implementation
+        # once Spark has that implementation.
+        sample = sdf.rdd.map(lambda x: float(x[0]))
+        kd = KernelDensity()
+        kd.setSample(sample)
+
+        assert isinstance(bw_method, (int, float)), "'bw_method' must be set as a scalar number."
+
+        if bw_method is not None:
+            # Match the bandwidth with Spark.
+            kd.setBandwidth(float(bw_method))
+        return kd.estimate(list(map(float, ind)))
 
 
 class KoalasPlotAccessor(PandasObject):
