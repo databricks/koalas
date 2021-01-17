@@ -341,7 +341,7 @@ class BoxPlotBase:
 class KdePlotBase:
     @staticmethod
     def get_ind(sdf, ind):
-        # 'data' is a Spark DataFrame that selects one column.
+        # 'sdf' is a Spark DataFrame that selects one column.
 
         if ind is None:
             min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
@@ -353,13 +353,11 @@ class KdePlotBase:
 
             sample_range = min_val - max_val
             ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, ind,)
-        else:
-            ind = ind
         return ind
 
     @staticmethod
     def compute_kde(sdf, bw_method=None, ind=None):
-        # 'data' is a Spark DataFrame that selects one column.
+        # 'sdf' is a Spark DataFrame that selects one column.
 
         # Using RDD is slow so we might have to change it to Dataset based implementation
         # once Spark has that implementation.
