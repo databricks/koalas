@@ -128,7 +128,7 @@ def as_spark_type(tpe) -> types.DataType:
         return types.FloatType()
     elif tpe in (np.int32, "int32", "i"):
         return types.IntegerType()
-    elif tpe in (int, np.int, np.int64, "int", "int64", "long", "bigint"):
+    elif tpe in (int, np.int, np.int64, "int", "int64", "long"):
         return types.LongType()
     elif tpe in (np.int16, "int16", "short"):
         return types.ShortType()
