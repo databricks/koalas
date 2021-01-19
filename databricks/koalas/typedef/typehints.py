@@ -21,7 +21,6 @@ import typing
 import datetime
 import decimal
 from inspect import getfullargspec, isclass
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -102,8 +101,6 @@ def as_spark_type(tpe) -> types.DataType:
     - dictionaries of field_name -> type
     - Python3's typing system
     """
-    from databricks.koalas.utils import is_testing
-
     # TODO: Add "boolean" and "string" types.
     # ArrayType
     if tpe in (np.ndarray,):
@@ -133,16 +130,6 @@ def as_spark_type(tpe) -> types.DataType:
         return types.IntegerType()
     elif tpe in (int, np.int, np.int64, "int", "int64", "long"):
         return types.LongType()
-    elif isinstance(tpe, str) and tpe in ("bigint",):
-        msg = (
-            "A string '{}' as a dtype is deprecated. "
-            "Please use int, np.int, np.int64, 'int', 'int64', or 'long' instead.".format(tpe)
-        )
-        if is_testing():
-            raise AssertionError(msg)
-        else:
-            warnings.warn(msg, FutureWarning)
-            return types.LongType()
     elif tpe in (np.int16, "int16", "short"):
         return types.ShortType()
     # StringType
