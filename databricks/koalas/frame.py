@@ -113,6 +113,7 @@ from databricks.koalas.typedef import (
     spark_type_to_pandas_dtype,
     DataFrameType,
     SeriesType,
+    Scalar,
 )
 from databricks.koalas.plot import KoalasPlotAccessor
 
@@ -3710,6 +3711,87 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(lambda kser: kser.notnull())
 
     notna = notnull
+
+    def insert(
+        self,
+        loc: int,
+        column,
+        value: Union[Scalar, "Series", Iterable],
+        allow_duplicates: bool = False,
+    ) -> None:
+        """
+        Insert column into DataFrame at specified location.
+
+        Raises a ValueError if `column` is already contained in the DataFrame,
+        unless `allow_duplicates` is set to True.
+
+        Parameters
+        ----------
+        loc : int
+            Insertion index. Must verify 0 <= loc <= len(columns).
+        column : str, number, or hashable object
+            Label of the inserted column.
+        value : int, Series, or array-like
+        allow_duplicates : bool, optional
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame([1, 2, 3])
+        >>> kdf.sort_index()
+           0
+        0  1
+        1  2
+        2  3
+        >>> kdf.insert(0, 'x', 4)
+        >>> kdf.sort_index()
+           x  0
+        0  4  1
+        1  4  2
+        2  4  3
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+
+        >>> kdf.insert(1, 'y', [5, 6, 7])
+        >>> kdf.sort_index()
+           x  y  0
+        0  4  5  1
+        1  4  6  2
+        2  4  7  3
+
+        >>> kdf.insert(2, 'z', ks.Series([8, 9, 10]))
+        >>> kdf.sort_index()
+           x  y   z  0
+        0  4  5   8  1
+        1  4  6   9  2
+        2  4  7  10  3
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if not isinstance(loc, int):
+            raise TypeError("loc must be int")
+
+        assert 0 <= loc <= len(self.columns)
+        assert allow_duplicates is False
+
+        if not is_name_like_value(column):
+            raise ValueError(
+                '"column" should be a scalar value or tuple that contains scalar values'
+            )
+
+        if is_name_like_tuple(column):
+            if len(column) != len(self.columns.levels):
+                # To be consistent with pandas
+                raise ValueError('"column" must have length equal to number of column levels.')
+
+        if column in self.columns:
+            raise ValueError("cannot insert %s, already exists" % column)
+
+        kdf = self.copy()
+        kdf[column] = value
+        columns = kdf.columns[:-1].insert(loc, kdf.columns[-1])
+        kdf = kdf[columns]
+        self._update_internal_frame(kdf._internal)
 
     # TODO: add frep and axis parameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
