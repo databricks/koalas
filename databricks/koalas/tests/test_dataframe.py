@@ -88,6 +88,63 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         index_cols = pdf.columns[column_mask]
         self.assert_eq(kdf[index_cols], pdf[index_cols])
 
+    def test_insert(self):
+        #
+        # Basic DataFrame
+        #
+        pdf = pd.DataFrame([1, 2, 3])
+        kdf = ks.from_pandas(pdf)
+
+        kdf.insert(1, "b", 10)
+        pdf.insert(1, "b", 10)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(2, "c", 0.1)
+        pdf.insert(2, "c", 0.1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(3, "d", kdf.b + 1)
+        pdf.insert(3, "d", pdf.b + 1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+
+        kser = ks.Series([4, 5, 6])
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "y", kser))
+        self.assertRaisesRegex(
+            ValueError, "cannot insert b, already exists", lambda: kdf.insert(1, "b", 10)
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            '"column" should be a scalar value or tuple that contains scalar values',
+            lambda: kdf.insert(0, list("abc"), kser),
+        )
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "e", [7, 8, 9, 10]))
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "f", ks.Series([7, 8])))
+        self.assertRaises(AssertionError, lambda: kdf.insert(100, "y", kser))
+        self.assertRaises(AssertionError, lambda: kdf.insert(1, "y", kser, allow_duplicates=True))
+
+        #
+        # DataFrame with MultiIndex as columns
+        #
+        pdf = pd.DataFrame({("x", "a", "b"): [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        kdf.insert(1, "b", 10)
+        pdf.insert(1, "b", 10)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(2, "c", 0.1)
+        pdf.insert(2, "c", 0.1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(3, "d", kdf.b + 1)
+        pdf.insert(3, "d", pdf.b + 1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+
+        self.assertRaisesRegex(
+            ValueError, "cannot insert d, already exists", lambda: kdf.insert(4, "d", 11)
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            '"column" must have length equal to number of column levels.',
+            lambda: kdf.insert(4, ("e",), 11),
+        )
+
     def test_inplace(self):
         pdf, kdf = self.df_pair
 
