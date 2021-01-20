@@ -490,6 +490,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.insert(1, "y", pser)
         self.assert_eq(kdf.sort_index(), pdf.sort_index())
 
+        kdf.y = kdf.y + 1
+        pdf.y = pdf.y + 1
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
         #
         # DataFrame with Index different from inserting Series'
         #
