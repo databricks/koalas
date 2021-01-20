@@ -16,13 +16,20 @@
 
 import importlib
 
+import pandas as pd
+import numpy as np
+from pyspark.ml.feature import Bucketizer
+from pyspark.mllib.stat import KernelDensity
+from pyspark.sql import functions as F
 from pandas.core.base import PandasObject
+from pandas.core.dtypes.inference import is_integer
 
 from databricks.koalas.missing import unsupported_function
 from databricks.koalas.config import get_option
+from databricks.koalas.utils import name_like_string
 
 
-class TopNPlot:
+class TopNPlotBase:
     def get_top_n(self, data):
         from databricks.koalas import DataFrame, Series
 
@@ -56,7 +63,7 @@ class TopNPlot:
             )
 
 
-class SampledPlot:
+class SampledPlotBase:
     def get_sampled(self, data):
         from databricks.koalas import DataFrame, Series
 
@@ -89,6 +96,283 @@ class SampledPlot:
             )
 
 
+class HistogramPlotBase:
+    @staticmethod
+    def prepare_hist_data(data, bins):
+        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
+        from databricks.koalas.series import Series
+
+        if isinstance(data, Series):
+            data = data.to_frame()
+
+        numeric_data = data.select_dtypes(
+            include=["byte", "decimal", "integer", "float", "long", "double", np.datetime64]
+        )
+
+        # no empty frames or series allowed
+        if len(numeric_data.columns) == 0:
+            raise TypeError(
+                "Empty {0!r}: no numeric data to " "plot".format(numeric_data.__class__.__name__)
+            )
+
+        if is_integer(bins):
+            # computes boundaries for the column
+            bins = HistogramPlotBase.get_bins(data.to_spark(), bins)
+
+        return numeric_data, bins
+
+    @staticmethod
+    def get_bins(sdf, bins):
+        # 'data' is a Spark DataFrame that selects all columns.
+        if len(sdf.columns) > 1:
+            min_col = F.least(*map(F.min, sdf))
+            max_col = F.greatest(*map(F.max, sdf))
+        else:
+            min_col = F.min(sdf.columns[-1])
+            max_col = F.max(sdf.columns[-1])
+        boundaries = sdf.select(min_col, max_col).first()
+
+        # divides the boundaries into bins
+        if boundaries[0] == boundaries[1]:
+            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
+
+        return np.linspace(boundaries[0], boundaries[1], bins + 1)
+
+    @staticmethod
+    def compute_hist(kdf, bins):
+        # 'data' is a Spark DataFrame that selects one column.
+        assert isinstance(bins, (np.ndarray, np.generic))
+
+        sdf = kdf._internal.spark_frame
+        scols = []
+        input_column_names = []
+        for label in kdf._internal.column_labels:
+            input_column_name = name_like_string(label)
+            input_column_names.append(input_column_name)
+            scols.append(kdf._internal.spark_column_for(label).alias(input_column_name))
+        sdf = sdf.select(*scols)
+
+        # 1. Make the bucket output flat to:
+        #     +----------+-------+
+        #     |__group_id|buckets|
+        #     +----------+-------+
+        #     |0         |0.0    |
+        #     |0         |0.0    |
+        #     |0         |1.0    |
+        #     |0         |2.0    |
+        #     |0         |3.0    |
+        #     |0         |3.0    |
+        #     |1         |0.0    |
+        #     |1         |1.0    |
+        #     |1         |1.0    |
+        #     |1         |2.0    |
+        #     |1         |1.0    |
+        #     |1         |0.0    |
+        #     +----------+-------+
+        colnames = sdf.columns
+        bucket_names = ["__{}_bucket".format(colname) for colname in colnames]
+
+        output_df = None
+        for group_id, (colname, bucket_name) in enumerate(zip(colnames, bucket_names)):
+            # creates a Bucketizer to get corresponding bin of each value
+            bucketizer = Bucketizer(
+                splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
+            )
+
+            bucket_df = bucketizer.transform(sdf)
+
+            if output_df is None:
+                output_df = bucket_df.select(
+                    F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
+                )
+            else:
+                output_df = output_df.union(
+                    bucket_df.select(
+                        F.lit(group_id).alias("__group_id"), F.col(bucket_name).alias("__bucket")
+                    )
+                )
+
+        # 2. Calculate the count based on each group and bucket.
+        #     +----------+-------+------+
+        #     |__group_id|buckets| count|
+        #     +----------+-------+------+
+        #     |0         |0.0    |2     |
+        #     |0         |1.0    |1     |
+        #     |0         |2.0    |1     |
+        #     |0         |3.0    |2     |
+        #     |1         |0.0    |2     |
+        #     |1         |1.0    |3     |
+        #     |1         |2.0    |1     |
+        #     +----------+-------+------+
+        result = (
+            output_df.groupby("__group_id", "__bucket")
+            .agg(F.count("*").alias("count"))
+            .toPandas()
+            .sort_values(by=["__group_id", "__bucket"])
+        )
+
+        # 3. Fill empty bins and calculate based on each group id. From:
+        #     +----------+--------+------+
+        #     |__group_id|__bucket| count|
+        #     +----------+--------+------+
+        #     |0         |0.0     |2     |
+        #     |0         |1.0     |1     |
+        #     |0         |2.0     |1     |
+        #     |0         |3.0     |2     |
+        #     +----------+--------+------+
+        #     +----------+--------+------+
+        #     |__group_id|__bucket| count|
+        #     +----------+--------+------+
+        #     |1         |0.0     |2     |
+        #     |1         |1.0     |3     |
+        #     |1         |2.0     |1     |
+        #     +----------+--------+------+
+        #
+        # to:
+        #     +-----------------+
+        #     |__values1__bucket|
+        #     +-----------------+
+        #     |2                |
+        #     |1                |
+        #     |1                |
+        #     |2                |
+        #     |0                |
+        #     +-----------------+
+        #     +-----------------+
+        #     |__values2__bucket|
+        #     +-----------------+
+        #     |2                |
+        #     |3                |
+        #     |1                |
+        #     |0                |
+        #     |0                |
+        #     +-----------------+
+        output_series = []
+        for i, (input_column_name, bucket_name) in enumerate(zip(input_column_names, bucket_names)):
+            current_bucket_result = result[result["__group_id"] == i]
+            # generates a pandas DF with one row for each bin
+            # we need this as some of the bins may be empty
+            indexes = pd.DataFrame({"__bucket": np.arange(0, len(bins) - 1)})
+            # merges the bins with counts on it and fills remaining ones with zeros
+            pdf = indexes.merge(current_bucket_result, how="left", on=["__bucket"]).fillna(0)[
+                ["count"]
+            ]
+            pdf.columns = [input_column_name]
+            output_series.append(pdf[input_column_name])
+
+        return output_series
+
+
+class BoxPlotBase:
+    @staticmethod
+    def compute_stats(data, colname, whis, precision):
+        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
+        pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
+            *[
+                F.expr(
+                    "approx_percentile(`{}`, {}, {})".format(colname, q, int(1.0 / precision))
+                ).alias("{}_{}%".format(colname, int(q * 100)))
+                for q in [0.25, 0.50, 0.75]
+            ],
+            F.mean("`%s`" % colname).alias("{}_mean".format(colname)),
+        ).toPandas()
+
+        # Computes IQR and Tukey's fences
+        iqr = "{}_iqr".format(colname)
+        p75 = "{}_75%".format(colname)
+        p25 = "{}_25%".format(colname)
+        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
+        pdf.loc[:, "{}_lfence".format(colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
+        pdf.loc[:, "{}_ufence".format(colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
+
+        qnames = ["25%", "50%", "75%", "mean", "lfence", "ufence"]
+        col_summ = pdf[["{}_{}".format(colname, q) for q in qnames]]
+        col_summ.columns = qnames
+        lfence, ufence = col_summ["lfence"], col_summ["ufence"]
+
+        stats = {
+            "mean": col_summ["mean"].values[0],
+            "med": col_summ["50%"].values[0],
+            "q1": col_summ["25%"].values[0],
+            "q3": col_summ["75%"].values[0],
+        }
+
+        return stats, (lfence.values[0], ufence.values[0])
+
+    @staticmethod
+    def outliers(data, colname, lfence, ufence):
+        # Builds expression to identify outliers
+        expression = F.col("`%s`" % colname).between(lfence, ufence)
+        # Creates a column to flag rows as outliers or not
+        return data._kdf._internal.resolved_copy.spark_frame.withColumn(
+            "__{}_outlier".format(colname), ~expression
+        )
+
+    @staticmethod
+    def calc_whiskers(colname, outliers):
+        # Computes min and max values of non-outliers - the whiskers
+        minmax = (
+            outliers.filter("not `__{}_outlier`".format(colname))
+            .agg(F.min("`%s`" % colname).alias("min"), F.max(colname).alias("max"))
+            .toPandas()
+        )
+        return minmax.iloc[0][["min", "max"]].values
+
+    @staticmethod
+    def get_fliers(colname, outliers, min_val):
+        # Filters only the outliers, should "showfliers" be True
+        fliers_df = outliers.filter("`__{}_outlier`".format(colname))
+
+        # If shows fliers, takes the top 1k with highest absolute values
+        # Here we normalize the values by subtracting the minimum value from
+        # each, and use absolute values.
+        order_col = F.abs(F.col("`{}`".format(colname)) - min_val.item())
+        fliers = (
+            fliers_df.select(F.col("`{}`".format(colname)))
+            .orderBy(order_col)
+            .limit(1001)
+            .toPandas()[colname]
+            .values
+        )
+
+        return fliers
+
+
+class KdePlotBase:
+    @staticmethod
+    def get_ind(sdf, ind):
+        # 'sdf' is a Spark DataFrame that selects one column.
+
+        if ind is None:
+            min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
+
+            sample_range = max_val - min_val
+            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, 1000,)
+        elif is_integer(ind):
+            min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
+
+            sample_range = min_val - max_val
+            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, ind,)
+        return ind
+
+    @staticmethod
+    def compute_kde(sdf, bw_method=None, ind=None):
+        # 'sdf' is a Spark DataFrame that selects one column.
+
+        # Using RDD is slow so we might have to change it to Dataset based implementation
+        # once Spark has that implementation.
+        sample = sdf.rdd.map(lambda x: float(x[0]))
+        kd = KernelDensity()
+        kd.setSample(sample)
+
+        assert isinstance(bw_method, (int, float)), "'bw_method' must be set as a scalar number."
+
+        if bw_method is not None:
+            # Match the bandwidth with Spark.
+            kd.setBandwidth(float(bw_method))
+        return kd.estimate(list(map(float, ind)))
+
+
 class KoalasPlotAccessor(PandasObject):
     """
     Series/Frames plotting accessor and method.
@@ -101,12 +385,14 @@ class KoalasPlotAccessor(PandasObject):
     ``s.plot(kind='hist')`` is equivalent to ``s.plot.hist()``
     """
 
-    # from databricks.koalas import DataFrame, Series
-
-    _common_kinds = {"area", "bar", "barh", "box", "hist", "kde", "line", "pie"}
-    _series_kinds = _common_kinds.union(set())
-    _dataframe_kinds = _common_kinds.union({"scatter", "hexbin"})
-    _koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
+    pandas_plot_data_map = {
+        "pie": TopNPlotBase().get_top_n,
+        "bar": TopNPlotBase().get_top_n,
+        "barh": TopNPlotBase().get_top_n,
+        "scatter": TopNPlotBase().get_top_n,
+        "area": SampledPlotBase().get_sampled,
+        "line": SampledPlotBase().get_sampled,
+    }
     _backends = {}  # type: ignore
 
     def __init__(self, data):
@@ -117,18 +403,6 @@ class KoalasPlotAccessor(PandasObject):
         """
         Find a Koalas plotting backend
         """
-        # function copied from pandas.plotting._core
-
-        # Delay import for performance.
-        import pkg_resources
-
-        for entry_point in pkg_resources.iter_entry_points("koalas_plotting_backends"):
-            if entry_point.name == "matplotlib":
-                # matplotlib is an optional dependency. When
-                # missing, this would raise.
-                continue
-            KoalasPlotAccessor._backends[entry_point.name] = entry_point.load()
-
         try:
             return KoalasPlotAccessor._backends[backend]
         except KeyError:
@@ -138,7 +412,7 @@ class KoalasPlotAccessor(PandasObject):
                 # We re-raise later on.
                 pass
             else:
-                if hasattr(module, "plot"):
+                if hasattr(module, "plot") or hasattr(module, "plot_koalas"):
                     # Validate that the interface is implemented when the option
                     # is set, rather than at plot time.
                     KoalasPlotAccessor._backends[backend] = module
@@ -152,15 +426,18 @@ class KoalasPlotAccessor(PandasObject):
 
     @staticmethod
     def _get_plot_backend(backend=None):
-        # function copied from pandas.plotting._core
-
         backend = backend or get_option("plotting.backend")
+        # Shortcut
+        if backend in KoalasPlotAccessor._backends:
+            return KoalasPlotAccessor._backends[backend]
 
         if backend == "matplotlib":
             # Because matplotlib is an optional dependency and first-party backend,
             # we need to attempt an import here to raise an ImportError if needed.
             try:
-                import databricks.koalas.plot as module
+                # test if matplotlib can be imported
+                import matplotlib  # noqa: F401
+                from databricks.koalas.plot import matplotlib as module
             except ImportError:
                 raise ImportError(
                     "matplotlib is required for plotting when the "
@@ -168,55 +445,40 @@ class KoalasPlotAccessor(PandasObject):
                 ) from None
 
             KoalasPlotAccessor._backends["matplotlib"] = module
+        elif backend == "plotly":
+            try:
+                # test if plotly can be imported
+                import plotly  # noqa: F401
+                from databricks.koalas.plot import plotly as module
+            except ImportError:
+                raise ImportError(
+                    "plotly is required for plotting when the "
+                    "default backend 'plotly' is selected."
+                ) from None
 
-        if backend in KoalasPlotAccessor._backends:
-            return KoalasPlotAccessor._backends[backend]
-
-        module = KoalasPlotAccessor._find_backend(backend)
-
-        if backend == "plotly":
-            from databricks.koalas.plot.plotly import plot_plotly
-
-            module.plot = plot_plotly(module.plot)
-
-        KoalasPlotAccessor._backends[backend] = module
+            KoalasPlotAccessor._backends["plotly"] = module
+        else:
+            module = KoalasPlotAccessor._find_backend(backend)
+            KoalasPlotAccessor._backends[backend] = module
         return module
 
     def __call__(self, kind="line", backend=None, **kwargs):
         plot_backend = KoalasPlotAccessor._get_plot_backend(backend)
         plot_data = self.data
 
-        if plot_backend.__name__ != "databricks.koalas.plot":
-            data_preprocessor_map = {
-                "pie": TopNPlot().get_top_n,
-                "bar": TopNPlot().get_top_n,
-                "barh": TopNPlot().get_top_n,
-                "scatter": TopNPlot().get_top_n,
-                "area": SampledPlot().get_sampled,
-                "line": SampledPlot().get_sampled,
-            }
-            if not data_preprocessor_map[kind]:
+        kind = {"density": "kde"}.get(kind, kind)
+        if hasattr(plot_backend, "plot_koalas"):
+            # use if there's koalas specific method.
+            return plot_backend.plot_koalas(plot_data, kind=kind, **kwargs)
+        else:
+            # fallback to use pandas'
+            if not KoalasPlotAccessor.pandas_plot_data_map[kind]:
                 raise NotImplementedError(
                     "'%s' plot is not supported with '%s' plot "
                     "backend yet." % (kind, plot_backend.__name__)
                 )
-            plot_data = data_preprocessor_map[kind](plot_data)
+            plot_data = KoalasPlotAccessor.pandas_plot_data_map[kind](plot_data)
             return plot_backend.plot(plot_data, kind=kind, **kwargs)
-
-        if kind not in KoalasPlotAccessor._koalas_all_kinds:
-            raise ValueError("{} is not a valid plot kind".format(kind))
-
-        from databricks.koalas import DataFrame, Series
-        from databricks.koalas.plot.matplotlib import plot_series, plot_frame
-
-        if isinstance(self.data, Series):
-            if kind not in KoalasPlotAccessor._series_kinds:
-                return unsupported_function(class_name="pd.Series", method_name=kind)()
-            return plot_series(data=self.data, kind=kind, **kwargs)
-        elif isinstance(self.data, DataFrame):
-            if kind not in KoalasPlotAccessor._dataframe_kinds:
-                return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
-            return plot_frame(data=self.data, kind=kind, **kwargs)
 
     def line(self, x=None, y=None, **kwargs):
         """

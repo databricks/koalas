@@ -15,13 +15,17 @@
 #
 import unittest
 from distutils.version import LooseVersion
+import pprint
 
 import pandas as pd
+import numpy as np
 from plotly import express
+import plotly.graph_objs as go
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
+from databricks.koalas.utils import name_like_string
 
 
 @unittest.skipIf(
@@ -128,3 +132,77 @@ class SeriesPlotPlotlyTest(ReusedSQLTestCase, TestUtils):
         # self.assertEqual(
         #     kdf["a"].plot(kind="pie"), express.pie(pdf, values=pdf.columns[0], names=pdf.index),
         # )
+
+    def test_hist_plot(self):
+        def check_hist_plot(kser):
+            bins = np.array([1.0, 5.9, 10.8, 15.7, 20.6, 25.5, 30.4, 35.3, 40.2, 45.1, 50.0])
+            data = np.array([5.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,])
+            prev = bins[0]
+            text_bins = []
+            for b in bins[1:]:
+                text_bins.append("[%s, %s)" % (prev, b))
+                prev = b
+            text_bins[-1] = text_bins[-1][:-1] + "]"
+            bins = 0.5 * (bins[:-1] + bins[1:])
+            name_a = name_like_string(kser.name)
+            bars = [
+                go.Bar(
+                    x=bins,
+                    y=data,
+                    name=name_a,
+                    text=text_bins,
+                    hovertemplate=("variable=" + name_a + "<br>value=%{text}<br>count=%{y}"),
+                ),
+            ]
+            fig = go.Figure(data=bars, layout=go.Layout(barmode="stack"))
+            fig["layout"]["xaxis"]["title"] = "value"
+            fig["layout"]["yaxis"]["title"] = "count"
+
+            self.assertEqual(
+                pprint.pformat(kser.plot(kind="hist").to_dict()), pprint.pformat(fig.to_dict())
+            )
+
+        kdf1 = self.kdf1
+        check_hist_plot(kdf1["a"])
+
+        columns = pd.MultiIndex.from_tuples([("x", "y")])
+        kdf1.columns = columns
+        check_hist_plot(kdf1[("x", "y")])
+
+    def test_pox_plot(self):
+        def check_pox_plot(kser):
+            fig = go.Figure()
+            fig.add_trace(
+                go.Box(
+                    name=name_like_string(kser.name),
+                    q1=[3],
+                    median=[6],
+                    q3=[9],
+                    mean=[10.0],
+                    lowerfence=[1],
+                    upperfence=[15],
+                    y=[[50]],
+                    boxpoints="suspectedoutliers",
+                    notched=False,
+                )
+            )
+            fig["layout"]["xaxis"]["title"] = name_like_string(kser.name)
+            fig["layout"]["yaxis"]["title"] = "value"
+
+            self.assertEqual(
+                pprint.pformat(kser.plot(kind="box").to_dict()), pprint.pformat(fig.to_dict())
+            )
+
+        kdf1 = self.kdf1
+        check_pox_plot(kdf1["a"])
+
+        columns = pd.MultiIndex.from_tuples([("x", "y")])
+        kdf1.columns = columns
+        check_pox_plot(kdf1[("x", "y")])
+
+    def test_pox_plot_arguments(self):
+        with self.assertRaisesRegex(ValueError, "does not support"):
+            self.kdf1.a.plot.box(boxpoints="all")
+        with self.assertRaisesRegex(ValueError, "does not support"):
+            self.kdf1.a.plot.box(notched=True)
+        self.kdf1.a.plot.box(hovertext="abc")  # other arguments should not throw an exception

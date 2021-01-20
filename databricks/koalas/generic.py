@@ -31,13 +31,20 @@ from pandas.api.types import is_list_like
 
 import pyspark
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, DoubleType, FloatType, LongType, NumericType
+from pyspark.sql.types import (
+    BooleanType,
+    DoubleType,
+    FloatType,
+    IntegralType,
+    LongType,
+    NumericType,
+)
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.indexing import AtIndexer, iAtIndexer, iLocIndexer, LocIndexer
 from databricks.koalas.internal import InternalFrame
 from databricks.koalas.spark import functions as SF
-from databricks.koalas.typedef import Scalar
+from databricks.koalas.typedef import Scalar, spark_type_to_pandas_dtype
 from databricks.koalas.utils import (
     is_name_like_tuple,
     is_name_like_value,
@@ -73,7 +80,7 @@ class Frame(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, **kwargs):
         pass
 
     @property
@@ -160,9 +167,7 @@ class Frame(object, metaclass=ABCMeta):
         2    1.0
         Name: A, dtype: float64
         """
-        return self._apply_series_op(
-            lambda kser: kser._cum(F.min, skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.min, skipna), should_resolve=True)
 
     # TODO: add 'axis' parameter
     def cummax(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
@@ -223,9 +228,7 @@ class Frame(object, metaclass=ABCMeta):
         2    1.0
         Name: B, dtype: float64
         """
-        return self._apply_series_op(
-            lambda kser: kser._cum(F.max, skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cum(F.max, skipna), should_resolve=True)
 
     # TODO: add 'axis' parameter
     def cumsum(self, skipna: bool = True) -> Union["Series", "DataFrame"]:
@@ -286,9 +289,7 @@ class Frame(object, metaclass=ABCMeta):
         2    6.0
         Name: A, dtype: float64
         """
-        return self._apply_series_op(
-            lambda kser: kser._cum(F.sum, skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cumsum(skipna), should_resolve=True)
 
     # TODO: add 'axis' parameter
     # TODO: use pandas_udf to support negative values and other options later
@@ -355,11 +356,8 @@ class Frame(object, metaclass=ABCMeta):
         1     6.0
         2    24.0
         Name: A, dtype: float64
-
         """
-        return self._apply_series_op(
-            lambda kser: kser._cumprod(skipna), should_resolve=True
-        )  # type: ignore
+        return self._apply_series_op(lambda kser: kser._cumprod(skipna), should_resolve=True)
 
     # TODO: Although this has removed pandas >= 1.0.0, but we're keeping this as deprecated
     # since we're using this for `DataFrame.info` internally.
@@ -1135,7 +1133,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
             return F.mean(spark_column)
 
         return self._reduce_for_stat_function(
@@ -1143,7 +1145,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def sum(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
@@ -1155,6 +1157,9 @@ class Frame(object, metaclass=ABCMeta):
         numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
+        min_count : int, default 0
+            The required number of valid values to perform the operation. If fewer than
+             ``min_count`` non-NA values are present the result will be NA.
 
         Returns
         -------
@@ -1163,37 +1168,153 @@ class Frame(object, metaclass=ABCMeta):
         Examples
         --------
 
-        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, 0.2, 0.3, np.nan]},
+        >>> df = ks.DataFrame({'a': [1, 2, 3, np.nan], 'b': [0.1, np.nan, 0.3, np.nan]},
         ...                   columns=['a', 'b'])
 
         On a DataFrame:
 
         >>> df.sum()
         a    6.0
-        b    0.6
+        b    0.4
         dtype: float64
 
         >>> df.sum(axis=1)
         0    1.1
-        1    2.2
+        1    2.0
         2    3.3
         3    0.0
+        dtype: float64
+
+        >>> df.sum(min_count=3)
+        a    6.0
+        b    NaN
+        dtype: float64
+
+        >>> df.sum(axis=1, min_count=1)
+        0    1.1
+        1    2.0
+        2    3.3
+        3    NaN
         dtype: float64
 
         On a Series:
 
         >>> df['a'].sum()
         6.0
+
+        >>> df['a'].sum(min_count=3)
+        6.0
+        >>> df['b'].sum(min_count=3)
+        nan
         """
 
         def sum(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.sum(spark_column)
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
+            return F.coalesce(F.sum(spark_column), F.lit(0))
 
-        return self._reduce_for_stat_function(sum, name="sum", axis=axis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            sum, name="sum", axis=axis, numeric_only=numeric_only, min_count=min_count
+        )
+
+    def product(
+        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
+    ) -> Union[Scalar, "Series"]:
+        """
+        Return the product of the values.
+
+        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
+            trick. Therefore, it only works for positive numbers.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
+        min_count : int, default 0
+            The required number of valid values to perform the operation. If fewer than
+            ``min_count`` non-NA values are present the result will be NA.
+
+        Examples
+        --------
+        On a DataFrame:
+
+        Non-numeric type column is not included to the result.
+
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4, 5],
+        ...                     'B': [10, 20, 30, 40, 50],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A   B  C
+        0  1  10  a
+        1  2  20  b
+        2  3  30  c
+        3  4  40  d
+        4  5  50  e
+
+        >>> kdf.prod()
+        A         120
+        B    12000000
+        dtype: int64
+
+        If there is no numeric type columns, returns empty Series.
+
+        >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
+        Series([], dtype: float64)
+
+        On a Series:
+
+        >>> ks.Series([1, 2, 3, 4, 5]).prod()
+        120
+
+        By default, the product of an empty or all-NA Series is ``1``
+
+        >>> ks.Series([]).prod()
+        1.0
+
+        This can be controlled with the ``min_count`` parameter
+
+        >>> ks.Series([]).prod(min_count=1)
+        nan
+        """
+
+        def prod(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                scol = F.min(F.coalesce(spark_column, F.lit(True))).cast(LongType())
+            elif isinstance(spark_type, NumericType):
+                num_zeros = F.sum(F.when(spark_column == 0, 1).otherwise(0))
+                sign = F.when(
+                    F.sum(F.when(spark_column < 0, 1).otherwise(0)) % 2 == 0, 1
+                ).otherwise(-1)
+
+                scol = F.when(num_zeros > 0, 0).otherwise(
+                    sign * F.exp(F.sum(F.log(F.abs(spark_column))))
+                )
+
+                if isinstance(spark_type, IntegralType):
+                    scol = F.round(scol).cast(LongType())
+            else:
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
+
+            return F.coalesce(scol, F.lit(1))
+
+        return self._reduce_for_stat_function(
+            prod, name="prod", axis=axis, numeric_only=numeric_only, min_count=min_count
+        )
+
+    prod = product
 
     def skew(
         self, axis: Union[int, str] = None, numeric_only: bool = True
@@ -1236,7 +1357,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
             return F.skewness(spark_column)
 
         return self._reduce_for_stat_function(
@@ -1285,7 +1410,11 @@ class Frame(object, metaclass=ABCMeta):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
             return F.kurtosis(spark_column)
 
         return self._reduce_for_stat_function(
@@ -1460,20 +1589,12 @@ class Frame(object, metaclass=ABCMeta):
         4
         """
 
-        def count(spark_column, spark_type):
-            # Special handle floating point types because Spark's count treats nan as a valid value,
-            # whereas pandas count doesn't include nan.
-            if isinstance(spark_type, (FloatType, DoubleType)):
-                return F.count(F.nanvl(spark_column, F.lit(None)))
-            else:
-                return F.count(spark_column)
-
         return self._reduce_for_stat_function(
-            count, name="count", axis=axis, numeric_only=numeric_only
+            Frame._count_expr, name="count", axis=axis, numeric_only=numeric_only
         )
 
     def std(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
     ) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
@@ -1482,6 +1603,9 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
         numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
@@ -1510,23 +1634,41 @@ class Frame(object, metaclass=ABCMeta):
         3         NaN
         dtype: float64
 
+        >>> df.std(ddof=0)
+        a    0.816497
+        b    0.081650
+        dtype: float64
+
         On a Series:
 
         >>> df['a'].std()
         1.0
+
+        >>> df['a'].std(ddof=0)
+        0.816496580927726
         """
+        assert ddof in (0, 1)
 
         def std(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.stddev(spark_column)
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
+            if ddof == 0:
+                return F.stddev_pop(spark_column)
+            else:
+                return F.stddev_samp(spark_column)
 
-        return self._reduce_for_stat_function(std, name="std", axis=axis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            std, name="std", axis=axis, numeric_only=numeric_only, ddof=ddof
+        )
 
     def var(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
@@ -1535,6 +1677,9 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
         numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
@@ -1563,20 +1708,38 @@ class Frame(object, metaclass=ABCMeta):
         3      NaN
         dtype: float64
 
+        >>> df.var(ddof=0)
+        a    0.666667
+        b    0.006667
+        dtype: float64
+
         On a Series:
 
         >>> df['a'].var()
         1.0
+
+        >>> df['a'].var(ddof=0)
+        0.6666666666666666
         """
+        assert ddof in (0, 1)
 
         def var(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
             elif not isinstance(spark_type, NumericType):
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return F.variance(spark_column)
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
+            if ddof == 0:
+                return F.var_pop(spark_column)
+            else:
+                return F.var_samp(spark_column)
 
-        return self._reduce_for_stat_function(var, name="var", axis=axis, numeric_only=numeric_only)
+        return self._reduce_for_stat_function(
+            var, name="var", axis=axis, numeric_only=numeric_only, ddof=ddof
+        )
 
     def median(
         self, axis: Union[int, str] = None, numeric_only: bool = True, accuracy: int = 10000
@@ -1670,13 +1833,102 @@ class Frame(object, metaclass=ABCMeta):
 
         def median(spark_column, spark_type):
             if isinstance(spark_type, (BooleanType, NumericType)):
-                spark_column = spark_column.cast(DoubleType())
+                return SF.percentile_approx(spark_column.cast(DoubleType()), 0.5, accuracy)
             else:
-                raise TypeError("Could not convert {} to numeric".format(spark_type.simpleString()))
-            return SF.percentile_approx(spark_column, 0.5, accuracy)
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
 
         return self._reduce_for_stat_function(
             median, name="median", numeric_only=numeric_only, axis=axis
+        )
+
+    def sem(
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
+        """
+        Return unbiased standard error of the mean over requested axis.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
+
+        Returns
+        -------
+        scalar(for Series) or Series(for DataFrame)
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+        >>> kdf
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> kdf.sem()
+        a    0.57735
+        b    0.57735
+        dtype: float64
+
+        >>> kdf.sem(ddof=0)
+        a    0.471405
+        b    0.471405
+        dtype: float64
+
+        >>> kdf.sem(axis=1)
+        0    1.5
+        1    1.5
+        2    1.5
+        dtype: float64
+
+        Support for Series
+
+        >>> kser = kdf.a
+        >>> kser
+        0    1
+        1    2
+        2    3
+        Name: a, dtype: int64
+
+        >>> kser.sem()
+        0.5773502691896258
+
+        >>> kser.sem(ddof=0)
+        0.47140452079103173
+        """
+        assert ddof in (0, 1)
+
+        def std(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
+            if ddof == 0:
+                return F.stddev_pop(spark_column)
+            else:
+                return F.stddev_samp(spark_column)
+
+        def sem(spark_column, spark_type):
+            return std(spark_column, spark_type) / pow(
+                Frame._count_expr(spark_column, spark_type), 0.5
+            )
+
+        return self._reduce_for_stat_function(
+            sem, name="sem", numeric_only=numeric_only, axis=axis, ddof=ddof
         )
 
     @property
@@ -1743,7 +1995,21 @@ class Frame(object, metaclass=ABCMeta):
         2  6  30   30
         3  7  40   50
         """
-        return self._apply_series_op(lambda kser: kser._with_new_scol(F.abs(kser.spark.column)))
+
+        def abs(kser):
+            if isinstance(kser.spark.data_type, BooleanType):
+                return kser
+            elif isinstance(kser.spark.data_type, NumericType):
+                return kser.spark.transform(F.abs)
+            else:
+                raise TypeError(
+                    "bad operand type for abs(): {} ({})".format(
+                        spark_type_to_pandas_dtype(kser.spark.data_type),
+                        kser.spark.data_type.simpleString(),
+                    )
+                )
+
+        return self._apply_series_op(abs)
 
     # TODO: by argument only support the grouping name and as_index only for now. Documentation
     # should be updated when it's supported.
@@ -2746,3 +3012,12 @@ class Frame(object, metaclass=ABCMeta):
             "The truth value of a {0} is ambiguous. "
             "Use a.empty, a.bool(), a.item(), a.any() or a.all().".format(self.__class__.__name__)
         )
+
+    @staticmethod
+    def _count_expr(spark_column, spark_type):
+        # Special handle floating point types because Spark's count treats nan as a valid value,
+        # whereas pandas count doesn't include nan.
+        if isinstance(spark_type, (FloatType, DoubleType)):
+            return F.count(F.nanvl(spark_column, F.lit(None)))
+        else:
+            return F.count(spark_column)

@@ -274,3 +274,6 @@ class TypeHintTests(unittest.TestCase):
 
         for numpy_or_python_type, spark_type in type_mapper.items():
             self.assertEqual(as_spark_type(numpy_or_python_type), spark_type)
+
+        with self.assertRaisesRegex(TypeError, "Type uint64 was not understood."):
+            as_spark_type(np.dtype("uint64"))

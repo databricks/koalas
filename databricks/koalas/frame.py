@@ -72,8 +72,6 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     ArrayType,
-    LongType,
-    FractionalType,
 )
 from pyspark.sql.window import Window
 
@@ -88,6 +86,7 @@ from databricks.koalas.utils import (
     default_session,
     is_name_like_tuple,
     is_name_like_value,
+    is_testing,
     name_like_string,
     same_anchor,
     scol_for,
@@ -491,7 +490,7 @@ class DataFrame(Frame, Generic[T]):
                 pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
             internal = InternalFrame.from_pandas(pdf)
 
-        self._internal_frame = internal
+        object.__setattr__(self, "_internal_frame", internal)
 
     @property
     def _ksers(self):
@@ -499,9 +498,11 @@ class DataFrame(Frame, Generic[T]):
         from databricks.koalas.series import Series
 
         if not hasattr(self, "_kseries"):
-            self._kseries = {
-                label: Series(data=self, index=label) for label in self._internal.column_labels
-            }
+            object.__setattr__(
+                self,
+                "_kseries",
+                {label: Series(data=self, index=label) for label in self._internal.column_labels},
+            )
         else:
             kseries = self._kseries
             assert len(self._internal.column_labels) == len(kseries), (
@@ -538,30 +539,32 @@ class DataFrame(Frame, Generic[T]):
         """
         from databricks.koalas.series import Series
 
-        kseries = {}
+        if hasattr(self, "_kseries"):
+            kseries = {}
 
-        for old_label, new_label in zip_longest(
-            self._internal.column_labels, internal.column_labels
-        ):
-            if old_label is not None:
-                kser = self._ksers[old_label]
+            for old_label, new_label in zip_longest(
+                self._internal.column_labels, internal.column_labels
+            ):
+                if old_label is not None:
+                    kser = self._ksers[old_label]
 
-                renamed = old_label != new_label
-                not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
+                    renamed = old_label != new_label
+                    not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
 
-                if renamed or not_same_anchor:
-                    kdf = DataFrame(self._internal.select_column(old_label))  # type: DataFrame
-                    kser._update_anchor(kdf)
+                    if renamed or not_same_anchor:
+                        kdf = DataFrame(self._internal.select_column(old_label))  # type: DataFrame
+                        kser._update_anchor(kdf)
+                        kser = None
+                else:
                     kser = None
-            else:
-                kser = None
-            if new_label is not None:
-                if kser is None:
-                    kser = Series(data=self, index=new_label)
-                kseries[new_label] = kser
+                if new_label is not None:
+                    if kser is None:
+                        kser = Series(data=self, index=new_label)
+                    kseries[new_label] = kser
+
+            self._kseries = kseries
 
         self._internal_frame = internal
-        self._kseries = kseries
 
         if hasattr(self, "_repr_pandas_cache"):
             del self._repr_pandas_cache
@@ -606,7 +609,7 @@ class DataFrame(Frame, Generic[T]):
         """
         return [self.index, self.columns]
 
-    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True):
+    def _reduce_for_stat_function(self, sfun, name, axis=None, numeric_only=True, **kwargs):
         """
         Applies sfun to each column and returns a pd.Series where the number of rows equal the
         number of columns.
@@ -629,25 +632,33 @@ class DataFrame(Frame, Generic[T]):
 
         axis = validate_axis(axis)
         if axis == 0:
+            min_count = kwargs.get("min_count", 0)
+
             exprs = [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)]
             new_column_labels = []
             num_args = len(signature(sfun).parameters)
             for label in self._internal.column_labels:
-                col_sdf = self._internal.spark_column_for(label)
-                col_type = self._internal.spark_type_for(label)
+                spark_column = self._internal.spark_column_for(label)
+                spark_type = self._internal.spark_type_for(label)
 
-                is_numeric_or_boolean = isinstance(col_type, (NumericType, BooleanType))
+                is_numeric_or_boolean = isinstance(spark_type, (NumericType, BooleanType))
                 keep_column = not numeric_only or is_numeric_or_boolean
 
                 if keep_column:
                     if num_args == 1:
                         # Only pass in the column if sfun accepts only one arg
-                        col_sdf = sfun(col_sdf)
+                        scol = sfun(spark_column)
                     else:  # must be 2
                         assert num_args == 2
                         # Pass in both the column and its data type if sfun accepts two args
-                        col_sdf = sfun(col_sdf, col_type)
-                    exprs.append(col_sdf.alias(name_like_string(label)))
+                        scol = sfun(spark_column, spark_type)
+
+                    if min_count > 0:
+                        scol = F.when(
+                            Frame._count_expr(spark_column, spark_type) >= min_count, scol
+                        )
+
+                    exprs.append(scol.alias(name_like_string(label)))
                     new_column_labels.append(label)
 
             if len(exprs) == 1:
@@ -670,13 +681,15 @@ class DataFrame(Frame, Generic[T]):
             # If the records were less than 1000, it uses pandas API directly for a shortcut.
             limit = get_option("compute.shortcut_limit")
             pdf = self.head(limit + 1)._to_internal_pandas()
-            pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only)
+            pser = getattr(pdf, name)(axis=axis, numeric_only=numeric_only, **kwargs)
             if len(pdf) <= limit:
                 return Series(pser)
 
             @pandas_udf(returnType=as_spark_type(pser.dtype.type))
             def calculate_columns_axis(*cols):
-                return getattr(pd.concat(cols, axis=1), name)(axis=axis, numeric_only=numeric_only)
+                return getattr(pd.concat(cols, axis=1), name)(
+                    axis=axis, numeric_only=numeric_only, **kwargs
+                )
 
             sdf = self._internal.spark_frame.select(
                 calculate_columns_axis(*self._internal.data_spark_columns).alias(
@@ -10175,7 +10188,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ):
             try:
                 # hack to use pandas' info as is.
-                self._data = self
+                object.__setattr__(self, "_data", self)
                 count_func = self.count
                 self.count = lambda: count_func().to_pandas()  # type: ignore
                 return pd.DataFrame.info(
@@ -10192,7 +10205,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     # TODO: fix parameter 'axis' and 'numeric_only' to work same as pandas'
     def quantile(
-        self, q=0.5, axis=0, numeric_only=True, accuracy=10000
+        self,
+        q: Union[float, Iterable[float]] = 0.5,
+        axis: Union[int, str] = 0,
+        numeric_only: bool = True,
+        accuracy: int = 10000,
     ) -> Union["DataFrame", "Series"]:
         """
         Return value at the given quantile.
@@ -10205,7 +10222,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ----------
         q : float or array-like, default 0.5 (50% quantile)
             0 <= q <= 1, the quantile(s) to compute.
-        axis : int, default 0 or 'index'
+        axis : int or str, default 0 or 'index'
             Can only be set to 0 at the moment.
         numeric_only : bool, default True
             If False, the quantile of datetime and timedelta data will be computed as well.
@@ -10234,86 +10251,117 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  5  0
 
         >>> kdf.quantile(.5)
-        a    3
-        b    7
-        Name: 0.5, dtype: int64
+        a    3.0
+        b    7.0
+        Name: 0.5, dtype: float64
 
         >>> kdf.quantile([.25, .5, .75])
-              a  b
-        0.25  2  6
-        0.5   3  7
-        0.75  4  8
+                a    b
+        0.25  2.0  6.0
+        0.50  3.0  7.0
+        0.75  4.0  8.0
         """
-        result_as_series = False
         axis = validate_axis(axis)
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
-        if numeric_only is not True:
-            raise NotImplementedError("quantile currently doesn't supports numeric_only")
-        if isinstance(q, float):
-            result_as_series = True
-            key = str(q)
-            q = (q,)
 
-        quantiles = q
-        # First calculate the percentiles from all columns and map it to each `quantiles`
-        # by creating each entry as a struct. So, it becomes an array of structs as below:
-        #
-        # +-----------------------------------------+
-        # |                                   arrays|
-        # +-----------------------------------------+
-        # |[[0.25, 2, 6], [0.5, 3, 7], [0.75, 4, 8]]|
-        # +-----------------------------------------+
-
-        percentile_cols = []
-        for scol, column_name in zip(
-            self._internal.data_spark_columns, self._internal.data_spark_column_names
-        ):
-            percentile_cols.append(
-                SF.percentile_approx(scol, quantiles, accuracy).alias(column_name)
+        if not isinstance(accuracy, int):
+            raise ValueError(
+                "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
             )
 
-        sdf = self._internal.spark_frame.select(percentile_cols)
-        # Here, after select percntile cols, a spark_frame looks like below:
-        # +---------+---------+
-        # |        a|        b|
-        # +---------+---------+
-        # |[2, 3, 4]|[6, 7, 8]|
-        # +---------+---------+
+        if isinstance(q, Iterable):
+            q = list(q)
 
-        cols_dict = OrderedDict()  # type: OrderedDict
-        for column in self._internal.data_spark_column_names:
-            cols_dict[column] = list()
-            for i in range(len(quantiles)):
-                cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
+        for v in q if isinstance(q, list) else [q]:
+            if not isinstance(v, float):
+                raise ValueError(
+                    "q must be a float or an array of floats; however, [%s] found." % type(v)
+                )
+            if v < 0.0 or v > 1.0:
+                raise ValueError("percentiles should all be in the interval [0, 1].")
 
-        internal_index_column = SPARK_DEFAULT_INDEX_NAME
-        cols = []
-        for i, col in enumerate(zip(*cols_dict.values())):
-            cols.append(F.struct(F.lit("%s" % quantiles[i]).alias(internal_index_column), *col))
-        sdf = sdf.select(F.array(*cols).alias("arrays"))
+        def quantile(spark_column, spark_type):
+            if isinstance(spark_type, (BooleanType, NumericType)):
+                return SF.percentile_approx(spark_column.cast(DoubleType()), q, accuracy)
+            else:
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
 
-        # And then, explode it and manually set the index.
-        # +-----------------+---+---+
-        # |__index_level_0__|  a|  b|
-        # +-----------------+---+---+
-        # |             0.25|  2|  6|
-        # |              0.5|  3|  7|
-        # |             0.75|  4|  8|
-        # +-----------------+---+---+
-        sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+        if isinstance(q, list):
+            # First calculate the percentiles from all columns and map it to each `quantiles`
+            # by creating each entry as a struct. So, it becomes an array of structs as below:
+            #
+            # +-----------------------------------------+
+            # |                                   arrays|
+            # +-----------------------------------------+
+            # |[[0.25, 2, 6], [0.5, 3, 7], [0.75, 4, 8]]|
+            # +-----------------------------------------+
 
-        internal = self._internal.copy(
-            spark_frame=sdf,
-            index_spark_columns=[scol_for(sdf, internal_index_column)],
-            index_names=[None],
-            data_spark_columns=[
-                scol_for(sdf, col) for col in self._internal.data_spark_column_names
-            ],
-            column_label_names=None,
-        )
+            percentile_cols = []
+            percentile_col_names = []
+            column_labels = []
+            for label, column in zip(
+                self._internal.column_labels, self._internal.data_spark_column_names
+            ):
+                spark_type = self._internal.spark_type_for(label)
 
-        return DataFrame(internal) if not result_as_series else DataFrame(internal).T[key]
+                is_numeric_or_boolean = isinstance(spark_type, (NumericType, BooleanType))
+                keep_column = not numeric_only or is_numeric_or_boolean
+
+                if keep_column:
+                    percentile_col = quantile(self._internal.spark_column_for(label), spark_type)
+                    percentile_cols.append(percentile_col.alias(column))
+                    percentile_col_names.append(column)
+                    column_labels.append(label)
+
+            if len(percentile_cols) == 0:
+                return DataFrame(index=q)
+
+            sdf = self._internal.spark_frame.select(percentile_cols)
+            # Here, after select percentile cols, a spark_frame looks like below:
+            # +---------+---------+
+            # |        a|        b|
+            # +---------+---------+
+            # |[2, 3, 4]|[6, 7, 8]|
+            # +---------+---------+
+
+            cols_dict = OrderedDict()  # type: OrderedDict
+            for column in percentile_col_names:
+                cols_dict[column] = list()
+                for i in range(len(q)):
+                    cols_dict[column].append(scol_for(sdf, column).getItem(i).alias(column))
+
+            internal_index_column = SPARK_DEFAULT_INDEX_NAME
+            cols = []
+            for i, col in enumerate(zip(*cols_dict.values())):
+                cols.append(F.struct(F.lit(q[i]).alias(internal_index_column), *col))
+            sdf = sdf.select(F.array(*cols).alias("arrays"))
+
+            # And then, explode it and manually set the index.
+            # +-----------------+---+---+
+            # |__index_level_0__|  a|  b|
+            # +-----------------+---+---+
+            # |             0.25|  2|  6|
+            # |              0.5|  3|  7|
+            # |             0.75|  4|  8|
+            # +-----------------+---+---+
+            sdf = sdf.select(F.explode(F.col("arrays"))).selectExpr("col.*")
+
+            internal = InternalFrame(
+                spark_frame=sdf,
+                index_spark_columns=[scol_for(sdf, internal_index_column)],
+                column_labels=column_labels,
+                data_spark_columns=[scol_for(sdf, col) for col in percentile_col_names],
+            )
+            return DataFrame(internal)
+        else:
+            return self._reduce_for_stat_function(
+                quantile, name="quantile", numeric_only=numeric_only
+            ).rename(q)
 
     def query(self, expr, inplace=False) -> Optional["DataFrame"]:
         """
@@ -10868,85 +10916,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
 
-    def product(self) -> "Series":
-        """
-        Return the product of the values as Series.
-
-        .. note:: unlike pandas', Koalas' emulates product by ``exp(sum(log(...)))``
-            trick. Therefore, it only works for positive numbers.
-
-        Examples
-        --------
-
-        Non-numeric type column is not included to the result.
-
-        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4, 5],
-        ...                     'B': [10, 20, 30, 40, 50],
-        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
-        >>> kdf
-           A   B  C
-        0  1  10  a
-        1  2  20  b
-        2  3  30  c
-        3  4  40  d
-        4  5  50  e
-
-        >>> kdf.prod().sort_index()
-        A         120
-        B    12000000
-        dtype: int64
-
-        If there is no numeric type columns, returns empty Series.
-
-        >>> ks.DataFrame({"key": ['a', 'b', 'c'], "val": ['x', 'y', 'z']}).prod()
-        Series([], dtype: float64)
-        """
-        from databricks.koalas.series import first_series
-
-        has_float_col = False
-        column_labels = []
-        # Filtering out only column names of numeric type column.
-        for column_label in self._internal.column_labels:
-            dtype = self._kser_for(column_label).spark.data_type
-            if isinstance(dtype, NumericType):
-                column_labels.append(column_label)
-                if isinstance(dtype, FractionalType):
-                    has_float_col = True
-
-        # Getting spark columns from column names.
-        spark_columns = [
-            self._internal.spark_column_for(column_label) for column_label in column_labels
-        ]
-        if not spark_columns:
-            # If DataFrame has no numeric type columns, return empty Series.
-            return ks.Series([])
-
-        spark_frame = self._internal.spark_frame
-        conds = []
-        for spark_column, column_label in zip(spark_columns, column_labels):
-            cond = F.when(spark_column.isNull(), F.lit(1)).otherwise(spark_column)
-            conds.append(F.exp(F.sum(F.log(cond))).alias(name_like_string(column_label)))
-
-        spark_frame = spark_frame.select(
-            [F.lit(None).cast(StringType()).alias(SPARK_DEFAULT_INDEX_NAME)] + conds
-        )
-
-        internal = InternalFrame(
-            spark_frame=spark_frame,
-            index_spark_columns=[scol_for(spark_frame, SPARK_DEFAULT_INDEX_NAME)],
-            column_labels=column_labels,
-            column_label_names=self._internal.column_label_names,
-        )
-
-        with ks.option_context("compute.max_rows", None):
-            result = first_series(DataFrame(internal).T)
-            if not has_float_col:
-                return result.spark.transform(lambda col: F.round(col).cast(LongType()))
-            else:
-                return result
-
-    prod = product
-
     @staticmethod
     def from_dict(data, orient="columns", dtype=None, columns=None) -> "DataFrame":
         """
@@ -11021,7 +10990,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _get_or_create_repr_pandas_cache(self, n):
         if not hasattr(self, "_repr_pandas_cache") or n not in self._repr_pandas_cache:
-            self._repr_pandas_cache = {n: self.head(n + 1)._to_internal_pandas()}
+            object.__setattr__(
+                self, "_repr_pandas_cache", {n: self.head(n + 1)._to_internal_pandas()}
+            )
         return self._repr_pandas_cache[n]
 
     def __repr__(self):
@@ -11199,6 +11170,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key)
             )
 
+    def __setattr__(self, key: str, value) -> None:
+        try:
+            object.__getattribute__(self, key)
+            return object.__setattr__(self, key, value)
+        except AttributeError:
+            pass
+
+        if (key,) in self._internal.column_labels:
+            self[key] = value
+        else:
+            msg = "Koalas doesn't allow columns to be created via a new attribute name"
+            if is_testing():
+                raise AssertionError(msg)
+            else:
+                warnings.warn(msg, UserWarning)
+
     def __len__(self):
         return self._internal.resolved_copy.spark_frame.count()
 
@@ -11288,9 +11275,9 @@ class CachedDataFrame(DataFrame):
 
     def __init__(self, internal, storage_level=None):
         if storage_level is None:
-            self._cached = internal.spark_frame.cache()
+            object.__setattr__(self, "_cached", internal.spark_frame.cache())
         elif isinstance(storage_level, StorageLevel):
-            self._cached = internal.spark_frame.persist(storage_level)
+            object.__setattr__(self, "_cached", internal.spark_frame.persist(storage_level))
         else:
             raise TypeError(
                 "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"

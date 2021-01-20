@@ -143,6 +143,7 @@ Computations / Descriptive Stats
    DataFrame.product
    DataFrame.quantile
    DataFrame.nunique
+   DataFrame.sem
    DataFrame.skew
    DataFrame.sum
    DataFrame.std

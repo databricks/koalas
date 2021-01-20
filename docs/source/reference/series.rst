@@ -140,6 +140,7 @@ Computations / Descriptive Stats
    Series.is_unique
    Series.quantile
    Series.rank
+   Series.sem
    Series.skew
    Series.std
    Series.sum
@@ -212,6 +213,7 @@ Reshaping, sorting, transposing
    Series.explode
    Series.repeat
    Series.squeeze
+   Series.factorize
 
 Combining / joining / merging
 -----------------------------

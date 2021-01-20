@@ -430,18 +430,27 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._reduce_for_stat_function(F.min, only_numeric=False)
 
-    # TODO: sync the doc and implement `ddof`.
-    def std(self) -> Union[DataFrame, Series]:
+    # TODO: sync the doc.
+    def std(self, ddof: int = 1) -> Union[DataFrame, Series]:
         """
         Compute standard deviation of groups, excluding missing values.
+
+        Parameters
+        ----------
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
 
         See Also
         --------
         databricks.koalas.Series.groupby
         databricks.koalas.DataFrame.groupby
         """
+        assert ddof in (0, 1)
 
-        return self._reduce_for_stat_function(F.stddev, only_numeric=True)
+        return self._reduce_for_stat_function(
+            F.stddev_pop if ddof == 0 else F.stddev_samp, only_numeric=True
+        )
 
     def sum(self) -> Union[DataFrame, Series]:
         """
@@ -454,17 +463,27 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         return self._reduce_for_stat_function(F.sum, only_numeric=True)
 
-    # TODO: sync the doc and implement `ddof`.
-    def var(self) -> Union[DataFrame, Series]:
+    # TODO: sync the doc.
+    def var(self, ddof: int = 1) -> Union[DataFrame, Series]:
         """
         Compute variance of groups, excluding missing values.
+
+        Parameters
+        ----------
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
 
         See Also
         --------
         databricks.koalas.Series.groupby
         databricks.koalas.DataFrame.groupby
         """
-        return self._reduce_for_stat_function(F.variance, only_numeric=True)
+        assert ddof in (0, 1)
+
+        return self._reduce_for_stat_function(
+            F.var_pop if ddof == 0 else F.var_samp, only_numeric=True
+        )
 
     # TODO: skipna should be implemented.
     def all(self) -> Union[DataFrame, Series]:
@@ -931,7 +950,7 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: B, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._cum(F.sum, True, part_cols=sg._groupkeys_scols),
+            lambda sg: sg._kser._cumsum(True, part_cols=sg._groupkeys_scols),
             should_resolve=True,
             numeric_only=True,
         )

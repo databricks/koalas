@@ -43,7 +43,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     @property
     def pdf(self):
         return pd.DataFrame(
-            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0],},
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9], "b": [4, 5, 6, 3, 2, 1, 0, 0, 0]},
             index=np.random.rand(9),
         )
 
@@ -472,13 +472,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [None, None, None, "a"],
+                "b": [None, None, None, 1],
+                "c": [None, None, None] + list(np.arange(1, 2).astype("i1")),
+                "d": [None, None, None, 1.0],
+                "e": [None, None, None, True],
+                "f": [None, None, None] + list(pd.date_range("20130101", periods=1)),
+            },
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.iloc[:-1], pdf.iloc[:-1])
+
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+            self.assert_eq(kdf.iloc[:-1], pdf.iloc[:-1])
 
         pdf = pd.DataFrame(
             {
                 "a": pd.Series([None, None, None], dtype="float64"),
                 "b": pd.Series([None, None, None], dtype="str"),
             },
-            index=np.random.rand(3),
         )
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
@@ -489,14 +504,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_nullable_object(self):
         pdf = pd.DataFrame(
             {
-                "a": list("abc") + [np.nan],
-                "b": list(range(1, 4)) + [np.nan],
-                "c": list(np.arange(3, 6).astype("i1")) + [np.nan],
-                "d": list(np.arange(4.0, 7.0, dtype="float64")) + [np.nan],
-                "e": [True, False, True, np.nan],
-                "f": list(pd.date_range("20130101", periods=3)) + [np.nan],
+                "a": list("abc") + [np.nan, None],
+                "b": list(range(1, 4)) + [np.nan, None],
+                "c": list(np.arange(3, 6).astype("i1")) + [np.nan, None],
+                "d": list(np.arange(4.0, 7.0, dtype="float64")) + [np.nan, None],
+                "e": [True, False, True, np.nan, None],
+                "f": list(pd.date_range("20130101", periods=3)) + [np.nan, None],
             },
-            index=np.random.rand(4),
+            index=np.random.rand(5),
         )
 
         kdf = ks.from_pandas(pdf)
@@ -511,6 +526,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf["w"] = 1.0
         pdf["w"] = 1.0
+
+        self.assert_eq(kdf, pdf)
+
+        kdf.w = 10.0
+        pdf.w = 10.0
 
         self.assert_eq(kdf, pdf)
 
@@ -3045,7 +3065,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_cumprod(self):
         if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
             pdf = pd.DataFrame(
-                [[2.0, 1.0, 1], [5, None, 2], [1.0, 1.0, 3], [2.0, 4.0, 4], [4.0, 9.0, 5]],
+                [[2.0, 1.0, 1], [5, None, 2], [1.0, -1.0, -3], [2.0, 0, 4], [4.0, 9.0, 5]],
                 columns=list("ABC"),
                 index=np.random.rand(5),
             )
@@ -3053,7 +3073,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self._test_cumprod(pdf, kdf)
         else:
             pdf = pd.DataFrame(
-                [[2, 1, 1], [5, 1, 2], [1, 1, 3], [2, 4, 4], [4, 9, 5]],
+                [[2, 1, 1], [5, 1, 2], [1, -1, -3], [2, 0, 4], [4, 9, 5]],
                 columns=list("ABC"),
                 index=np.random.rand(5),
             )
@@ -4300,17 +4320,55 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.keys(), pdf.keys())
 
     def test_quantile(self):
-        kdf = ks.from_pandas(self.pdf)
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+
+        self.assert_eq(kdf.loc[[]].quantile(0.5), pdf.loc[[]].quantile(0.5))
+        self.assert_eq(
+            kdf.loc[[]].quantile([0.25, 0.5, 0.75]), pdf.loc[[]].quantile([0.25, 0.5, 0.75])
+        )
 
         with self.assertRaisesRegex(
             NotImplementedError, 'axis should be either 0 or "index" currently.'
         ):
             kdf.quantile(0.5, axis=1)
+        with self.assertRaisesRegex(ValueError, "accuracy must be an integer; however"):
+            kdf.quantile(accuracy="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
+            kdf.quantile(q="a")
+        with self.assertRaisesRegex(ValueError, "q must be a float or an array of floats;"):
+            kdf.quantile(q=["a"])
 
-        with self.assertRaisesRegex(
-            NotImplementedError, "quantile currently doesn't supports numeric_only"
-        ):
+        self.assert_eq(kdf.quantile(0.5, numeric_only=False), pdf.quantile(0.5, numeric_only=False))
+        self.assert_eq(
+            kdf.quantile([0.25, 0.5, 0.75], numeric_only=False),
+            pdf.quantile([0.25, 0.5, 0.75], numeric_only=False),
+        )
+
+        # multi-index column
+        columns = pd.MultiIndex.from_tuples([("x", "a"), ("y", "b")])
+        pdf.columns = columns
+        kdf.columns = columns
+
+        self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+        self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+
+        pdf = pd.DataFrame({"x": ["a", "b", "c"]})
+        kdf = ks.from_pandas(pdf)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+            self.assert_eq(kdf.quantile(0.5), pdf.quantile(0.5))
+            self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pdf.quantile([0.25, 0.5, 0.75]))
+        else:
+            self.assert_eq(kdf.quantile(0.5), pd.Series(name=0.5))
+            self.assert_eq(kdf.quantile([0.25, 0.5, 0.75]), pd.DataFrame(index=[0.25, 0.5, 0.75]))
+
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
             kdf.quantile(0.5, numeric_only=False)
+        with self.assertRaisesRegex(TypeError, "Could not convert object \\(string\\) to numeric"):
+            kdf.quantile([0.25, 0.5, 0.75], numeric_only=False)
 
     def test_pct_change(self):
         pdf = pd.DataFrame(

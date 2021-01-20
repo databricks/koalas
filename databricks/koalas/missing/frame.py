@@ -56,7 +56,6 @@ class _MissingPandasLikeDataFrame(object):
     mode = _unsupported_function("mode")
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
-    sem = _unsupported_function("sem")
     set_axis = _unsupported_function("set_axis")
     slice_shift = _unsupported_function("slice_shift")
     to_feather = _unsupported_function("to_feather")
