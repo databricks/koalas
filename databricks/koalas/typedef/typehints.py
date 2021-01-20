@@ -24,7 +24,6 @@ from inspect import getfullargspec, isclass
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
 import pyarrow as pa
 import pyspark.sql.types as types
 
