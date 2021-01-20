@@ -166,10 +166,8 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
             return s[0].__UDT__
         else:
             return from_arrow_type(pa.Array.from_pandas(s).type)
-    elif is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-        return types.TimestampType()
     else:
-        return from_arrow_type(pa.from_numpy_dtype(dt))
+        return as_spark_type(dt)
 
 
 def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
