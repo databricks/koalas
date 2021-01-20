@@ -462,7 +462,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"a": pd.Series([], dtype="i1"), "b": pd.Series([], dtype="str")})
 
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf, pdf)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kdf, pdf)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kdf, pdf)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             kdf = ks.from_pandas(pdf)
@@ -494,7 +498,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
         kdf = ks.from_pandas(pdf)
-        self.assert_eq(kdf, pdf)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kdf, pdf)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kdf, pdf)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             kdf = ks.from_pandas(pdf)
