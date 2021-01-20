@@ -88,24 +88,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         b = pd.Series([], dtype="str")
 
         self.assert_eq(ks.from_pandas(a), a)
-        self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+        self.assert_eq(ks.from_pandas(b), b)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             self.assert_eq(ks.from_pandas(a), a)
-            self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+            self.assert_eq(ks.from_pandas(b), b)
 
     def test_all_null_series(self):
         a = pd.Series([None, None, None], dtype="float64")
         b = pd.Series([None, None, None], dtype="str")
 
-        self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-        self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
-        self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+        self.assert_eq(ks.from_pandas(a), a)
+        self.assert_eq(ks.from_pandas(b), b)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-            self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
-            self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+            self.assert_eq(ks.from_pandas(a), a)
+            self.assert_eq(ks.from_pandas(b), b)
 
     def test_head(self):
         kser = self.kser

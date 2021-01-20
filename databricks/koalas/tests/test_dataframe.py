@@ -404,10 +404,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_empty_dataframe(self):
         pdf = pd.DataFrame({"a": pd.Series([], dtype="i1"), "b": pd.Series([], dtype="str")})
 
-        self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf, pdf)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(kdf, pdf)
 
     def test_all_null_dataframe(self):
         pdf = pd.DataFrame(
@@ -434,10 +436,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             },
         )
 
-        self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(kdf, pdf)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(kdf, pdf)
 
     def test_nullable_object(self):
         pdf = pd.DataFrame(
