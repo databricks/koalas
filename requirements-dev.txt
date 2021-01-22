@@ -14,6 +14,7 @@ nbsphinx
 # Temporarily exclude nbconvert 6.0 that is a dependency from nbsphinx.
 # It causes Read the Docs build fails
 nbconvert!=6.0.*
+nbformat<5.1
 numpydoc>=1.1.0
 pypandoc
 ipython
@@ -31,4 +32,8 @@ pytest
 pytest-cov
 scikit-learn
 openpyxl
-xlrd
+# xlrd dropped xlsx support. pandas 0.25 added a way to continue supporting xlsx
+# by leveraging openpyxl, see also
+# https://stackoverflow.com/questions/65254535/xlrd-biffh-xlrderror-excel-xlsx-file-not-supported
+# We can remove this upperbound when our minimum pandas version is 0.25+.
+xlrd<2.0.0

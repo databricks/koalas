@@ -1845,6 +1845,92 @@ class Frame(object, metaclass=ABCMeta):
             median, name="median", numeric_only=numeric_only, axis=axis
         )
 
+    def sem(
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
+    ) -> Union[Scalar, "Series"]:
+        """
+        Return unbiased standard error of the mean over requested axis.
+
+        Parameters
+        ----------
+        axis : {index (0), columns (1)}
+            Axis for the function to be applied on.
+        ddof : int, default 1
+            Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
+            where N represents the number of elements.
+        numeric_only : bool, default True
+            Include only float, int, boolean columns. False is not supported. This parameter
+            is mainly for pandas compatibility.
+
+        Returns
+        -------
+        scalar(for Series) or Series(for DataFrame)
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+        >>> kdf
+           a  b
+        0  1  4
+        1  2  5
+        2  3  6
+
+        >>> kdf.sem()
+        a    0.57735
+        b    0.57735
+        dtype: float64
+
+        >>> kdf.sem(ddof=0)
+        a    0.471405
+        b    0.471405
+        dtype: float64
+
+        >>> kdf.sem(axis=1)
+        0    1.5
+        1    1.5
+        2    1.5
+        dtype: float64
+
+        Support for Series
+
+        >>> kser = kdf.a
+        >>> kser
+        0    1
+        1    2
+        2    3
+        Name: a, dtype: int64
+
+        >>> kser.sem()
+        0.5773502691896258
+
+        >>> kser.sem(ddof=0)
+        0.47140452079103173
+        """
+        assert ddof in (0, 1)
+
+        def std(spark_column, spark_type):
+            if isinstance(spark_type, BooleanType):
+                spark_column = spark_column.cast(LongType())
+            elif not isinstance(spark_type, NumericType):
+                raise TypeError(
+                    "Could not convert {} ({}) to numeric".format(
+                        spark_type_to_pandas_dtype(spark_type), spark_type.simpleString()
+                    )
+                )
+            if ddof == 0:
+                return F.stddev_pop(spark_column)
+            else:
+                return F.stddev_samp(spark_column)
+
+        def sem(spark_column, spark_type):
+            return std(spark_column, spark_type) / pow(
+                Frame._count_expr(spark_column, spark_type), 0.5
+            )
+
+        return self._reduce_for_stat_function(
+            sem, name="sem", numeric_only=numeric_only, axis=axis, ddof=ddof
+        )
+
     @property
     def size(self) -> int:
         """

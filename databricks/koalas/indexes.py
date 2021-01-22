@@ -47,7 +47,7 @@ from pyspark.sql.types import TimestampType, IntegralType, DataType
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.base import IndexOpsMixin, column_op
+from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
 from databricks.koalas.series import Series, first_series
@@ -162,43 +162,6 @@ class Index(IndexOpsMixin):
             data_spark_columns=[],
         )
         return DataFrame(internal).index
-
-    def _need_alignment_for_column_op(self, other: "IndexOpsMixin") -> bool:
-        return self._internal.spark_frame is not other._internal.spark_frame
-
-    def _align_and_column_op(self, f, *args) -> "Index":
-        if get_option("compute.ops_on_diff_frames"):
-            # This could cause as many counts, reset_index calls, joins for combining
-            # as the number of `Index`s in `args`. So far it's fine since we can assume the ops
-            # only work between at most two `Index`s. We might need to fix it in the future.
-            self_len = len(self)
-            if any(len(col) != self_len for col in args if isinstance(col, IndexOpsMixin)):
-                raise ValueError("operands could not be broadcast together with shapes")
-
-            # TODO: avoid using default index?
-            with ks.option_context("compute.default_index_type", "distributed-sequence"):
-                # Directly using Series from both self and other seems causing
-                # some exceptions when 'compute.ops_on_diff_frames' is enabled.
-                # Working around for now via using frame.
-                return (
-                    cast(
-                        Series,
-                        column_op(f)(
-                            self.to_series().reset_index(drop=True),
-                            *[
-                                arg.to_series().reset_index(drop=True)
-                                if isinstance(arg, Index)
-                                else arg
-                                for arg in args
-                            ]
-                        ),
-                    )
-                    .to_frame(DEFAULT_SERIES_NAME)
-                    .set_index(DEFAULT_SERIES_NAME)
-                    .index.rename(self.name)
-                )
-        else:
-            raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)
 
     spark = CachedAccessor("spark", SparkIndexMethods)
 

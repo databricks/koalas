@@ -16,17 +16,21 @@
 
 from distutils.version import LooseVersion
 
-import matplotlib
+import matplotlib as mat
 import numpy as np
 import pandas as pd
 from matplotlib.axes._base import _process_plot_format
-from pandas.core.dtypes.inference import is_integer, is_list_like
+from pandas.core.dtypes.inference import is_list_like
 from pandas.io.formats.printing import pprint_thing
 
-from databricks.koalas.plot import TopNPlot, SampledPlot
-from pyspark.ml.feature import Bucketizer
-from pyspark.mllib.stat import KernelDensity
-from pyspark.sql import functions as F
+from databricks.koalas.plot import (
+    TopNPlotBase,
+    SampledPlotBase,
+    HistogramPlotBase,
+    BoxPlotBase,
+    unsupported_function,
+    KdePlotBase,
+)
 
 
 if LooseVersion(pd.__version__) < LooseVersion("0.25"):
@@ -61,7 +65,7 @@ else:
     _all_kinds = PlotAccessor._all_kinds
 
 
-class KoalasBarPlot(PandasBarPlot, TopNPlot):
+class KoalasBarPlot(PandasBarPlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -70,7 +74,7 @@ class KoalasBarPlot(PandasBarPlot, TopNPlot):
         return ax.bar(x, y, w, bottom=start, log=log, **kwds)
 
 
-class KoalasBoxPlot(PandasBoxPlot):
+class KoalasBoxPlot(PandasBoxPlot, BoxPlotBase):
     def boxplot(
         self,
         ax,
@@ -112,9 +116,7 @@ class KoalasBoxPlot(PandasBoxPlot):
             if dictionary is None:
                 dictionary = dict()
             for prop_dict in properties:
-                dictionary.setdefault(
-                    prop_dict, matplotlib.rcParams[rc_str.format(rc_name, prop_dict)]
-                )
+                dictionary.setdefault(prop_dict, mat.rcParams[rc_str.format(rc_name, prop_dict)])
             return dictionary
 
         # Common property dictionaries loading from rc
@@ -204,7 +206,7 @@ class KoalasBoxPlot(PandasBoxPlot):
         if manage_ticks is not None:
             should_manage_ticks = manage_ticks
 
-        if LooseVersion(matplotlib.__version__) < LooseVersion("3.1.0"):
+        if LooseVersion(mat.__version__) < LooseVersion("3.1.0"):
             extra_args = {"manage_xticks": should_manage_ticks}
         else:
             extra_args = {"manage_ticks": should_manage_ticks}
@@ -259,18 +261,16 @@ class KoalasBoxPlot(PandasBoxPlot):
         precision = self.kwds.get("precision", 0.01)
 
         # # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        col_stats, col_fences = KoalasBoxPlot._compute_stats(
-            data, spark_column_name, whis, precision
-        )
+        col_stats, col_fences = BoxPlotBase.compute_stats(data, spark_column_name, whis, precision)
 
         # # Creates a column to flag rows as outliers or not
-        outliers = KoalasBoxPlot._outliers(data, spark_column_name, *col_fences)
+        outliers = BoxPlotBase.outliers(data, spark_column_name, *col_fences)
 
         # # Computes min and max values of non-outliers - the whiskers
-        whiskers = KoalasBoxPlot._calc_whiskers(spark_column_name, outliers)
+        whiskers = BoxPlotBase.calc_whiskers(spark_column_name, outliers)
 
         if showfliers:
-            fliers = KoalasBoxPlot._get_fliers(spark_column_name, outliers, whiskers[0])
+            fliers = BoxPlotBase.get_fliers(spark_column_name, outliers, whiskers[0])
         else:
             fliers = []
 
@@ -334,26 +334,26 @@ class KoalasBoxPlot(PandasBoxPlot):
     ):
         # Missing arguments default to rcParams.
         if whis is None:
-            whis = matplotlib.rcParams["boxplot.whiskers"]
+            whis = mat.rcParams["boxplot.whiskers"]
         if bootstrap is None:
-            bootstrap = matplotlib.rcParams["boxplot.bootstrap"]
+            bootstrap = mat.rcParams["boxplot.bootstrap"]
 
         if notch is None:
-            notch = matplotlib.rcParams["boxplot.notch"]
+            notch = mat.rcParams["boxplot.notch"]
         if vert is None:
-            vert = matplotlib.rcParams["boxplot.vertical"]
+            vert = mat.rcParams["boxplot.vertical"]
         if patch_artist is None:
-            patch_artist = matplotlib.rcParams["boxplot.patchartist"]
+            patch_artist = mat.rcParams["boxplot.patchartist"]
         if meanline is None:
-            meanline = matplotlib.rcParams["boxplot.meanline"]
+            meanline = mat.rcParams["boxplot.meanline"]
         if showmeans is None:
-            showmeans = matplotlib.rcParams["boxplot.showmeans"]
+            showmeans = mat.rcParams["boxplot.showmeans"]
         if showcaps is None:
-            showcaps = matplotlib.rcParams["boxplot.showcaps"]
+            showcaps = mat.rcParams["boxplot.showcaps"]
         if showbox is None:
-            showbox = matplotlib.rcParams["boxplot.showbox"]
+            showbox = mat.rcParams["boxplot.showbox"]
         if showfliers is None:
-            showfliers = matplotlib.rcParams["boxplot.showfliers"]
+            showfliers = mat.rcParams["boxplot.showfliers"]
 
         return dict(
             whis=whis,
@@ -368,108 +368,14 @@ class KoalasBoxPlot(PandasBoxPlot):
             showfliers=showfliers,
         )
 
-    @staticmethod
-    def _compute_stats(data, colname, whis, precision):
-        # Computes mean, median, Q1 and Q3 with approx_percentile and precision
-        pdf = data._kdf._internal.resolved_copy.spark_frame.agg(
-            *[
-                F.expr(
-                    "approx_percentile(`{}`, {}, {})".format(colname, q, int(1.0 / precision))
-                ).alias("{}_{}%".format(colname, int(q * 100)))
-                for q in [0.25, 0.50, 0.75]
-            ],
-            F.mean("`%s`" % colname).alias("{}_mean".format(colname)),
-        ).toPandas()
 
-        # Computes IQR and Tukey's fences
-        iqr = "{}_iqr".format(colname)
-        p75 = "{}_75%".format(colname)
-        p25 = "{}_25%".format(colname)
-        pdf.loc[:, iqr] = pdf.loc[:, p75] - pdf.loc[:, p25]
-        pdf.loc[:, "{}_lfence".format(colname)] = pdf.loc[:, p25] - whis * pdf.loc[:, iqr]
-        pdf.loc[:, "{}_ufence".format(colname)] = pdf.loc[:, p75] + whis * pdf.loc[:, iqr]
-
-        qnames = ["25%", "50%", "75%", "mean", "lfence", "ufence"]
-        col_summ = pdf[["{}_{}".format(colname, q) for q in qnames]]
-        col_summ.columns = qnames
-        lfence, ufence = col_summ["lfence"], col_summ["ufence"]
-
-        stats = {
-            "mean": col_summ["mean"].values[0],
-            "med": col_summ["50%"].values[0],
-            "q1": col_summ["25%"].values[0],
-            "q3": col_summ["75%"].values[0],
-        }
-
-        return stats, (lfence.values[0], ufence.values[0])
-
-    @staticmethod
-    def _outliers(data, colname, lfence, ufence):
-        # Builds expression to identify outliers
-        expression = F.col("`%s`" % colname).between(lfence, ufence)
-        # Creates a column to flag rows as outliers or not
-        return data._kdf._internal.resolved_copy.spark_frame.withColumn(
-            "__{}_outlier".format(colname), ~expression
-        )
-
-    @staticmethod
-    def _calc_whiskers(colname, outliers):
-        # Computes min and max values of non-outliers - the whiskers
-        minmax = (
-            outliers.filter("not `__{}_outlier`".format(colname))
-            .agg(F.min("`%s`" % colname).alias("min"), F.max(colname).alias("max"))
-            .toPandas()
-        )
-        return minmax.iloc[0][["min", "max"]].values
-
-    @staticmethod
-    def _get_fliers(colname, outliers, min_val):
-        # Filters only the outliers, should "showfliers" be True
-        fliers_df = outliers.filter("`__{}_outlier`".format(colname))
-
-        # If shows fliers, takes the top 1k with highest absolute values
-        # Here we normalize the values by subtracting the minimum value from
-        # each, and use absolute values.
-        order_col = F.abs(F.col("`{}`".format(colname)) - min_val.item())
-        fliers = (
-            fliers_df.select(F.col("`{}`".format(colname)))
-            .orderBy(order_col)
-            .limit(1001)
-            .toPandas()[colname]
-            .values
-        )
-
-        return fliers
-
-
-class KoalasHistPlot(PandasHistPlot):
+class KoalasHistPlot(PandasHistPlot, HistogramPlotBase):
     def _args_adjust(self):
         if is_list_like(self.bottom):
             self.bottom = np.array(self.bottom)
 
     def _compute_plot_data(self):
-        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
-        from databricks.koalas.series import Series
-
-        data = self.data
-        if isinstance(data, Series):
-            data = data.to_frame()
-
-        numeric_data = data.select_dtypes(
-            include=["byte", "decimal", "integer", "float", "long", "double", np.datetime64]
-        )
-
-        # no empty frames or series allowed
-        if len(numeric_data.columns) == 0:
-            raise TypeError(
-                "Empty {0!r}: no numeric data to " "plot".format(numeric_data.__class__.__name__)
-            )
-
-        if is_integer(self.bins):
-            # computes boundaries for the column
-            self.bins = self._get_bins(data.to_spark(), self.bins)
-
-        self.data = numeric_data
+        self.data, self.bins = HistogramPlotBase.prepare_hist_data(self.data, self.bins)
 
     def _make_plot(self):
         # TODO: this logic is similar with KdePlot. Might have to deduplicate it.
@@ -477,12 +383,9 @@ class KoalasHistPlot(PandasHistPlot):
         # Use 1 for now to save the computation.
         colors = self._get_colors(num_colors=1)
         stacking_id = self._get_stacking_id()
+        output_series = HistogramPlotBase.compute_hist(self.data, self.bins)
 
-        sdf = self.data._internal.spark_frame
-
-        for i, label in enumerate(self.data._internal.column_labels):
-            # 'y' is a Spark DataFrame that selects one column.
-            y = sdf.select(self.data._internal.spark_column_for(label))
+        for (i, label), y in zip(enumerate(self.data._internal.column_labels), output_series):
             ax = self._get_ax(i)
 
             kwds = self.kwds.copy()
@@ -493,11 +396,6 @@ class KoalasHistPlot(PandasHistPlot):
             style, kwds = self._apply_style_colors(colors, kwds, i, label)
             if style is not None:
                 kwds["style"] = style
-
-            # 'y' is a Spark DataFrame that selects one column.
-            # here, we manually calculates the weights separately via Spark
-            # and assign it directly to histogram plot.
-            y = KoalasHistPlot._compute_hist(y, self.bins)  # now y is a pandas Series.
 
             kwds = self._make_plot_keywords(kwds, y)
             artists = self._plot(ax, y, column_num=i, stacking_id=stacking_id, **kwds)
@@ -518,56 +416,8 @@ class KoalasHistPlot(PandasHistPlot):
         cls._update_stacker(ax, stacking_id, n)
         return patches
 
-    @staticmethod
-    def _get_bins(sdf, bins):
-        # 'data' is a Spark DataFrame that selects all columns.
-        if len(sdf.columns) > 1:
-            min_col = F.least(*map(F.min, sdf))
-            max_col = F.greatest(*map(F.max, sdf))
-        else:
-            min_col = F.min(sdf.columns[-1])
-            max_col = F.max(sdf.columns[-1])
-        boundaries = sdf.select(min_col, max_col).first()
 
-        # divides the boundaries into bins
-        if boundaries[0] == boundaries[1]:
-            boundaries = (boundaries[0] - 0.5, boundaries[1] + 0.5)
-
-        return np.linspace(boundaries[0], boundaries[1], bins + 1)
-
-    @staticmethod
-    def _compute_hist(sdf, bins):
-        # 'data' is a Spark DataFrame that selects one column.
-        assert isinstance(bins, (np.ndarray, np.generic))
-
-        colname = sdf.columns[-1]
-
-        bucket_name = "__{}_bucket".format(colname)
-        # creates a Bucketizer to get corresponding bin of each value
-        bucketizer = Bucketizer(
-            splits=bins, inputCol=colname, outputCol=bucket_name, handleInvalid="skip"
-        )
-        # after bucketing values, groups and counts them
-        result = (
-            bucketizer.transform(sdf)
-            .select(bucket_name)
-            .groupby(bucket_name)
-            .agg(F.count("*").alias("count"))
-            .toPandas()
-            .sort_values(by=bucket_name)
-        )
-
-        # generates a pandas DF with one row for each bin
-        # we need this as some of the bins may be empty
-        indexes = pd.DataFrame({bucket_name: np.arange(0, len(bins) - 1), "bucket": bins[:-1]})
-        # merges the bins with counts on it and fills remaining ones with zeros
-        pdf = indexes.merge(result, how="left", on=[bucket_name]).fillna(0)[["count"]]
-        pdf.columns = [bucket_name]
-
-        return pdf[bucket_name]
-
-
-class KoalasPiePlot(PandasPiePlot, TopNPlot):
+class KoalasPiePlot(PandasPiePlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -576,7 +426,7 @@ class KoalasPiePlot(PandasPiePlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasAreaPlot(PandasAreaPlot, SampledPlot):
+class KoalasAreaPlot(PandasAreaPlot, SampledPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_sampled(data), **kwargs)
 
@@ -585,7 +435,7 @@ class KoalasAreaPlot(PandasAreaPlot, SampledPlot):
         super()._make_plot()
 
 
-class KoalasLinePlot(PandasLinePlot, SampledPlot):
+class KoalasLinePlot(PandasLinePlot, SampledPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_sampled(data), **kwargs)
 
@@ -594,7 +444,7 @@ class KoalasLinePlot(PandasLinePlot, SampledPlot):
         super()._make_plot()
 
 
-class KoalasBarhPlot(PandasBarhPlot, TopNPlot):
+class KoalasBarhPlot(PandasBarhPlot, TopNPlotBase):
     def __init__(self, data, **kwargs):
         super().__init__(self.get_top_n(data), **kwargs)
 
@@ -603,7 +453,7 @@ class KoalasBarhPlot(PandasBarhPlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasScatterPlot(PandasScatterPlot, TopNPlot):
+class KoalasScatterPlot(PandasScatterPlot, TopNPlotBase):
     def __init__(self, data, x, y, **kwargs):
         super().__init__(self.get_top_n(data), x, y, **kwargs)
 
@@ -612,7 +462,7 @@ class KoalasScatterPlot(PandasScatterPlot, TopNPlot):
         super()._make_plot()
 
 
-class KoalasKdePlot(PandasKdePlot):
+class KoalasKdePlot(PandasKdePlot, KdePlotBase):
     def _compute_plot_data(self):
         from databricks.koalas.series import Series
 
@@ -659,39 +509,13 @@ class KoalasKdePlot(PandasKdePlot):
             self._add_legend_handle(artists[0], label, index=i)
 
     def _get_ind(self, y):
-        # 'y' is a Spark DataFrame that selects one column.
-        if self.ind is None:
-            min_val, max_val = y.select(F.min(y.columns[-1]), F.max(y.columns[-1])).first()
-
-            sample_range = max_val - min_val
-            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, 1000,)
-        elif is_integer(self.ind):
-            min_val, max_val = y.select(F.min(y.columns[-1]), F.max(y.columns[-1])).first()
-
-            sample_range = np.nanmax(y) - np.nanmin(y)
-            ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, self.ind,)
-        else:
-            ind = self.ind
-        return ind
+        return KdePlotBase.get_ind(y, self.ind)
 
     @classmethod
     def _plot(
         cls, ax, y, style=None, bw_method=None, ind=None, column_num=None, stacking_id=None, **kwds
     ):
-        # 'y' is a Spark DataFrame that selects one column.
-
-        # Using RDD is slow so we might have to change it to Dataset based implementation
-        # once Spark has that implementation.
-        sample = y.rdd.map(lambda x: float(x[0]))
-        kd = KernelDensity()
-        kd.setSample(sample)
-
-        assert isinstance(bw_method, (int, float)), "'bw_method' must be set as a scalar number."
-
-        if bw_method is not None:
-            # Match the bandwidth with Spark.
-            kd.setBandwidth(float(bw_method))
-        y = kd.estimate(list(map(float, ind)))
+        y = KdePlotBase.compute_kde(y, bw_method=bw_method, ind=ind)
         lines = PandasMPLPlot._plot(ax, ind, y, style=style, **kwds)
         return lines
 
@@ -708,6 +532,26 @@ _klasses = [
     KoalasKdePlot,
 ]
 _plot_klass = {getattr(klass, "_kind"): klass for klass in _klasses}
+_common_kinds = {"area", "bar", "barh", "box", "hist", "kde", "line", "pie"}
+_series_kinds = _common_kinds.union(set())
+_dataframe_kinds = _common_kinds.union({"scatter", "hexbin"})
+_koalas_all_kinds = _common_kinds.union(_series_kinds).union(_dataframe_kinds)
+
+
+def plot_koalas(data, kind, **kwargs):
+    if kind not in _koalas_all_kinds:
+        raise ValueError("{} is not a valid plot kind".format(kind))
+
+    from databricks.koalas import DataFrame, Series
+
+    if isinstance(data, Series):
+        if kind not in _series_kinds:
+            return unsupported_function(class_name="pd.Series", method_name=kind)()
+        return plot_series(data=data, kind=kind, **kwargs)
+    elif isinstance(data, DataFrame):
+        if kind not in _dataframe_kinds:
+            return unsupported_function(class_name="pd.DataFrame", method_name=kind)()
+        return plot_frame(data=data, kind=kind, **kwargs)
 
 
 def plot_series(

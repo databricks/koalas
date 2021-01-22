@@ -115,7 +115,7 @@ class ExtensionTest(ReusedSQLTestCase):
     def test_overwrite_warns(self):
         mean = ks.Series.mean
         try:
-            with assert_produces_warning(UserWarning) as w:
+            with assert_produces_warning(UserWarning, raise_on_extra_warnings=False) as w:
                 register_series_accessor("mean")(CustomAccessor)
                 s = ks.Series([1, 2])
                 assert s.mean.prop == "item"

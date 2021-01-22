@@ -143,6 +143,7 @@ Computations / Descriptive Stats
    DataFrame.product
    DataFrame.quantile
    DataFrame.nunique
+   DataFrame.sem
    DataFrame.skew
    DataFrame.sum
    DataFrame.std
@@ -226,6 +227,7 @@ Combining / joining / merging
    DataFrame.merge
    DataFrame.join
    DataFrame.update
+   DataFrame.insert
 
 Time series-related
 -------------------

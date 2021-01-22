@@ -86,6 +86,7 @@ from databricks.koalas.utils import (
     default_session,
     is_name_like_tuple,
     is_name_like_value,
+    is_testing,
     name_like_string,
     same_anchor,
     scol_for,
@@ -112,6 +113,7 @@ from databricks.koalas.typedef import (
     spark_type_to_pandas_dtype,
     DataFrameType,
     SeriesType,
+    Scalar,
 )
 from databricks.koalas.plot import KoalasPlotAccessor
 
@@ -488,7 +490,7 @@ class DataFrame(Frame, Generic[T]):
                 pdf = pd.DataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=copy)
             internal = InternalFrame.from_pandas(pdf)
 
-        self._internal_frame = internal
+        object.__setattr__(self, "_internal_frame", internal)
 
     @property
     def _ksers(self):
@@ -496,9 +498,11 @@ class DataFrame(Frame, Generic[T]):
         from databricks.koalas.series import Series
 
         if not hasattr(self, "_kseries"):
-            self._kseries = {
-                label: Series(data=self, index=label) for label in self._internal.column_labels
-            }
+            object.__setattr__(
+                self,
+                "_kseries",
+                {label: Series(data=self, index=label) for label in self._internal.column_labels},
+            )
         else:
             kseries = self._kseries
             assert len(self._internal.column_labels) == len(kseries), (
@@ -535,30 +539,32 @@ class DataFrame(Frame, Generic[T]):
         """
         from databricks.koalas.series import Series
 
-        kseries = {}
+        if hasattr(self, "_kseries"):
+            kseries = {}
 
-        for old_label, new_label in zip_longest(
-            self._internal.column_labels, internal.column_labels
-        ):
-            if old_label is not None:
-                kser = self._ksers[old_label]
+            for old_label, new_label in zip_longest(
+                self._internal.column_labels, internal.column_labels
+            ):
+                if old_label is not None:
+                    kser = self._ksers[old_label]
 
-                renamed = old_label != new_label
-                not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
+                    renamed = old_label != new_label
+                    not_same_anchor = requires_same_anchor and not same_anchor(internal, kser)
 
-                if renamed or not_same_anchor:
-                    kdf = DataFrame(self._internal.select_column(old_label))  # type: DataFrame
-                    kser._update_anchor(kdf)
+                    if renamed or not_same_anchor:
+                        kdf = DataFrame(self._internal.select_column(old_label))  # type: DataFrame
+                        kser._update_anchor(kdf)
+                        kser = None
+                else:
                     kser = None
-            else:
-                kser = None
-            if new_label is not None:
-                if kser is None:
-                    kser = Series(data=self, index=new_label)
-                kseries[new_label] = kser
+                if new_label is not None:
+                    if kser is None:
+                        kser = Series(data=self, index=new_label)
+                    kseries[new_label] = kser
+
+            self._kseries = kseries
 
         self._internal_frame = internal
-        self._kseries = kseries
 
         if hasattr(self, "_repr_pandas_cache"):
             del self._repr_pandas_cache
@@ -3712,6 +3718,87 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return self._apply_series_op(lambda kser: kser.notnull())
 
     notna = notnull
+
+    def insert(
+        self,
+        loc: int,
+        column,
+        value: Union[Scalar, "Series", Iterable],
+        allow_duplicates: bool = False,
+    ) -> None:
+        """
+        Insert column into DataFrame at specified location.
+
+        Raises a ValueError if `column` is already contained in the DataFrame,
+        unless `allow_duplicates` is set to True.
+
+        Parameters
+        ----------
+        loc : int
+            Insertion index. Must verify 0 <= loc <= len(columns).
+        column : str, number, or hashable object
+            Label of the inserted column.
+        value : int, Series, or array-like
+        allow_duplicates : bool, optional
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame([1, 2, 3])
+        >>> kdf.sort_index()
+           0
+        0  1
+        1  2
+        2  3
+        >>> kdf.insert(0, 'x', 4)
+        >>> kdf.sort_index()
+           x  0
+        0  4  1
+        1  4  2
+        2  4  3
+
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+
+        >>> kdf.insert(1, 'y', [5, 6, 7])
+        >>> kdf.sort_index()
+           x  y  0
+        0  4  5  1
+        1  4  6  2
+        2  4  7  3
+
+        >>> kdf.insert(2, 'z', ks.Series([8, 9, 10]))
+        >>> kdf.sort_index()
+           x  y   z  0
+        0  4  5   8  1
+        1  4  6   9  2
+        2  4  7  10  3
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        if not isinstance(loc, int):
+            raise TypeError("loc must be int")
+
+        assert 0 <= loc <= len(self.columns)
+        assert allow_duplicates is False
+
+        if not is_name_like_value(column):
+            raise ValueError(
+                '"column" should be a scalar value or tuple that contains scalar values'
+            )
+
+        if is_name_like_tuple(column):
+            if len(column) != len(self.columns.levels):
+                # To be consistent with pandas
+                raise ValueError('"column" must have length equal to number of column levels.')
+
+        if column in self.columns:
+            raise ValueError("cannot insert %s, already exists" % column)
+
+        kdf = self.copy()
+        kdf[column] = value
+        columns = kdf.columns[:-1].insert(loc, kdf.columns[-1])
+        kdf = kdf[columns]
+        self._update_internal_frame(kdf._internal)
 
     # TODO: add frep and axis parameter
     def shift(self, periods=1, fill_value=None) -> "DataFrame":
@@ -10108,7 +10195,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ):
             try:
                 # hack to use pandas' info as is.
-                self._data = self
+                object.__setattr__(self, "_data", self)
                 count_func = self.count
                 self.count = lambda: count_func().to_pandas()  # type: ignore
                 return pd.DataFrame.info(
@@ -10910,7 +10997,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def _get_or_create_repr_pandas_cache(self, n):
         if not hasattr(self, "_repr_pandas_cache") or n not in self._repr_pandas_cache:
-            self._repr_pandas_cache = {n: self.head(n + 1)._to_internal_pandas()}
+            object.__setattr__(
+                self, "_repr_pandas_cache", {n: self.head(n + 1)._to_internal_pandas()}
+            )
         return self._repr_pandas_cache[n]
 
     def __repr__(self):
@@ -11088,6 +11177,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 "'%s' object has no attribute '%s'" % (self.__class__.__name__, key)
             )
 
+    def __setattr__(self, key: str, value) -> None:
+        try:
+            object.__getattribute__(self, key)
+            return object.__setattr__(self, key, value)
+        except AttributeError:
+            pass
+
+        if (key,) in self._internal.column_labels:
+            self[key] = value
+        else:
+            msg = "Koalas doesn't allow columns to be created via a new attribute name"
+            if is_testing():
+                raise AssertionError(msg)
+            else:
+                warnings.warn(msg, UserWarning)
+
     def __len__(self):
         return self._internal.resolved_copy.spark_frame.count()
 
@@ -11177,9 +11282,9 @@ class CachedDataFrame(DataFrame):
 
     def __init__(self, internal, storage_level=None):
         if storage_level is None:
-            self._cached = internal.spark_frame.cache()
+            object.__setattr__(self, "_cached", internal.spark_frame.cache())
         elif isinstance(storage_level, StorageLevel):
-            self._cached = internal.spark_frame.persist(storage_level)
+            object.__setattr__(self, "_cached", internal.spark_frame.persist(storage_level))
         else:
             raise TypeError(
                 "Only a valid pyspark.StorageLevel type is acceptable for the `storage_level`"

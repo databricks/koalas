@@ -88,6 +88,63 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         index_cols = pdf.columns[column_mask]
         self.assert_eq(kdf[index_cols], pdf[index_cols])
 
+    def test_insert(self):
+        #
+        # Basic DataFrame
+        #
+        pdf = pd.DataFrame([1, 2, 3])
+        kdf = ks.from_pandas(pdf)
+
+        kdf.insert(1, "b", 10)
+        pdf.insert(1, "b", 10)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(2, "c", 0.1)
+        pdf.insert(2, "c", 0.1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(3, "d", kdf.b + 1)
+        pdf.insert(3, "d", pdf.b + 1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+
+        kser = ks.Series([4, 5, 6])
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "y", kser))
+        self.assertRaisesRegex(
+            ValueError, "cannot insert b, already exists", lambda: kdf.insert(1, "b", 10)
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            '"column" should be a scalar value or tuple that contains scalar values',
+            lambda: kdf.insert(0, list("abc"), kser),
+        )
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "e", [7, 8, 9, 10]))
+        self.assertRaises(ValueError, lambda: kdf.insert(0, "f", ks.Series([7, 8])))
+        self.assertRaises(AssertionError, lambda: kdf.insert(100, "y", kser))
+        self.assertRaises(AssertionError, lambda: kdf.insert(1, "y", kser, allow_duplicates=True))
+
+        #
+        # DataFrame with MultiIndex as columns
+        #
+        pdf = pd.DataFrame({("x", "a", "b"): [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        kdf.insert(1, "b", 10)
+        pdf.insert(1, "b", 10)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(2, "c", 0.1)
+        pdf.insert(2, "c", 0.1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+        kdf.insert(3, "d", kdf.b + 1)
+        pdf.insert(3, "d", pdf.b + 1)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index(), almost=True)
+
+        self.assertRaisesRegex(
+            ValueError, "cannot insert d, already exists", lambda: kdf.insert(4, "d", 11)
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            '"column" must have length equal to number of column levels.',
+            lambda: kdf.insert(4, ("e",), 11),
+        )
+
     def test_inplace(self):
         pdf, kdf = self.df_pair
 
@@ -410,13 +467,28 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
 
     def test_all_null_dataframe(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [None, None, None, "a"],
+                "b": [None, None, None, 1],
+                "c": [None, None, None] + list(np.arange(1, 2).astype("i1")),
+                "d": [None, None, None, 1.0],
+                "e": [None, None, None, True],
+                "f": [None, None, None] + list(pd.date_range("20130101", periods=1)),
+            },
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.iloc[:-1], pdf.iloc[:-1])
+
+        with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+            self.assert_eq(kdf.iloc[:-1], pdf.iloc[:-1])
 
         pdf = pd.DataFrame(
             {
                 "a": pd.Series([None, None, None], dtype="float64"),
                 "b": pd.Series([None, None, None], dtype="str"),
             },
-            index=np.random.rand(3),
         )
 
         self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
@@ -427,14 +499,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_nullable_object(self):
         pdf = pd.DataFrame(
             {
-                "a": list("abc") + [np.nan],
-                "b": list(range(1, 4)) + [np.nan],
-                "c": list(np.arange(3, 6).astype("i1")) + [np.nan],
-                "d": list(np.arange(4.0, 7.0, dtype="float64")) + [np.nan],
-                "e": [True, False, True, np.nan],
-                "f": list(pd.date_range("20130101", periods=3)) + [np.nan],
+                "a": list("abc") + [np.nan, None],
+                "b": list(range(1, 4)) + [np.nan, None],
+                "c": list(np.arange(3, 6).astype("i1")) + [np.nan, None],
+                "d": list(np.arange(4.0, 7.0, dtype="float64")) + [np.nan, None],
+                "e": [True, False, True, np.nan, None],
+                "f": list(pd.date_range("20130101", periods=3)) + [np.nan, None],
             },
-            index=np.random.rand(4),
+            index=np.random.rand(5),
         )
 
         kdf = ks.from_pandas(pdf)
@@ -449,6 +521,11 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
         kdf["w"] = 1.0
         pdf["w"] = 1.0
+
+        self.assert_eq(kdf, pdf)
+
+        kdf.w = 10.0
+        pdf.w = 10.0
 
         self.assert_eq(kdf, pdf)
 

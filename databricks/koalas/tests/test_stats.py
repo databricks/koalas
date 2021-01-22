@@ -33,7 +33,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         for funcname in functions:
             self.assert_eq(getattr(kdf_or_kser, funcname)(), getattr(pdf_or_pser, funcname)())
 
-        functions = ["std", "var", "product"]
+        functions = ["std", "var", "product", "sem"]
         for funcname in functions:
             self.assert_eq(
                 getattr(kdf_or_kser, funcname)(),
@@ -41,7 +41,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                 check_exact=False,
             )
 
-        functions = ["std", "var"]
+        functions = ["std", "var", "sem"]
         for funcname in functions:
             self.assert_eq(
                 getattr(kdf_or_kser, funcname)(ddof=0),
@@ -211,6 +211,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.kurtosis(axis=1), pdf.kurtosis(axis=1))
             self.assert_eq(kdf.skew(axis=1), pdf.skew(axis=1))
             self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
+            self.assert_eq(kdf.sem(axis=1), pdf.sem(axis=1))
+            self.assert_eq(kdf.sem(axis=1, ddof=0), pdf.sem(axis=1, ddof=0))
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
@@ -281,6 +283,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf.var(ddof=0), pdf.var(ddof=0), check_exact=False)
         self.assert_eq(kdf.std(), pdf.std(), check_exact=False)
         self.assert_eq(kdf.std(ddof=0), pdf.std(ddof=0), check_exact=False)
+        self.assert_eq(kdf.sem(), pdf.sem(), check_exact=False)
+        self.assert_eq(kdf.sem(ddof=0), pdf.sem(ddof=0), check_exact=False)
 
     def test_stats_on_boolean_series(self):
         pser = pd.Series([True, False, True])
@@ -298,6 +302,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.var(ddof=0), pser.var(ddof=0), almost=True)
         self.assert_eq(kser.std(), pser.std(), almost=True)
         self.assert_eq(kser.std(ddof=0), pser.std(ddof=0), almost=True)
+        self.assert_eq(kser.sem(), pser.sem(), almost=True)
+        self.assert_eq(kser.sem(ddof=0), pser.sem(ddof=0), almost=True)
 
     def test_stats_on_non_numeric_columns_should_be_discarded_if_numeric_only_is_true(self):
         pdf = pd.DataFrame({"i": [0, 1, 2], "b": [False, False, True], "s": ["x", "y", "z"]})
@@ -338,6 +344,12 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.std(ddof=0, numeric_only=True),
             pdf.std(ddof=0, numeric_only=True),
+            check_exact=False,
+        )
+        self.assert_eq(kdf.sem(numeric_only=True), pdf.sem(numeric_only=True), check_exact=False)
+        self.assert_eq(
+            kdf.sem(ddof=0, numeric_only=True),
+            pdf.sem(ddof=0, numeric_only=True),
             check_exact=False,
         )
 

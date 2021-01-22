@@ -477,6 +477,48 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             kser1.combine_first(kser2).sort_index(), pser1.combine_first(pser2).sort_index()
         )
 
+    def test_insert(self):
+        #
+        # Basic DataFrame
+        #
+        pdf = pd.DataFrame([1, 2, 3])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pd.Series([4, 5, 6])
+        kser = ks.from_pandas(pser)
+        kdf.insert(1, "y", kser)
+        pdf.insert(1, "y", pser)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
+        #
+        # DataFrame with Index different from inserting Series'
+        #
+        pdf = pd.DataFrame([1, 2, 3], index=[10, 20, 30])
+        kdf = ks.from_pandas(pdf)
+
+        pser = pd.Series([4, 5, 6])
+        kser = ks.from_pandas(pser)
+        kdf.insert(1, "y", kser)
+        pdf.insert(1, "y", pser)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
+        #
+        # DataFrame with Multi-index columns
+        #
+        pdf = pd.DataFrame({("x", "a"): [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+
+        pser = pd.Series([4, 5, 6])
+        kser = ks.from_pandas(pser)
+        pdf = pd.DataFrame({("x", "a", "b"): [1, 2, 3]})
+        kdf = ks.from_pandas(pdf)
+        kdf.insert(0, "a", kser)
+        pdf.insert(0, "a", pser)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        kdf.insert(0, ("b", "c", ""), kser)
+        pdf.insert(0, ("b", "c", ""), pser)
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+
     def test_compare(self):
         if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
             pser1 = pd.Series(["b", "c", np.nan, "g", np.nan])
@@ -1321,13 +1363,38 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kser1.repeat(kser2).sort_index(), pser1.repeat(pser2).sort_index())
 
+    def test_series_ops(self):
+        pser1 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x", index=[11, 12, 13, 14, 15, 16, 17])
+        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7], index=[11, 12, 13, 14, 15, 16, 17])
+        pidx1 = pd.Index([10, 11, 12, 13, 14, 15, 16])
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+        kidx1 = ks.from_pandas(pidx1)
+
+        self.assert_eq((kser1 + 1 + 10 * kser2).sort_index(), (pser1 + 1 + 10 * pser2).sort_index())
+        self.assert_eq(kser1 + 1 + 10 * kidx1, pser1 + 1 + 10 * pidx1)
+        self.assert_eq(kidx1 + 1 + 10 * kser1, pidx1 + 1 + 10 * pser1)
+
+        pidx2 = pd.Index([11, 12, 13])
+        kidx2 = ks.from_pandas(pidx2)
+
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser1 + kidx2
+
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx2 + kser1
+
     def test_index_ops(self):
         pidx1 = pd.Index([1, 2, 3, 4, 5])
         pidx2 = pd.Index([6, 7, 8, 9, 10])
         kidx1 = ks.from_pandas(pidx1)
         kidx2 = ks.from_pandas(pidx2)
 
-        self.assert_eq((kidx1 * 10 + kidx2).sort_values(), (pidx1 * 10 + pidx2).sort_values())
+        self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
 
         pidx3 = pd.Index([11, 12, 13])
         kidx3 = ks.from_pandas(pidx3)
@@ -1344,14 +1411,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kidx2 = ks.from_pandas(pidx2)
         kidx3 = ks.from_pandas(pidx3)
 
-        self.assert_eq((kidx1 * 10 + kidx2).sort_values(), (pidx1 * 10 + pidx2).sort_values())
+        self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
-            self.assert_eq((kidx1 * 10 + kidx3).sort_values(), (pidx1 * 10 + pidx3).sort_values())
+            self.assert_eq(kidx1 * 10 + kidx3, pidx1 * 10 + pidx3)
         else:
-            self.assert_eq(
-                (kidx1 * 10 + kidx3).sort_values(), (pidx1 * 10 + pidx3).rename(None).sort_values()
-            )
+            self.assert_eq(kidx1 * 10 + kidx3, (pidx1 * 10 + pidx3).rename(None))
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):

@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from databricks.koalas.base import IndexOpsMixin
     from databricks.koalas.frame import DataFrame
     from databricks.koalas.internal import InternalFrame
-    from databricks.koalas.series import Series
 
 
 ERROR_MESSAGE_CANNOT_COMBINE = (
@@ -383,26 +382,6 @@ def align_diff_frames(
     kdf = applied[list(this_labels.values()) + list(other_labels.values())]
     kdf.columns = kdf.columns.droplevel()
     return kdf
-
-
-def align_diff_series(func, this_series: "Series", *args, how: str = "full") -> "Series":
-    from databricks.koalas.frame import DataFrame
-    from databricks.koalas.series import Series, first_series
-
-    cols = [arg for arg in args if isinstance(arg, Series)]
-    combined = combine_frames(this_series.to_frame(), *cols, how=how)
-
-    scol = func(
-        combined["this"]._internal.data_spark_columns[0],
-        *combined["that"]._internal.data_spark_columns
-    )
-
-    internal = combined._internal.copy(
-        column_labels=this_series._internal.column_labels,
-        data_spark_columns=[scol.alias(name_like_string(this_series.name))],
-        column_label_names=this_series._internal.column_label_names,
-    )
-    return first_series(DataFrame(internal))
 
 
 def is_testing():
