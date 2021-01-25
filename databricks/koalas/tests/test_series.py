@@ -2639,3 +2639,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             # Test `inplace=True`
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
+
+    def test_align(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
+        kdf = ks.from_pandas(pdf)
+
+        for join in ["outer", "inner", "left", "right"]:
+            for axis in [None, 0]:
+                kser_l, kser_r = kdf.a.align(kdf.b, join=join, axis=axis)
+                pser_l, pser_r = pdf.a.align(pdf.b, join=join, axis=axis)
+                self.assert_eq(kser_l, pser_l)
+                self.assert_eq(kser_r, pser_r)
+
+                kser_l, kdf_r = kdf.b.align(kdf[["b", "a"]], join=join, axis=axis)
+                pser_l, pdf_r = pdf.b.align(pdf[["b", "a"]], join=join, axis=axis)
+                self.assert_eq(kser_l, pser_l)
+                self.assert_eq(kdf_r, pdf_r)
+
+        self.assertRaises(ValueError, lambda: kdf.a.align(kdf.b, axis=1))

@@ -22,6 +22,7 @@ from collections import OrderedDict
 from distutils.version import LooseVersion
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+import warnings
 
 import pyarrow
 import pyspark
@@ -665,6 +666,25 @@ def validate_bool_kwarg(value, arg_name):
             "type {}.".format(arg_name, type(value).__name__)
         )
     return value
+
+
+def validate_how(how: str) -> str:
+    """ Check the given how for join is valid. """
+    if how == "full":
+        warnings.warn(
+            "Warning: While Koalas will accept 'full', you should use 'outer' "
+            + "instead to be compatible with the pandas merge API",
+            UserWarning,
+        )
+    if how == "outer":
+        # 'outer' in pandas equals 'full' in Spark
+        how = "full"
+    if how not in ("inner", "left", "right", "full"):
+        raise ValueError(
+            "The 'how' parameter has to be amongst the following values: ",
+            "['inner', 'left', 'right', 'outer']",
+        )
+    return how
 
 
 def verify_temp_column_name(
