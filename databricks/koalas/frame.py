@@ -11030,9 +11030,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         right_is_series = isinstance(other, Series)
         if right_is_series:
             if axis is None:
-                raise ValueError("Must specify axis=0")
+                raise ValueError("Must specify axis=0 or 1")
             elif axis != 0:
-                raise NotImplementedError("align currently only works for axis=0")
+                raise NotImplementedError(
+                    "align currently only works for axis=0 when right is Series"
+                )
 
         left = self
         right = other
