@@ -2600,7 +2600,12 @@ def broadcast(obj) -> DataFrame:
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
 
 
-def read_orc(path, columns: Optional[List[str]] = None, **options) -> "DataFrame":
+def read_orc(
+    path,
+    columns: Optional[List[str]] = None,
+    index_col: Optional[Union[str, List[str]]] = None,
+    **options
+) -> "DataFrame":
     """
     Load an ORC object from the file path, returning a DataFrame.
 
@@ -2610,6 +2615,8 @@ def read_orc(path, columns: Optional[List[str]] = None, **options) -> "DataFrame
         The path string storing the ORC file to be read.
     columns : list, default None
         If not None, only these columns will be read from the file.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
     options : dict
         All other options passed directly into Spark's data source.
 
@@ -2624,7 +2631,7 @@ def read_orc(path, columns: Optional[List[str]] = None, **options) -> "DataFrame
     if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
         options = options.get("options")  # type: ignore
 
-    kdf = read_spark_io(path, format="orc", **options)
+    kdf = read_spark_io(path, format="orc", index_col=index_col, **options)
 
     if columns is not None:
         kdf_columns = kdf.columns

@@ -406,6 +406,26 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             actual = ks.read_orc(path, columns=columns)
             self.assertPandasEqual(expected, actual.to_pandas())
 
+            # index_col
+            kdf = ks.from_pandas(data)
+            expected = kdf.set_index("i32")
+            actual = ks.read_orc(path, index_col="i32")
+            self.assert_eq(actual, expected)
+
+            expected = kdf.set_index(["i32", "f"])
+            actual = ks.read_orc(path, index_col=["i32", "f"])
+            self.assert_eq(actual, expected)
+
+            # index_col with columns
+            kdf = ks.from_pandas(data)
+            expected = kdf.set_index("i32")[["i64", "bhello"]]
+            actual = ks.read_orc(path, index_col=["i32"], columns=["i64", "bhello"])
+            self.assert_eq(actual, expected)
+
+            expected = kdf.set_index(["i32", "f"])[["bhello", "i64"]]
+            actual = ks.read_orc(path, index_col=["i32", "f"], columns=["bhello", "i64"])
+            self.assert_eq(actual, expected)
+
             msg = "Unknown column name 'i'"
             with self.assertRaises(ValueError, msg=msg):
                 ks.read_orc(path, columns="i32")
