@@ -658,7 +658,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        # pandas won't keep the name with `eq` when other is list of tuple,
+        # pandas won't keep the name with `eq` when `other` is list or tuple,
         # whereas `__eq__` always keeps the name.
         if isinstance(other, (list, tuple)):
             if len(self) == len(other):
