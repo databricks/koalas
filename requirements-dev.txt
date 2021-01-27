@@ -9,12 +9,12 @@ mlflow>=1.0
 plotly>=4.8
 
 # Documentation build.
-Sphinx==3.2.1
-nbsphinx==0.7.1
+sphinx>=2.0.0
+nbsphinx
 # Temporarily exclude nbconvert 6.0 that is a dependency from nbsphinx.
 # It causes Read the Docs build fails
-nbconvert==6.0.7
-nbformat>5.1
+nbconvert!=6.0.*
+nbformat>5.0
 numpydoc>=1.1.0
 pypandoc
 ipython
