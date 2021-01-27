@@ -658,6 +658,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
+        # pandas won't keep the name with `eq` when other is list of tuple,
+        # whereas `__eq__` always keeps the name.
+        if isinstance(other, (list, tuple)):
+            if len(self) == len(other):
+                other = ks.Series(other)
+            else:
+                raise ValueError("Lengths must be equal")
         return self == other
 
     equals = eq
@@ -665,7 +672,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def __eq__(self, other):
         if isinstance(other, (list, tuple)):
             if len(self) == len(other):
-                other = ks.Series(other)
+                other = ks.Series(other, name=self.name)
             else:
                 raise ValueError("Lengths must be equal")
         # pandas always returns False for all items with dict and set.
