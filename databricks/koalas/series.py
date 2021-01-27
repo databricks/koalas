@@ -658,6 +658,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
+        return self == other
+
+    equals = eq
+
+    def __eq__(self, other):
         if isinstance(other, (list, tuple)):
             if len(self) == len(other):
                 other = ks.Series(other)
@@ -666,9 +671,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         # pandas always returns False for all items with dict and set.
         elif isinstance(other, (dict, set)):
             return self != self
-        return self == other
-
-    equals = eq
+        return IndexOpsMixin.__eq__(self, other)
 
     def gt(self, other) -> "Series":
         """
