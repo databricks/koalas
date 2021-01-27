@@ -13,7 +13,7 @@ sphinx>=2.0.0
 nbsphinx
 # Temporarily exclude nbconvert 6.0 that is a dependency from nbsphinx.
 # It causes Read the Docs build fails
-nbconvert!=6.0.*
+nbconvert
 nbformat>5.0
 numpydoc>=1.1.0
 pypandoc
