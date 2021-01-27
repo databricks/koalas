@@ -658,6 +658,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
+        if isinstance(other, (list, tuple)):
+            if len(self) == len(other):
+                other = ks.Series(other)
+            else:
+                raise ValueError("Lengths must be equal")
+        # pandas always returns False for all items with dict and set.
+        elif isinstance(other, (dict, set)):
+            return self != self
         return self == other
 
     equals = eq

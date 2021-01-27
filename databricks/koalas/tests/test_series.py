@@ -2639,3 +2639,28 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             # Test `inplace=True`
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
+
+    def test_eq(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        self.assert_eq(pser.eq(pser), kser.eq(kser))
+
+        # other = dict
+        other = {1: None, 2: None, 3: None, 4: None, np.nan: None, 6: None}
+        self.assert_eq(pser.eq(other), kser.eq(other))
+
+        # other = set
+        other = {1, 2, 3, 4, np.nan, 6}
+        self.assert_eq(pser.eq(other), kser.eq(other))
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
+            self.assert_eq(pser.eq(other), kser.eq(other))
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
+            self.assert_eq(pser.eq(other), kser.eq(other))

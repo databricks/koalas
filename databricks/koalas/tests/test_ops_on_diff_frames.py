@@ -1370,6 +1370,28 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kidx1 * 10 + kidx3, (pidx1 * 10 + pidx3).rename(None))
 
+    def test_series_eq(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
@@ -1511,3 +1533,17 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.mask(kdf2 > -250)
+
+    def test_series_eq(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        others = (
+            ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+            ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+            [np.nan, 1, 3, 4, np.nan, 6],
+            (np.nan, 1, 3, 4, np.nan, 6),
+        )
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.eq(other)
