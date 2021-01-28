@@ -5737,6 +5737,100 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         )
         return DataFrame(internal)
 
+    def align(
+        self,
+        other: Union[DataFrame, "Series"],
+        join: str = "outer",
+        axis: Optional[Union[int, str]] = None,
+        copy: bool = True,
+    ) -> Tuple["Series", Union[DataFrame, "Series"]]:
+        """
+        Align two objects on their axes with the specified join method.
+
+        Join method is specified for each axis Index.
+
+        Parameters
+        ----------
+        other : DataFrame or Series
+        join : {{'outer', 'inner', 'left', 'right'}}, default 'outer'
+        axis : allowed axis of the other object, default None
+            Align on index (0), columns (1), or both (None).
+        copy : bool, default True
+            Always returns new objects. If copy=False and no reindexing is
+            required then original objects are returned.
+
+        Returns
+        -------
+        (left, right) : (Series, type of other)
+            Aligned objects.
+
+        Examples
+        --------
+        >>> ks.set_option("compute.ops_on_diff_frames", True)
+        >>> s1 = ks.Series([7, 8, 9], index=[10, 11, 12])
+        >>> s2 = ks.Series(["g", "h", "i"], index=[10, 20, 30])
+
+        >>> aligned_l, aligned_r = s1.align(s2)
+        >>> aligned_l.sort_index()
+        10    7.0
+        11    8.0
+        12    9.0
+        20    NaN
+        30    NaN
+        dtype: float64
+        >>> aligned_r.sort_index()
+        10       g
+        11    None
+        12    None
+        20       h
+        30       i
+        dtype: object
+
+        Align with the join type "inner":
+
+        >>> aligned_l, aligned_r = s1.align(s2, join="inner")
+        >>> aligned_l.sort_index()
+        10    7
+        dtype: int64
+        >>> aligned_r.sort_index()
+        10    g
+        dtype: object
+
+        Align with a DataFrame:
+
+        >>> df = ks.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        >>> aligned_l, aligned_r = s1.align(df)
+        >>> aligned_l.sort_index()
+        10    7.0
+        11    8.0
+        12    9.0
+        20    NaN
+        30    NaN
+        dtype: float64
+        >>> aligned_r.sort_index()
+              a     b
+        10  1.0     a
+        11  NaN  None
+        12  NaN  None
+        20  2.0     b
+        30  3.0     c
+
+        >>> ks.reset_option("compute.ops_on_diff_frames")
+        """
+        axis = validate_axis(axis)
+        if axis == 1:
+            raise ValueError("Series does not support columns axis.")
+
+        self_df = self.to_frame()
+        left, right = self_df.align(other, join=join, axis=axis, copy=False)
+
+        if left is self_df:
+            left_ser = self
+        else:
+            left_ser = first_series(left).rename(self.name)
+
+        return (left_ser.copy(), right.copy()) if copy else (left_ser, right)
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
