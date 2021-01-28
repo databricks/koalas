@@ -73,48 +73,25 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self._test_stat_functions(pdf, kdf)
 
     def test_stat_functions_with_no_numeric_columns(self):
+        # TODO: pandas support datetime64 or datetime64tz dtypes for `std` from pandas 1.2
+        # to return Timedelta Series which is Koalas currently cannot support.
+        # pdf = pd.DataFrame(
+        #     {
+        #         "A": pd.date_range("2020-01-01", periods=3),
+        #         "B": pd.date_range("2021-01-01", periods=3),
+        #     }
+        # )
+        # kdf = ks.from_pandas(pdf)
+
         pdf = pd.DataFrame(
             {
-                "A": pd.date_range("2020-01-01", periods=3),
-                "B": pd.date_range("2021-01-01", periods=3),
+                "A": ["a", None, "c", "d", None, "f", "g"],
+                "B": ["A", "B", "C", None, "E", "F", None],
             }
         )
         kdf = ks.from_pandas(pdf)
 
-        # TODO: pandas support datetime64 or datetime64tz dtypes for `std` from pandas 1.2
-        # to return Timedelta Series which is Koalas currently cannot support.
-        functions = ["max", "min", "mean", "sum", "count"]
-        for funcname in functions:
-            self.assert_eq(getattr(kdf, funcname)(), getattr(pdf, funcname)())
-
-        if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
-            functions = ["var", "product"]
-            self.assert_eq(kdf.std(), ks.Series([]))
-        else:
-            functions = ["std", "var", "product"]
-        for funcname in functions:
-            self.assert_eq(
-                getattr(kdf, funcname)(), getattr(pdf, funcname)(), check_exact=False,
-            )
-
-        if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
-            functions = ["var"]
-            self.assert_eq(kdf.std(ddof=0), ks.Series([]))
-        else:
-            functions = ["std", "var"]
-        for funcname in functions:
-            self.assert_eq(
-                getattr(kdf, funcname)(ddof=0), getattr(pdf, funcname)(ddof=0), check_exact=False,
-            )
-
-        # NOTE: To test skew, kurt, and median, just make sure they run.
-        #       The numbers are different in spark and pandas.
-        functions = ["skew", "kurt", "median"]
-        for funcname in functions:
-            getattr(kdf, funcname)()
-
-        # NOTE: We can uncomment the below after supporting Timedelta type.
-        # self._test_stat_functions(pdf, kdf)
+        self._test_stat_functions(pdf, kdf)
 
     def test_sum(self):
         pdf = pd.DataFrame({"a": [1, 2, 3, np.nan], "b": [0.1, np.nan, 0.3, np.nan]})

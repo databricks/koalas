@@ -1145,7 +1145,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def sum(
-        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
+        self, axis: Union[int, str] = None, numeric_only: bool = None, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
@@ -1154,7 +1154,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         min_count : int, default 0
@@ -1224,7 +1224,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def product(
-        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
+        self, axis: Union[int, str] = None, numeric_only: bool = None, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the product of the values.
@@ -1236,7 +1236,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         min_count : int, default 0
