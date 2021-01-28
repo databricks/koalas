@@ -4539,6 +4539,81 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         builder._set_opts(compression=compression)
         builder.options(**options).format("parquet").save(path)
 
+    def to_orc(
+        self,
+        path: str,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
+        compression: Optional[str] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
+    ) -> None:
+        """
+        Write the DataFrame out as a ORC file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
+            Compression codec to use when saving to file. If None is set, it uses the
+            value specified in `spark.sql.parquet.compression.codec`.
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_orc
+        DataFrame.to_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_orc('%s/to_orc/foo.orc' % path, partition_cols='date')
+
+        >>> df.to_orc(
+        ...     '%s/to_orc/foo.orc' % path,
+        ...     mode = 'overwrite',
+        ...     partition_cols=['date', 'country'])
+        """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
+        self.to_spark_io(
+            path=path,
+            mode=mode,
+            format="orc",
+            partition_cols=partition_cols,
+            index_col=index_col,
+            **options,
+        )
+
     def to_spark_io(
         self,
         path: Optional[str] = None,

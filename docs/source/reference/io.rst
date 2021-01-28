@@ -43,6 +43,7 @@ ORC
    :toctree: api/
 
    read_orc
+   DataFrame.to_orc
 
 Generic Spark I/O
 -----------------

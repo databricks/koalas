@@ -432,3 +432,32 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             msg = "Unknown column name 'i34'"
             with self.assertRaises(ValueError, msg=msg):
                 ks.read_orc(path, columns=["i34", "i64"])
+
+    def test_orc_write(self):
+        with self.temp_dir() as tmp:
+            pdf = self.test_pdf
+            expected = ks.DataFrame(pdf)
+
+            # Write out partitioned by one column
+            expected.to_orc(tmp, mode="overwrite", partition_cols="i32")
+            # Reset column order, as once the data is written out, Spark rearranges partition
+            # columns to appear first.
+            actual = ks.read_orc(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
+            self.assert_eq(
+                actual.sort_values(by="f").to_spark().toPandas(),
+                expected.sort_values(by="f").to_spark().toPandas(),
+            )
+
+            # Write out partitioned by two columns
+            expected.to_orc(tmp, mode="overwrite", partition_cols=["i32", "bhello"])
+            # Reset column order, as once the data is written out, Spark rearranges partition
+            # columns to appear first.
+            actual = ks.read_orc(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
+            self.assert_eq(
+                actual.sort_values(by="f").to_spark().toPandas(),
+                expected.sort_values(by="f").to_spark().toPandas(),
+            )
