@@ -52,7 +52,7 @@ setup(
         'mlflow': ['mlflow>=1.0'],
         'plotly': ['plotly>=4.8'],
     },
-    python_requires='>=3.5,<3.9',
+    python_requires='>=3.5,<3.10',
     install_requires=[
         'pandas>=0.23.2,<1.2.0',
         'pyarrow>=0.10',
