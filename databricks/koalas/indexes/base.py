@@ -109,10 +109,7 @@ class Index(IndexOpsMixin):
 
         assert data is not None
 
-        if isinstance(data, DataFrame):
-            assert dtype is None
-            assert name is None
-        else:
+        if not isinstance(data, DataFrame):
             if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
                 return MultiIndex.from_tuples(data, names=names)
 
@@ -120,7 +117,10 @@ class Index(IndexOpsMixin):
                 raise TypeError("Index.name must be a hashable type")
 
             index = pd.Index(data=data, dtype=dtype, name=name)
-            data = DataFrame(index=index)
+            return DataFrame(index=index).index
+
+        assert dtype is None
+        assert name is None
 
         if data._internal.index_level > 1:
             instance = object.__new__(MultiIndex)
