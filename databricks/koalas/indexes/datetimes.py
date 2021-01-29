@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from functools import partial
+from typing import Any
 
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
 
 
 class DatetimeIndex(Index):
@@ -30,4 +33,11 @@ class DatetimeIndex(Index):
     to_datetime : Convert argument to datetime.
     """
 
-    pass
+    def __getattr__(self, item: str) -> Any:
+        if hasattr(MissingPandasLikeDatetimeIndex, item):
+            property_or_func = getattr(MissingPandasLikeDatetimeIndex, item)
+            if isinstance(property_or_func, property):
+                return property_or_func.fget(self)  # type: ignore
+            else:
+                return partial(property_or_func, self)
+        raise AttributeError("'DatetimeIndex' object has no attribute '{}'".format(item))

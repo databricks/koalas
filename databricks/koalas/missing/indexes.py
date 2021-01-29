@@ -20,15 +20,21 @@ import pandas as pd
 from databricks.koalas.missing import unsupported_function, unsupported_property, common
 
 
-def _unsupported_function(method_name, deprecated=False, reason=""):
+def _unsupported_function(method_name, deprecated=False, reason="", cls="Index"):
     return unsupported_function(
-        class_name="pd.Index", method_name=method_name, deprecated=deprecated, reason=reason
+        class_name="pd.{}".format(cls),
+        method_name=method_name,
+        deprecated=deprecated,
+        reason=reason,
     )
 
 
-def _unsupported_property(property_name, deprecated=False, reason=""):
+def _unsupported_property(property_name, deprecated=False, reason="", cls="Index"):
     return unsupported_property(
-        class_name="pd.Index", property_name=property_name, deprecated=deprecated, reason=reason
+        class_name="pd.{}".format(cls),
+        property_name=property_name,
+        deprecated=deprecated,
+        reason=reason,
     )
 
 
@@ -89,6 +95,58 @@ class MissingPandasLikeIndex(object):
         get_duplicates = _unsupported_function("get_duplicates", deprecated=True)
         summary = _unsupported_function("summary", deprecated=True)
         contains = _unsupported_function("contains", deprecated=True)
+
+
+class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
+
+    # Properties
+    year = _unsupported_property("year", cls="DatetimeIndex")
+    month = _unsupported_property("month", cls="DatetimeIndex")
+    day = _unsupported_property("day", cls="DatetimeIndex")
+    hour = _unsupported_property("hour", cls="DatetimeIndex")
+    minute = _unsupported_property("minute", cls="DatetimeIndex")
+    second = _unsupported_property("second", cls="DatetimeIndex")
+    microsecond = _unsupported_property("microsecond", cls="DatetimeIndex")
+    nanosecond = _unsupported_property("nanosecond", cls="DatetimeIndex")
+    date = _unsupported_property("date", cls="DatetimeIndex")
+    time = _unsupported_property("time", cls="DatetimeIndex")
+    timetz = _unsupported_property("timetz", cls="DatetimeIndex")
+    dayofyear = _unsupported_property("dayofyear", cls="DatetimeIndex")
+    day_of_year = _unsupported_property("day_of_year", cls="DatetimeIndex")
+    weekofyear = _unsupported_property("weekofyear", cls="DatetimeIndex")
+    week = _unsupported_property("week", cls="DatetimeIndex")
+    dayofweek = _unsupported_property("dayofweek", cls="DatetimeIndex")
+    day_of_week = _unsupported_property("day_of_week", cls="DatetimeIndex")
+    weekday = _unsupported_property("weekday", cls="DatetimeIndex")
+    quarter = _unsupported_property("quarter", cls="DatetimeIndex")
+    tz = _unsupported_property("tz", cls="DatetimeIndex")
+    freq = _unsupported_property("freq", cls="DatetimeIndex")
+    freqstr = _unsupported_property("freqstr", cls="DatetimeIndex")
+    is_month_start = _unsupported_property("is_month_start", cls="DatetimeIndex")
+    is_month_end = _unsupported_property("is_month_end", cls="DatetimeIndex")
+    is_quarter_start = _unsupported_property("is_quarter_start", cls="DatetimeIndex")
+    is_quarter_end = _unsupported_property("is_quarter_end", cls="DatetimeIndex")
+    is_year_start = _unsupported_property("is_year_start", cls="DatetimeIndex")
+    is_year_end = _unsupported_property("is_year_end", cls="DatetimeIndex")
+    is_leap_year = _unsupported_property("is_leap_year", cls="DatetimeIndex")
+    inferred_freq = _unsupported_property("inferred_freq", cls="DatetimeIndex")
+
+    # Functions
+    normalize = _unsupported_function("normalize", cls="DatetimeIndex")
+    strftime = _unsupported_function("strftime", cls="DatetimeIndex")
+    snap = _unsupported_function("snap", cls="DatetimeIndex")
+    tz_convert = _unsupported_function("tz_convert", cls="DatetimeIndex")
+    tz_localize = _unsupported_function("tz_localize", cls="DatetimeIndex")
+    round = _unsupported_function("round", cls="DatetimeIndex")
+    floor = _unsupported_function("floor", cls="DatetimeIndex")
+    ceil = _unsupported_function("ceil", cls="DatetimeIndex")
+    to_period = _unsupported_function("to_period", cls="DatetimeIndex")
+    to_perioddelta = _unsupported_function("to_perioddelta", cls="DatetimeIndex")
+    to_pydatetime = _unsupported_function("to_pydatetime", cls="DatetimeIndex")
+    month_name = _unsupported_function("month_name", cls="DatetimeIndex")
+    day_name = _unsupported_function("day_name", cls="DatetimeIndex")
+    mean = _unsupported_function("mean", cls="DatetimeIndex")
+    std = _unsupported_function("std", cls="DatetimeIndex")
 
 
 class MissingPandasLikeMultiIndex(object):

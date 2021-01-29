@@ -25,7 +25,11 @@ import pyspark
 
 import databricks.koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
+from databricks.koalas.missing.indexes import (
+    MissingPandasLikeDatetimeIndex,
+    MissingPandasLikeIndex,
+    MissingPandasLikeMultiIndex,
+)
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils, SPARK_CONF_ARROW_ENABLED
 
 
@@ -401,7 +405,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             midx.symmetric_difference(idx)
 
     def test_missing(self):
-        kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+        kdf = ks.DataFrame(
+            {"a": [1, 2, 3], "b": [4, 5, 6], "c": pd.date_range("2011-01-01", freq="D", periods=3)}
+        )
 
         # Index functions
         missing_functions = inspect.getmembers(MissingPandasLikeIndex, inspect.isfunction)
@@ -444,6 +450,27 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 PandasNotImplementedError, "method.*Index.*{}.*is deprecated".format(name)
             ):
                 getattr(kdf.set_index(["a", "b"]).index, name)()
+
+        # DatetimeIndex functions
+        missing_functions = inspect.getmembers(MissingPandasLikeDatetimeIndex, inspect.isfunction)
+        unsupported_functions = [
+            name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
+        ]
+        for name in unsupported_functions:
+            with self.assertRaisesRegex(
+                PandasNotImplementedError,
+                "method.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name),
+            ):
+                getattr(kdf.set_index("c").index, name)()
+
+        deprecated_functions = [
+            name for (name, type_) in missing_functions if type_.__name__ == "deprecated_function"
+        ]
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(
+                PandasNotImplementedError, "method.*Index.*{}.*is deprecated".format(name)
+            ):
+                getattr(kdf.set_index("c").index, name)()
 
         # Index properties
         missing_properties = inspect.getmembers(
@@ -498,6 +525,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 PandasNotImplementedError, "property.*Index.*{}.*is deprecated".format(name)
             ):
                 getattr(kdf.set_index(["a", "b"]).index, name)
+
+        # DatetimeIndex properties
+        missing_properties = inspect.getmembers(
+            MissingPandasLikeDatetimeIndex, lambda o: isinstance(o, property)
+        )
+        unsupported_properties = [
+            name
+            for (name, type_) in missing_properties
+            if type_.fget.__name__ == "unsupported_property"
+        ]
+        for name in unsupported_properties:
+            with self.assertRaisesRegex(
+                PandasNotImplementedError,
+                "property.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name),
+            ):
+                getattr(kdf.set_index("c").index, name)
 
     def test_index_has_duplicates(self):
         indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
