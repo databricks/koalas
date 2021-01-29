@@ -407,7 +407,6 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assertPandasEqual(expected, actual.to_pandas())
 
             # index_col
-            kdf = ks.from_pandas(data)
             expected = data.set_index("i32")
             actual = ks.read_orc(path, index_col="i32")
             self.assert_eq(actual, expected)
@@ -417,7 +416,6 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(actual, expected)
 
             # index_col with columns
-            kdf = ks.from_pandas(data)
             expected = data.set_index("i32")[["i64", "bhello"]]
             actual = ks.read_orc(path, index_col=["i32"], columns=["i64", "bhello"])
             self.assert_eq(actual, expected)
