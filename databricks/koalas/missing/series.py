@@ -35,7 +35,6 @@ def _unsupported_property(property_name, deprecated=False, reason=""):
 class MissingPandasLikeSeries(object):
 
     # Functions
-    align = _unsupported_function("align")
     asfreq = _unsupported_function("asfreq")
     at_time = _unsupported_function("at_time")
     autocorr = _unsupported_function("autocorr")

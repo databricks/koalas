@@ -52,7 +52,7 @@ pip install koalas
 
 See [Installation](https://koalas.readthedocs.io/en/latest/getting_started/install.html) for more details.
 
-For Databricks Runtime users, Koalas is pre-installed in Databricks Runtime 7.1 and above, or you can follow these [steps](https://docs.databricks.com/libraries/index.html) to install a library on Databricks.
+For Databricks Runtime, Koalas is pre-installed in Databricks Runtime 7.1 and above. Try [Databricks Community Edition](https://community.cloud.databricks.com/) for free. You can also follow these [steps](https://docs.databricks.com/libraries/index.html) to manually install a library on Databricks.
 
 Lastly, if your PyArrow version is 0.15+ and your PySpark version is lower than 3.0, it is best for you to set `ARROW_PRE_0_15_IPC_FORMAT` environment variable to `1` manually.
 Koalas will try its best to set it for you but it is impossible to set it if there is a Spark context already launched.

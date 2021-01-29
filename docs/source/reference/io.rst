@@ -37,6 +37,13 @@ Parquet
    read_parquet
    DataFrame.to_parquet
 
+ORC
+-------
+.. autosummary::
+   :toctree: api/
+
+   read_orc
+
 Generic Spark I/O
 -----------------
 .. autosummary::
