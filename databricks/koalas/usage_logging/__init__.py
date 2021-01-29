@@ -29,7 +29,10 @@ from databricks.koalas.accessors import KoalasFrameMethods
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
-from databricks.koalas.indexes import Index, MultiIndex
+from databricks.koalas.indexes.base import Index
+from databricks.koalas.indexes.datetimes import DatetimeIndex
+from databricks.koalas.indexes.multi import MultiIndex
+from databricks.koalas.indexes.numeric import Float64Index, Int64Index
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
 from databricks.koalas.missing.groupby import (
     MissingPandasLikeDataFrameGroupBy,
@@ -78,6 +81,9 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         Series,
         Index,
         MultiIndex,
+        Int64Index,
+        Float64Index,
+        DatetimeIndex,
         DataFrameGroupBy,
         SeriesGroupBy,
         DatetimeMethods,

@@ -3238,12 +3238,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         Index
         """
-        from databricks.koalas.indexes import Index, MultiIndex
+        from databricks.koalas.indexes.base import Index
 
-        if self._internal.index_level == 1:
-            return Index(self)
-        else:
-            return MultiIndex(self)
+        return Index(self)
 
     @property
     def empty(self) -> bool:

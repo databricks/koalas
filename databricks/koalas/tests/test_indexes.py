@@ -43,6 +43,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_index(self):
         for pdf in [
+            pd.DataFrame(np.random.randn(10, 5), index=np.random.randint(100, size=10)),
+            pd.DataFrame(
+                np.random.randn(10, 5), index=np.random.randint(100, size=10).astype(np.int32)
+            ),
+            pd.DataFrame(np.random.randn(10, 5), index=np.random.randn(10)),
+            pd.DataFrame(np.random.randn(10, 5), index=np.random.randn(10).astype(np.float32)),
             pd.DataFrame(np.random.randn(10, 5), index=list("abcdefghij")),
             pd.DataFrame(
                 np.random.randn(10, 5), index=pd.date_range("2011-01-01", freq="D", periods=10)
@@ -51,6 +57,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         ]:
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.index, pdf.index)
+            self.assert_eq(type(kdf.index).__name__, type(pdf.index).__name__)
 
     def test_index_getattr(self):
         kidx = self.kdf.index
