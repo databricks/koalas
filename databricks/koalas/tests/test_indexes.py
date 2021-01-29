@@ -67,9 +67,11 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         kidx = self.kdf.index
         item = "databricks"
 
-        expected_error_message = "'Index' object has no attribute '{}'".format(item)
+        expected_error_message = "'.*Index' object has no attribute '{}'".format(item)
         with self.assertRaisesRegex(AttributeError, expected_error_message):
             kidx.__getattr__(item)
+        with self.assertRaisesRegex(AttributeError, expected_error_message):
+            ks.from_pandas(pd.date_range("2011-01-01", freq="D", periods=10)).__getattr__(item)
 
     def test_multi_index_getattr(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
