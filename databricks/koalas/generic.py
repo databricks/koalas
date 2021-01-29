@@ -1145,7 +1145,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def sum(
-        self, axis: Union[int, str] = None, numeric_only: bool = None, min_count: int = 0
+        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
@@ -1154,7 +1154,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
+        numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         min_count : int, default 0
@@ -1207,6 +1207,8 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['b'].sum(min_count=3)
         nan
         """
+        axis = validate_axis(axis)
+        numeric_only = None if axis == 1 else numeric_only
 
         def sum(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1224,7 +1226,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def product(
-        self, axis: Union[int, str] = None, numeric_only: bool = None, min_count: int = 0
+        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the product of the values.
@@ -1285,6 +1287,8 @@ class Frame(object, metaclass=ABCMeta):
         >>> ks.Series([]).prod(min_count=1)
         nan
         """
+        axis = validate_axis(axis)
+        numeric_only = None if axis == 1 else numeric_only
 
         def prod(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1424,7 +1428,7 @@ class Frame(object, metaclass=ABCMeta):
     kurt = kurtosis
 
     def min(
-        self, axis: Union[int, str] = None, numeric_only: bool = None
+        self, axis: Union[int, str] = None, numeric_only: bool = True
     ) -> Union[Scalar, "Series"]:
         """
         Return the minimum of the values.
@@ -1433,7 +1437,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
+        numeric_only : bool, default True
             If True, include only float, int, boolean columns. This parameter is mainly for
             pandas compatibility. False is supported; however, the columns should
             be all numeric or all non-numeric.
@@ -1467,12 +1471,15 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].min()
         1.0
         """
+        axis = validate_axis(axis)
+        numeric_only = None if axis == 1 else numeric_only
+
         return self._reduce_for_stat_function(
             F.min, name="min", axis=axis, numeric_only=numeric_only
         )
 
     def max(
-        self, axis: Union[int, str] = None, numeric_only: bool = None
+        self, axis: Union[int, str] = None, numeric_only: bool = True
     ) -> Union[Scalar, "Series"]:
         """
         Return the maximum of the values.
@@ -1481,7 +1488,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
+        numeric_only : bool, default True
             If True, include only float, int, boolean columns. This parameter is mainly for
             pandas compatibility. False is supported; however, the columns should
             be all numeric or all non-numeric.
@@ -1515,6 +1522,9 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].max()
         3.0
         """
+        axis = validate_axis(axis)
+        numeric_only = None if axis == 1 else numeric_only
+
         return self._reduce_for_stat_function(
             F.max, name="max", axis=axis, numeric_only=numeric_only
         )
