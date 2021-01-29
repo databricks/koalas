@@ -2364,7 +2364,7 @@ class Index(IndexOpsMixin):
                 return property_or_func.fget(self)  # type: ignore
             else:
                 return partial(property_or_func, self)
-        raise AttributeError("'{}}' object has no attribute '{}'".format(type(self).__name__, item))
+        raise AttributeError("'{}' object has no attribute '{}'".format(type(self).__name__, item))
 
     def __repr__(self):
         max_display_count = get_option("display.max_rows")
