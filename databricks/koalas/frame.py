@@ -4459,7 +4459,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
             options = options.get("options")  # type: ignore
 
-        self.to_spark_io(
+        self.spark.to_spark_io(
             path=path,
             mode=mode,
             format="delta",
@@ -4544,7 +4544,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         path: str,
         mode: str = "overwrite",
         partition_cols: Optional[Union[str, List[str]]] = None,
-        compression: Optional[str] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
     ) -> None:
@@ -4566,9 +4565,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         partition_cols : str or list of str, optional, default None
             Names of partitioning columns
-        compression : str {'none', 'uncompressed', 'snappy', 'gzip', 'lzo', 'brotli', 'lz4', 'zstd'}
-            Compression codec to use when saving to file. If None is set, it uses the
-            value specified in `spark.sql.parquet.compression.codec`.
         index_col: str or list of str, optional, default: None
             Column names to be used in Spark to represent Koalas' index. The index name
             in Koalas is ignored. By default, the index is always lost.
@@ -4605,7 +4601,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
             options = options.get("options")  # type: ignore
 
-        self.to_spark_io(
+        self.spark.to_spark_io(
             path=path,
             mode=mode,
             format="orc",
