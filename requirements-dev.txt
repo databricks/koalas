@@ -16,7 +16,6 @@ nbsphinx
 nbconvert!=6.0.*
 nbformat<5.1
 numpydoc>=1.1.0
-pandoc
 pypandoc
 ipython
 pydata-sphinx-theme
