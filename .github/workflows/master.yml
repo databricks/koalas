@@ -55,6 +55,7 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+    - uses: docker://pandoc/core 
     - name: Install dependencies
       run: |
         sudo apt-get install xclip
@@ -79,7 +80,6 @@ jobs:
         PYTHON_EXECUTABLE=python ./dev/lint-python
         ./dev/pytest
     - uses: codecov/codecov-action@v1
-    - uses: docker://pandoc/core:2.9
 
   conda_build:
     name: Conda (Python, Spark, pandas, PyArrow)
