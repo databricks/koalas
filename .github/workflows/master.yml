@@ -55,7 +55,6 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - uses: docker://pandoc/core 
     - name: Install dependencies
       run: |
         sudo apt-get install xclip
@@ -74,7 +73,6 @@ jobs:
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then pip install "sphinx<3.0.0"; fi
         sudo apt install -y pandoc
         pip list
-    - uses: docker://pandoc/core
     - name: Run tests
       run: |
         # lint-python uses python3 as default. Seems python3 could pick a different Python.
