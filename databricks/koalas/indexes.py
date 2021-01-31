@@ -53,6 +53,7 @@ from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPan
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.spark.accessors import SparkIndexMethods
 from databricks.koalas.utils import (
+    combine_frames,
     compare_disallow_null,
     default_session,
     is_name_like_tuple,
@@ -3351,6 +3352,40 @@ class MultiIndex(Index):
         ('a', 'x')
         """
         return self._kdf.head(2)._to_internal_pandas().index.item()
+
+    def equal_levels(self, other):
+        """
+        Return True if the levels of both MultiIndex objects are the same
+
+        Examples
+        --------
+        >>> from databricks.koalas.config import set_option, reset_option
+        >>> set_option("compute.ops_on_diff_frames", True)
+
+        >>> kmidx1 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
+        >>> kmidx2 = ks.MultiIndex.from_tuples([("b", "y"), ("a", "x"), ("c", "z")])
+        >>> kmidx1.equal_levels(kmidx2)
+        True
+
+        >>> kmidx2 = ks.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "j")])
+        >>> kmidx1.equal_levels(kmidx2)
+        False
+
+        >>> reset_option("compute.ops_on_diff_frames")
+        """
+        nlevels = self.nlevels
+        if nlevels != other.nlevels:
+            return False
+        self_frame = self.sort_values().to_frame()
+        other_frame = other.sort_values().to_frame()
+        with option_context("compute.ops_on_diff_frames", True):
+            combined = combine_frames(self_frame, other_frame)
+
+        sdf = combined._internal.spark_frame
+        that_index_name = combined["that"]._internal.data_spark_column_names[0]
+        that_index_scol = scol_for(sdf, that_index_name)
+
+        return len(sdf.filter(that_index_scol.isNull()).head(1)) == 0
 
     def intersection(self, other) -> "MultiIndex":
         """
