@@ -71,8 +71,9 @@ jobs:
         # matplotlib dropped Python 3.5 support from 3.1.x; however, 3.0.3 only supports sphinx 2.x.
         # It forces the sphinx version to 2.x.
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then pip install "sphinx<3.0.0"; fi
+        if [[ "$PYTHON_VERSION" == "3.9" ]]; then pip install "sphinx>3.0.0"; fi
         pip list
-        sudo apt install -y pandoc
+        sudo apt-get install -y pandoc
     - name: Run tests
       run: |
         # lint-python uses python3 as default. Seems python3 could pick a different Python.
