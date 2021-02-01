@@ -1396,6 +1396,72 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
         self.assert_eq(pser == other, (kser == other).sort_index())
 
+    def test_align(self):
+        pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        pdf2 = pd.DataFrame({"a": [4, 5, 6], "c": ["d", "e", "f"]}, index=[10, 11, 12])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        for join in ["outer", "inner", "left", "right"]:
+            for axis in [None, 0]:
+                kdf_l, kdf_r = kdf1.align(kdf2, join=join, axis=axis)
+                pdf_l, pdf_r = pdf1.align(pdf2, join=join, axis=axis)
+                self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+                self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+        pser1 = pd.Series([7, 8, 9], index=[10, 11, 12])
+        pser2 = pd.Series(["g", "h", "i"], index=[10, 20, 30])
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        for join in ["outer", "inner", "left", "right"]:
+            kser_l, kser_r = kser1.align(kser2, join=join)
+            pser_l, pser_r = pser1.align(pser2, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kdf_l, kser_r = kdf1.align(kser1, join=join, axis=0)
+            pdf_l, pser_r = pdf1.align(pser1, join=join, axis=0)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kser_l, kdf_r = kser1.align(kdf1, join=join)
+            pser_l, pdf_r = pser1.align(pdf1, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+        # multi-index columns
+        pdf3 = pd.DataFrame(
+            {("x", "a"): [4, 5, 6], ("y", "c"): ["d", "e", "f"]}, index=[10, 11, 12]
+        )
+        kdf3 = ks.from_pandas(pdf3)
+        pser3 = pdf3[("y", "c")]
+        kser3 = kdf3[("y", "c")]
+
+        for join in ["outer", "inner", "left", "right"]:
+            kdf_l, kdf_r = kdf1.align(kdf3, join=join, axis=0)
+            pdf_l, pdf_r = pdf1.align(pdf3, join=join, axis=0)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+            kser_l, kser_r = kser1.align(kser3, join=join)
+            pser_l, pser_r = pser1.align(pser3, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kdf_l, kser_r = kdf1.align(kser3, join=join, axis=0)
+            pdf_l, pser_r = pdf1.align(pser3, join=join, axis=0)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kser_l, kdf_r = kser3.align(kdf1, join=join)
+            pser_l, pdf_r = pser3.align(pdf1, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+        self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=None))
+        self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=1))
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
@@ -1553,3 +1619,15 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
                 kser.eq(other)
             with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
                 kser == other
+
+    def test_align(self):
+        pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        pdf2 = pd.DataFrame({"a": [4, 5, 6], "c": ["d", "e", "f"]}, index=[10, 11, 12])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf1.align(kdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf1.align(kdf2, axis=0)

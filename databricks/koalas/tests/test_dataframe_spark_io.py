@@ -16,6 +16,8 @@
 
 from distutils.version import LooseVersion
 import unittest
+import glob
+import os
 
 import numpy as np
 import pandas as pd
@@ -375,3 +377,85 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
                     )
             else:
                 self.assertRaises(ValueError, lambda: ks.read_excel(tmp))
+
+    def test_read_orc(self):
+        with self.temp_dir() as tmp:
+            path = "{}/file1.orc".format(tmp)
+            data = self.test_pdf
+            self.spark.createDataFrame(data, "i32 int, i64 long, f double, bhello string").coalesce(
+                1
+            ).write.orc(path, mode="overwrite")
+
+            # `spark.write.orc` create a directory contains distributed orc files.
+            # But pandas only can read from file, not directory. Therefore, we need orc file path.
+            orc_file_path = glob.glob(os.path.join(path, "*.orc"))[0]
+
+            if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+                expected = pd.read_orc(orc_file_path)
+            else:
+                expected = data.reset_index()[data.columns]
+            actual = ks.read_orc(path)
+            self.assertPandasEqual(expected, actual.to_pandas())
+
+            # columns
+            columns = ["i32", "i64"]
+            if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
+                expected = pd.read_orc(orc_file_path, columns=columns)
+            else:
+                expected = data.reset_index()[columns]
+            actual = ks.read_orc(path, columns=columns)
+            self.assertPandasEqual(expected, actual.to_pandas())
+
+            # index_col
+            expected = data.set_index("i32")
+            actual = ks.read_orc(path, index_col="i32")
+            self.assert_eq(actual, expected)
+
+            expected = data.set_index(["i32", "f"])
+            actual = ks.read_orc(path, index_col=["i32", "f"])
+            self.assert_eq(actual, expected)
+
+            # index_col with columns
+            expected = data.set_index("i32")[["i64", "bhello"]]
+            actual = ks.read_orc(path, index_col=["i32"], columns=["i64", "bhello"])
+            self.assert_eq(actual, expected)
+
+            expected = data.set_index(["i32", "f"])[["bhello", "i64"]]
+            actual = ks.read_orc(path, index_col=["i32", "f"], columns=["bhello", "i64"])
+            self.assert_eq(actual, expected)
+
+            msg = "Unknown column name 'i'"
+            with self.assertRaises(ValueError, msg=msg):
+                ks.read_orc(path, columns="i32")
+            msg = "Unknown column name 'i34'"
+            with self.assertRaises(ValueError, msg=msg):
+                ks.read_orc(path, columns=["i34", "i64"])
+
+    def test_orc_write(self):
+        with self.temp_dir() as tmp:
+            pdf = self.test_pdf
+            expected = ks.DataFrame(pdf)
+
+            # Write out partitioned by one column
+            expected.to_orc(tmp, mode="overwrite", partition_cols="i32")
+            # Reset column order, as once the data is written out, Spark rearranges partition
+            # columns to appear first.
+            actual = ks.read_orc(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
+            self.assert_eq(
+                actual.sort_values(by="f").to_spark().toPandas(),
+                expected.sort_values(by="f").to_spark().toPandas(),
+            )
+
+            # Write out partitioned by two columns
+            expected.to_orc(tmp, mode="overwrite", partition_cols=["i32", "bhello"])
+            # Reset column order, as once the data is written out, Spark rearranges partition
+            # columns to appear first.
+            actual = ks.read_orc(tmp)
+            self.assertFalse((actual.columns == self.test_column_order).all())
+            actual = actual[self.test_column_order]
+            self.assert_eq(
+                actual.sort_values(by="f").to_spark().toPandas(),
+                expected.sort_values(by="f").to_spark().toPandas(),
+            )

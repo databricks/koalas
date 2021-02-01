@@ -83,6 +83,7 @@ from databricks.koalas.spark.accessors import SparkFrameMethods, CachedSparkFram
 from databricks.koalas.utils import (
     align_diff_frames,
     column_labels_level,
+    combine_frames,
     default_session,
     is_name_like_tuple,
     is_name_like_value,
@@ -93,6 +94,7 @@ from databricks.koalas.utils import (
     validate_arguments_and_invoke_function,
     validate_axis,
     validate_bool_kwarg,
+    validate_how,
     verify_temp_column_name,
 )
 from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
@@ -4457,7 +4459,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
             options = options.get("options")  # type: ignore
 
-        self.to_spark_io(
+        self.spark.to_spark_io(
             path=path,
             mode=mode,
             format="delta",
@@ -4536,6 +4538,77 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             builder.partitionBy(partition_cols)
         builder._set_opts(compression=compression)
         builder.options(**options).format("parquet").save(path)
+
+    def to_orc(
+        self,
+        path: str,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
+    ) -> None:
+        """
+        Write the DataFrame out as a ORC file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_orc
+        DataFrame.to_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_orc('%s/to_orc/foo.orc' % path, partition_cols='date')
+
+        >>> df.to_orc(
+        ...     '%s/to_orc/foo.orc' % path,
+        ...     mode = 'overwrite',
+        ...     partition_cols=['date', 'country'])
+        """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
+        self.spark.to_spark_io(
+            path=path,
+            mode=mode,
+            format="orc",
+            partition_cols=partition_cols,
+            index_col=index_col,
+            **options,
+        )
 
     def to_spark_io(
         self,
@@ -7179,20 +7252,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(left_key_names) != len(right_key_names):
                 raise ValueError("len(left_keys) must equal len(right_keys)")
 
-        if how == "full":
-            warnings.warn(
-                "Warning: While Koalas will accept 'full', you should use 'outer' "
-                + "instead to be compatible with the pandas merge API",
-                UserWarning,
-            )
-        if how == "outer":
-            # 'outer' in pandas equals 'full' in Spark
-            how = "full"
-        if how not in ("inner", "left", "right", "full"):
-            raise ValueError(
-                "The 'how' parameter has to be amongst the following values: ",
-                "['inner', 'left', 'right', 'outer']",
-            )
+        how = validate_how(how)
 
         left_internal = self._internal.resolved_copy
         right_internal = right._internal.resolved_copy
@@ -10915,6 +10975,182 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         new_sdf = default_session().createDataFrame(rows, sdf.schema)
 
         return DataFrame(self._internal.with_new_sdf(new_sdf))
+
+    def align(
+        self,
+        other: Union["DataFrame", "Series"],
+        join: str = "outer",
+        axis: Optional[Union[int, str]] = None,
+        copy: bool = True,
+    ) -> Tuple["DataFrame", Union["DataFrame", "Series"]]:
+        """
+        Align two objects on their axes with the specified join method.
+
+        Join method is specified for each axis Index.
+
+        Parameters
+        ----------
+        other : DataFrame or Series
+        join : {{'outer', 'inner', 'left', 'right'}}, default 'outer'
+        axis : allowed axis of the other object, default None
+            Align on index (0), columns (1), or both (None).
+        copy : bool, default True
+            Always returns new objects. If copy=False and no reindexing is
+            required then original objects are returned.
+
+        Returns
+        -------
+        (left, right) : (DataFrame, type of other)
+            Aligned objects.
+
+        Examples
+        --------
+        >>> ks.set_option("compute.ops_on_diff_frames", True)
+        >>> df1 = ks.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        >>> df2 = ks.DataFrame({"a": [4, 5, 6], "c": ["d", "e", "f"]}, index=[10, 11, 12])
+
+        Align both axis:
+
+        >>> aligned_l, aligned_r = df1.align(df2)
+        >>> aligned_l.sort_index()
+              a     b   c
+        10  1.0     a NaN
+        11  NaN  None NaN
+        12  NaN  None NaN
+        20  2.0     b NaN
+        30  3.0     c NaN
+        >>> aligned_r.sort_index()
+              a   b     c
+        10  4.0 NaN     d
+        11  5.0 NaN     e
+        12  6.0 NaN     f
+        20  NaN NaN  None
+        30  NaN NaN  None
+
+        Align only axis=0 (index):
+
+        >>> aligned_l, aligned_r = df1.align(df2, axis=0)
+        >>> aligned_l.sort_index()
+              a     b
+        10  1.0     a
+        11  NaN  None
+        12  NaN  None
+        20  2.0     b
+        30  3.0     c
+        >>> aligned_r.sort_index()
+              a     c
+        10  4.0     d
+        11  5.0     e
+        12  6.0     f
+        20  NaN  None
+        30  NaN  None
+
+        Align only axis=1 (column):
+
+        >>> aligned_l, aligned_r = df1.align(df2, axis=1)
+        >>> aligned_l.sort_index()
+            a  b   c
+        10  1  a NaN
+        20  2  b NaN
+        30  3  c NaN
+        >>> aligned_r.sort_index()
+            a   b  c
+        10  4 NaN  d
+        11  5 NaN  e
+        12  6 NaN  f
+
+        Align with the join type "inner":
+
+        >>> aligned_l, aligned_r = df1.align(df2, join="inner")
+        >>> aligned_l.sort_index()
+            a
+        10  1
+        >>> aligned_r.sort_index()
+            a
+        10  4
+
+        Align with a Series:
+
+        >>> s = ks.Series([7, 8, 9], index=[10, 11, 12])
+        >>> aligned_l, aligned_r = df1.align(s, axis=0)
+        >>> aligned_l.sort_index()
+              a     b
+        10  1.0     a
+        11  NaN  None
+        12  NaN  None
+        20  2.0     b
+        30  3.0     c
+        >>> aligned_r.sort_index()
+        10    7.0
+        11    8.0
+        12    9.0
+        20    NaN
+        30    NaN
+        dtype: float64
+
+        >>> ks.reset_option("compute.ops_on_diff_frames")
+        """
+        from databricks.koalas.series import Series, first_series
+
+        if not isinstance(other, (DataFrame, Series)):
+            raise TypeError("unsupported type: {}".format(type(other).__name__))
+
+        how = validate_how(join)
+        axis = validate_axis(axis, None)
+
+        right_is_series = isinstance(other, Series)
+        if right_is_series:
+            if axis is None:
+                raise ValueError("Must specify axis=0 or 1")
+            elif axis != 0:
+                raise NotImplementedError(
+                    "align currently only works for axis=0 when right is Series"
+                )
+
+        left = self
+        right = other
+
+        if (axis is None or axis == 0) and not same_anchor(left, right):
+            combined = combine_frames(left, right, how=how)
+            left = combined["this"]
+            right = combined["that"]
+
+            if right_is_series:
+                right = first_series(right).rename(other.name)
+
+        if (
+            axis is None or axis == 1
+        ) and left._internal.column_labels != right._internal.column_labels:
+
+            if left._internal.column_labels_level != right._internal.column_labels_level:
+                raise ValueError("cannot join with no overlapping index names")
+
+            left = left.copy()
+            right = right.copy()
+
+            if how == "full":
+                column_labels = sorted(
+                    list(set(left._internal.column_labels) | set(right._internal.column_labels))
+                )
+            elif how == "inner":
+                column_labels = sorted(
+                    list(set(left._internal.column_labels) & set(right._internal.column_labels))
+                )
+            elif how == "left":
+                column_labels = left._internal.column_labels
+            else:
+                column_labels = right._internal.column_labels
+
+            for label in column_labels:
+                if label not in left._internal.column_labels:
+                    left[label] = F.lit(None).cast(DoubleType())
+            left = left[column_labels]
+            for label in column_labels:
+                if label not in right._internal.column_labels:
+                    right[label] = F.lit(None).cast(DoubleType())
+            right = right[column_labels]
+
+        return (left.copy(), right.copy()) if copy else (left, right)
 
     @staticmethod
     def from_dict(data, orient="columns", dtype=None, columns=None) -> "DataFrame":
