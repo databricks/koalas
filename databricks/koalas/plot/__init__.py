@@ -14,4 +14,3 @@
 # limitations under the License.
 #
 from databricks.koalas.plot.core import *  # noqa: F401
-from databricks.koalas.plot.matplotlib import *  # noqa: F401
