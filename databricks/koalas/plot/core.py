@@ -340,18 +340,43 @@ class BoxPlotBase:
 
 class KdePlotBase:
     @staticmethod
+    def prepare_kde_data(data):
+        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
+        from databricks.koalas.series import Series
+
+        if isinstance(data, Series):
+            data = data.to_frame()
+
+        numeric_data = data.select_dtypes(
+            include=["byte", "decimal", "integer", "float", "long", "double", np.datetime64]
+        )
+
+        # no empty frames or series allowed
+        if len(numeric_data.columns) == 0:
+            raise TypeError(
+                "Empty {0!r}: no numeric data to " "plot".format(numeric_data.__class__.__name__)
+            )
+
+        return numeric_data
+
+    @staticmethod
     def get_ind(sdf, ind):
-        # 'sdf' is a Spark DataFrame that selects one column.
+        def calc_min_max():
+            if len(sdf.columns) > 1:
+                min_col = F.least(*map(F.min, sdf))
+                max_col = F.greatest(*map(F.max, sdf))
+            else:
+                min_col = F.min(sdf.columns[-1])
+                max_col = F.max(sdf.columns[-1])
+            return sdf.select(min_col, max_col).first()
 
         if ind is None:
-            min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
-
+            min_val, max_val = calc_min_max()
             sample_range = max_val - min_val
             ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, 1000,)
         elif is_integer(ind):
-            min_val, max_val = sdf.select(F.min(sdf.columns[-1]), F.max(sdf.columns[-1])).first()
-
-            sample_range = min_val - max_val
+            min_val, max_val = calc_min_max()
+            sample_range = max_val - min_val
             ind = np.linspace(min_val - 0.5 * sample_range, max_val + 0.5 * sample_range, ind,)
         return ind
 
