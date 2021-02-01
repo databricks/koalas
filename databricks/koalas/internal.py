@@ -824,7 +824,7 @@ class InternalFrame(object):
             for field in sdf.schema:
                 if field.nullable and pdf[field.name].isnull().all():
                     if isinstance(field.dataType, BooleanType):
-                        pdf[field.name] = pdf[field.name].astype(np.object)
+                        pdf[field.name] = pdf[field.name].astype(object)
                     elif isinstance(field.dataType, IntegralType):
                         pdf[field.name] = pdf[field.name].astype(np.float64)
                     else:

@@ -55,18 +55,18 @@ class TypeHintTests(unittest.TestCase):
 
         self.assertEqual(infer_return_type(func).tpe, LongType())
 
-        def func() -> pd.Series[np.float]:
+        def func() -> pd.Series[float]:
             pass
 
         self.assertEqual(infer_return_type(func).tpe, DoubleType())
 
-        def func() -> "pd.DataFrame[np.float, str]":
+        def func() -> "pd.DataFrame[float, str]":
             pass
 
         expected = StructType([StructField("c0", DoubleType()), StructField("c1", StringType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
-        def func() -> "pandas.DataFrame[np.float]":
+        def func() -> "pandas.DataFrame[float]":
             pass
 
         expected = StructType([StructField("c0", DoubleType())])
@@ -77,13 +77,13 @@ class TypeHintTests(unittest.TestCase):
 
         self.assertEqual(infer_return_type(func).tpe, LongType())
 
-        def func() -> pd.DataFrame[np.float, str]:
+        def func() -> pd.DataFrame[float, str]:
             pass
 
         expected = StructType([StructField("c0", DoubleType()), StructField("c1", StringType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
-        def func() -> pd.DataFrame[np.float]:
+        def func() -> pd.DataFrame[float]:
             pass
 
         expected = StructType([StructField("c0", DoubleType())])

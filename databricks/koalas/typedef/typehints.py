@@ -110,7 +110,7 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()
     # BooleanType
-    elif tpe in (bool, np.bool, "bool", "?"):
+    elif tpe in (bool, "bool", "?"):
         return types.BooleanType()
     # DateType
     elif tpe in (datetime.date,):
@@ -121,13 +121,13 @@ def as_spark_type(tpe) -> types.DataType:
     elif tpe in (decimal.Decimal,):
         # TODO: considering about the precision & scale for decimal type.
         return types.DecimalType(38, 18)
-    elif tpe in (float, np.float, np.float64, "float", "float64", "double"):
+    elif tpe in (float, np.float64, "float", "float64", "double"):
         return types.DoubleType()
     elif tpe in (np.float32, "float32", "f"):
         return types.FloatType()
     elif tpe in (np.int32, "int32", "i"):
         return types.IntegerType()
-    elif tpe in (int, np.int, np.int64, "int", "int64", "long"):
+    elif tpe in (int, np.int64, "int", "int64", "long"):
         return types.LongType()
     elif tpe in (np.int16, "int16", "short"):
         return types.ShortType()

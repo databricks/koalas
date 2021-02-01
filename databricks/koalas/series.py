@@ -979,8 +979,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     current = current.when(self.spark.column == F.lit(to_replace), value)
 
             if hasattr(arg, "__missing__"):
-                tmp_val = arg[np._NoValue]
-                del arg[np._NoValue]  # Remove in case it's set in defaultdict.
+                # Seems like mypy bug since it says `Module has no attribute "_NoValue" in mypy.
+                _NoValue = np._NoValue  # type: ignore
+                tmp_val = arg[_NoValue]
+                del arg[_NoValue]  # Remove in case it's set in defaultdict.
                 current = current.otherwise(F.lit(tmp_val))
             else:
                 current = current.otherwise(F.lit(None).cast(self.spark.data_type))
