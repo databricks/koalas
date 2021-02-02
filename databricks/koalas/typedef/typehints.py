@@ -163,8 +163,8 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
     if dt == np.dtype("object"):
         if len(s) == 0 or s.isnull().all():
             return types.NullType()
-        elif hasattr(s[0], "__UDT__"):
-            return s[0].__UDT__
+        elif hasattr(s.iloc[0], "__UDT__"):
+            return s.iloc[0].__UDT__
         else:
             return from_arrow_type(pa.Array.from_pandas(s).type)
     else:
