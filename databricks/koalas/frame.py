@@ -628,8 +628,7 @@ class DataFrame(Frame, Generic[T]):
             currently.
         """
         from inspect import signature
-        from databricks.koalas import Series
-        from databricks.koalas.series import first_series
+        from databricks.koalas.series import Series, first_series
 
         axis = validate_axis(axis)
         if axis == 0:
@@ -692,12 +691,22 @@ class DataFrame(Frame, Generic[T]):
                     axis=axis, numeric_only=numeric_only, **kwargs
                 )
 
-            sdf = self._internal.spark_frame.select(
-                calculate_columns_axis(*self._internal.data_spark_columns).alias(
-                    SPARK_DEFAULT_SERIES_NAME
-                )
+            column_name = verify_temp_column_name(
+                self._internal.spark_frame.select(self._internal.index_spark_columns),
+                "__calculate_columns_axis__",
             )
-            return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
+            sdf = self._internal.spark_frame.select(
+                self._internal.index_spark_columns
+                + [calculate_columns_axis(*self._internal.data_spark_columns).alias(column_name)]
+            )
+            internal = InternalFrame(
+                spark_frame=sdf,
+                index_spark_columns=[
+                    scol_for(sdf, col) for col in self._internal.index_spark_column_names
+                ],
+                index_names=self._internal.index_names,
+            )
+            return first_series(DataFrame(internal)).rename(pser.name)
 
     def _kser_for(self, label):
         """
