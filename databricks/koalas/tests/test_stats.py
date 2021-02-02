@@ -163,7 +163,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                     "B": [1.0, -2, 3, -4, 5] * 300,
                     "C": [-6.0, -7, -8, -9, 10] * 300,
                     "D": [True, False, True, False, False] * 300,
-                }
+                },
+                index=range(10, 15001, 10),
             )
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
