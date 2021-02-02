@@ -708,11 +708,7 @@ class InternalFrame(object):
             (sdf[offset_column] + sdf[row_number_column] - 1).alias(column_name), *scols
         )
 
-    def spark_column_name_for(self, label: Tuple) -> str:
-        """ Return the actual Spark column name for the given column label. """
-        return self.spark_frame.select(self.spark_column_for(label)).columns[0]
-
-    def spark_column_for(self, label: Tuple):
+    def spark_column_for(self, label: Tuple) -> spark.Column:
         """ Return Spark Column for the given column label. """
         column_labels_to_scol = dict(zip(self.column_labels, self.data_spark_columns))
         if label in column_labels_to_scol:
@@ -720,13 +716,29 @@ class InternalFrame(object):
         else:
             raise KeyError(name_like_string(label))
 
-    def spark_type_for(self, label: Tuple) -> DataType:
-        """ Return DataType for the given column label. """
-        return self.spark_frame.select(self.spark_column_for(label)).schema[0].dataType
+    def spark_column_name_for(self, label_or_scol: Union[Tuple, spark.Column]) -> str:
+        """ Return the actual Spark column name for the given column label. """
+        if isinstance(label_or_scol, spark.Column):
+            scol = label_or_scol
+        else:
+            scol = self.spark_column_for(label_or_scol)
+        return self.spark_frame.select(scol).columns[0]
 
-    def spark_column_nullable_for(self, label: Tuple) -> bool:
+    def spark_type_for(self, label_or_scol: Union[Tuple, spark.Column]) -> DataType:
+        """ Return DataType for the given column label. """
+        if isinstance(label_or_scol, spark.Column):
+            scol = label_or_scol
+        else:
+            scol = self.spark_column_for(label_or_scol)
+        return self.spark_frame.select(scol).schema[0].dataType
+
+    def spark_column_nullable_for(self, label_or_scol: Union[Tuple, spark.Column]) -> bool:
         """ Return nullability for the given column label. """
-        return self.spark_frame.select(self.spark_column_for(label)).schema[0].nullable
+        if isinstance(label_or_scol, spark.Column):
+            scol = label_or_scol
+        else:
+            scol = self.spark_column_for(label_or_scol)
+        return self.spark_frame.select(scol).schema[0].nullable
 
     @property
     def spark_frame(self) -> spark.DataFrame:
