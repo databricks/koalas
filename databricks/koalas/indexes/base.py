@@ -2205,20 +2205,20 @@ class Index(IndexOpsMixin):
         if isinstance(other, DataFrame):
             raise ValueError("Index data must be 1-dimensional")
         elif isinstance(other, MultiIndex):
-            # Always returns an empty MultiIndex if `other` is MultiIndex.
-            return other.to_frame().head(0).index
+            # Always returns a no-named empty Index if `other` is MultiIndex.
+            return self._kdf.head(0).index.rename(None)
         elif isinstance(other, Index):
             spark_frame_other = other.to_frame().to_spark()
             keep_name = self.name == other.name
         elif isinstance(other, Series):
             spark_frame_other = other.to_frame().to_spark()
-            keep_name = self.name == other.name
+            keep_name = True
         elif is_list_like(other):
             other = Index(other)
             if isinstance(other, MultiIndex):
                 return other.to_frame().head(0).index
             spark_frame_other = other.to_frame().to_spark()
-            keep_name = False
+            keep_name = True
         else:
             raise TypeError("Input must be Index or array-like")
 

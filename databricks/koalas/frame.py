@@ -2056,10 +2056,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']},
         ...                   columns=['name', 'mask', 'weapon'])
-        >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
-        '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
-        \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
-        purple & bo staff \\\\\n\\bottomrule\n\\end{tabular}\n'
+        >>> print(df.to_latex(index=False)) # doctest: +NORMALIZE_WHITESPACE
+        \begin{tabular}{lll}
+        \toprule
+              name &    mask &    weapon \\
+        \midrule
+           Raphael &     red &       sai \\
+         Donatello &  purple &  bo staff \\
+        \bottomrule
+        \end{tabular}
+        <BLANKLINE>
         """
 
         args = locals()

@@ -75,11 +75,12 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def test_stat_functions_with_no_numeric_columns(self):
         pdf = pd.DataFrame(
             {
-                "A": pd.date_range("2020-01-01", periods=3),
-                "B": pd.date_range("2021-01-01", periods=3),
+                "A": ["a", None, "c", "d", None, "f", "g"],
+                "B": ["A", "B", "C", None, "E", "F", None],
             }
         )
         kdf = ks.from_pandas(pdf)
+
         self._test_stat_functions(pdf, kdf)
 
     def test_sum(self):

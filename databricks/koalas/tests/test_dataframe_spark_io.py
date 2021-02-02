@@ -390,19 +390,13 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             # But pandas only can read from file, not directory. Therefore, we need orc file path.
             orc_file_path = glob.glob(os.path.join(path, "*.orc"))[0]
 
-            if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-                expected = pd.read_orc(orc_file_path)
-            else:
-                expected = data.reset_index()[data.columns]
+            expected = data.reset_index()[data.columns]
             actual = ks.read_orc(path)
             self.assertPandasEqual(expected, actual.to_pandas())
 
             # columns
             columns = ["i32", "i64"]
-            if LooseVersion(pd.__version__) >= LooseVersion("1.0.0"):
-                expected = pd.read_orc(orc_file_path, columns=columns)
-            else:
-                expected = data.reset_index()[columns]
+            expected = data.reset_index()[columns]
             actual = ks.read_orc(path, columns=columns)
             self.assertPandasEqual(expected, actual.to_pandas())
 
