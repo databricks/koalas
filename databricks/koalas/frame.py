@@ -44,7 +44,6 @@ from typing import (
     TYPE_CHECKING,
 )
 
-import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
@@ -858,12 +857,12 @@ class DataFrame(Frame, Generic[T]):
     # create accessor for Koalas specific methods.
     koalas = CachedAccessor("koalas", KoalasFrameMethods)
 
-    def hist(self, bins=10, **kwds) -> matplotlib.axes.Axes:
+    def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
-    def kde(self, bw_method=None, ind=None, **kwds) -> matplotlib.axes.Axes:
+    def kde(self, bw_method=None, ind=None, **kwds):
         return self.plot.kde(bw_method, ind, **kwds)
 
     kde.__doc__ = KoalasPlotAccessor.kde.__doc__

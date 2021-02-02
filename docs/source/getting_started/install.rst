@@ -124,7 +124,6 @@ Package       Required version
 `pandas`      >=0.23.2
 `pyspark`     >=2.4.0
 `pyarrow`     >=0.10
-`matplotlib`  >=3.0.0,<3.3.0
 `numpy`       >=1.14
 ============= ================
 
@@ -137,4 +136,5 @@ Package       Required version
 ============= ================
 `mlflow`      >=1.0
 `plotly`      >=4.8
+`matplotlib`  >=3.0.0,<3.3.0
 ============= ================
