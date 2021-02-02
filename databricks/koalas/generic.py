@@ -1208,7 +1208,7 @@ class Frame(object, metaclass=ABCMeta):
         nan
         """
         axis = validate_axis(axis)
-        numeric_only = None if axis == 1 else numeric_only
+        numeric_only = None if axis == 1 and numeric_only is True else numeric_only
 
         def sum(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1238,7 +1238,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default None
+        numeric_only : bool, default True
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         min_count : int, default 0
@@ -1288,7 +1288,7 @@ class Frame(object, metaclass=ABCMeta):
         nan
         """
         axis = validate_axis(axis)
-        numeric_only = None if axis == 1 else numeric_only
+        numeric_only = None if axis == 1 and numeric_only is True else numeric_only
 
         def prod(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1472,7 +1472,7 @@ class Frame(object, metaclass=ABCMeta):
         1.0
         """
         axis = validate_axis(axis)
-        numeric_only = None if axis == 1 else numeric_only
+        numeric_only = None if axis == 1 and numeric_only is True else numeric_only
 
         return self._reduce_for_stat_function(
             F.min, name="min", axis=axis, numeric_only=numeric_only
@@ -1523,7 +1523,7 @@ class Frame(object, metaclass=ABCMeta):
         3.0
         """
         axis = validate_axis(axis)
-        numeric_only = None if axis == 1 else numeric_only
+        numeric_only = None if axis == 1 and numeric_only is True else numeric_only
 
         return self._reduce_for_stat_function(
             F.max, name="max", axis=axis, numeric_only=numeric_only
