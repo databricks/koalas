@@ -27,7 +27,6 @@ from functools import partial, wraps, reduce
 from itertools import chain
 from typing import Any, Generic, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
-import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
@@ -3004,7 +3003,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     sample.__doc__ = DataFrame.sample.__doc__
 
-    def hist(self, bins=10, **kwds) -> matplotlib.axes.Axes:
+    def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__

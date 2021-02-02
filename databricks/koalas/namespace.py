@@ -2626,7 +2626,19 @@ def read_orc(
 
     Examples
     --------
-    >>> ks.read_orc('data.orc')  # doctest: +SKIP
+    >>> ks.range(1).to_orc('%s/read_spark_io/data.orc' % path)
+    >>> ks.read_orc('%s/read_spark_io/data.orc' % path, columns=['id'])
+       id
+    0   0
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(1).to_orc('%s/read_spark_io/data.orc' % path, index_col="index")
+    >>> ks.read_orc('%s/read_spark_io/data.orc' % path, columns=['id'], index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0       0
     """
     if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
         options = options.get("options")  # type: ignore

@@ -44,7 +44,6 @@ from typing import (
     TYPE_CHECKING,
 )
 
-import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
@@ -858,12 +857,12 @@ class DataFrame(Frame, Generic[T]):
     # create accessor for Koalas specific methods.
     koalas = CachedAccessor("koalas", KoalasFrameMethods)
 
-    def hist(self, bins=10, **kwds) -> matplotlib.axes.Axes:
+    def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
-    def kde(self, bw_method=None, ind=None, **kwds) -> matplotlib.axes.Axes:
+    def kde(self, bw_method=None, ind=None, **kwds):
         return self.plot.kde(bw_method, ind, **kwds)
 
     kde.__doc__ = KoalasPlotAccessor.kde.__doc__
@@ -4465,7 +4464,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
             options = options.get("options")  # type: ignore
 
-        self.to_spark_io(
+        self.spark.to_spark_io(
             path=path,
             mode=mode,
             format="delta",
@@ -4544,6 +4543,77 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             builder.partitionBy(partition_cols)
         builder._set_opts(compression=compression)
         builder.options(**options).format("parquet").save(path)
+
+    def to_orc(
+        self,
+        path: str,
+        mode: str = "overwrite",
+        partition_cols: Optional[Union[str, List[str]]] = None,
+        index_col: Optional[Union[str, List[str]]] = None,
+        **options
+    ) -> None:
+        """
+        Write the DataFrame out as a ORC file or directory.
+
+        Parameters
+        ----------
+        path : str, required
+            Path to write to.
+        mode : str {'append', 'overwrite', 'ignore', 'error', 'errorifexists'},
+            default 'overwrite'. Specifies the behavior of the save operation when the
+            destination exists already.
+
+            - 'append': Append the new data to existing data.
+            - 'overwrite': Overwrite existing data.
+            - 'ignore': Silently ignore this operation if data already exists.
+            - 'error' or 'errorifexists': Throw an exception if data already exists.
+
+        partition_cols : str or list of str, optional, default None
+            Names of partitioning columns
+        index_col: str or list of str, optional, default: None
+            Column names to be used in Spark to represent Koalas' index. The index name
+            in Koalas is ignored. By default, the index is always lost.
+        options : dict
+            All other options passed directly into Spark's data source.
+
+        See Also
+        --------
+        read_orc
+        DataFrame.to_delta
+        DataFrame.to_parquet
+        DataFrame.to_table
+        DataFrame.to_spark_io
+
+        Examples
+        --------
+        >>> df = ks.DataFrame(dict(
+        ...    date=list(pd.date_range('2012-1-1 12:00:00', periods=3, freq='M')),
+        ...    country=['KR', 'US', 'JP'],
+        ...    code=[1, 2 ,3]), columns=['date', 'country', 'code'])
+        >>> df
+                         date country  code
+        0 2012-01-31 12:00:00      KR     1
+        1 2012-02-29 12:00:00      US     2
+        2 2012-03-31 12:00:00      JP     3
+
+        >>> df.to_orc('%s/to_orc/foo.orc' % path, partition_cols='date')
+
+        >>> df.to_orc(
+        ...     '%s/to_orc/foo.orc' % path,
+        ...     mode = 'overwrite',
+        ...     partition_cols=['date', 'country'])
+        """
+        if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+            options = options.get("options")  # type: ignore
+
+        self.spark.to_spark_io(
+            path=path,
+            mode=mode,
+            format="orc",
+            partition_cols=partition_cols,
+            index_col=index_col,
+            **options,
+        )
 
     def to_spark_io(
         self,
