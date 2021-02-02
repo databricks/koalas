@@ -217,6 +217,14 @@ function sphinx_test {
         return
     fi
 
+    # TODO: Remove this and enable the Sphinx build with Conda in CI
+    PYTHON_HAS_THEME=$("$PYTHON_EXECUTABLE" -c 'import importlib.util; print(importlib.util.find_spec("sphinx_plotly_directive") is not None)')
+    if [[ "$PYTHON_HAS_THEME" == "False" ]]; then
+        echo "$PYTHON_EXECUTABLE does not have sphinx-plotly-directive installed. Skipping Sphinx build for now."
+        echo
+        return
+    fi
+
     echo "starting $SPHINX_BUILD tests..."
     pushd docs &> /dev/null
     make clean &> /dev/null

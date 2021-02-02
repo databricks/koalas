@@ -37,3 +37,7 @@ openpyxl
 # https://stackoverflow.com/questions/65254535/xlrd-biffh-xlrderror-excel-xlsx-file-not-supported
 # We can remove this upperbound when our minimum pandas version is 0.25+.
 xlrd<2.0.0
+
+# PIP only dependency. It's required for documentation build only.
+# It's placed last so all other dependencies can be installed when deverlopers use this file on Conda.
+sphinx-plotly-directive

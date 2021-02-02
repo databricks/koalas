@@ -15,6 +15,7 @@
 #
 
 import base64
+from distutils.version import LooseVersion
 from io import BytesIO
 
 import matplotlib
@@ -36,11 +37,17 @@ class DataFramePlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pd.set_option("plotting.backend", "matplotlib")
+        set_option("plotting.backend", "matplotlib")
         set_option("plotting.max_rows", 2000)
         set_option("plotting.sample_ratio", None)
 
     @classmethod
     def tearDownClass(cls):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pd.reset_option("plotting.backend")
+        reset_option("plotting.backend")
         reset_option("plotting.max_rows")
         reset_option("plotting.sample_ratio")
         super().tearDownClass()

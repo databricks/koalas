@@ -20,7 +20,7 @@ jobs:
             spark-version: 2.3.4
             pandas-version: 0.23.4
             pyarrow-version: 0.16.0
-          - python-version: 3.5
+          - python-version: 3.6
             spark-version: 2.3.4
             pandas-version: 0.24.2
             pyarrow-version: 0.10.0
@@ -61,6 +61,8 @@ jobs:
         # as Black only works with Python 3.6+. This is hacky but we will drop
         # Python 3.5 soon so it's fine.
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then sed -i '/black/d' requirements-dev.txt; fi
+        # sphinx-plotly-directive supports Python 3.6+
+        if [[ "$PYTHON_VERSION" < "3.6" ]]; then sed -i '/sphinx-plotly-directive/d' requirements-dev.txt; fi
         pip install -r requirements-dev.txt
         pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
         # matplotlib dropped Python 3.5 support from 3.1.x; however, 3.0.3 only supports sphinx 2.x.
@@ -149,6 +151,8 @@ jobs:
         fi
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
+        # sphinx-plotly-directive is not available on Conda.
+        sed -i '/sphinx-plotly-directive/d' requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
         conda list
     - name: Run tests
