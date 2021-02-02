@@ -182,6 +182,43 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.sem(axis=1), pdf.sem(axis=1))
             self.assert_eq(kdf.sem(axis=1, ddof=0), pdf.sem(axis=1, ddof=0))
 
+            self.assert_eq(
+                kdf.count(axis=1, numeric_only=True), pdf.count(axis=1, numeric_only=True)
+            )
+            self.assert_eq(kdf.var(axis=1, numeric_only=True), pdf.var(axis=1, numeric_only=True))
+            self.assert_eq(
+                kdf.var(axis=1, ddof=0, numeric_only=True),
+                pdf.var(axis=1, ddof=0, numeric_only=True),
+            )
+            self.assert_eq(kdf.std(axis=1, numeric_only=True), pdf.std(axis=1, numeric_only=True))
+            self.assert_eq(
+                kdf.std(axis=1, ddof=0, numeric_only=True),
+                pdf.std(axis=1, ddof=0, numeric_only=True),
+            )
+            self.assert_eq(
+                kdf.max(axis=1, numeric_only=True), pdf.max(axis=1, numeric_only=True).astype(float)
+            )
+            self.assert_eq(
+                kdf.min(axis=1, numeric_only=True), pdf.min(axis=1, numeric_only=True).astype(float)
+            )
+            self.assert_eq(
+                kdf.sum(axis=1, numeric_only=True), pdf.sum(axis=1, numeric_only=True).astype(float)
+            )
+            self.assert_eq(
+                kdf.product(axis=1, numeric_only=True),
+                pdf.product(axis=1, numeric_only=True).astype(float),
+            )
+            self.assert_eq(
+                kdf.kurtosis(axis=1, numeric_only=True), pdf.kurtosis(axis=1, numeric_only=True)
+            )
+            self.assert_eq(kdf.skew(axis=1, numeric_only=True), pdf.skew(axis=1, numeric_only=True))
+            self.assert_eq(kdf.mean(axis=1, numeric_only=True), pdf.mean(axis=1, numeric_only=True))
+            self.assert_eq(kdf.sem(axis=1, numeric_only=True), pdf.sem(axis=1, numeric_only=True))
+            self.assert_eq(
+                kdf.sem(axis=1, ddof=0, numeric_only=True),
+                pdf.sem(axis=1, ddof=0, numeric_only=True),
+            )
+
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
