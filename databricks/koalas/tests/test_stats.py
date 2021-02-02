@@ -73,16 +73,6 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         self._test_stat_functions(pdf, kdf)
 
     def test_stat_functions_with_no_numeric_columns(self):
-        # TODO: pandas support datetime64 or datetime64tz dtypes for `std` from pandas 1.2
-        # to return Timedelta Series which is Koalas currently cannot support.
-        # pdf = pd.DataFrame(
-        #     {
-        #         "A": pd.date_range("2020-01-01", periods=3),
-        #         "B": pd.date_range("2021-01-01", periods=3),
-        #     }
-        # )
-        # kdf = ks.from_pandas(pdf)
-
         pdf = pd.DataFrame(
             {
                 "A": ["a", None, "c", "d", None, "f", "g"],
