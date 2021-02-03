@@ -99,7 +99,7 @@ class SampledPlotBase:
 class HistogramPlotBase:
     @staticmethod
     def prepare_hist_data(data, bins):
-        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
+        # TODO: this logic is similar with KdePlotBase. Might have to deduplicate it.
         from databricks.koalas.series import Series
 
         if isinstance(data, Series):
@@ -341,7 +341,7 @@ class BoxPlotBase:
 class KdePlotBase:
     @staticmethod
     def prepare_kde_data(data):
-        # TODO: this logic is same with KdePlot. Might have to deduplicate it.
+        # TODO: this logic is similar with HistogramPlotBase. Might have to deduplicate it.
         from databricks.koalas.series import Series
 
         if isinstance(data, Series):
