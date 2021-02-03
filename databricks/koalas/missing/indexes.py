@@ -132,6 +132,8 @@ class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
     inferred_freq = _unsupported_property("inferred_freq", cls="DatetimeIndex")
 
     # Functions
+    indexer_at_time = _unsupported_function("indexer_at_time", cls="DatetimeIndex")
+    indexer_between_time = _unsupported_function("indexer_between_time", cls="DatetimeIndex")
     normalize = _unsupported_function("normalize", cls="DatetimeIndex")
     strftime = _unsupported_function("strftime", cls="DatetimeIndex")
     snap = _unsupported_function("snap", cls="DatetimeIndex")
