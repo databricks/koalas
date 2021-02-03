@@ -206,3 +206,20 @@ class SeriesPlotPlotlyTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(ValueError, "does not support"):
             self.kdf1.a.plot.box(notched=True)
         self.kdf1.a.plot.box(hovertext="abc")  # other arguments should not throw an exception
+
+    def test_kde_plot(self):
+        kdf = ks.DataFrame({"a": [1, 2, 3, 4, 5]})
+        pdf = pd.DataFrame(
+            {
+                "Density": [0.05709372, 0.07670272, 0.05709372],
+                "names": ["a", "a", "a"],
+                "index": [-1.0, 3.0, 7.0],
+            }
+        )
+
+        actual = kdf.a.plot.kde(bw_method=5, ind=3)
+
+        expected = express.line(pdf, x="index", y="Density")
+        expected["layout"]["xaxis"]["title"] = None
+
+        self.assertEqual(pprint.pformat(actual.to_dict()), pprint.pformat(expected.to_dict()))

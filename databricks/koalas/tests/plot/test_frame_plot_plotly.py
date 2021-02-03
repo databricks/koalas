@@ -224,3 +224,31 @@ class DataFramePlotPlotlyTest(ReusedSQLTestCase, TestUtils):
         columns = pd.MultiIndex.from_tuples([("x", "y"), ("y", "z")])
         kdf1.columns = columns
         check_hist_plot(kdf1)
+
+    def test_kde_plot(self):
+        kdf = ks.DataFrame({"a": [1, 2, 3, 4, 5], "b": [1, 3, 5, 7, 9], "c": [2, 4, 6, 8, 10]})
+
+        pdf = pd.DataFrame(
+            {
+                "Density": [
+                    0.03515491,
+                    0.06834979,
+                    0.00663503,
+                    0.02372059,
+                    0.06834979,
+                    0.01806934,
+                    0.01806934,
+                    0.06834979,
+                    0.02372059,
+                ],
+                "names": ["a", "a", "a", "b", "b", "b", "c", "c", "c"],
+                "index": [-3.5, 5.5, 14.5, -3.5, 5.5, 14.5, -3.5, 5.5, 14.5],
+            }
+        )
+
+        actual = kdf.plot.kde(bw_method=5, ind=3)
+
+        expected = express.line(pdf, x="index", y="Density", color="names")
+        expected["layout"]["xaxis"]["title"] = None
+
+        self.assertEqual(pprint.pformat(actual.to_dict()), pprint.pformat(expected.to_dict()))
