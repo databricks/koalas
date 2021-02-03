@@ -153,6 +153,16 @@ Selecting
    Index.asof
    Index.isin
 
+.. _api.numeric:
+
+Numeric Index
+-------------
+.. autosummary::
+   :toctree: api/
+
+   Int64Index
+   Float64Index
+
 .. _api.multiindex:
 
 MultiIndex
@@ -274,3 +284,12 @@ MultiIndex Sorting
    :toctree: api/
 
    MultiIndex.sort_values
+
+.. _api.datetimes:
+
+DatatimeIndex
+-------------
+.. autosummary::
+   :toctree: api/
+
+   DatetimeIndex

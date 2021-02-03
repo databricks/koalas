@@ -13,4 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from databricks.koalas.plot.core import *  # noqa: F401
+from databricks.koalas.indexes.base import Index  # noqa: F401
+from databricks.koalas.indexes.datetimes import DatetimeIndex  # noqa: F401
+from databricks.koalas.indexes.multi import MultiIndex  # noqa: F401
+from databricks.koalas.indexes.numeric import Float64Index, Int64Index  # noqa: F401

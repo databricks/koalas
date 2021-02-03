@@ -464,23 +464,7 @@ class KoalasScatterPlot(PandasScatterPlot, TopNPlotBase):
 
 class KoalasKdePlot(PandasKdePlot, KdePlotBase):
     def _compute_plot_data(self):
-        from databricks.koalas.series import Series
-
-        data = self.data
-        if isinstance(data, Series):
-            data = data.to_frame()
-
-        numeric_data = data.select_dtypes(
-            include=["byte", "decimal", "integer", "float", "long", "double", np.datetime64]
-        )
-
-        # no empty frames or series allowed
-        if len(numeric_data.columns) == 0:
-            raise TypeError(
-                "Empty {0!r}: no numeric data to " "plot".format(numeric_data.__class__.__name__)
-            )
-
-        self.data = numeric_data
+        self.data = KdePlotBase.prepare_kde_data(self.data)
 
     def _make_plot(self):
         # 'num_colors' requires to calculate `shape` which has to count all.

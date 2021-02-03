@@ -1,12 +1,12 @@
 # Dependencies in Koalas. When you update don't forget to update setup.py and install.rst in docs.
 pandas>=0.23.2,<1.2.0
 pyarrow>=0.10
-matplotlib>=3.0.0,<3.3.0
-numpy>=1.14
+numpy>=1.14,<1.20.0
 
 # Optional dependencies in Koalas.
 mlflow>=1.0
 plotly>=4.8
+matplotlib>=3.0.0,<3.3.0
 
 # Documentation build.
 sphinx>=2.0.0,<3.1.0

@@ -75,11 +75,12 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
     def test_stat_functions_with_no_numeric_columns(self):
         pdf = pd.DataFrame(
             {
-                "A": pd.date_range("2020-01-01", periods=3),
-                "B": pd.date_range("2021-01-01", periods=3),
+                "A": ["a", None, "c", "d", None, "f", "g"],
+                "B": ["A", "B", "C", None, "E", "F", None],
             }
         )
         kdf = ks.from_pandas(pdf)
+
         self._test_stat_functions(pdf, kdf)
 
     def test_sum(self):
@@ -162,7 +163,8 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
                     "B": [1.0, -2, 3, -4, 5] * 300,
                     "C": [-6.0, -7, -8, -9, 10] * 300,
                     "D": [True, False, True, False, False] * 300,
-                }
+                },
+                index=range(10, 15001, 10),
             )
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.count(axis=1), pdf.count(axis=1))
@@ -179,6 +181,43 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf.mean(axis=1), pdf.mean(axis=1))
             self.assert_eq(kdf.sem(axis=1), pdf.sem(axis=1))
             self.assert_eq(kdf.sem(axis=1, ddof=0), pdf.sem(axis=1, ddof=0))
+
+            self.assert_eq(
+                kdf.count(axis=1, numeric_only=True), pdf.count(axis=1, numeric_only=True)
+            )
+            self.assert_eq(kdf.var(axis=1, numeric_only=True), pdf.var(axis=1, numeric_only=True))
+            self.assert_eq(
+                kdf.var(axis=1, ddof=0, numeric_only=True),
+                pdf.var(axis=1, ddof=0, numeric_only=True),
+            )
+            self.assert_eq(kdf.std(axis=1, numeric_only=True), pdf.std(axis=1, numeric_only=True))
+            self.assert_eq(
+                kdf.std(axis=1, ddof=0, numeric_only=True),
+                pdf.std(axis=1, ddof=0, numeric_only=True),
+            )
+            self.assert_eq(
+                kdf.max(axis=1, numeric_only=True), pdf.max(axis=1, numeric_only=True).astype(float)
+            )
+            self.assert_eq(
+                kdf.min(axis=1, numeric_only=True), pdf.min(axis=1, numeric_only=True).astype(float)
+            )
+            self.assert_eq(
+                kdf.sum(axis=1, numeric_only=True), pdf.sum(axis=1, numeric_only=True).astype(float)
+            )
+            self.assert_eq(
+                kdf.product(axis=1, numeric_only=True),
+                pdf.product(axis=1, numeric_only=True).astype(float),
+            )
+            self.assert_eq(
+                kdf.kurtosis(axis=1, numeric_only=True), pdf.kurtosis(axis=1, numeric_only=True)
+            )
+            self.assert_eq(kdf.skew(axis=1, numeric_only=True), pdf.skew(axis=1, numeric_only=True))
+            self.assert_eq(kdf.mean(axis=1, numeric_only=True), pdf.mean(axis=1, numeric_only=True))
+            self.assert_eq(kdf.sem(axis=1, numeric_only=True), pdf.sem(axis=1, numeric_only=True))
+            self.assert_eq(
+                kdf.sem(axis=1, ddof=0, numeric_only=True),
+                pdf.sem(axis=1, ddof=0, numeric_only=True),
+            )
 
     def test_corr(self):
         # Disable arrow execution since corr() is using UDT internally which is not supported.

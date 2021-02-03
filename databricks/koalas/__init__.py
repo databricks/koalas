@@ -86,7 +86,10 @@ if (
     os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
 
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.indexes import Index, MultiIndex
+from databricks.koalas.indexes.base import Index
+from databricks.koalas.indexes.datetimes import DatetimeIndex
+from databricks.koalas.indexes.multi import MultiIndex
+from databricks.koalas.indexes.numeric import Float64Index, Int64Index
 from databricks.koalas.series import Series
 from databricks.koalas.groupby import NamedAgg
 
@@ -100,6 +103,9 @@ __all__ = [  # noqa: F405
     "Series",
     "Index",
     "MultiIndex",
+    "Int64Index",
+    "Float64Index",
+    "DatetimeIndex",
     "sql",
     "range",
     "concat",
