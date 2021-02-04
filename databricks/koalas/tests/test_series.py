@@ -40,6 +40,12 @@ from databricks.koalas.testing.utils import (
 )
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import MissingPandasLikeSeries
+from databricks.koalas.typedef.typehints import (
+    extension_dtypes,
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -82,6 +88,48 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         s.__repr__()
         s.rename("a", inplace=True)
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
+
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_extension_dtypes(self):
+        for pser in [
+            pd.Series([1, 2, None, 4], dtype="Int8"),
+            pd.Series([1, 2, None, 4], dtype="Int16"),
+            pd.Series([1, 2, None, 4], dtype="Int32"),
+            pd.Series([1, 2, None, 4], dtype="Int64"),
+        ]:
+            kser = ks.from_pandas(pser)
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser, pser, check_exact=False)
+            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_extension_object_dtypes(self):
+        for pser in [
+            pd.Series(["a", None, "c", "d"], dtype="string"),
+            pd.Series([True, False, True, None], dtype="boolean"),
+        ]:
+            kser = ks.from_pandas(pser)
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser, pser, check_exact=False)
+            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_extension_float_dtypes(self):
+        for pser in [
+            pd.Series([1.0, 2.0, None, 4.0], dtype="Float32"),
+            pd.Series([1.0, 2.0, None, 4.0], dtype="Float64"),
+        ]:
+            kser = ks.from_pandas(pser)
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser, pser, check_exact=False)
+            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
 
     def test_empty_series(self):
         pser_a = pd.Series([], dtype="i1")

@@ -50,7 +50,7 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
-from databricks.koalas.typedef import as_spark_type, spark_type_to_pandas_dtype
+from databricks.koalas.typedef import as_spark_type
 from databricks.koalas.utils import (
     combine_frames,
     same_anchor,
@@ -281,7 +281,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _with_new_scol(self, scol: spark.Column):
+    def _with_new_scol(self, scol: spark.Column, *, dtype=None):
         pass
 
     @property
@@ -630,7 +630,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> s.rename("a").to_frame().set_index("a").index.dtype
         dtype('<M8[ns]')
         """
-        return spark_type_to_pandas_dtype(self.spark.data_type)
+        return self._internal.data_dtypes[0]
 
     @property
     def empty(self) -> bool:
@@ -989,7 +989,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             )
         else:
             scol = self.spark.column.cast(spark_type)
-        return self._with_new_scol(scol)
+        return self._with_new_scol(scol, dtype=dtype)
 
     def isin(self, values) -> Union["Series", "Index"]:
         """

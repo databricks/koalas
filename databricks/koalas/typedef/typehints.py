@@ -24,6 +24,35 @@ from inspect import getfullargspec, isclass
 
 import numpy as np
 import pandas as pd
+
+try:
+    from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
+
+    extension_dtypes_available = True
+    extension_dtypes = (Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype)  # type: typing.Tuple
+
+    try:
+        from pandas import BooleanDtype, StringDtype
+
+        extension_object_dtypes_available = True
+        extension_dtypes += (BooleanDtype, StringDtype)
+    except ImportError:
+        extension_object_dtypes_available = False
+
+    try:
+        from pandas import Float32Dtype, Float64Dtype
+
+        extension_float_dtypes_available = True
+        extension_dtypes += (Float32Dtype, Float64Dtype)
+    except ImportError:
+        extension_float_dtypes_available = False
+
+except ImportError:
+    extension_dtypes_available = False
+    extension_object_dtypes_available = False
+    extension_float_dtypes_available = False
+    extension_dtypes = ()
+
 import pyarrow as pa
 import pyspark.sql.types as types
 
@@ -90,7 +119,7 @@ class NameTypeHolder(object):
     tpe = None
 
 
-def as_spark_type(tpe) -> types.DataType:
+def as_spark_type(tpe, *, raise_error: bool = True) -> types.DataType:
     """
     Given a Python type, returns the equivalent spark type.
     Accepts:
@@ -137,12 +166,69 @@ def as_spark_type(tpe) -> types.DataType:
     # TimestampType
     elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]", "M"):
         return types.TimestampType()
-    else:
+
+    # extension types
+    elif extension_dtypes_available:
+        # IntegralType
+        if isinstance(tpe, Int8Dtype) or (isinstance(tpe, str) and tpe == "Int8"):
+            return types.ByteType()
+        elif isinstance(tpe, Int16Dtype) or (isinstance(tpe, str) and tpe == "Int16"):
+            return types.ShortType()
+        elif isinstance(tpe, Int32Dtype) or (isinstance(tpe, str) and tpe == "Int32"):
+            return types.IntegerType()
+        elif isinstance(tpe, Int64Dtype) or (isinstance(tpe, str) and tpe == "Int64"):
+            return types.LongType()
+
+        if extension_object_dtypes_available:
+            # BooleanType
+            if isinstance(tpe, BooleanDtype) or (isinstance(tpe, str) and tpe == "boolean"):
+                return types.BooleanType()
+            # StringType
+            elif isinstance(tpe, StringDtype) or (isinstance(tpe, str) and tpe == "string"):
+                return types.StringType()
+
+        if extension_float_dtypes_available:
+            # FractionalType
+            if isinstance(tpe, Float32Dtype) or (isinstance(tpe, str) and tpe == "Float32"):
+                return types.FloatType()
+            elif isinstance(tpe, Float64Dtype) or (isinstance(tpe, str) and tpe == "Float64"):
+                return types.DoubleType()
+
+    if raise_error:
         raise TypeError("Type %s was not understood." % tpe)
+    else:
+        return None
 
 
-def spark_type_to_pandas_dtype(spark_type):
+def spark_type_to_pandas_dtype(spark_type: types.DataType, *, use_extension_dtypes: bool = False):
     """ Return the given Spark DataType to pandas dtype. """
+
+    if use_extension_dtypes and extension_dtypes_available:
+        # IntegralType
+        if isinstance(spark_type, types.ByteType):
+            return Int8Dtype()
+        elif isinstance(spark_type, types.StructType):
+            return Int16Dtype()
+        elif isinstance(spark_type, types.IntegerType):
+            return Int32Dtype()
+        elif isinstance(spark_type, types.LongType):
+            return Int64Dtype()
+
+        if extension_object_dtypes_available:
+            # BooleanType
+            if isinstance(spark_type, types.BooleanType):
+                return BooleanDtype()
+            # StringType
+            elif isinstance(spark_type, types.StringType):
+                return StringDtype()
+
+        # FractionalType
+        if extension_float_dtypes_available:
+            if isinstance(spark_type, types.FloatType):
+                return Float32Dtype()
+            elif isinstance(spark_type, types.DoubleType):
+                return Float64Dtype()
+
     if isinstance(
         spark_type, (types.DateType, types.NullType, types.StructType, types.UserDefinedType)
     ):

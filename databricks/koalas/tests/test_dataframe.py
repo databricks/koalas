@@ -31,6 +31,12 @@ from databricks.koalas.config import option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.frame import CachedDataFrame
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.typedef.typehints import (
+    extension_dtypes,
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
 from databricks.koalas.testing.utils import (
     ReusedSQLTestCase,
     SQLTestUtils,
@@ -87,6 +93,57 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         column_mask = pdf.columns.isin(["a", "b"])
         index_cols = pdf.columns[column_mask]
         self.assert_eq(kdf[index_cols], pdf[index_cols])
+
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_extension_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Series([1, 2, None, 4], dtype="Int8"),
+                "b": pd.Series([1, None, None, 4], dtype="Int16"),
+                "c": pd.Series([1, 2, None, None], dtype="Int32"),
+                "d": pd.Series([None, 2, None, 4], dtype="Int64"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kdf, pdf, check_exact=False)
+        for dtype in kdf.dtypes:
+            self.assertTrue(isinstance(dtype, extension_dtypes))
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_extension_object_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Series(["a", "b", None, "c"], dtype="string"),
+                "b": pd.Series([True, None, False, True], dtype="boolean"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kdf, pdf, check_exact=False)
+        for dtype in kdf.dtypes:
+            self.assertTrue(isinstance(dtype, extension_dtypes))
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_extension_float_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Series([1.0, 2.0, None, 4.0], dtype="Float32"),
+                "b": pd.Series([1.0, None, 3.0, 4.0], dtype="Float64"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kdf, pdf, check_exact=False)
+        for dtype in kdf.dtypes:
+            self.assertTrue(isinstance(dtype, extension_dtypes))
 
     def test_insert(self):
         #
