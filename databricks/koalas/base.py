@@ -35,6 +35,7 @@ from pyspark.sql.types import (
     FloatType,
     IntegralType,
     LongType,
+    NumericType,
     StringType,
     TimestampType,
 )
@@ -984,9 +985,17 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                     self.spark.column.cast(spark_type)
                 )
         elif isinstance(spark_type, StringType):
-            scol = F.when(self.spark.column.isNull(), str(None)).otherwise(
-                self.spark.column.cast(spark_type)
-            )
+            if isinstance(self.spark.data_type, NumericType):
+                null_str = str(np.nan)
+            elif isinstance(self.spark.data_type, (DateType, TimestampType)):
+                null_str = str(pd.NaT)
+            else:
+                null_str = str(None)
+            if isinstance(self.spark.data_type, BooleanType):
+                casted = F.when(self.spark.column, "True").otherwise("False")
+            else:
+                casted = self.spark.column.cast(spark_type)
+            scol = F.when(self.spark.column.isNull(), null_str).otherwise(casted)
         else:
             scol = self.spark.column.cast(spark_type)
         return self._with_new_scol(scol)
