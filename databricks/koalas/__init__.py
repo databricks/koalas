@@ -21,23 +21,24 @@ from databricks.koalas.version import __version__  # noqa: F401
 
 
 def assert_python_version():
-    import logging
+    import warnings
 
-    _major = 3
-    _minor = 5
-    _deprecated_version = (_major, _minor)
-    _min_supported_version = (_major, _minor + 1)
+    major = 3
+    minor = 5
+    deprecated_version = (major, minor)
+    min_supported_version = (major, minor + 1)
 
-    if sys.version_info[:2] == _deprecated_version:
-        logging.warning(
+    if sys.version_info[:2] <= deprecated_version:
+        warnings.warn(
             "Koalas support for Python {dep_ver} is deprecated and will be dropped in "
             "the future release. At that point, existing Python {dep_ver} workflows "
             "that use Koalas will continue to work without modification, but Python {dep_ver} "
             "users will no longer get access to the latest Koalas features and bugfixes. "
             "We recommend that you upgrade to Python {min_ver} or newer.".format(
-                dep_ver=".".join(map(str, _deprecated_version)),
-                min_ver=".".join(map(str, _min_supported_version)),
-            )
+                dep_ver=".".join(map(str, deprecated_version)),
+                min_ver=".".join(map(str, min_supported_version)),
+            ),
+            FutureWarning,
         )
 
 
