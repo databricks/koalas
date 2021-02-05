@@ -134,7 +134,10 @@ def as_spark_type(tpe, *, raise_error: bool = True) -> types.DataType:
     if tpe in (np.ndarray,):
         return types.ArrayType(types.StringType())
     elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):
-        return types.ArrayType(as_spark_type(tpe.__args__[0]))
+        element_type = as_spark_type(tpe.__args__[0], raise_error=raise_error)
+        if element_type is None:
+            return None
+        return types.ArrayType(element_type)
     # BinaryType
     elif tpe in (bytes, np.character, np.bytes_, np.string_):
         return types.BinaryType()

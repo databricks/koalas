@@ -1430,6 +1430,41 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.astype("str"), pser.astype("str"))
         self.assert_eq(kser.astype("U"), pser.astype("U"))
 
+        if extension_dtypes_available:
+            from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser.astype("Int8"), pser.astype("Int8"), check_exact=False)
+            self.assert_eq(kser.astype("Int16"), pser.astype("Int16"), check_exact=False)
+            self.assert_eq(kser.astype("Int32"), pser.astype("Int32"), check_exact=False)
+            self.assert_eq(kser.astype("Int64"), pser.astype("Int64"), check_exact=False)
+            self.assert_eq(kser.astype(Int8Dtype()), pser.astype(Int8Dtype()), check_exact=False)
+            self.assert_eq(kser.astype(Int16Dtype()), pser.astype(Int16Dtype()), check_exact=False)
+            self.assert_eq(kser.astype(Int32Dtype()), pser.astype(Int32Dtype()), check_exact=False)
+            self.assert_eq(kser.astype(Int64Dtype()), pser.astype(Int64Dtype()), check_exact=False)
+
+        if extension_object_dtypes_available:
+            from pandas import StringDtype
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser.astype("string"), pser.astype("string"), check_exact=False)
+            self.assert_eq(
+                kser.astype(StringDtype()), pser.astype(StringDtype()), check_exact=False
+            )
+
+        if extension_float_dtypes_available:
+            from pandas import Float32Dtype, Float64Dtype
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser.astype("Float32"), pser.astype("Float32"), check_exact=False)
+            self.assert_eq(kser.astype("Float64"), pser.astype("Float64"), check_exact=False)
+            self.assert_eq(
+                kser.astype(Float32Dtype()), pser.astype(Float32Dtype()), check_exact=False
+            )
+            self.assert_eq(
+                kser.astype(Float64Dtype()), pser.astype(Float64Dtype()), check_exact=False
+            )
+
         pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
         kser = ks.Series(pser)
 
@@ -1447,11 +1482,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.astype(str), pser.astype(str))
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
+        if extension_object_dtypes_available:
+            from pandas import StringDtype
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser.astype("string"), pser.astype("string"), check_exact=False)
+            self.assert_eq(
+                kser.astype(StringDtype()), pser.astype(StringDtype()), check_exact=False
+            )
+
         pser = pd.Series([True, False, None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
         self.assert_eq(kser.astype(str), pser.astype(str))
+
+        if extension_object_dtypes_available:
+            from pandas import BooleanDtype, StringDtype
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(kser.astype("boolean"), pser.astype("boolean"), check_exact=False)
+            self.assert_eq(kser.astype("string"), pser.astype("string"), check_exact=False)
+            self.assert_eq(
+                kser.astype(BooleanDtype()), pser.astype(BooleanDtype()), check_exact=False
+            )
+            self.assert_eq(
+                kser.astype(StringDtype()), pser.astype(StringDtype()), check_exact=False
+            )
 
         pser = pd.Series(["2020-10-27 00:00:01", None], name="x")
         kser = ks.Series(pser)
@@ -1461,6 +1518,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.astype("M"), pser.astype("M"))
         self.assert_eq(kser.astype("M").astype(str), pser.astype("M").astype(str))
         self.assert_eq(kser.astype("M").dt.date.astype(str), pser.astype("M").dt.date.astype(str))
+
+        if extension_object_dtypes_available:
+            from pandas import StringDtype
+
+            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+            self.assert_eq(
+                kser.astype("M").astype("string"),
+                pser.astype("M").astype("string"),
+                check_exact=False,
+            )
+            self.assert_eq(
+                kser.astype("M").astype(StringDtype()),
+                pser.astype("M").astype(StringDtype()),
+                check_exact=False,
+            )
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")

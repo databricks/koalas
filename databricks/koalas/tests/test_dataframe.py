@@ -111,6 +111,25 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         for dtype in kdf.dtypes:
             self.assertTrue(isinstance(dtype, extension_dtypes))
 
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_astype_extension_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, None, 4],
+                "b": [1, None, None, 4],
+                "c": [1, 2, None, None],
+                "d": [None, 2, None, 4],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        astype = {"a": "Int8", "b": "Int16", "c": "Int32", "d": "Int64"}
+
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kdf.astype(astype), pdf.astype(astype), check_exact=False)
+        for dtype in kdf.astype(astype).dtypes:
+            self.assertTrue(isinstance(dtype, extension_dtypes))
+
     @unittest.skipIf(
         not extension_object_dtypes_available, "pandas extension object dtypes are not available"
     )
@@ -129,6 +148,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertTrue(isinstance(dtype, extension_dtypes))
 
     @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_astype_extension_object_dtypes(self):
+        pdf = pd.DataFrame({"a": ["a", "b", None, "c"], "b": [True, None, False, True]})
+        kdf = ks.from_pandas(pdf)
+
+        astype = {"a": "string", "b": "boolean"}
+
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kdf.astype(astype), pdf.astype(astype), check_exact=False)
+        for dtype in kdf.astype(astype).dtypes:
+            self.assertTrue(isinstance(dtype, extension_dtypes))
+
+    @unittest.skipIf(
         not extension_float_dtypes_available, "pandas extension float dtypes are not available"
     )
     def test_extension_float_dtypes(self):
@@ -143,6 +176,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
         self.assert_eq(kdf, pdf, check_exact=False)
         for dtype in kdf.dtypes:
+            self.assertTrue(isinstance(dtype, extension_dtypes))
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_astype_extension_float_dtypes(self):
+        pdf = pd.DataFrame({"a": [1.0, 2.0, None, 4.0], "b": [1.0, None, 3.0, 4.0]})
+        kdf = ks.from_pandas(pdf)
+
+        astype = {"a": "Float32", "b": "Float64"}
+
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kdf.astype(astype), pdf.astype(astype), check_exact=False)
+        for dtype in kdf.astype(astype).dtypes:
             self.assertTrue(isinstance(dtype, extension_dtypes))
 
     def test_insert(self):

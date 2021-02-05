@@ -5504,7 +5504,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = self._internal.resolved_copy.spark_frame
             if get_option("compute.ordered_head"):
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
-            return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
+            return DataFrame(self._internal.with_new_sdf(sdf.limit(n), preserve_dtypes=True))
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None

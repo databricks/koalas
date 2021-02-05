@@ -372,7 +372,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 )
             internal = InternalFrame.from_pandas(pd.DataFrame(s))
             if s.name is None:
-                internal = internal.copy(column_labels=[None], keep_dtypes=True)
+                internal = internal.copy(column_labels=[None], preserve_dtypes=True)
             anchor = DataFrame(internal)
 
             self._anchor = anchor
