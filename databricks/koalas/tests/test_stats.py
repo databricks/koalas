@@ -224,7 +224,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             # DataFrame
             # we do not handle NaNs for now
-            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)  # TODO: deprecated.
             kdf = ks.from_pandas(pdf)
 
             self.assert_eq(kdf.corr(), pdf.corr(), check_exact=False)
