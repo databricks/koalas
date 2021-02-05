@@ -18,6 +18,11 @@ from distutils.version import LooseVersion
 import numpy as np
 import pandas as pd
 
+try:
+    from pandas._testing import makeMissingDataframe
+except ImportError:
+    from pandas.util.testing import makeMissingDataframe
+
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
 from databricks.koalas.testing.utils import (
@@ -224,7 +229,7 @@ class StatsTest(ReusedSQLTestCase, SQLTestUtils):
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
             # DataFrame
             # we do not handle NaNs for now
-            pdf = pd.util.testing.makeMissingDataframe(0.3, 42).fillna(0)
+            pdf = makeMissingDataframe(0.3, 42).fillna(0)
             kdf = ks.from_pandas(pdf)
 
             self.assert_eq(kdf.corr(), pdf.corr(), check_exact=False)

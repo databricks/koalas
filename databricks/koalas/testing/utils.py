@@ -24,6 +24,7 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 from pandas.api.types import is_list_like
+from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
 import pyspark
 
 from databricks import koalas as ks
@@ -143,7 +144,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     def assertPandasEqual(self, left, right, check_exact=True):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
             try:
-                pd.util.testing.assert_frame_equal(
+                assert_frame_equal(
                     left,
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
@@ -159,7 +160,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 raise AssertionError(msg) from e
         elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
             try:
-                pd.util.testing.assert_series_equal(
+                assert_series_equal(
                     left,
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
@@ -174,7 +175,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 raise AssertionError(msg) from e
         elif isinstance(left, pd.Index) and isinstance(right, pd.Index):
             try:
-                pd.util.testing.assert_index_equal(left, right, check_exact=check_exact)
+                assert_index_equal(left, right, check_exact=check_exact)
             except AssertionError as e:
                 msg = (
                     str(e)
