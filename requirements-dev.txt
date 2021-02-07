@@ -9,7 +9,7 @@ plotly>=4.8
 matplotlib>=3.0.0,<3.3.0
 
 # Documentation build.
-sphinx>=2.0.0,<3.1.0
+sphinx>=2.0.0,<3.4.1
 nbsphinx
 # Temporarily exclude nbconvert 6.0 that is a dependency from nbsphinx.
 # It causes Read the Docs build fails
