@@ -20,10 +20,31 @@ from distutils.version import LooseVersion
 from databricks.koalas.version import __version__  # noqa: F401
 
 
+def assert_python_version():
+    import warnings
+
+    major = 3
+    minor = 5
+    deprecated_version = (major, minor)
+    min_supported_version = (major, minor + 1)
+
+    if sys.version_info[:2] <= deprecated_version:
+        warnings.warn(
+            "Koalas support for Python {dep_ver} is deprecated and will be dropped in "
+            "the future release. At that point, existing Python {dep_ver} workflows "
+            "that use Koalas will continue to work without modification, but Python {dep_ver} "
+            "users will no longer get access to the latest Koalas features and bugfixes. "
+            "We recommend that you upgrade to Python {min_ver} or newer.".format(
+                dep_ver=".".join(map(str, deprecated_version)),
+                min_ver=".".join(map(str, min_supported_version)),
+            ),
+            FutureWarning,
+        )
+
+
 def assert_pyspark_version():
     import logging
 
-    pyspark_ver = None
     try:
         import pyspark
     except ImportError:
@@ -33,7 +54,7 @@ def assert_pyspark_version():
         )
     else:
         pyspark_ver = getattr(pyspark, "__version__")
-        if pyspark_ver is None or pyspark_ver < "2.4":
+        if pyspark_ver is None or LooseVersion(pyspark_ver) < LooseVersion("2.4"):
             logging.warning(
                 'Found pyspark version "{}" installed. pyspark>=2.4.0 is recommended.'.format(
                     pyspark_ver if pyspark_ver is not None else "<unknown version>"
@@ -41,6 +62,7 @@ def assert_pyspark_version():
             )
 
 
+assert_python_version()
 assert_pyspark_version()
 
 import pyspark
@@ -86,7 +108,10 @@ if (
     os.environ["PYARROW_IGNORE_TIMEZONE"] = "1"
 
 from databricks.koalas.frame import DataFrame
-from databricks.koalas.indexes import Index, MultiIndex
+from databricks.koalas.indexes.base import Index
+from databricks.koalas.indexes.datetimes import DatetimeIndex
+from databricks.koalas.indexes.multi import MultiIndex
+from databricks.koalas.indexes.numeric import Float64Index, Int64Index
 from databricks.koalas.series import Series
 from databricks.koalas.groupby import NamedAgg
 
@@ -100,6 +125,9 @@ __all__ = [  # noqa: F405
     "Series",
     "Index",
     "MultiIndex",
+    "Int64Index",
+    "Float64Index",
+    "DatetimeIndex",
     "sql",
     "range",
     "concat",

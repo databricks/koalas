@@ -461,10 +461,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
     def test_empty_dataframe(self):
         pdf = pd.DataFrame({"a": pd.Series([], dtype="i1"), "b": pd.Series([], dtype="str")})
 
-        self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+        kdf = ks.from_pandas(pdf)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kdf, pdf)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kdf, pdf)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(kdf, pdf)
 
     def test_all_null_dataframe(self):
         pdf = pd.DataFrame(
@@ -491,10 +497,16 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             },
         )
 
-        self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+        kdf = ks.from_pandas(pdf)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kdf, pdf)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kdf, pdf)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assertRaises(ValueError, lambda: ks.from_pandas(pdf))
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(kdf, pdf)
 
     def test_nullable_object(self):
         pdf = pd.DataFrame(
@@ -5192,3 +5204,47 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             # Test `inplace=True`
             kdf.backfill(inplace=True)
             self.assert_eq(expected, kdf)
+
+    def test_align(self):
+        pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        kdf1 = ks.from_pandas(pdf1)
+
+        for join in ["outer", "inner", "left", "right"]:
+            for axis in [None, 0, 1]:
+                kdf_l, kdf_r = kdf1.align(kdf1[["b"]], join=join, axis=axis)
+                pdf_l, pdf_r = pdf1.align(pdf1[["b"]], join=join, axis=axis)
+                self.assert_eq(kdf_l, pdf_l)
+                self.assert_eq(kdf_r, pdf_r)
+
+                kdf_l, kdf_r = kdf1[["a"]].align(kdf1[["b", "a"]], join=join, axis=axis)
+                pdf_l, pdf_r = pdf1[["a"]].align(pdf1[["b", "a"]], join=join, axis=axis)
+                self.assert_eq(kdf_l, pdf_l)
+                self.assert_eq(kdf_r, pdf_r)
+
+                kdf_l, kdf_r = kdf1[["b", "a"]].align(kdf1[["a"]], join=join, axis=axis)
+                pdf_l, pdf_r = pdf1[["b", "a"]].align(pdf1[["a"]], join=join, axis=axis)
+                self.assert_eq(kdf_l, pdf_l)
+                self.assert_eq(kdf_r, pdf_r)
+
+        kdf_l, kdf_r = kdf1.align(kdf1["b"], axis=0)
+        pdf_l, pdf_r = pdf1.align(pdf1["b"], axis=0)
+        self.assert_eq(kdf_l, pdf_l)
+        self.assert_eq(kdf_r, pdf_r)
+
+        kdf_l, kser_b = kdf1[["a"]].align(kdf1["b"], axis=0)
+        pdf_l, pser_b = pdf1[["a"]].align(pdf1["b"], axis=0)
+        self.assert_eq(kdf_l, pdf_l)
+        self.assert_eq(kser_b, pser_b)
+
+        self.assertRaises(ValueError, lambda: kdf1.align(kdf1, join="unknown"))
+        self.assertRaises(ValueError, lambda: kdf1.align(kdf1["b"]))
+        self.assertRaises(NotImplementedError, lambda: kdf1.align(kdf1["b"], axis=1))
+
+        pdf2 = pd.DataFrame({"a": [4, 5, 6], "d": ["d", "e", "f"]}, index=[10, 11, 12])
+        kdf2 = ks.from_pandas(pdf2)
+
+        for join in ["outer", "inner", "left", "right"]:
+            kdf_l, kdf_r = kdf1.align(kdf2, join=join, axis=1)
+            pdf_l, pdf_r = pdf1.align(pdf2, join=join, axis=1)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())

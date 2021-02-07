@@ -25,7 +25,11 @@ import pyspark
 
 import databricks.koalas as ks
 from databricks.koalas.exceptions import PandasNotImplementedError
-from databricks.koalas.missing.indexes import MissingPandasLikeIndex, MissingPandasLikeMultiIndex
+from databricks.koalas.missing.indexes import (
+    MissingPandasLikeDatetimeIndex,
+    MissingPandasLikeIndex,
+    MissingPandasLikeMultiIndex,
+)
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils, SPARK_CONF_ARROW_ENABLED
 
 
@@ -43,6 +47,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_index(self):
         for pdf in [
+            pd.DataFrame(np.random.randn(10, 5), index=np.random.randint(100, size=10)),
+            pd.DataFrame(
+                np.random.randn(10, 5), index=np.random.randint(100, size=10).astype(np.int32)
+            ),
+            pd.DataFrame(np.random.randn(10, 5), index=np.random.randn(10)),
+            pd.DataFrame(np.random.randn(10, 5), index=np.random.randn(10).astype(np.float32)),
             pd.DataFrame(np.random.randn(10, 5), index=list("abcdefghij")),
             pd.DataFrame(
                 np.random.randn(10, 5), index=pd.date_range("2011-01-01", freq="D", periods=10)
@@ -51,14 +61,17 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         ]:
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.index, pdf.index)
+            self.assert_eq(type(kdf.index).__name__, type(pdf.index).__name__)
 
     def test_index_getattr(self):
         kidx = self.kdf.index
         item = "databricks"
 
-        expected_error_message = "'Index' object has no attribute '{}'".format(item)
+        expected_error_message = "'.*Index' object has no attribute '{}'".format(item)
         with self.assertRaisesRegex(AttributeError, expected_error_message):
             kidx.__getattr__(item)
+        with self.assertRaisesRegex(AttributeError, expected_error_message):
+            ks.from_pandas(pd.date_range("2011-01-01", freq="D", periods=10)).__getattr__(item)
 
     def test_multi_index_getattr(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
@@ -394,7 +407,9 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             midx.symmetric_difference(idx)
 
     def test_missing(self):
-        kdf = ks.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9]})
+        kdf = ks.DataFrame(
+            {"a": [1, 2, 3], "b": [4, 5, 6], "c": pd.date_range("2011-01-01", freq="D", periods=3)}
+        )
 
         # Index functions
         missing_functions = inspect.getmembers(MissingPandasLikeIndex, inspect.isfunction)
@@ -437,6 +452,27 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 PandasNotImplementedError, "method.*Index.*{}.*is deprecated".format(name)
             ):
                 getattr(kdf.set_index(["a", "b"]).index, name)()
+
+        # DatetimeIndex functions
+        missing_functions = inspect.getmembers(MissingPandasLikeDatetimeIndex, inspect.isfunction)
+        unsupported_functions = [
+            name for (name, type_) in missing_functions if type_.__name__ == "unsupported_function"
+        ]
+        for name in unsupported_functions:
+            with self.assertRaisesRegex(
+                PandasNotImplementedError,
+                "method.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name),
+            ):
+                getattr(kdf.set_index("c").index, name)()
+
+        deprecated_functions = [
+            name for (name, type_) in missing_functions if type_.__name__ == "deprecated_function"
+        ]
+        for name in deprecated_functions:
+            with self.assertRaisesRegex(
+                PandasNotImplementedError, "method.*Index.*{}.*is deprecated".format(name)
+            ):
+                getattr(kdf.set_index("c").index, name)()
 
         # Index properties
         missing_properties = inspect.getmembers(
@@ -491,6 +527,22 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 PandasNotImplementedError, "property.*Index.*{}.*is deprecated".format(name)
             ):
                 getattr(kdf.set_index(["a", "b"]).index, name)
+
+        # DatetimeIndex properties
+        missing_properties = inspect.getmembers(
+            MissingPandasLikeDatetimeIndex, lambda o: isinstance(o, property)
+        )
+        unsupported_properties = [
+            name
+            for (name, type_) in missing_properties
+            if type_.fget.__name__ == "unsupported_property"
+        ]
+        for name in unsupported_properties:
+            with self.assertRaisesRegex(
+                PandasNotImplementedError,
+                "property.*Index.*{}.*not implemented( yet\\.|\\. .+)".format(name),
+            ):
+                getattr(kdf.set_index("c").index, name)
 
     def test_index_has_duplicates(self):
         indexes = [("a", "b", "c"), ("a", "a", "c"), (1, 3, 3), (1, 2, 3)]
@@ -1583,46 +1635,76 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         # other = MultiIndex
         pmidx = pd.MultiIndex.from_tuples([("a", "x"), ("b", "y"), ("c", "z")])
         kmidx = ks.from_pandas(pmidx)
-        self.assert_eq(
-            pidx.intersection(pmidx), kidx.intersection(kmidx).sort_values(), almost=True
-        )
-        self.assert_eq(
-            (pidx + 1).intersection(pmidx),
-            (kidx + 1).intersection(kmidx).sort_values(),
-            almost=True,
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+            self.assert_eq(
+                kidx.intersection(kmidx).sort_values(),
+                kidx._kdf.head(0).index.rename(None),
+                almost=True,
+            )
+            self.assert_eq(
+                (kidx + 1).intersection(kmidx).sort_values(),
+                kidx._kdf.head(0).index.rename(None),
+                almost=True,
+            )
+        else:
+            self.assert_eq(
+                pidx.intersection(pmidx), kidx.intersection(kmidx).sort_values(), almost=True
+            )
+            self.assert_eq(
+                (pidx + 1).intersection(pmidx),
+                (kidx + 1).intersection(kmidx).sort_values(),
+                almost=True,
+            )
 
         # other = Series
         pser = pd.Series([3, 4, 5, 6])
         kser = ks.from_pandas(pser)
-        self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
-        self.assert_eq((pidx + 1).intersection(pser), (kidx + 1).intersection(kser).sort_values())
+        if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+            self.assert_eq(kidx.intersection(kser).sort_values(), ks.Index([3, 4], name="Koalas"))
+            self.assert_eq(
+                (kidx + 1).intersection(kser).sort_values(), ks.Index([3, 4, 5], name="Koalas")
+            )
+        else:
+            self.assert_eq(pidx.intersection(pser), kidx.intersection(kser).sort_values())
+            self.assert_eq(
+                (pidx + 1).intersection(pser), (kidx + 1).intersection(kser).sort_values()
+            )
 
         pser_different_name = pd.Series([3, 4, 5, 6], name="Databricks")
         kser_different_name = ks.from_pandas(pser_different_name)
-        self.assert_eq(
-            pidx.intersection(pser_different_name),
-            kidx.intersection(kser_different_name).sort_values(),
-        )
-        self.assert_eq(
-            (pidx + 1).intersection(pser_different_name),
-            (kidx + 1).intersection(kser_different_name).sort_values(),
-        )
+        if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+            self.assert_eq(
+                kidx.intersection(kser_different_name).sort_values(),
+                ks.Index([3, 4], name="Koalas"),
+            )
+            self.assert_eq(
+                (kidx + 1).intersection(kser_different_name).sort_values(),
+                ks.Index([3, 4, 5], name="Koalas"),
+            )
+        else:
+            self.assert_eq(
+                pidx.intersection(pser_different_name),
+                kidx.intersection(kser_different_name).sort_values(),
+            )
+            self.assert_eq(
+                (pidx + 1).intersection(pser_different_name),
+                (kidx + 1).intersection(kser_different_name).sort_values(),
+            )
 
-        # other = list
-        other = [3, 4, 5, 6]
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
-        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
-
-        # other = tuple
-        other = (3, 4, 5, 6)
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
-        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
-
-        # other = dict
-        other = {3: None, 4: None, 5: None, 6: None}
-        self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
-        self.assert_eq((pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values())
+        others = ([3, 4, 5, 6], (3, 4, 5, 6), {3: None, 4: None, 5: None, 6: None})
+        for other in others:
+            if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+                self.assert_eq(
+                    kidx.intersection(other).sort_values(), ks.Index([3, 4], name="Koalas")
+                )
+                self.assert_eq(
+                    (kidx + 1).intersection(other).sort_values(), ks.Index([3, 4, 5], name="Koalas")
+                )
+            else:
+                self.assert_eq(pidx.intersection(other), kidx.intersection(other).sort_values())
+                self.assert_eq(
+                    (pidx + 1).intersection(other), (kidx + 1).intersection(other).sort_values()
+                )
 
         # MultiIndex / other = Index
         self.assert_eq(

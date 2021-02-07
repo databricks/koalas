@@ -20,9 +20,7 @@ Contains useful utils to generate reStructuredText files for Sphinx.
 """
 
 import shutil
-import subprocess
 import sys
-import tempfile
 from distutils.version import LooseVersion
 from urllib.error import HTTPError
 from urllib.request import urlopen, Request
@@ -196,39 +194,6 @@ def download_pandoc_if_needed(path):
         print("* Pandoc executable was found in your path, skipping installing pandoc...")
         return
 
-    # This is to patch https://github.com/bebraw/pypandoc/pull/154.
-    # We can remove when pypandoc is upgraded.
-    def _handle_linux(filename, targetfolder):
-
-        print("* Unpacking %s to tempfolder..." % (filename))
-
-        tempfolder = tempfile.mkdtemp()
-        cur_wd = os.getcwd()
-        filename = os.path.abspath(filename)
-        try:
-            os.chdir(tempfolder)
-            cmd = ["ar", "x", filename]
-            # if only 3.5 is supported, should be `run(..., check=True)`
-            subprocess.check_call(cmd)
-            files = os.listdir(".")
-            archive_name = next(x for x in files if x.startswith('data.tar'))
-            cmd = ["tar", "xf", archive_name]
-            subprocess.check_call(cmd)
-            # pandoc and pandoc-citeproc are in ./usr/bin subfolder
-            for exe in ["pandoc", "pandoc-citeproc"]:
-                src = os.path.join(tempfolder, "usr", "bin", exe)
-                dst = os.path.join(targetfolder, exe)
-                print("* Copying %s to %s ..." % (exe, targetfolder))
-                shutil.copyfile(src, dst)
-                pandoc_download._make_executable(dst)
-            src = os.path.join(tempfolder, "usr", "share", "doc", "pandoc", "copyright")
-            dst = os.path.join(targetfolder, "copyright.pandoc")
-            print("* Copying copyright to %s ..." % (targetfolder))
-            shutil.copyfile(src, dst)
-        finally:
-            os.chdir(cur_wd)
-            shutil.rmtree(tempfolder)
-
     pandoc_urls, _ = retry(pandoc_download._get_pandoc_urls, version="latest")
     pf = sys.platform
     if pf.startswith("linux"):
@@ -250,7 +215,6 @@ def download_pandoc_if_needed(path):
         if not os.path.isfile(filename) or not os.path.isfile("pandoc"):
             def download_pandoc():
                 try:
-                    pandoc_download._handle_linux = _handle_linux
                     return pandoc_download.download_pandoc(targetfolder=path, version="latest")
                 except Exception as e:
                     if os.path.isfile(filename):

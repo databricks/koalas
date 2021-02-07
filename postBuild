@@ -19,5 +19,5 @@
 
 # Install PySpark manually because it does not exist in requirement file.
 # This file is used in Binder integration.
-pip install 'pyspark>=2.4'
+pip install 'pyspark>=2.4' 'matplotlib>=3.0.0,<3.3.0' 'plotly>=4.8'
 echo "export PYARROW_IGNORE_TIMEZONE=1" >> ~/.profile

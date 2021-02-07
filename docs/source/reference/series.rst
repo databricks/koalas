@@ -160,6 +160,7 @@ Reindexing / Selection / Label manipulation
 .. autosummary::
    :toctree: api/
 
+   Series.align
    Series.drop
    Series.droplevel
    Series.drop_duplicates

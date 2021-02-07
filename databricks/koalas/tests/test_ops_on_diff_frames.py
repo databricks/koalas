@@ -946,13 +946,29 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame(pdf)
         another_kdf = ks.DataFrame(pdf)
 
-        kdf.iloc[[1, 2], [1]] = -another_kdf.max_speed
-        pdf.iloc[[1, 2], [1]] = -pdf.max_speed
+        kdf.iloc[[0, 1, 2], 1] = -another_kdf.max_speed
+        pdf.iloc[[0, 1, 2], 1] = -pdf.max_speed
         self.assert_eq(kdf, pdf)
 
-        kdf.iloc[[0], 1] = 10 * another_kdf.max_speed
-        pdf.iloc[[0], 1] = 10 * pdf.max_speed
+        # TODO: matching the behavior with pandas 1.2 and uncomment below test
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "shape mismatch: value array of shape (3,) could not be broadcast to indexing "
+        #     "result of shape (2,1)",
+        # ):
+        #     kdf.iloc[[1, 2], [1]] = -another_kdf.max_speed
+
+        kdf.iloc[[0, 1, 2], 1] = 10 * another_kdf.max_speed
+        pdf.iloc[[0, 1, 2], 1] = 10 * pdf.max_speed
         self.assert_eq(kdf, pdf)
+
+        # TODO: matching the behavior with pandas 1.2 and uncomment below test
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "shape mismatch: value array of shape (3,) could not be broadcast to indexing "
+        #     "result of shape (1,)",
+        # ):
+        #     kdf.iloc[[0], 1] = 10 * another_kdf.max_speed
 
     def test_series_loc_setitem(self):
         pdf = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}, index=["cobra", "viper", "sidewinder"])
@@ -1046,23 +1062,42 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser_another = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
         kser_another = ks.from_pandas(pser_another)
 
-        kser.iloc[[1, 2]] = -kser_another
-        pser.iloc[[1, 2]] = -pser_another
+        kser.iloc[[0, 1, 2]] = -kser_another
+        pser.iloc[[0, 1, 2]] = -pser_another
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
         self.assert_eq(ksery, psery)
 
-        kser.iloc[[0]] = 10 * kser_another
-        pser.iloc[[0]] = 10 * pser_another
+        # TODO: matching the behavior with pandas 1.2 and uncomment below test.
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "cannot set using a list-like indexer with a different length than the value",
+        # ):
+        #     kser.iloc[[1, 2]] = -kser_another
+
+        kser.iloc[[0, 1, 2]] = 10 * kser_another
+        pser.iloc[[0, 1, 2]] = 10 * pser_another
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
         self.assert_eq(ksery, psery)
 
-        kser1.iloc[[1, 2]] = -kser_another
-        pser1.iloc[[1, 2]] = -pser_another
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "cannot set using a list-like indexer with a different length than the value",
+        # ):
+        #     kser.iloc[[0]] = 10 * kser_another
+
+        kser1.iloc[[0, 1, 2]] = -kser_another
+        pser1.iloc[[0, 1, 2]] = -pser_another
         self.assert_eq(kser1, pser1)
         self.assert_eq(kdf, pdf)
         self.assert_eq(ksery, psery)
+
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "cannot set using a list-like indexer with a different length than the value",
+        # ):
+        #     kser1.iloc[[1, 2]] = -kser_another
 
         pdf = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]}, index=["cobra", "viper", "sidewinder"])
         kdf = ks.from_pandas(pdf)
@@ -1075,17 +1110,30 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         piloc = pser.iloc
         kiloc = kser.iloc
 
-        kiloc[[1, 2]] = -kser_another
-        piloc[[1, 2]] = -pser_another
+        kiloc[[0, 1, 2]] = -kser_another
+        piloc[[0, 1, 2]] = -pser_another
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
         self.assert_eq(ksery, psery)
 
-        kiloc[[0]] = 10 * kser_another
-        piloc[[0]] = 10 * pser_another
+        # TODO: matching the behavior with pandas 1.2 and uncomment below test.
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "cannot set using a list-like indexer with a different length than the value",
+        # ):
+        #     kiloc[[1, 2]] = -kser_another
+
+        kiloc[[0, 1, 2]] = 10 * kser_another
+        piloc[[0, 1, 2]] = 10 * pser_another
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
         self.assert_eq(ksery, psery)
+
+        # with self.assertRaisesRegex(
+        #     ValueError,
+        #     "cannot set using a list-like indexer with a different length than the value",
+        # ):
+        #     kiloc[[0]] = 10 * kser_another
 
     def test_update(self):
         pdf = pd.DataFrame({"x": [1, 2, 3], "y": [10, 20, 30]})
@@ -1370,6 +1418,72 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kidx1 * 10 + kidx3, (pidx1 * 10 + pidx3).rename(None))
 
+    def test_align(self):
+        pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        pdf2 = pd.DataFrame({"a": [4, 5, 6], "c": ["d", "e", "f"]}, index=[10, 11, 12])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        for join in ["outer", "inner", "left", "right"]:
+            for axis in [None, 0]:
+                kdf_l, kdf_r = kdf1.align(kdf2, join=join, axis=axis)
+                pdf_l, pdf_r = pdf1.align(pdf2, join=join, axis=axis)
+                self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+                self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+        pser1 = pd.Series([7, 8, 9], index=[10, 11, 12])
+        pser2 = pd.Series(["g", "h", "i"], index=[10, 20, 30])
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        for join in ["outer", "inner", "left", "right"]:
+            kser_l, kser_r = kser1.align(kser2, join=join)
+            pser_l, pser_r = pser1.align(pser2, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kdf_l, kser_r = kdf1.align(kser1, join=join, axis=0)
+            pdf_l, pser_r = pdf1.align(pser1, join=join, axis=0)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kser_l, kdf_r = kser1.align(kdf1, join=join)
+            pser_l, pdf_r = pser1.align(pdf1, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+        # multi-index columns
+        pdf3 = pd.DataFrame(
+            {("x", "a"): [4, 5, 6], ("y", "c"): ["d", "e", "f"]}, index=[10, 11, 12]
+        )
+        kdf3 = ks.from_pandas(pdf3)
+        pser3 = pdf3[("y", "c")]
+        kser3 = kdf3[("y", "c")]
+
+        for join in ["outer", "inner", "left", "right"]:
+            kdf_l, kdf_r = kdf1.align(kdf3, join=join, axis=0)
+            pdf_l, pdf_r = pdf1.align(pdf3, join=join, axis=0)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+            kser_l, kser_r = kser1.align(kser3, join=join)
+            pser_l, pser_r = pser1.align(pser3, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kdf_l, kser_r = kdf1.align(kser3, join=join, axis=0)
+            pdf_l, pser_r = pdf1.align(pser3, join=join, axis=0)
+            self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
+            self.assert_eq(kser_r.sort_index(), pser_r.sort_index())
+
+            kser_l, kdf_r = kser3.align(kdf1, join=join)
+            pser_l, pdf_r = pser3.align(pdf1, join=join)
+            self.assert_eq(kser_l.sort_index(), pser_l.sort_index())
+            self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+        self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=None))
+        self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=1))
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
@@ -1511,3 +1625,15 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.mask(kdf2 > -250)
+
+    def test_align(self):
+        pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
+        pdf2 = pd.DataFrame({"a": [4, 5, 6], "c": ["d", "e", "f"]}, index=[10, 11, 12])
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf1.align(kdf2)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kdf1.align(kdf2, axis=0)

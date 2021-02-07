@@ -97,6 +97,7 @@ __all__ = [
     "merge",
     "to_numeric",
     "broadcast",
+    "read_orc",
 ]
 
 
@@ -2597,6 +2598,64 @@ def broadcast(obj) -> DataFrame:
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj).__name__))
     return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
+
+
+def read_orc(
+    path,
+    columns: Optional[List[str]] = None,
+    index_col: Optional[Union[str, List[str]]] = None,
+    **options
+) -> "DataFrame":
+    """
+    Load an ORC object from the file path, returning a DataFrame.
+
+    Parameters
+    ----------
+    path : str
+        The path string storing the ORC file to be read.
+    columns : list, default None
+        If not None, only these columns will be read from the file.
+    index_col : str or list of str, optional, default: None
+        Index column of table in Spark.
+    options : dict
+        All other options passed directly into Spark's data source.
+
+    Returns
+    -------
+    DataFrame
+
+    Examples
+    --------
+    >>> ks.range(1).to_orc('%s/read_spark_io/data.orc' % path)
+    >>> ks.read_orc('%s/read_spark_io/data.orc' % path, columns=['id'])
+       id
+    0   0
+
+    You can preserve the index in the roundtrip as below.
+
+    >>> ks.range(1).to_orc('%s/read_spark_io/data.orc' % path, index_col="index")
+    >>> ks.read_orc('%s/read_spark_io/data.orc' % path, columns=['id'], index_col="index")
+    ... # doctest: +NORMALIZE_WHITESPACE
+           id
+    index
+    0       0
+    """
+    if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
+        options = options.get("options")  # type: ignore
+
+    kdf = read_spark_io(path, format="orc", index_col=index_col, **options)
+
+    if columns is not None:
+        kdf_columns = kdf.columns
+        new_columns = list()
+        for column in list(columns):
+            if column in kdf_columns:
+                new_columns.append(column)
+            else:
+                raise ValueError("Unknown column name '{}'".format(column))
+        kdf = kdf[new_columns]
+
+    return kdf
 
 
 def _get_index_map(

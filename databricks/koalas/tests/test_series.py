@@ -84,28 +84,38 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
 
     def test_empty_series(self):
-        a = pd.Series([], dtype="i1")
-        b = pd.Series([], dtype="str")
+        pser_a = pd.Series([], dtype="i1")
+        pser_b = pd.Series([], dtype="str")
 
-        self.assert_eq(ks.from_pandas(a), a)
-        self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+        self.assert_eq(ks.from_pandas(pser_a), pser_a)
+
+        kser_b = ks.from_pandas(pser_b)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kser_b, pser_b)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kser_b, pser_b)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assert_eq(ks.from_pandas(a), a)
-            self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+            self.assert_eq(ks.from_pandas(pser_a), pser_a)
+            self.assert_eq(ks.from_pandas(pser_b), pser_b)
 
     def test_all_null_series(self):
-        a = pd.Series([None, None, None], dtype="float64")
-        b = pd.Series([None, None, None], dtype="str")
+        pser_a = pd.Series([None, None, None], dtype="float64")
+        pser_b = pd.Series([None, None, None], dtype="str")
 
-        self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-        self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
-        self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+        self.assert_eq(ks.from_pandas(pser_a), pser_a)
+
+        kser_b = ks.from_pandas(pser_b)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kser_b, pser_b)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kser_b, pser_b)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-            self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
-            self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+            self.assert_eq(ks.from_pandas(pser_a), pser_a)
+            self.assert_eq(ks.from_pandas(pser_b), pser_b)
 
     def test_head(self):
         kser = self.kser
@@ -2639,3 +2649,21 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             # Test `inplace=True`
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
+
+    def test_align(self):
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
+        kdf = ks.from_pandas(pdf)
+
+        for join in ["outer", "inner", "left", "right"]:
+            for axis in [None, 0]:
+                kser_l, kser_r = kdf.a.align(kdf.b, join=join, axis=axis)
+                pser_l, pser_r = pdf.a.align(pdf.b, join=join, axis=axis)
+                self.assert_eq(kser_l, pser_l)
+                self.assert_eq(kser_r, pser_r)
+
+                kser_l, kdf_r = kdf.b.align(kdf[["b", "a"]], join=join, axis=axis)
+                pser_l, pdf_r = pdf.b.align(pdf[["b", "a"]], join=join, axis=axis)
+                self.assert_eq(kser_l, pser_l)
+                self.assert_eq(kdf_r, pdf_r)
+
+        self.assertRaises(ValueError, lambda: kdf.a.align(kdf.b, axis=1))
