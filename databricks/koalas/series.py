@@ -657,26 +657,25 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        # pandas won't keep the name with `eq` when `other` is list or tuple,
-        # whereas `__eq__` always keeps the name.
         if isinstance(other, (list, tuple)):
-            if len(self) == len(other):
-                other = ks.Series(other)
-            else:
-                raise ValueError("Lengths must be equal")
-        return self == other
+            other = ks.Index(other, name=self.name)
+        # pandas always returns False for all items with dict and set.
+        elif isinstance(other, (dict, set)):
+            return self != self
+        return IndexOpsMixin.__eq__(self, other)
 
     equals = eq
 
     def __eq__(self, other):
         if isinstance(other, (list, tuple)):
-            if len(self) == len(other):
-                other = ks.Series(other, name=self.name)
-            else:
-                raise ValueError("Lengths must be equal")
+            other = ks.Index(other, name=self.name)
         # pandas always returns False for all items with dict and set.
         elif isinstance(other, (dict, set)):
             return self != self
+        # pandas doesn't support `==` for different Index, but support for `eq` function.
+        elif isinstance(other, ks.Series):
+            if not self.index.equals(other.index):
+                raise ValueError("Can only compare identically-labeled Series objects")
         return IndexOpsMixin.__eq__(self, other)
 
     def gt(self, other) -> "Series":

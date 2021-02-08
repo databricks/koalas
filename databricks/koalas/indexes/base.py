@@ -353,8 +353,10 @@ class Index(IndexOpsMixin):
                     # some exceptions when 'compute.ops_on_diff_frames' is enabled.
                     # Working around for now via using frame.
                     return (
-                        self.to_series("self").reset_index(drop=True)
-                        == other.to_series("other").reset_index(drop=True)
+                        IndexOpsMixin.__eq__(
+                            self.to_series("self").reset_index(drop=True),
+                            other.to_series("other").reset_index(drop=True),
+                        )
                     ).all()
             else:
                 raise ValueError(ERROR_MESSAGE_CANNOT_COMBINE)

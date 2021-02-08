@@ -2668,20 +2668,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.eq(other), kser.eq(other))
         self.assert_eq(pser == other, kser == other)
 
-        # other = list with the different length
-        other = [np.nan, 1, 3, 4, np.nan]
-        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
-            kser.eq(other)
-        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
-            kser == other
-
-        # other = tuple with the different length
-        other = (np.nan, 1, 3, 4, np.nan)
-        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
-            kser.eq(other)
-        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
-            kser == other
-
     def test_align(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
         kdf = ks.from_pandas(pdf)

@@ -1428,6 +1428,17 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
         self.assert_eq(pser == pandas_other, (kser == koalas_other).sort_index())
 
+        # other = Series with different Index
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], index=[10, 20, 30, 40, 50, 60], name="x"
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
+        with self.assertRaisesRegex(
+            ValueError, "Can only compare identically-labeled Series objects"
+        ):
+            kser == koalas_other
+
         # other = Index
         pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
         koalas_other = ks.from_pandas(pandas_other)
@@ -1436,13 +1447,43 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # other = list
         other = [np.nan, 1, 3, 4, np.nan, 6]
-        self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
-        self.assert_eq(pser == other, (kser == other).sort_index())
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
+            self.assert_eq(pser == other, (kser == other).sort_index())
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other).sort_index())
+            self.assert_eq((pser == other).rename("x"), (kser == other).sort_index())
 
         # other = tuple
         other = (np.nan, 1, 3, 4, np.nan, 6)
-        self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
-        self.assert_eq(pser == other, (kser == other).sort_index())
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
+            self.assert_eq(pser == other, (kser == other).sort_index())
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other).sort_index())
+            self.assert_eq((pser == other).rename("x"), (kser == other).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.eq(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser == other
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.eq(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser == other
 
     def test_align(self):
         pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
