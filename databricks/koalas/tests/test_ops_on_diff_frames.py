@@ -1422,7 +1422,13 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
         self.assert_eq(kidx1.rename(None) * 10 + kidx2, pidx1.rename(None) * 10 + pidx2)
-        self.assert_eq(kidx1 * 10 + kidx2.rename(None), pidx1 * 10 + pidx2.rename(None))
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(kidx1 * 10 + kidx2.rename(None), pidx1 * 10 + pidx2.rename(None))
+        else:
+            self.assert_eq(
+                kidx1 * 10 + kidx2.rename(None), (pidx1 * 10 + pidx2.rename(None)).rename(None)
+            )
 
         pidx3 = pd.Index([11, 12, 13])
         kidx3 = ks.from_pandas(pidx3)
@@ -1440,7 +1446,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kidx3 = ks.from_pandas(pidx3)
 
         self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
-        self.assert_eq(kidx1.rename(None) * 10 + kidx2, pidx1.rename(None) * 10 + pidx2)
 
         if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
             self.assert_eq(kidx1 * 10 + kidx3, pidx1 * 10 + pidx3)
