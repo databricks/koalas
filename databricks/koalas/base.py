@@ -96,7 +96,11 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
     cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
 
     if isinstance(this_index_ops, Series) and all(isinstance(col, Series) for col in cols):
-        combined = combine_frames(this_index_ops.to_frame(), *cols, how="full")
+        combined = combine_frames(
+            this_index_ops.to_frame(),
+            *[cast(Series, col).rename(i) for i, col in enumerate(cols)],
+            how="full"
+        )
 
         return column_op(func)(
             combined["this"]._kser_for(combined["this"]._internal.column_labels[0]),
@@ -104,7 +108,7 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
                 combined["that"]._kser_for(label)
                 for label in combined["that"]._internal.column_labels
             ]
-        )
+        ).rename(this_index_ops.name)
     else:
         # This could cause as many counts, reset_index calls, joins for combining
         # as the number of `Index`s in `args`. So far it's fine since we can assume the ops
@@ -137,10 +141,10 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
             elif isinstance(this_index_ops, Series):
                 this = this_index_ops.reset_index()
                 that = [
-                    cast(Series, col.to_series() if isinstance(col, Index) else col).reset_index(
-                        drop=True
-                    )
-                    for col in cols
+                    cast(Series, col.to_series() if isinstance(col, Index) else col)
+                    .rename(i)
+                    .reset_index(drop=True)
+                    for i, col in enumerate(cols)
                 ]
 
                 combined = combine_frames(this, *that, how="full").sort_index()
@@ -155,13 +159,16 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
                         combined["that"]._kser_for(label)
                         for label in combined["that"]._internal.column_labels
                     ]
-                )
+                ).rename(this_index_ops.name)
             else:
                 this = cast(Index, this_index_ops).to_frame().reset_index(drop=True)
 
                 that_series = next(col for col in cols if isinstance(col, Series))
                 that_frame = that_series._kdf[
-                    [col.to_series() if isinstance(col, Index) else col for col in cols]
+                    [
+                        cast(Series, col.to_series() if isinstance(col, Index) else col).rename(i)
+                        for i, col in enumerate(cols)
+                    ]
                 ]
 
                 combined = combine_frames(this, that_frame.reset_index()).sort_index()
@@ -176,8 +183,12 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
                 other.index.names = that_series._internal.index_names
 
                 return column_op(func)(
-                    self_index, *[other._kser_for(label) for label in other._internal.column_labels]
-                )
+                    self_index,
+                    *[
+                        other._kser_for(label)
+                        for label, col in zip(other._internal.column_labels, cols)
+                    ]
+                ).rename(that_series.name)
 
 
 def booleanize_null(left_scol, scol, f) -> Column:
