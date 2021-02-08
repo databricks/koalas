@@ -1386,27 +1386,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype(str), pser.astype(str))
 
         pser = pd.Series(["hi", "hi ", " ", " \t", "", None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
-        # TODO: restore after pandas 1.1.4 is released.
-        # self.assert_eq(kser.astype(str).tolist(), pser.astype(str).tolist())
-        self.assert_eq(kser.astype(str).tolist(), ["hi", "hi ", " ", " \t", "", "None"])
+        if LooseVersion("1.1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.1.4"):
+            # a pandas bug: https://github.com/databricks/koalas/pull/1818#issuecomment-703961980
+            self.assert_eq(kser.astype(str).tolist(), ["hi", "hi ", " ", " \t", "", "None"])
+        else:
+            self.assert_eq(kser.astype(str), pser.astype(str))
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
         pser = pd.Series([True, False, None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype(str), pser.astype(str))
 
-        pser = pd.Series(["2020-10-27"], name="x")
+        pser = pd.Series(["2020-10-27 00:00:01", None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(np.datetime64), pser.astype(np.datetime64))
         self.assert_eq(kser.astype("datetime64[ns]"), pser.astype("datetime64[ns]"))
         self.assert_eq(kser.astype("M"), pser.astype("M"))
+        self.assert_eq(kser.astype("M").astype(str), pser.astype("M").astype(str))
+        self.assert_eq(kser.astype("M").dt.date.astype(str), pser.astype("M").dt.date.astype(str))
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")
