@@ -987,7 +987,7 @@ class InternalFrame(object):
         spark_frame: spark.DataFrame,
         data_columns: Optional[List[str]] = None,
         *,
-        preserve_dtypes: bool = False,
+        preserve_dtypes: bool = False
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates by the specified Spark DataFrame.
 
@@ -1017,7 +1017,7 @@ class InternalFrame(object):
         column_labels: Optional[List[Tuple]] = None,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         *,
-        keep_order: bool = True,
+        keep_order: bool = True
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Columns or Series.
@@ -1149,7 +1149,7 @@ class InternalFrame(object):
         data_dtypes: Optional[Union[List, _NoValueType]] = _NoValue,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         *,
-        preserve_dtypes: bool = False,  # TODO: remove eventually.
+        preserve_dtypes: bool = False  # TODO: remove eventually.
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
