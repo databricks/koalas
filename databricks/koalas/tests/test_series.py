@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import pyspark
 from pyspark.ml.linalg import SparseVector
+from pyspark.sql import functions as F
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import (
@@ -89,6 +90,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         s.rename("a", inplace=True)
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
 
+    def _check_extension(self, kser, pser):
+        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
+        self.assert_eq(kser, pser, check_exact=False)
+        self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+
     @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
     def test_extension_dtypes(self):
         for pser in [
@@ -99,23 +105,29 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ]:
             kser = ks.from_pandas(pser)
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser, pser, check_exact=False)
-            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+            self._check_extension(kser, pser)
+            self._check_extension(kser + F.lit(1).cast("byte"), pser + 1)
+            self._check_extension(kser + kser, pser + pser)
 
     @unittest.skipIf(
         not extension_object_dtypes_available, "pandas extension object dtypes are not available"
     )
     def test_extension_object_dtypes(self):
-        for pser in [
-            pd.Series(["a", None, "c", "d"], dtype="string"),
-            pd.Series([True, False, True, None], dtype="boolean"),
-        ]:
-            kser = ks.from_pandas(pser)
+        # string
+        pser = pd.Series(["a", None, "c", "d"], dtype="string")
+        kser = ks.from_pandas(pser)
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser, pser, check_exact=False)
-            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+        self._check_extension(kser, pser)
+
+        # boolean
+        pser = pd.Series([True, False, True, None], dtype="boolean")
+        kser = ks.from_pandas(pser)
+
+        self._check_extension(kser, pser)
+        # TODO: self._check_extension(kser & kser, pser & pser)
+        # TODO: self._check_extension(kser | kser, pser | pser)
+        # TODO: self._check_extension(kser + kser, pser + pser)
+        # TODO: self._check_extension(kser * kser, pser * pser)
 
     @unittest.skipIf(
         not extension_float_dtypes_available, "pandas extension float dtypes are not available"
@@ -127,9 +139,9 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         ]:
             kser = ks.from_pandas(pser)
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser, pser, check_exact=False)
-            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+            self._check_extension(kser, pser)
+            self._check_extension(kser + 1, pser + 1)
+            self._check_extension(kser + kser, pser + pser)
 
     def test_empty_series(self):
         pser_a = pd.Series([], dtype="i1")
@@ -1432,49 +1444,39 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_dtypes_available:
             from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser.astype("Int8"), pser.astype("Int8"), check_exact=False)
-            self.assert_eq(kser.astype("Int16"), pser.astype("Int16"), check_exact=False)
-            self.assert_eq(kser.astype("Int32"), pser.astype("Int32"), check_exact=False)
-            self.assert_eq(kser.astype("Int64"), pser.astype("Int64"), check_exact=False)
-            self.assert_eq(kser.astype(Int8Dtype()), pser.astype(Int8Dtype()), check_exact=False)
-            self.assert_eq(kser.astype(Int16Dtype()), pser.astype(Int16Dtype()), check_exact=False)
-            self.assert_eq(kser.astype(Int32Dtype()), pser.astype(Int32Dtype()), check_exact=False)
-            self.assert_eq(kser.astype(Int64Dtype()), pser.astype(Int64Dtype()), check_exact=False)
+            self._check_extension(kser.astype("Int8"), pser.astype("Int8"))
+            self._check_extension(kser.astype("Int16"), pser.astype("Int16"))
+            self._check_extension(kser.astype("Int32"), pser.astype("Int32"))
+            self._check_extension(kser.astype("Int64"), pser.astype("Int64"))
+            self._check_extension(kser.astype(Int8Dtype()), pser.astype(Int8Dtype()))
+            self._check_extension(kser.astype(Int16Dtype()), pser.astype(Int16Dtype()))
+            self._check_extension(kser.astype(Int32Dtype()), pser.astype(Int32Dtype()))
+            self._check_extension(kser.astype(Int64Dtype()), pser.astype(Int64Dtype()))
 
         if extension_object_dtypes_available:
             from pandas import StringDtype
 
             # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
             if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
-                self.assert_eq(kser.astype("string"), pser.astype("string"), check_exact=False)
-                self.assert_eq(
-                    kser.astype(StringDtype()), pser.astype(StringDtype()), check_exact=False
-                )
+                self._check_extension(kser.astype("string"), pser.astype("string"))
+                self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))
             else:
-                self.assert_eq(
+                self._check_extension(
                     kser.astype("string"),
                     pd.Series(["10", "20", "15", "30", "45"], name="x", dtype="string"),
-                    check_exact=False,
                 )
-                self.assert_eq(
+                self._check_extension(
                     kser.astype(StringDtype()),
                     pd.Series(["10", "20", "15", "30", "45"], name="x", dtype=StringDtype()),
-                    check_exact=False,
                 )
 
         if extension_float_dtypes_available:
             from pandas import Float32Dtype, Float64Dtype
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser.astype("Float32"), pser.astype("Float32"), check_exact=False)
-            self.assert_eq(kser.astype("Float64"), pser.astype("Float64"), check_exact=False)
-            self.assert_eq(
-                kser.astype(Float32Dtype()), pser.astype(Float32Dtype()), check_exact=False
-            )
-            self.assert_eq(
-                kser.astype(Float64Dtype()), pser.astype(Float64Dtype()), check_exact=False
-            )
+            self._check_extension(kser.astype("Float32"), pser.astype("Float32"))
+            self._check_extension(kser.astype("Float64"), pser.astype("Float64"))
+            self._check_extension(kser.astype(Float32Dtype()), pser.astype(Float32Dtype()))
+            self._check_extension(kser.astype(Float64Dtype()), pser.astype(Float64Dtype()))
 
     def test_astype(self):
         psers = [pd.Series([10, 20, 15, 30, 45], name="x")]
@@ -1507,11 +1509,8 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_object_dtypes_available:
             from pandas import StringDtype
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser.astype("string"), pser.astype("string"), check_exact=False)
-            self.assert_eq(
-                kser.astype(StringDtype()), pser.astype(StringDtype()), check_exact=False
-            )
+            self._check_extension(kser.astype("string"), pser.astype("string"))
+            self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))
 
         pser = pd.Series([True, False, None], name="x")
         kser = ks.Series(pser)
@@ -1522,27 +1521,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_object_dtypes_available:
             from pandas import BooleanDtype, StringDtype
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(kser.astype("boolean"), pser.astype("boolean"), check_exact=False)
-            self.assert_eq(
-                kser.astype(BooleanDtype()), pser.astype(BooleanDtype()), check_exact=False
-            )
+            self._check_extension(kser.astype("boolean"), pser.astype("boolean"))
+            self._check_extension(kser.astype(BooleanDtype()), pser.astype(BooleanDtype()))
 
             if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
-                self.assert_eq(kser.astype("string"), pser.astype("string"), check_exact=False)
-                self.assert_eq(
-                    kser.astype(StringDtype()), pser.astype(StringDtype()), check_exact=False
-                )
+                self._check_extension(kser.astype("string"), pser.astype("string"))
+                self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))
             else:
-                self.assert_eq(
+                self._check_extension(
                     kser.astype("string"),
                     pd.Series(["True", "False", None], name="x", dtype="string"),
-                    check_exact=False,
                 )
-                self.assert_eq(
+                self._check_extension(
                     kser.astype(StringDtype()),
                     pd.Series(["True", "False", None], name="x", dtype=StringDtype()),
-                    check_exact=False,
                 )
 
         pser = pd.Series(["2020-10-27 00:00:01", None], name="x")
@@ -1557,16 +1549,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_object_dtypes_available:
             from pandas import StringDtype
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-            self.assert_eq(
-                kser.astype("M").astype("string"),
-                pser.astype("M").astype("string"),
-                check_exact=False,
+            self._check_extension(
+                kser.astype("M").astype("string"), pser.astype("M").astype("string")
             )
-            self.assert_eq(
-                kser.astype("M").astype(StringDtype()),
-                pser.astype("M").astype(StringDtype()),
-                check_exact=False,
+            self._check_extension(
+                kser.astype("M").astype(StringDtype()), pser.astype("M").astype(StringDtype())
             )
 
         with self.assertRaisesRegex(TypeError, "not understood"):

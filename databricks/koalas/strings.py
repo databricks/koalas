@@ -2000,7 +2000,7 @@ class StringMethods(object):
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(
-                spark_columns, cast(Optional[List], column_labels)
+                spark_columns, column_labels=cast(Optional[List], column_labels)
             )
             return DataFrame(internal)
         else:
@@ -2136,7 +2136,7 @@ class StringMethods(object):
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(
-                spark_columns, cast(Optional[List], column_labels)
+                spark_columns, column_labels=cast(Optional[List], column_labels)
             )
             return DataFrame(internal)
         else:

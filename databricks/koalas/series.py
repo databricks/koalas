@@ -1058,8 +1058,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             index = (index,)
         scol = self.spark.column.alias(name_like_string(index))
 
-        internal = self._kdf._internal.copy(
-            column_labels=[index], data_spark_columns=[scol], column_label_names=None
+        internal = self._internal.copy(
+            column_labels=[index],
+            data_spark_columns=[scol],
+            column_label_names=None,
+            preserve_dtypes=True,
         )
         kdf = DataFrame(internal)  # type: DataFrame
 
@@ -4919,7 +4922,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             product_ksers = [other._kser_for(label) * self_kser for label in column_labels]
 
             dot_product_kser = DataFrame(
-                other._internal.with_new_columns(product_ksers, column_labels)
+                other._internal.with_new_columns(product_ksers, column_labels=column_labels)
             ).sum()
 
             return cast(Series, dot_product_kser).rename(self.name)

@@ -51,7 +51,7 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
-from databricks.koalas.typedef import as_spark_type, extension_dtypes
+from databricks.koalas.typedef import as_spark_type, extension_dtypes, spark_type_to_pandas_dtype
 from databricks.koalas.utils import (
     combine_frames,
     same_anchor,
@@ -230,11 +230,19 @@ def column_op(f):
             scol = f(self.spark.column, *args)
             scol = booleanize_null(self.spark.column, scol, f)
 
+            spark_type = self._internal.spark_frame.select(scol).schema[0].dataType
+            use_extension_dtypes = any(
+                isinstance(col.dtype, extension_dtypes) for col in [self] + cols
+            )
+            dtype = spark_type_to_pandas_dtype(
+                spark_type, use_extension_dtypes=use_extension_dtypes
+            )
+
             if isinstance(self, Series) or not any(isinstance(col, Series) for col in cols):
-                index_ops = self._with_new_scol(scol)
+                index_ops = self._with_new_scol(scol, dtype=dtype)
             else:
                 kser = next(col for col in cols if isinstance(col, Series))
-                index_ops = kser._with_new_scol(scol)
+                index_ops = kser._with_new_scol(scol, dtype=dtype)
         elif get_option("compute.ops_on_diff_frames"):
             index_ops = align_diff_index_ops(f, self, *args)
         else:

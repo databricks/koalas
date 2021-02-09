@@ -210,7 +210,7 @@ def spark_type_to_pandas_dtype(spark_type: types.DataType, *, use_extension_dtyp
         # IntegralType
         if isinstance(spark_type, types.ByteType):
             return Int8Dtype()
-        elif isinstance(spark_type, types.StructType):
+        elif isinstance(spark_type, types.ShortType):
             return Int16Dtype()
         elif isinstance(spark_type, types.IntegerType):
             return Int32Dtype()

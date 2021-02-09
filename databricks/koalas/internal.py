@@ -980,6 +980,7 @@ class InternalFrame(object):
             spark_frame=sdf,
             index_spark_columns=[scol_for(sdf, col) for col in self.index_spark_column_names],
             data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
+            preserve_dtypes=True,
         )
 
     def with_new_sdf(
@@ -1014,9 +1015,10 @@ class InternalFrame(object):
     def with_new_columns(
         self,
         scols_or_ksers: List[Union[spark.Column, "Series"]],
-        column_labels: Optional[List[Tuple]] = None,
-        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         *,
+        column_labels: Optional[List[Tuple]] = None,
+        data_dtypes: Optional[List] = None,
+        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         keep_order: bool = True
     ) -> "InternalFrame":
         """
@@ -1052,16 +1054,25 @@ class InternalFrame(object):
             )
 
         data_spark_columns = []
-        data_dtypes = []
         for scol_or_kser in scols_or_ksers:
             if isinstance(scol_or_kser, Series):
                 scol = scol_or_kser.spark.column
-                dtype = scol_or_kser.dtype
             else:
                 scol = scol_or_kser
-                dtype = None
             data_spark_columns.append(scol)
-            data_dtypes.append(dtype)
+
+        if data_dtypes is None:
+            data_dtypes = []
+            for scol_or_kser in scols_or_ksers:
+                if isinstance(scol_or_kser, Series):
+                    data_dtypes.append(scol_or_kser.dtype)
+                else:
+                    data_dtypes.append(None)
+        else:
+            assert len(scols_or_ksers) == len(data_dtypes), (
+                len(scols_or_ksers),
+                len(data_dtypes),
+            )
 
         sdf = self.spark_frame
         if not keep_order:

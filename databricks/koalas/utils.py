@@ -34,7 +34,11 @@ from pandas.api.types import is_list_like
 
 # For running doctests and reference resolution in PyCharm.
 from databricks import koalas as ks  # noqa: F401
-from databricks.koalas.typedef.typehints import as_spark_type
+from databricks.koalas.typedef.typehints import (
+    as_spark_type,
+    extension_dtypes,
+    spark_type_to_pandas_dtype,
+)
 
 if TYPE_CHECKING:
     # This is required in old Python 3.5 to prevent circular reference.
@@ -143,16 +147,25 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
                 data_spark_columns=[
                     scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
                 ],
+                preserve_dtypes=True,
             )
 
         this_internal = resolve(this._internal, "this")
         that_internal = resolve(that._internal, "that")
 
         this_index_map = list(
-            zip(this_internal.index_spark_column_names, this_internal.index_names)
+            zip(
+                this_internal.index_spark_column_names,
+                this_internal.index_names,
+                this_internal.index_dtypes,
+            )
         )
         that_index_map = list(
-            zip(that_internal.index_spark_column_names, that_internal.index_names)
+            zip(
+                that_internal.index_spark_column_names,
+                that_internal.index_names,
+                that_internal.index_dtypes,
+            )
         )
         assert len(this_index_map) == len(that_index_map)
 
@@ -168,9 +181,11 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
         # If the same named index is found, that's used.
         index_column_names = []
-        for i, ((this_column, this_name), (that_column, that_name)) in enumerate(
-            this_and_that_index_map
-        ):
+        index_use_extension_dtypes = []
+        for (
+            i,
+            ((this_column, this_name, this_dtype), (that_column, that_name, that_dtype)),
+        ) in enumerate(this_and_that_index_map):
             if this_name == that_name:
                 # We should merge the Spark columns into one
                 # to mimic pandas' behavior.
@@ -181,6 +196,9 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
 
                 column_name = SPARK_INDEX_NAME_FORMAT(i)
                 index_column_names.append(column_name)
+                index_use_extension_dtypes.append(
+                    any(isinstance(dtype, extension_dtypes) for dtype in [this_dtype, that_dtype])
+                )
                 merged_index_scols.append(
                     F.when(this_scol.isNotNull(), this_scol).otherwise(that_scol).alias(column_name)
                 )
@@ -209,12 +227,22 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
             + order_column
         )
 
+        index_spark_columns = [scol_for(joined_df, col) for col in index_column_names]
+        index_dtypes = [
+            spark_type_to_pandas_dtype(field.dataType, use_extension_dtypes=use_extension_dtypes)
+            for field, use_extension_dtypes in zip(
+                joined_df.select(index_spark_columns).schema, index_use_extension_dtypes
+            )
+        ]
+
         index_columns = set(index_column_names)
         new_data_columns = [
             col
             for col in joined_df.columns
             if col not in index_columns and col != NATURAL_ORDER_COLUMN_NAME
         ]
+        data_dtypes = this_internal.data_dtypes + that_internal.data_dtypes
+
         level = max(this_internal.column_labels_level, that_internal.column_labels_level)
 
         def fill_label(label):
@@ -232,10 +260,12 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
         return DataFrame(
             InternalFrame(
                 spark_frame=joined_df,
-                index_spark_columns=[scol_for(joined_df, col) for col in index_column_names],
+                index_spark_columns=index_spark_columns,
                 index_names=this_internal.index_names,
+                index_dtypes=index_dtypes,
                 column_labels=column_labels,
                 data_spark_columns=[scol_for(joined_df, col) for col in new_data_columns],
+                data_dtypes=data_dtypes,
                 column_label_names=column_label_names,
             )
         )
