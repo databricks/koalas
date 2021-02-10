@@ -168,7 +168,7 @@ class Index(IndexOpsMixin):
         """
         internal = self._internal.copy(
             index_spark_columns=[scol.alias(SPARK_DEFAULT_INDEX_NAME)],
-            index_dtypes=(None if dtype is None else [dtype]),
+            index_dtypes=[dtype],
             column_labels=[],
             data_spark_columns=[],
             data_dtypes=[],

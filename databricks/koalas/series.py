@@ -408,7 +408,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         internal = self._internal.copy(
             data_spark_columns=[scol.alias(name_like_string(self._column_label))],
-            data_dtypes=(None if dtype is None else [dtype]),
+            data_dtypes=[dtype],
         )
         return first_series(DataFrame(internal))
 
