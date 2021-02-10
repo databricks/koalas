@@ -216,7 +216,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_float_dtypes_available:
             assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
         else:
-            self.assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
+            self.assert_eq(
+                (kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index()
+            )
 
         # DataFrame
         assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
@@ -390,7 +392,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_float_dtypes_available:
             assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
         else:
-            self.assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
+            self.assert_eq(
+                (kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index()
+            )
 
         assert_eq((kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index())
 
