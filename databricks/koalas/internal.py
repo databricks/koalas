@@ -124,9 +124,13 @@ class InternalFrame(object):
 
     * `data_spark_columns` represents non-indexing Spark columns
 
+    * `data_dtypes` represents external non-indexing dtypes
+
     * `index_spark_column_names` represents internal index Spark column names
 
     * `index_spark_columns` represents internal index Spark columns
+
+    * `index_dtypes` represents external index dtypes
 
     * `spark_column_names` represents all columns
 
@@ -154,6 +158,10 @@ class InternalFrame(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [None]
+    >>> internal.data_dtypes
+    [dtype('int64'), dtype('int64'), dtype('int64'), dtype('int64'), dtype('int64')]
+    >>> internal.index_dtypes
+    [dtype('int64')]
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
@@ -209,6 +217,10 @@ class InternalFrame(object):
     ['A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [('A',)]
+    >>> internal.data_dtypes
+    [dtype('int64'), dtype('int64'), dtype('int64'), dtype('int64')]
+    >>> internal.index_dtypes
+    [dtype('int64')]
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+---+---+---+
     |  A|  B|  C|  D|  E|
@@ -265,6 +277,10 @@ class InternalFrame(object):
     ['__index_level_0__', 'A', 'B', 'C', 'D', 'E']
     >>> internal.index_names
     [None, ('A',)]
+    >>> internal.data_dtypes
+    [dtype('int64'), dtype('int64'), dtype('int64'), dtype('int64')]
+    >>> internal.index_dtypes
+    [dtype('int64'), dtype('int64')]
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +-----------------+---+---+---+---+---+
     |__index_level_0__|  A|  B|  C|  D|  E|
@@ -346,6 +362,10 @@ class InternalFrame(object):
     ['A', 'B']
     >>> internal.index_names
     [('A',)]
+    >>> internal.data_dtypes
+    [dtype('int64')]
+    >>> internal.index_dtypes
+    [dtype('int64')]
     >>> internal.to_internal_spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE
     +---+---+
     |  A|  B|
@@ -384,11 +404,15 @@ class InternalFrame(object):
                                     Spark Columns for the index.
         :param index_names: list of tuples
                             the index names.
+        :param index_dtypes: list of dtypes
+                             the index dtypes.
         :param column_labels: list of tuples with the same length
                               The multi-level values in the tuples.
         :param data_spark_columns: list of Spark Column
                                    Spark Columns to appear as columns. If this is None, calculated
                                    from spark_frame.
+        :param data_dtypes: list of dtypes.
+                            the data dtypes.
         :param column_label_names: Names for each of the column index levels.
 
         See the examples below to refer what each parameter means.
@@ -411,7 +435,7 @@ class InternalFrame(object):
 
         >>> internal = kdf._internal
 
-        >>> internal._sdf.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
+        >>> internal.spark_frame.show()  # doctest: +NORMALIZE_WHITESPACE +ELLIPSIS
         +-----------------+-----------------+------+------+------+...
         |__index_level_0__|__index_level_1__|(a, x)|(a, y)|(b, z)|...
         +-----------------+-----------------+------+------+------+...
@@ -420,19 +444,25 @@ class InternalFrame(object):
         |              zoo|              bar|     7|     8|     9|...
         +-----------------+-----------------+------+------+------+...
 
-        >>> internal._index_spark_columns
+        >>> internal.index_spark_columns
         [Column<b'__index_level_0__'>, Column<b'__index_level_1__'>, Column<b'(a, x)'>]
 
-        >>> internal._index_names
+        >>> internal.index_names
         [('row_index_a',), ('row_index_b',), ('a', 'x')]
 
-        >>> internal._column_labels
+        >>> internal.index_dtypes
+        [dtype('O'), dtype('O'), dtype('int64')]
+
+        >>> internal.column_labels
         [('a', 'y'), ('b', 'z')]
 
-        >>> internal._data_spark_columns
+        >>> internal.data_spark_columns
         [Column<b'(a, y)'>, Column<b'(b, z)'>]
 
-        >>> internal._column_label_names
+        >>> internal.data_dtypes
+        [dtype('int64'), dtype('int64')]
+
+        >>> internal.column_label_names
         [('column_labels_a',), ('column_labels_b',)]
         """
 
@@ -995,6 +1025,9 @@ class InternalFrame(object):
         :param spark_frame: the new Spark DataFrame
         :param data_columns: the new column names.
             If None, the original one is used.
+        :param preserve_dtypes: whether the dtypes can be preserved.
+            If True, the original dtypes are used; otherwise the dtypes will be inferred from
+            the new Spark DataFrame.
         :return: the copied InternalFrame.
         """
         if data_columns is None:
@@ -1026,8 +1059,11 @@ class InternalFrame(object):
 
         :param scols_or_ksers: the new Spark Columns or Series.
         :param column_labels: the new column index.
-            If None, the its column_labels is used when the corresponding `scols_or_ksers` is
-            Series, otherwise the original one is used.
+            If None, the column_labels of the corresponding `scols_or_ksers` is used if it is
+            Series; otherwise the original one is used.
+        :param data_dtypes: the new dtypes.
+            If None, the dtypes of the corresponding `scols_or_ksers` is used if it is Series;
+            otherwise the dtypes will be inferred from the corresponding `scols_or_ksers`.
         :param column_label_names: the new names of the column index levels.
         :return: the copied InternalFrame.
         """
@@ -1168,11 +1204,20 @@ class InternalFrame(object):
         :param index_spark_columns: the list of Spark Column.
                                     If not specified, the original ones are used.
         :param index_names: the index names. If not specified, the original ones are used.
+        :param index_dtypes: the index dtypes. If not specified, the original dtyeps are used
+                             if preserve_dtypes is True; otherwise the dtypes will be inferred
+                             from the corresponding `index_spark_columns`.
         :param column_labels: the new column labels. If not specified, the original ones are used.
         :param data_spark_columns: the new Spark Columns.
                                    If not specified, the original ones are used.
+        :param data_dtypes: the data dtypes. If not specified, the original dtyeps are used
+                             if preserve_dtypes is True; otherwise the dtypes will be inferred
+                             from the corresponding `data_spark_columns`.
         :param column_label_names: the new names of the column index levels.
                                    If not specified, the original ones are used.
+        :param preserve_dtypes: whether the dtypes can be preserved.
+                                If True, the original dtypes are used; otherwise the dtypes will be
+                                inferred from the new Spark columns.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
