@@ -579,8 +579,18 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         return column_op(rmod)(self, other)
 
-    __pow__ = column_op(Column.__pow__)
-    __rpow__ = column_op(Column.__rpow__)
+    def __pow__(self, other) -> Union["Series", "Index"]:
+        def pow_func(left, right):
+            return F.when(F.lit(right is np.nan) & (left == 1), left).otherwise(pow(left, right))
+
+        return column_op(pow_func)(self, other)
+
+    def __rpow__(self, other) -> Union["Series", "Index"]:
+        def rpow_func(left, right):
+            return F.when(left.isNull() & F.lit(right == 1), right).otherwise(pow(right, left))
+
+        return column_op(rpow_func)(self, other)
+
     __abs__ = column_op(F.abs)
 
     # comparison operators
