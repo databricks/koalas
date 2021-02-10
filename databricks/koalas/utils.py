@@ -28,7 +28,7 @@ import pyarrow
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F
-from pyspark.sql.types import FloatType
+from pyspark.sql.types import DoubleType
 import pandas as pd
 from pandas.api.types import is_list_like
 
@@ -335,6 +335,8 @@ def align_diff_frames(
         - inner: Same as 'full' mode; however, internally performs inner join instead.
     :return: Aligned DataFrame
     """
+    from databricks.koalas.frame import DataFrame
+
     assert how == "full" or how == "left" or how == "inner"
 
     this_column_labels = this._internal.column_labels
@@ -371,10 +373,10 @@ def align_diff_frames(
                 # is intentional so that `this_columns` and `that_columns` can be paired.
                 additional_that_columns.append(combined_label)
             elif fillna:
-                columns_to_keep.append(F.lit(None).cast(FloatType()).alias(str(combined_label)))
+                columns_to_keep.append(F.lit(None).cast(DoubleType()).alias(str(combined_label)))
                 column_labels_to_keep.append(combined_label)
             else:
-                columns_to_keep.append(combined._internal.spark_column_for(combined_label))
+                columns_to_keep.append(combined._kser_for(combined_label))
                 column_labels_to_keep.append(combined_label)
 
     that_columns_to_apply += additional_that_columns
@@ -385,16 +387,18 @@ def align_diff_frames(
         kser_set, column_labels_applied = zip(
             *resolve_func(combined, this_columns_to_apply, that_columns_to_apply)
         )
-        columns_applied = [c.spark.column for c in kser_set]
+        columns_applied = list(kser_set)
         column_labels_applied = list(column_labels_applied)
     else:
         columns_applied = []
         column_labels_applied = []
 
-    applied = combined[columns_applied + columns_to_keep]
-    applied.columns = pd.MultiIndex.from_tuples(
-        column_labels_applied + column_labels_to_keep, names=combined.columns.names
-    )
+    applied = DataFrame(
+        combined._internal.with_new_columns(
+            columns_applied + columns_to_keep,
+            column_labels=column_labels_applied + column_labels_to_keep,
+        )
+    )  # type: DataFrame
 
     # 3. Restore the names back and deduplicate columns.
     this_labels = OrderedDict()

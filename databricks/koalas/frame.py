@@ -6429,7 +6429,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
         sdf = self._internal.resolved_copy.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
-        kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: ks.DataFrame
+        kdf = DataFrame(
+            self._internal.with_new_sdf(sdf, preserve_dtypes=True)
+        )  # type: ks.DataFrame
         if inplace:
             self._update_internal_frame(kdf._internal)
             return None
