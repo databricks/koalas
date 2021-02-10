@@ -213,12 +213,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         assert_eq((kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).sort_index())
 
-        if extension_float_dtypes_available:
-            assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
-        else:
+        if check_extension and not extension_float_dtypes_available:
             self.assert_eq(
                 (kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index()
             )
+        else:
+            assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
 
         # DataFrame
         assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
@@ -265,10 +265,10 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         assert_eq((kser1 * kser2).sort_index(), (pser1 * pser2).sort_index())
 
-        if extension_float_dtypes_available:
-            assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
-        else:
+        if check_extension and not extension_float_dtypes_available:
             self.assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
+        else:
+            assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
 
     def test_arithmetic_chain(self):
         self._test_arithmetic_chain_frame(self.pdf1, self.pdf2, self.pdf3, check_extension=False)
@@ -334,19 +334,26 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             (kdf1.a * (kdf2.a * kdf3.c)).sort_index(), (pdf1.a * (pdf2.a * pdf3.c)).sort_index()
         )
 
-        if extension_float_dtypes_available:
-            assert_eq(
+        if check_extension and not extension_float_dtypes_available:
+            self.assert_eq(
                 (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
                 (pdf1["a"] / pdf2["a"] / pdf3["c"]).sort_index(),
             )
         else:
-            self.assert_eq(
+            assert_eq(
                 (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
                 (pdf1["a"] / pdf2["a"] / pdf3["c"]).sort_index(),
             )
 
         # DataFrame
-        assert_eq((kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index())
+        if check_extension and (
+            LooseVersion("1.0") <= LooseVersion(pd.__version__) < LooseVersion("1.1")
+        ):
+            self.assert_eq(
+                (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
+            )
+        else:
+            assert_eq((kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index())
 
         # Multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
@@ -372,7 +379,14 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         )
 
         # DataFrame
-        assert_eq((kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index())
+        if check_extension and (
+            LooseVersion("1.0") <= LooseVersion(pd.__version__) < LooseVersion("1.1")
+        ):
+            self.assert_eq(
+                (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
+            )
+        else:
+            assert_eq((kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index())
 
     def _test_arithmetic_chain_series(self, pser1, pser2, pser3, *, check_extension):
         kser1 = ks.from_pandas(pser1)
@@ -389,12 +403,29 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         assert_eq((kser1 * kser2 * kser3).sort_index(), (pser1 * pser2 * pser3).sort_index())
 
-        if extension_float_dtypes_available:
-            assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
+        if check_extension and not extension_float_dtypes_available:
+            if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+                self.assert_eq(
+                    (kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index()
+                )
+            else:
+                expected = pd.Series(
+                    [249.0, np.nan, 0.0, 0.88, np.nan, np.nan, np.nan, np.nan, np.nan, -np.inf]
+                    + [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+                    index=pd.MultiIndex(
+                        [
+                            ["cow", "falcon", "koala", "koalas", "lama"],
+                            ["length", "power", "speed", "weight"],
+                        ],
+                        [
+                            [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 3, 3, 3, 4, 4, 4],
+                            [0, 1, 2, 2, 3, 0, 0, 1, 2, 3, 0, 0, 3, 3, 0, 2, 3],
+                        ],
+                    ),
+                )
+                self.assert_eq((kser1 - kser2 / kser3).sort_index(), expected)
         else:
-            self.assert_eq(
-                (kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index()
-            )
+            assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
 
         assert_eq((kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index())
 
