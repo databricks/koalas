@@ -1518,6 +1518,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=None))
         self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=1))
 
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([np.nan, 2, 3])
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(pser.pow(pser_other), kser.pow(kser_other))
+        self.assert_eq(pser ** pser_other, kser ** kser_other)
+        self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other))
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
@@ -1671,3 +1681,16 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.align(kdf2, axis=0)
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([np.nan, 2, 3])
+        kser_other = ks.from_pandas(pser_other)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser.pow(kser_other)
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser ** kser_other
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser.rpow(kser_other)
