@@ -1524,9 +1524,9 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pser_other = pd.Series([np.nan, 2, 3])
         kser_other = ks.from_pandas(pser_other)
 
-        self.assert_eq(pser.pow(pser_other), kser.pow(kser_other))
-        self.assert_eq(pser ** pser_other, kser ** kser_other)
-        self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other))
+        self.assert_eq(pser.pow(pser_other), kser.pow(kser_other).sort_index())
+        self.assert_eq(pser ** pser_other, (kser ** kser_other).sort_index())
+        self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other).sort_index())
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
