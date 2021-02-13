@@ -51,7 +51,12 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
-from databricks.koalas.typedef import as_spark_type, extension_dtypes, spark_type_to_pandas_dtype
+from databricks.koalas.typedef import (
+    Dtype,
+    as_spark_type,
+    extension_dtypes,
+    spark_type_to_pandas_dtype,
+)
 from databricks.koalas.utils import (
     combine_frames,
     same_anchor,
@@ -619,7 +624,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             raise NotImplementedError("Koalas objects currently do not support %s." % ufunc)
 
     @property
-    def dtype(self) -> np.dtype:
+    def dtype(self) -> Dtype:
         """Return the dtype object of the underlying data.
 
         Examples
@@ -942,7 +947,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         """
         return 1
 
-    def astype(self, dtype) -> Union["Index", "Series"]:
+    def astype(self, dtype: Union[str, type, Dtype]) -> Union["Index", "Series"]:
         """
         Cast a Koalas object to a specified dtype ``dtype``.
 

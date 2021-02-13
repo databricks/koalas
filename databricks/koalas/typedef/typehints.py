@@ -24,6 +24,7 @@ from inspect import getfullargspec, isclass
 
 import numpy as np
 import pandas as pd
+from pandas.api.extensions import ExtensionDtype
 
 try:
     from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
@@ -69,6 +70,8 @@ T = typing.TypeVar("T")
 Scalar = typing.Union[
     int, float, bool, str, bytes, decimal.Decimal, datetime.date, datetime.datetime, None
 ]
+
+Dtype = typing.Union[np.dtype, ExtensionDtype]
 
 
 # A column of data, with the data type.
@@ -119,7 +122,9 @@ class NameTypeHolder(object):
     tpe = None
 
 
-def as_spark_type(tpe, *, raise_error: bool = True) -> types.DataType:
+def as_spark_type(
+    tpe: typing.Union[str, type, Dtype], *, raise_error: bool = True
+) -> types.DataType:
     """
     Given a Python type, returns the equivalent spark type.
     Accepts:
@@ -133,8 +138,8 @@ def as_spark_type(tpe, *, raise_error: bool = True) -> types.DataType:
     # ArrayType
     if tpe in (np.ndarray,):
         return types.ArrayType(types.StringType())
-    elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):
-        element_type = as_spark_type(tpe.__args__[0], raise_error=raise_error)
+    elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):  # type: ignore
+        element_type = as_spark_type(tpe.__args__[0], raise_error=raise_error)  # type: ignore
         if element_type is None:
             return None
         return types.ArrayType(element_type)
@@ -203,7 +208,9 @@ def as_spark_type(tpe, *, raise_error: bool = True) -> types.DataType:
         return None
 
 
-def spark_type_to_pandas_dtype(spark_type: types.DataType, *, use_extension_dtypes: bool = False):
+def spark_type_to_pandas_dtype(
+    spark_type: types.DataType, *, use_extension_dtypes: bool = False
+) -> Dtype:
     """ Return the given Spark DataType to pandas dtype. """
 
     if use_extension_dtypes and extension_dtypes_available:

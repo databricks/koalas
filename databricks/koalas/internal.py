@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from databricks.koalas.series import Series
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import (
+    Dtype,
     as_spark_type,
     extension_dtypes,
     infer_pd_series_spark_type,
@@ -389,10 +390,10 @@ class InternalFrame(object):
         spark_frame: spark.DataFrame,
         index_spark_columns: Optional[List[spark.Column]],
         index_names: Optional[List[Optional[Tuple]]] = None,
-        index_dtypes: Optional[List] = None,
+        index_dtypes: Optional[List[Dtype]] = None,
         column_labels: Optional[List[Tuple]] = None,
         data_spark_columns: Optional[List[spark.Column]] = None,
-        data_dtypes: Optional[List] = None,
+        data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[List[Optional[Tuple]]] = None,
     ) -> None:
         """
@@ -797,7 +798,7 @@ class InternalFrame(object):
         """ Return Spark Column for the given column label. """
         column_labels_to_scol = dict(zip(self.column_labels, self.data_spark_columns))
         if label in column_labels_to_scol:
-            return column_labels_to_scol[label]  # type: ignore
+            return column_labels_to_scol[label]
         else:
             raise KeyError(name_like_string(label))
 
@@ -825,11 +826,11 @@ class InternalFrame(object):
             scol = self.spark_column_for(label_or_scol)
         return self.spark_frame.select(scol).schema[0].nullable
 
-    def dtype_for(self, label: Tuple):
+    def dtype_for(self, label: Tuple) -> Dtype:
         """ Return dtype for the given column label. """
         column_labels_to_dtype = dict(zip(self.column_labels, self.data_dtypes))
         if label in column_labels_to_dtype:
-            return column_labels_to_dtype[label]  # type: ignore
+            return column_labels_to_dtype[label]
         else:
             raise KeyError(name_like_string(label))
 
@@ -899,12 +900,12 @@ class InternalFrame(object):
         return self._column_label_names
 
     @property
-    def index_dtypes(self) -> List:
+    def index_dtypes(self) -> List[Dtype]:
         """ Return dtypes for the managed index columns. """
         return self._index_dtypes
 
     @property
-    def data_dtypes(self) -> List:
+    def data_dtypes(self) -> List[Dtype]:
         """ Return dtypes for the managed columns. """
         return self._data_dtypes
 
@@ -1050,7 +1051,7 @@ class InternalFrame(object):
         scols_or_ksers: List[Union[spark.Column, "Series"]],
         *,
         column_labels: Optional[List[Tuple]] = None,
-        data_dtypes: Optional[List] = None,
+        data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         keep_order: bool = True
     ) -> "InternalFrame":
@@ -1190,10 +1191,10 @@ class InternalFrame(object):
         spark_frame: Union[spark.DataFrame, _NoValueType] = _NoValue,
         index_spark_columns: Union[List[spark.Column], _NoValueType] = _NoValue,
         index_names: Union[List[Optional[Tuple]], _NoValueType] = _NoValue,
-        index_dtypes: Optional[Union[List, _NoValueType]] = _NoValue,
+        index_dtypes: Optional[Union[List[Dtype], _NoValueType]] = _NoValue,
         column_labels: Optional[Union[List[Tuple], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
-        data_dtypes: Optional[Union[List, _NoValueType]] = _NoValue,
+        data_dtypes: Optional[Union[List[Dtype], _NoValueType]] = _NoValue,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
         *,
         preserve_dtypes: bool = False  # TODO: remove eventually.
