@@ -495,7 +495,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 return -column_op(F.datediff)(self, F.lit(other)).astype("long")
             else:
                 raise TypeError("date subtraction can only be applied to date series.")
-        return column_op(Column.__rsub__)(self, other)
+        return column_op(lambda left, right: right - left)(self, other)
 
     def __rmul__(self, other) -> Union["Series", "Index"]:
         if isinstance(other, str):

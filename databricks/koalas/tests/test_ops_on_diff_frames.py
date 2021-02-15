@@ -1637,26 +1637,26 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
             self.assert_eq(pser.sub(other), kser.sub(other).sort_index())
             self.assert_eq(pser - other, (kser - other).sort_index())
-            # self.assert_eq(pser.rsub(other), kser.rsub(other).sort_index())
-            # self.assert_eq(other - pser, (other - kser).sort_index())
+            self.assert_eq(pser.rsub(other), kser.rsub(other).sort_index())
+            self.assert_eq(other - pser, (other - kser).sort_index())
         else:
             self.assert_eq(pser.sub(other).rename("x"), kser.sub(other).sort_index())
             self.assert_eq((pser - other).rename("x"), (kser - other).sort_index())
-            # self.assert_eq(pser.rsub(other).rename("x"), kser.rsub(other).sort_index())
-            # self.assert_eq((other - pser).rename("x"), (other - kser).sort_index())
+            self.assert_eq(pser.rsub(other).rename("x"), kser.rsub(other).sort_index())
+            self.assert_eq((other - pser).rename("x"), (other - kser).sort_index())
 
         # other = tuple
         other = (np.nan, 1, 3, 4, np.nan, 6)
         if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
             self.assert_eq(pser.sub(other), kser.sub(other).sort_index())
             self.assert_eq(pser - other, (kser - other).sort_index())
-            # self.assert_eq(pser.rsub(other), kser.rsub(other).sort_index())
-            # self.assert_eq(other - pser, (other - kser).sort_index())
+            self.assert_eq(pser.rsub(other), kser.rsub(other).sort_index())
+            self.assert_eq(other - pser, (other - kser).sort_index())
         else:
             self.assert_eq(pser.sub(other).rename("x"), kser.sub(other).sort_index())
             self.assert_eq((pser - other).rename("x"), (kser - other).sort_index())
-            # self.assert_eq(pser.rsub(other).rename("x"), kser.rsub(other).sort_index())
-            # self.assert_eq((other - pser).rename("x"), (other - kser).sort_index())
+            self.assert_eq(pser.rsub(other).rename("x"), kser.rsub(other).sort_index())
+            self.assert_eq((other - pser).rename("x"), (other - kser).sort_index())
 
         # other = list with the different length
         other = [np.nan, 1, 3, 4, np.nan]
