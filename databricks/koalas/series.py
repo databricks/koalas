@@ -452,6 +452,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def add(self, other) -> "Series":
         return self + other
 
+    def __add__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__add__(self, other)
+
     add.__doc__ = _flex_doc_SERIES.format(
         desc="Addition",
         op_name="+",
@@ -462,6 +466,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def radd(self, other) -> "Series":
         return other + self
+
+    def __radd__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__radd__(self, other)
 
     radd.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Addition",
@@ -498,6 +506,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def truediv(self, other) -> "Series":
         return self / other
 
+    def __truediv__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__truediv__(self, other)
+
     truediv.__doc__ = _flex_doc_SERIES.format(
         desc="Floating division",
         op_name="/",
@@ -509,6 +521,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def rtruediv(self, other) -> "Series":
         return other / self
 
+    def __rtruediv__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__rtruediv__(self, other)
+
     rtruediv.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Floating division",
         op_name="/",
@@ -519,6 +535,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def mul(self, other) -> "Series":
         return self * other
+
+    def __mul__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__mul__(self, other)
 
     mul.__doc__ = _flex_doc_SERIES.format(
         desc="Multiplication",
@@ -533,6 +553,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def rmul(self, other) -> "Series":
         return other * self
 
+    def __rmul__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__rmul__(self, other)
+
     rmul.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Multiplication",
         op_name="*",
@@ -543,6 +567,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def sub(self, other) -> "Series":
         return self - other
+
+    def __sub__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__sub__(self, other)
 
     sub.__doc__ = _flex_doc_SERIES.format(
         desc="Subtraction",
@@ -557,6 +585,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def rsub(self, other) -> "Series":
         return other - self
 
+    def __rsub__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__rsub__(self, other)
+
     rsub.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Subtraction",
         op_name="-",
@@ -567,6 +599,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def mod(self, other) -> "Series":
         return self % other
+
+    def __mod__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__mod__(self, other)
 
     mod.__doc__ = _flex_doc_SERIES.format(
         desc="Modulo",
@@ -579,6 +615,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def rmod(self, other) -> "Series":
         return other % self
 
+    def __rmod__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__rmod__(self, other)
+
     rmod.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Modulo",
         op_name="%",
@@ -589,6 +629,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def pow(self, other) -> "Series":
         return self ** other
+
+    def __pow__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__pow__(self, other)
 
     pow.__doc__ = _flex_doc_SERIES.format(
         desc="Exponential power of series",
@@ -601,6 +645,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def rpow(self, other) -> "Series":
         return other ** self
 
+    def __rpow__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__rpow__(self, other)
+
     rpow.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Exponential power",
         op_name="**",
@@ -612,6 +660,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     def floordiv(self, other) -> "Series":
         return self // other
 
+    def __floordiv__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__floordiv__(self, other)
+
     floordiv.__doc__ = _flex_doc_SERIES.format(
         desc="Integer division",
         op_name="//",
@@ -622,6 +674,10 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
     def rfloordiv(self, other) -> "Series":
         return other // self
+
+    def __rfloordiv__(self, other):
+        other = ks.Index(other, name=self.name) if isinstance(other, (list, tuple)) else other
+        return IndexOpsMixin.__rfloordiv__(self, other)
 
     rfloordiv.__doc__ = _flex_doc_SERIES.format(
         desc="Reverse Integer division",
