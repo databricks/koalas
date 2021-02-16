@@ -239,10 +239,10 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
         )
         self.assert_eq(kdf, ks.broadcast(kdf))
 
-        kdf.columns = ['x', 'y']
+        kdf.columns = ["x", "y"]
         self.assert_eq(kdf, ks.broadcast(kdf))
 
-        kdf.columns = [('a', 'c'), ('b', 'd')]
+        kdf.columns = [("a", "c"), ("b", "d")]
         self.assert_eq(kdf, ks.broadcast(kdf))
 
         kser = ks.Series([1, 2, 3])
