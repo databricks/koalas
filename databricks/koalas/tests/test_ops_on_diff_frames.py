@@ -30,6 +30,7 @@ from databricks.koalas.typedef.typehints import (
     extension_dtypes,
     extension_dtypes_available,
     extension_float_dtypes_available,
+    extension_object_dtypes_available,
 )
 
 
@@ -503,6 +504,45 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser1 | pser2, (kser1 | kser2).sort_index())
         self.assert_eq(pser1 & pser2, (kser1 & kser2).sort_index())
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_bitwise_extension_dtype(self):
+        def assert_eq(actual, expected):
+            self.assert_eq(actual, expected, check_exact=False)
+            self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+
+        pser1 = pd.Series(
+            [True, False, True, False, np.nan, np.nan, True, False, np.nan], dtype="boolean"
+        )
+        pser2 = pd.Series(
+            [True, False, False, True, True, False, np.nan, np.nan, np.nan], dtype="boolean"
+        )
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        assert_eq((kser1 | kser2).sort_index(), pser1 | pser2)
+        assert_eq((kser1 & kser2).sort_index(), pser1 & pser2)
+
+        pser1 = pd.Series([True, False, np.nan], index=list("ABC"), dtype="boolean")
+        pser2 = pd.Series([False, True, np.nan], index=list("DEF"), dtype="boolean")
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        # a pandas bug?
+        # assert_eq((kser1 | kser2).sort_index(), pser1 | pser2)
+        # assert_eq((kser1 & kser2).sort_index(), pser1 & pser2)
+        assert_eq(
+            (kser1 | kser2).sort_index(),
+            pd.Series([True, None, None, None, True, None], index=list("ABCDEF"), dtype="boolean"),
+        )
+        assert_eq(
+            (kser1 & kser2).sort_index(),
+            pd.Series(
+                [None, False, None, False, None, None], index=list("ABCDEF"), dtype="boolean"
+            ),
+        )
 
     def test_concat_column_axis(self):
         pdf1 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])

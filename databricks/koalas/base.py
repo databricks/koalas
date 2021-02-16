@@ -244,7 +244,6 @@ def column_op(f):
             # Same DataFrame anchors
             args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
             scol = f(self.spark.column, *args)
-            scol = booleanize_null(self.spark.column, scol, f)
 
             spark_type = self._internal.spark_frame.select(scol).schema[0].dataType
             use_extension_dtypes = any(
@@ -253,6 +252,9 @@ def column_op(f):
             dtype = spark_type_to_pandas_dtype(
                 spark_type, use_extension_dtypes=use_extension_dtypes
             )
+
+            if not isinstance(dtype, extension_dtypes):
+                scol = booleanize_null(self.spark.column, scol, f)
 
             if isinstance(self, Series) or not any(isinstance(col, Series) for col in cols):
                 index_ops = self._with_new_scol(scol, dtype=dtype)

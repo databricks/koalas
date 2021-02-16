@@ -350,6 +350,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pdf["left"] | pdf["right"], kdf["left"] | kdf["right"])
 
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_or_extenstion_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "left": [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+                "right": [True, False, False, True, True, False, np.nan, np.nan, np.nan],
+            }
+        ).astype("boolean")
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf["left"] | kdf["right"], pdf["left"] | pdf["right"])
+
     def test_and(self):
         pdf = pd.DataFrame(
             {
@@ -362,6 +376,20 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             pdf["left"] & pdf["right"], kdf["left"] & kdf["right"],
         )
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_and_extenstion_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "left": [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+                "right": [True, False, False, True, True, False, np.nan, np.nan, np.nan],
+            }
+        ).astype("boolean")
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf["left"] & kdf["right"], pdf["left"] & pdf["right"])
 
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
