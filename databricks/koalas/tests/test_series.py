@@ -2815,3 +2815,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 self.assert_eq(kdf_r, pdf_r)
 
         self.assertRaises(ValueError, lambda: kdf.a.align(kdf.b, axis=1))
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.pow(np.nan), kser.pow(np.nan))
+        self.assert_eq(pser ** np.nan, kser ** np.nan)
+        self.assert_eq(pser.rpow(np.nan), kser.rpow(np.nan))
+        self.assert_eq(1 ** pser, 1 ** kser)

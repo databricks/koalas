@@ -2599,7 +2599,9 @@ def broadcast(obj) -> DataFrame:
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj).__name__))
-    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
+    return DataFrame(
+        obj._internal.with_new_sdf(F.broadcast(obj._internal.resolved_copy.spark_frame))
+    )
 
 
 def read_orc(

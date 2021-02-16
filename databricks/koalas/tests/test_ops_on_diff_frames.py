@@ -1509,15 +1509,41 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_series_ops(self):
         pser1 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x", index=[11, 12, 13, 14, 15, 16, 17])
-        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7], index=[11, 12, 13, 14, 15, 16, 17])
-        pidx1 = pd.Index([10, 11, 12, 13, 14, 15, 16])
+        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x", index=[11, 12, 13, 14, 15, 16, 17])
+        pidx1 = pd.Index([10, 11, 12, 13, 14, 15, 16], name="x")
         kser1 = ks.from_pandas(pser1)
         kser2 = ks.from_pandas(pser2)
         kidx1 = ks.from_pandas(pidx1)
 
         self.assert_eq((kser1 + 1 + 10 * kser2).sort_index(), (pser1 + 1 + 10 * pser2).sort_index())
+        self.assert_eq(
+            (kser1 + 1 + 10 * kser2.rename()).sort_index(),
+            (pser1 + 1 + 10 * pser2.rename()).sort_index(),
+        )
+        self.assert_eq(
+            (kser1.rename() + 1 + 10 * kser2).sort_index(),
+            (pser1.rename() + 1 + 10 * pser2).sort_index(),
+        )
+        self.assert_eq(
+            (kser1.rename() + 1 + 10 * kser2.rename()).sort_index(),
+            (pser1.rename() + 1 + 10 * pser2.rename()).sort_index(),
+        )
+
         self.assert_eq(kser1 + 1 + 10 * kidx1, pser1 + 1 + 10 * pidx1)
+        self.assert_eq(kser1.rename() + 1 + 10 * kidx1, pser1.rename() + 1 + 10 * pidx1)
+        self.assert_eq(kser1 + 1 + 10 * kidx1.rename(None), pser1 + 1 + 10 * pidx1.rename(None))
+        self.assert_eq(
+            kser1.rename() + 1 + 10 * kidx1.rename(None),
+            pser1.rename() + 1 + 10 * pidx1.rename(None),
+        )
+
         self.assert_eq(kidx1 + 1 + 10 * kser1, pidx1 + 1 + 10 * pser1)
+        self.assert_eq(kidx1 + 1 + 10 * kser1.rename(), pidx1 + 1 + 10 * pser1.rename())
+        self.assert_eq(kidx1.rename(None) + 1 + 10 * kser1, pidx1.rename(None) + 1 + 10 * pser1)
+        self.assert_eq(
+            kidx1.rename(None) + 1 + 10 * kser1.rename(),
+            pidx1.rename(None) + 1 + 10 * pser1.rename(),
+        )
 
         pidx2 = pd.Index([11, 12, 13])
         kidx2 = ks.from_pandas(pidx2)
@@ -1533,12 +1559,20 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             kidx2 + kser1
 
     def test_index_ops(self):
-        pidx1 = pd.Index([1, 2, 3, 4, 5])
-        pidx2 = pd.Index([6, 7, 8, 9, 10])
+        pidx1 = pd.Index([1, 2, 3, 4, 5], name="x")
+        pidx2 = pd.Index([6, 7, 8, 9, 10], name="x")
         kidx1 = ks.from_pandas(pidx1)
         kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
+        self.assert_eq(kidx1.rename(None) * 10 + kidx2, pidx1.rename(None) * 10 + pidx2)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(kidx1 * 10 + kidx2.rename(None), pidx1 * 10 + pidx2.rename(None))
+        else:
+            self.assert_eq(
+                kidx1 * 10 + kidx2.rename(None), (pidx1 * 10 + pidx2.rename(None)).rename(None)
+            )
 
         pidx3 = pd.Index([11, 12, 13])
         kidx3 = ks.from_pandas(pidx3)
@@ -1627,6 +1661,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=None))
         self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=1))
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([np.nan, 2, 3])
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(pser.pow(pser_other), kser.pow(kser_other).sort_index())
+        self.assert_eq(pser ** pser_other, (kser ** kser_other).sort_index())
+        self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other).sort_index())
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
@@ -1781,3 +1825,16 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.align(kdf2, axis=0)
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([np.nan, 2, 3])
+        kser_other = ks.from_pandas(pser_other)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser.pow(kser_other)
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser ** kser_other
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser.rpow(kser_other)
