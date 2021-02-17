@@ -143,7 +143,9 @@ def as_spark_type(tpe) -> types.DataType:
 
 def spark_type_to_pandas_dtype(spark_type):
     """ Return the given Spark DataType to pandas dtype. """
-    if isinstance(spark_type, (types.DateType, types.StructType, types.UserDefinedType)):
+    if isinstance(
+        spark_type, (types.DateType, types.NullType, types.StructType, types.UserDefinedType)
+    ):
         return np.dtype("object")
     elif isinstance(spark_type, types.TimestampType):
         return np.dtype("datetime64[ns]")
@@ -160,9 +162,9 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
     dt = s.dtype
     if dt == np.dtype("object"):
         if len(s) == 0 or s.isnull().all():
-            raise ValueError("can not infer schema from empty or null dataset")
-        elif hasattr(s[0], "__UDT__"):
-            return s[0].__UDT__
+            return types.NullType()
+        elif hasattr(s.iloc[0], "__UDT__"):
+            return s.iloc[0].__UDT__
         else:
             return from_arrow_type(pa.Array.from_pandas(s).type)
     else:

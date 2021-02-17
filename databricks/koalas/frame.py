@@ -44,7 +44,6 @@ from typing import (
     TYPE_CHECKING,
 )
 
-import matplotlib
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
@@ -629,8 +628,7 @@ class DataFrame(Frame, Generic[T]):
             currently.
         """
         from inspect import signature
-        from databricks.koalas import Series
-        from databricks.koalas.series import first_series
+        from databricks.koalas.series import Series, first_series
 
         axis = validate_axis(axis)
         if axis == 0:
@@ -693,12 +691,22 @@ class DataFrame(Frame, Generic[T]):
                     axis=axis, numeric_only=numeric_only, **kwargs
                 )
 
-            sdf = self._internal.spark_frame.select(
-                calculate_columns_axis(*self._internal.data_spark_columns).alias(
-                    SPARK_DEFAULT_SERIES_NAME
-                )
+            column_name = verify_temp_column_name(
+                self._internal.spark_frame.select(self._internal.index_spark_columns),
+                "__calculate_columns_axis__",
             )
-            return DataFrame(sdf)[SPARK_DEFAULT_SERIES_NAME].rename(pser.name)
+            sdf = self._internal.spark_frame.select(
+                self._internal.index_spark_columns
+                + [calculate_columns_axis(*self._internal.data_spark_columns).alias(column_name)]
+            )
+            internal = InternalFrame(
+                spark_frame=sdf,
+                index_spark_columns=[
+                    scol_for(sdf, col) for col in self._internal.index_spark_column_names
+                ],
+                index_names=self._internal.index_names,
+            )
+            return first_series(DataFrame(internal)).rename(pser.name)
 
     def _kser_for(self, label):
         """
@@ -858,12 +866,12 @@ class DataFrame(Frame, Generic[T]):
     # create accessor for Koalas specific methods.
     koalas = CachedAccessor("koalas", KoalasFrameMethods)
 
-    def hist(self, bins=10, **kwds) -> matplotlib.axes.Axes:
+    def hist(self, bins=10, **kwds):
         return self.plot.hist(bins, **kwds)
 
     hist.__doc__ = KoalasPlotAccessor.hist.__doc__
 
-    def kde(self, bw_method=None, ind=None, **kwds) -> matplotlib.axes.Axes:
+    def kde(self, bw_method=None, ind=None, **kwds):
         return self.plot.kde(bw_method, ind, **kwds)
 
     kde.__doc__ = KoalasPlotAccessor.kde.__doc__
@@ -2057,10 +2065,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ...                    'mask': ['red', 'purple'],
         ...                    'weapon': ['sai', 'bo staff']},
         ...                   columns=['name', 'mask', 'weapon'])
-        >>> df.to_latex(index=False) # doctest: +NORMALIZE_WHITESPACE
-        '\\begin{tabular}{lll}\n\\toprule\n name & mask & weapon
-        \\\\\n\\midrule\n Raphael & red & sai \\\\\n Donatello &
-        purple & bo staff \\\\\n\\bottomrule\n\\end{tabular}\n'
+        >>> print(df.to_latex(index=False)) # doctest: +NORMALIZE_WHITESPACE
+        \begin{tabular}{lll}
+        \toprule
+              name &    mask &    weapon \\
+        \midrule
+           Raphael &     red &       sai \\
+         Donatello &  purple &  bo staff \\
+        \bottomrule
+        \end{tabular}
+        <BLANKLINE>
         """
 
         args = locals()
@@ -3238,12 +3252,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         Index
         """
-        from databricks.koalas.indexes import Index, MultiIndex
+        from databricks.koalas.indexes.base import Index
 
-        if self._internal.index_level == 1:
-            return Index(self)
-        else:
-            return MultiIndex(self)
+        return Index(self)
 
     @property
     def empty(self) -> bool:

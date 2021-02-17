@@ -1086,7 +1086,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def mean(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, numeric_only: bool = None
     ) -> Union[Scalar, "Series"]:
         """
         Return the mean of the values.
@@ -1095,7 +1095,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
 
@@ -1128,6 +1128,10 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].mean()
         2.0
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
 
         def mean(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1145,7 +1149,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def sum(
-        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
+        self, axis: Union[int, str] = None, numeric_only: bool = None, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the sum of the values.
@@ -1154,7 +1158,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         min_count : int, default 0
@@ -1207,6 +1211,12 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['b'].sum(min_count=3)
         nan
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+        elif numeric_only is True and axis == 1:
+            numeric_only = None
 
         def sum(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1224,7 +1234,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def product(
-        self, axis: Union[int, str] = None, numeric_only: bool = True, min_count: int = 0
+        self, axis: Union[int, str] = None, numeric_only: bool = None, min_count: int = 0
     ) -> Union[Scalar, "Series"]:
         """
         Return the product of the values.
@@ -1236,7 +1246,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         min_count : int, default 0
@@ -1285,6 +1295,12 @@ class Frame(object, metaclass=ABCMeta):
         >>> ks.Series([]).prod(min_count=1)
         nan
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+        elif numeric_only is True and axis == 1:
+            numeric_only = None
 
         def prod(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1317,7 +1333,7 @@ class Frame(object, metaclass=ABCMeta):
     prod = product
 
     def skew(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, numeric_only: bool = None
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased skew normalized by N-1.
@@ -1326,7 +1342,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
 
@@ -1352,6 +1368,10 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].skew()
         0.0
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
 
         def skew(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1369,7 +1389,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def kurtosis(
-        self, axis: Union[int, str] = None, numeric_only: bool = True
+        self, axis: Union[int, str] = None, numeric_only: bool = None
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased kurtosis using Fisher’s definition of kurtosis (kurtosis of normal == 0.0).
@@ -1379,7 +1399,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
 
@@ -1405,6 +1425,10 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].kurtosis()
         -1.5
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
 
         def kurtosis(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
@@ -1467,6 +1491,13 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].min()
         1.0
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+        elif numeric_only is True and axis == 1:
+            numeric_only = None
+
         return self._reduce_for_stat_function(
             F.min, name="min", axis=axis, numeric_only=numeric_only
         )
@@ -1515,12 +1546,19 @@ class Frame(object, metaclass=ABCMeta):
         >>> df['a'].max()
         3.0
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+        elif numeric_only is True and axis == 1:
+            numeric_only = None
+
         return self._reduce_for_stat_function(
             F.max, name="max", axis=axis, numeric_only=numeric_only
         )
 
     def count(
-        self, axis: Union[int, str] = None, numeric_only: bool = None
+        self, axis: Union[int, str] = None, numeric_only: bool = False
     ) -> Union[Scalar, "Series"]:
         """
         Count non-NA cells for each column.
@@ -1532,7 +1570,7 @@ class Frame(object, metaclass=ABCMeta):
         axis : {0 or ‘index’, 1 or ‘columns’}, default 0
             If 0 or ‘index’ counts are generated for each column. If 1 or ‘columns’ counts are
             generated for each row.
-        numeric_only : bool, default None
+        numeric_only : bool, default False
             If True, include only float, int, boolean columns. This parameter is mainly for
             pandas compatibility.
 
@@ -1594,7 +1632,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def std(
-        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = None
     ) -> Union[Scalar, "Series"]:
         """
         Return sample standard deviation.
@@ -1606,7 +1644,7 @@ class Frame(object, metaclass=ABCMeta):
         ddof : int, default 1
             Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
             where N represents the number of elements.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
 
@@ -1649,6 +1687,11 @@ class Frame(object, metaclass=ABCMeta):
         """
         assert ddof in (0, 1)
 
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+
         def std(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
@@ -1668,7 +1711,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def var(
-        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = None
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased variance.
@@ -1680,7 +1723,7 @@ class Frame(object, metaclass=ABCMeta):
         ddof : int, default 1
             Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
             where N represents the number of elements.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
 
@@ -1723,6 +1766,11 @@ class Frame(object, metaclass=ABCMeta):
         """
         assert ddof in (0, 1)
 
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+
         def var(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):
                 spark_column = spark_column.cast(LongType())
@@ -1742,7 +1790,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def median(
-        self, axis: Union[int, str] = None, numeric_only: bool = True, accuracy: int = 10000
+        self, axis: Union[int, str] = None, numeric_only: bool = None, accuracy: int = 10000
     ) -> Union[Scalar, "Series"]:
         """
         Return the median of the values for the requested axis.
@@ -1755,7 +1803,7 @@ class Frame(object, metaclass=ABCMeta):
         ----------
         axis : {index (0), columns (1)}
             Axis for the function to be applied on.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
         accuracy : int, optional
@@ -1826,6 +1874,11 @@ class Frame(object, metaclass=ABCMeta):
         >>> (df[('y', 'b')] + 100).median()
         103.0
         """
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
+
         if not isinstance(accuracy, int):
             raise ValueError(
                 "accuracy must be an integer; however, got [%s]" % type(accuracy).__name__
@@ -1846,7 +1899,7 @@ class Frame(object, metaclass=ABCMeta):
         )
 
     def sem(
-        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = True
+        self, axis: Union[int, str] = None, ddof: int = 1, numeric_only: bool = None
     ) -> Union[Scalar, "Series"]:
         """
         Return unbiased standard error of the mean over requested axis.
@@ -1858,7 +1911,7 @@ class Frame(object, metaclass=ABCMeta):
         ddof : int, default 1
             Delta Degrees of Freedom. The divisor used in calculations is N - ddof,
             where N represents the number of elements.
-        numeric_only : bool, default True
+        numeric_only : bool, default None
             Include only float, int, boolean columns. False is not supported. This parameter
             is mainly for pandas compatibility.
 
@@ -1907,6 +1960,11 @@ class Frame(object, metaclass=ABCMeta):
         0.47140452079103173
         """
         assert ddof in (0, 1)
+
+        axis = validate_axis(axis)
+
+        if numeric_only is None and axis == 0:
+            numeric_only = True
 
         def std(spark_column, spark_type):
             if isinstance(spark_type, BooleanType):

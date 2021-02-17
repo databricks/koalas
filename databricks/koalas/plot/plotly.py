@@ -22,6 +22,7 @@ from databricks.koalas.plot import (
     name_like_string,
     KoalasPlotAccessor,
     BoxPlotBase,
+    KdePlotBase,
 )
 
 if TYPE_CHECKING:
@@ -38,6 +39,8 @@ def plot_koalas(data: Union["ks.DataFrame", "ks.Series"], kind: str, **kwargs):
         return plot_histogram(data, **kwargs)
     if kind == "box":
         return plot_box(data, **kwargs)
+    if kind == "kde" or kind == "density":
+        return plot_kde(data, **kwargs)
 
     # Other plots.
     return plotly.plot(KoalasPlotAccessor.pandas_plot_data_map[kind](data), kind, **kwargs)
@@ -170,4 +173,39 @@ def plot_box(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
     )
     fig["layout"]["xaxis"]["title"] = colname
     fig["layout"]["yaxis"]["title"] = "value"
+    return fig
+
+
+def plot_kde(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
+    from plotly import express
+    import databricks.koalas as ks
+
+    if isinstance(data, ks.DataFrame) and "color" not in kwargs:
+        kwargs["color"] = "names"
+
+    kdf = KdePlotBase.prepare_kde_data(data)
+    sdf = kdf._internal.spark_frame
+    data_columns = kdf._internal.data_spark_columns
+    ind = KdePlotBase.get_ind(sdf.select(*data_columns), kwargs.pop("ind", None))
+    bw_method = kwargs.pop("bw_method", None)
+
+    pdfs = []
+    for label in kdf._internal.column_labels:
+        pdfs.append(
+            pd.DataFrame(
+                {
+                    "Density": KdePlotBase.compute_kde(
+                        sdf.select(kdf._internal.spark_column_for(label)),
+                        ind=ind,
+                        bw_method=bw_method,
+                    ),
+                    "names": name_like_string(label),
+                    "index": ind,
+                }
+            )
+        )
+    pdf = pd.concat(pdfs)
+
+    fig = express.line(pdf, x="index", y="Density", **kwargs)
+    fig["layout"]["xaxis"]["title"] = None
     return fig

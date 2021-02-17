@@ -23,6 +23,11 @@ Python version support
 
 Officially Python 3.5 to 3.8.
 
+.. note::
+   Koalas support for Python 3.5 is deprecated and will be dropped in the future release.
+   At that point, existing Python 3.5 workflows that use Koalas will continue to work without
+   modification, but Python 3.5 users will no longer get access to the latest Koalas features
+   and bugfixes. We recommend that you upgrade to Python 3.6 or newer.
 
 Installing Koalas
 -----------------
@@ -124,7 +129,6 @@ Package       Required version
 `pandas`      >=0.23.2
 `pyspark`     >=2.4.0
 `pyarrow`     >=0.10
-`matplotlib`  >=3.0.0,<3.3.0
 `numpy`       >=1.14
 ============= ================
 
@@ -137,4 +141,5 @@ Package       Required version
 ============= ================
 `mlflow`      >=1.0
 `plotly`      >=4.8
+`matplotlib`  >=3.0.0,<3.3.0
 ============= ================

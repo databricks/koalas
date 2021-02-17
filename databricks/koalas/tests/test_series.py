@@ -84,28 +84,38 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
 
     def test_empty_series(self):
-        a = pd.Series([], dtype="i1")
-        b = pd.Series([], dtype="str")
+        pser_a = pd.Series([], dtype="i1")
+        pser_b = pd.Series([], dtype="str")
 
-        self.assert_eq(ks.from_pandas(a), a)
-        self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+        self.assert_eq(ks.from_pandas(pser_a), pser_a)
+
+        kser_b = ks.from_pandas(pser_b)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kser_b, pser_b)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kser_b, pser_b)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assert_eq(ks.from_pandas(a), a)
-            self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+            self.assert_eq(ks.from_pandas(pser_a), pser_a)
+            self.assert_eq(ks.from_pandas(pser_b), pser_b)
 
     def test_all_null_series(self):
-        a = pd.Series([None, None, None], dtype="float64")
-        b = pd.Series([None, None, None], dtype="str")
+        pser_a = pd.Series([None, None, None], dtype="float64")
+        pser_b = pd.Series([None, None, None], dtype="str")
 
-        self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-        self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
-        self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+        self.assert_eq(ks.from_pandas(pser_a), pser_a)
+
+        kser_b = ks.from_pandas(pser_b)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(kser_b, pser_b)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(kser_b, pser_b)
 
         with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            self.assert_eq(ks.from_pandas(a).dtype, a.dtype)
-            self.assertTrue(ks.from_pandas(a).to_pandas().isnull().all())
-            self.assertRaises(ValueError, lambda: ks.from_pandas(b))
+            self.assert_eq(ks.from_pandas(pser_a), pser_a)
+            self.assert_eq(ks.from_pandas(pser_b), pser_b)
 
     def test_head(self):
         kser = self.kser
@@ -1376,27 +1386,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype(str), pser.astype(str))
 
         pser = pd.Series(["hi", "hi ", " ", " \t", "", None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
-        # TODO: restore after pandas 1.1.4 is released.
-        # self.assert_eq(kser.astype(str).tolist(), pser.astype(str).tolist())
-        self.assert_eq(kser.astype(str).tolist(), ["hi", "hi ", " ", " \t", "", "None"])
+        if LooseVersion("1.1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.1.4"):
+            # a pandas bug: https://github.com/databricks/koalas/pull/1818#issuecomment-703961980
+            self.assert_eq(kser.astype(str).tolist(), ["hi", "hi ", " ", " \t", "", "None"])
+        else:
+            self.assert_eq(kser.astype(str), pser.astype(str))
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
         pser = pd.Series([True, False, None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
+        self.assert_eq(kser.astype(str), pser.astype(str))
 
-        pser = pd.Series(["2020-10-27"], name="x")
+        pser = pd.Series(["2020-10-27 00:00:01", None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(np.datetime64), pser.astype(np.datetime64))
         self.assert_eq(kser.astype("datetime64[ns]"), pser.astype("datetime64[ns]"))
         self.assert_eq(kser.astype("M"), pser.astype("M"))
+        self.assert_eq(kser.astype("M").astype(str), pser.astype("M").astype(str))
+        self.assert_eq(kser.astype("M").dt.date.astype(str), pser.astype("M").dt.date.astype(str))
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")
@@ -2657,3 +2673,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
                 self.assert_eq(kdf_r, pdf_r)
 
         self.assertRaises(ValueError, lambda: kdf.a.align(kdf.b, axis=1))
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(pser.pow(np.nan), kser.pow(np.nan))
+        self.assert_eq(pser ** np.nan, kser ** np.nan)
+        self.assert_eq(pser.rpow(np.nan), kser.rpow(np.nan))
+        self.assert_eq(1 ** pser, 1 ** kser)
