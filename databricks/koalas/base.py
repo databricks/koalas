@@ -616,16 +616,15 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(self.dtype, extension_dtypes) or (
             isinstance(other, IndexOpsMixin) and isinstance(other.dtype, extension_dtypes)
         ):
-            return column_op(Column.__and__)(
-                self,
-                (
-                    other
-                    if isinstance(other, (IndexOpsMixin, spark.Column))
-                    else F.lit(None)
-                    if pd.isna(other)
-                    else F.lit(other)
-                ),
-            )
+
+            def and_func(left, right):
+                if not isinstance(right, spark.Column):
+                    if pd.isna(right):
+                        right = F.lit(None)
+                    else:
+                        right = F.lit(right)
+                return left & right
+
         else:
 
             def and_func(left, right):
@@ -637,22 +636,21 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 scol = left & right
                 return F.when(scol.isNull(), False).otherwise(scol)
 
-            return column_op(and_func)(self, other)
+        return column_op(and_func)(self, other)
 
     def __or__(self, other) -> Union["Series", "Index"]:
         if isinstance(self.dtype, extension_dtypes) or (
             isinstance(other, IndexOpsMixin) and isinstance(other.dtype, extension_dtypes)
         ):
-            return column_op(Column.__or__)(
-                self,
-                (
-                    other
-                    if isinstance(other, (IndexOpsMixin, spark.Column))
-                    else F.lit(None)
-                    if pd.isna(other)
-                    else F.lit(other)
-                ),
-            )
+
+            def or_func(left, right):
+                if not isinstance(right, spark.Column):
+                    if pd.isna(right):
+                        right = F.lit(None)
+                    else:
+                        right = F.lit(right)
+                return left | right
+
         else:
 
             def or_func(left, right):
@@ -662,7 +660,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                     scol = left | F.lit(right)
                     return F.when(left.isNull() | scol.isNull(), False).otherwise(scol)
 
-            return column_op(or_func)(self, other)
+        return column_op(or_func)(self, other)
 
     __invert__ = column_op(Column.__invert__)
 
