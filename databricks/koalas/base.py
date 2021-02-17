@@ -196,7 +196,7 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
                 ).rename(that_series.name)
 
 
-def booleanize_null(left_scol, scol, f) -> Column:
+def booleanize_null(scol, f) -> Column:
     """
     Booleanize Null in Spark Column
     """
@@ -209,12 +209,6 @@ def booleanize_null(left_scol, scol, f) -> Column:
         # if `f` is "!=", fill null with True otherwise False
         filler = f == Column.__ne__
         scol = F.when(scol.isNull(), filler).otherwise(scol)
-
-    elif f == Column.__or__:
-        scol = F.when(left_scol.isNull() | scol.isNull(), False).otherwise(scol)
-
-    elif f == Column.__and__:
-        scol = F.when(scol.isNull(), False).otherwise(scol)
 
     return scol
 
@@ -254,7 +248,7 @@ def column_op(f):
             )
 
             if not isinstance(dtype, extension_dtypes):
-                scol = booleanize_null(self.spark.column, scol, f)
+                scol = booleanize_null(scol, f)
 
             if isinstance(self, Series) or not any(isinstance(col, Series) for col in cols):
                 index_ops = self._with_new_scol(scol, dtype=dtype)
@@ -618,11 +612,65 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     # `and`, `or`, `not` cannot be overloaded in Python,
     # so use bitwise operators as boolean operators
-    __and__ = column_op(Column.__and__)
-    __or__ = column_op(Column.__or__)
+    def __and__(self, other) -> Union["Series", "Index"]:
+        if isinstance(self.dtype, extension_dtypes) or (
+            isinstance(other, IndexOpsMixin) and isinstance(other.dtype, extension_dtypes)
+        ):
+            return column_op(Column.__and__)(
+                self,
+                (
+                    other
+                    if isinstance(other, (IndexOpsMixin, spark.Column))
+                    else F.lit(None)
+                    if pd.isna(other)
+                    else F.lit(other)
+                ),
+            )
+        else:
+
+            def and_func(left, right):
+                if not isinstance(right, spark.Column):
+                    if pd.isna(right):
+                        right = F.lit(None)
+                    else:
+                        right = F.lit(right)
+                scol = left & right
+                return F.when(scol.isNull(), False).otherwise(scol)
+
+            return column_op(and_func)(self, other)
+
+    def __or__(self, other) -> Union["Series", "Index"]:
+        if isinstance(self.dtype, extension_dtypes) or (
+            isinstance(other, IndexOpsMixin) and isinstance(other.dtype, extension_dtypes)
+        ):
+            return column_op(Column.__or__)(
+                self,
+                (
+                    other
+                    if isinstance(other, (IndexOpsMixin, spark.Column))
+                    else F.lit(None)
+                    if pd.isna(other)
+                    else F.lit(other)
+                ),
+            )
+        else:
+
+            def or_func(left, right):
+                if not isinstance(right, spark.Column) and pd.isna(right):
+                    return F.lit(False)
+                else:
+                    scol = left | F.lit(right)
+                    return F.when(left.isNull() | scol.isNull(), False).otherwise(scol)
+
+            return column_op(or_func)(self, other)
+
     __invert__ = column_op(Column.__invert__)
-    __rand__ = column_op(Column.__rand__)
-    __ror__ = column_op(Column.__ror__)
+
+    def __rand__(self, other) -> Union["Series", "Index"]:
+        return self.__and__(other)
+
+    def __ror__(self, other) -> Union["Series", "Index"]:
+        return self.__or__(other)
 
     def __len__(self):
         return len(self._kdf)
