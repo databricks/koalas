@@ -100,7 +100,7 @@ class MultiIndex(Index):
     def __abs__(self):
         raise TypeError("TypeError: cannot perform __abs__ with this index type: MultiIndex")
 
-    def _with_new_scol(self, scol: spark.Column):
+    def _with_new_scol(self, scol: spark.Column, *, dtype=None):
         raise NotImplementedError("Not supported for type MultiIndex")
 
     def _align_and_column_op(self, f, *args) -> Index:

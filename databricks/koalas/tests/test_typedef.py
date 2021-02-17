@@ -40,7 +40,13 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from databricks.koalas.typedef import infer_return_type, as_spark_type
+from databricks.koalas.typedef import (
+    infer_return_type,
+    as_spark_type,
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
 from databricks import koalas as ks
 
 
@@ -277,3 +283,45 @@ class TypeHintTests(unittest.TestCase):
 
         with self.assertRaisesRegex(TypeError, "Type uint64 was not understood."):
             as_spark_type(np.dtype("uint64"))
+
+    @unittest.skipIf(not extension_dtypes_available, "The pandas extension types are not available")
+    def test_as_spark_type_extension_dtypes(self):
+        from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
+
+        type_mapper = {
+            Int8Dtype(): ByteType(),
+            Int16Dtype(): ShortType(),
+            Int32Dtype(): IntegerType(),
+            Int64Dtype(): LongType(),
+        }
+
+        for extension_dtype, spark_type in type_mapper.items():
+            self.assertEqual(as_spark_type(extension_dtype), spark_type)
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "The pandas extension object types are not available"
+    )
+    def test_as_spark_type_extension_object_dtypes(self):
+        from pandas import BooleanDtype, StringDtype
+
+        type_mapper = {
+            BooleanDtype(): BooleanType(),
+            StringDtype(): StringType(),
+        }
+
+        for extension_dtype, spark_type in type_mapper.items():
+            self.assertEqual(as_spark_type(extension_dtype), spark_type)
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "The pandas extension float types are not available"
+    )
+    def test_as_spark_type_extension_float_dtypes(self):
+        from pandas import Float32Dtype, Float64Dtype
+
+        type_mapper = {
+            Float32Dtype(): FloatType(),
+            Float64Dtype(): DoubleType(),
+        }
+
+        for extension_dtype, spark_type in type_mapper.items():
+            self.assertEqual(as_spark_type(extension_dtype), spark_type)

@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import pyspark
 from pyspark.ml.linalg import SparseVector
+from pyspark.sql import functions as F
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import (
@@ -40,6 +41,12 @@ from databricks.koalas.testing.utils import (
 )
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.missing.series import MissingPandasLikeSeries
+from databricks.koalas.typedef.typehints import (
+    extension_dtypes,
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
 
 
 class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
@@ -82,6 +89,59 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         s.__repr__()
         s.rename("a", inplace=True)
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
+
+    def _check_extension(self, kser, pser):
+        if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+            self.assert_eq(kser, pser, check_exact=False)
+            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+        else:
+            self.assert_eq(kser, pser)
+
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_extension_dtypes(self):
+        for pser in [
+            pd.Series([1, 2, None, 4], dtype="Int8"),
+            pd.Series([1, 2, None, 4], dtype="Int16"),
+            pd.Series([1, 2, None, 4], dtype="Int32"),
+            pd.Series([1, 2, None, 4], dtype="Int64"),
+        ]:
+            kser = ks.from_pandas(pser)
+
+            self._check_extension(kser, pser)
+            self._check_extension(kser + F.lit(1).cast("byte"), pser + 1)
+            self._check_extension(kser + kser, pser + pser)
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_extension_object_dtypes(self):
+        # string
+        pser = pd.Series(["a", None, "c", "d"], dtype="string")
+        kser = ks.from_pandas(pser)
+
+        self._check_extension(kser, pser)
+
+        # boolean
+        pser = pd.Series([True, False, True, None], dtype="boolean")
+        kser = ks.from_pandas(pser)
+
+        self._check_extension(kser, pser)
+        self._check_extension(kser & kser, pser & pser)
+        self._check_extension(kser | kser, pser | pser)
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_extension_float_dtypes(self):
+        for pser in [
+            pd.Series([1.0, 2.0, None, 4.0], dtype="Float32"),
+            pd.Series([1.0, 2.0, None, 4.0], dtype="Float64"),
+        ]:
+            kser = ks.from_pandas(pser)
+
+            self._check_extension(kser, pser)
+            self._check_extension(kser + 1, pser + 1)
+            self._check_extension(kser + kser, pser + pser)
 
     def test_empty_series(self):
         pser_a = pd.Series([], dtype="i1")
@@ -288,7 +348,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(pdf["left"] | pdf["right"], kdf["left"] | kdf["right"])
+        self.assert_eq(kdf["left"] | kdf["right"], pdf["left"] | pdf["right"])
+        self.assert_eq(kdf["left"] | True, pdf["left"] | True)
+        self.assert_eq(kdf["left"] | False, pdf["left"] | False)
+        self.assert_eq(kdf["left"] | None, pdf["left"] | None)
+        self.assert_eq(True | kdf["right"], True | pdf["right"])
+        self.assert_eq(False | kdf["right"], False | pdf["right"])
+        self.assert_eq(None | kdf["right"], None | pdf["right"])
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_or_extenstion_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "left": [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+                "right": [True, False, False, True, True, False, np.nan, np.nan, np.nan],
+            }
+        ).astype("boolean")
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf["left"] | kdf["right"], pdf["left"] | pdf["right"])
+        self._check_extension(kdf["left"] | True, pdf["left"] | True)
+        self._check_extension(kdf["left"] | False, pdf["left"] | False)
+        self._check_extension(kdf["left"] | pd.NA, pdf["left"] | pd.NA)
+        self._check_extension(True | kdf["right"], True | pdf["right"])
+        self._check_extension(False | kdf["right"], False | pdf["right"])
+        self._check_extension(pd.NA | kdf["right"], pd.NA | pdf["right"])
 
     def test_and(self):
         pdf = pd.DataFrame(
@@ -299,9 +385,33 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(
-            pdf["left"] & pdf["right"], kdf["left"] & kdf["right"],
-        )
+        self.assert_eq(kdf["left"] & kdf["right"], pdf["left"] & pdf["right"])
+        self.assert_eq(kdf["left"] & True, pdf["left"] & True)
+        self.assert_eq(kdf["left"] & False, pdf["left"] & False)
+        self.assert_eq(kdf["left"] & None, pdf["left"] & None)
+        self.assert_eq(True & kdf["right"], True & pdf["right"])
+        self.assert_eq(False & kdf["right"], False & pdf["right"])
+        self.assert_eq(None & kdf["right"], None & pdf["right"])
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_and_extenstion_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "left": [True, False, True, False, np.nan, np.nan, True, False, np.nan],
+                "right": [True, False, False, True, True, False, np.nan, np.nan, np.nan],
+            }
+        ).astype("boolean")
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf["left"] & kdf["right"], pdf["left"] & pdf["right"])
+        self._check_extension(kdf["left"] & True, pdf["left"] & True)
+        self._check_extension(kdf["left"] & False, pdf["left"] & False)
+        self._check_extension(kdf["left"] & pd.NA, pdf["left"] & pd.NA)
+        self._check_extension(True & kdf["right"], True & pdf["right"])
+        self._check_extension(False & kdf["right"], False & pdf["right"])
+        self._check_extension(pd.NA & kdf["right"], pd.NA & pdf["right"])
 
     def test_to_numpy(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -1346,8 +1456,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(ValueError, "periods should be an int; however"):
             kser.shift(periods=1.5)
 
-    def test_astype(self):
-        pser = pd.Series([10, 20, 15, 30, 45], name="x")
+    def _test_numeric_astype(self, pser):
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(int), pser.astype(int))
@@ -1382,6 +1491,53 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.astype("str"), pser.astype("str"))
         self.assert_eq(kser.astype("U"), pser.astype("U"))
 
+        if extension_dtypes_available:
+            from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
+
+            self._check_extension(kser.astype("Int8"), pser.astype("Int8"))
+            self._check_extension(kser.astype("Int16"), pser.astype("Int16"))
+            self._check_extension(kser.astype("Int32"), pser.astype("Int32"))
+            self._check_extension(kser.astype("Int64"), pser.astype("Int64"))
+            self._check_extension(kser.astype(Int8Dtype()), pser.astype(Int8Dtype()))
+            self._check_extension(kser.astype(Int16Dtype()), pser.astype(Int16Dtype()))
+            self._check_extension(kser.astype(Int32Dtype()), pser.astype(Int32Dtype()))
+            self._check_extension(kser.astype(Int64Dtype()), pser.astype(Int64Dtype()))
+
+        if extension_object_dtypes_available:
+            from pandas import StringDtype
+
+            if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+                self._check_extension(kser.astype("string"), pser.astype("string"))
+                self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))
+            else:
+                self._check_extension(
+                    kser.astype("string"),
+                    pd.Series(["10", "20", "15", "30", "45"], name="x", dtype="string"),
+                )
+                self._check_extension(
+                    kser.astype(StringDtype()),
+                    pd.Series(["10", "20", "15", "30", "45"], name="x", dtype=StringDtype()),
+                )
+
+        if extension_float_dtypes_available:
+            from pandas import Float32Dtype, Float64Dtype
+
+            self._check_extension(kser.astype("Float32"), pser.astype("Float32"))
+            self._check_extension(kser.astype("Float64"), pser.astype("Float64"))
+            self._check_extension(kser.astype(Float32Dtype()), pser.astype(Float32Dtype()))
+            self._check_extension(kser.astype(Float64Dtype()), pser.astype(Float64Dtype()))
+
+    def test_astype(self):
+        psers = [pd.Series([10, 20, 15, 30, 45], name="x")]
+
+        if extension_dtypes_available:
+            psers.append(pd.Series([10, 20, 15, 30, 45], name="x", dtype="Int64"))
+        if extension_float_dtypes_available:
+            psers.append(pd.Series([10, 20, 15, 30, 45], name="x", dtype="Float64"))
+
+        for pser in psers:
+            self._test_numeric_astype(pser)
+
         pser = pd.Series([10, 20, 15, 30, 45, None, np.nan], name="x")
         kser = ks.Series(pser)
 
@@ -1399,11 +1555,36 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kser.astype(str), pser.astype(str))
         self.assert_eq(kser.str.strip().astype(bool), pser.str.strip().astype(bool))
 
+        if extension_object_dtypes_available:
+            from pandas import StringDtype
+
+            self._check_extension(kser.astype("string"), pser.astype("string"))
+            self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))
+
         pser = pd.Series([True, False, None], name="x")
         kser = ks.Series(pser)
 
         self.assert_eq(kser.astype(bool), pser.astype(bool))
         self.assert_eq(kser.astype(str), pser.astype(str))
+
+        if extension_object_dtypes_available:
+            from pandas import BooleanDtype, StringDtype
+
+            self._check_extension(kser.astype("boolean"), pser.astype("boolean"))
+            self._check_extension(kser.astype(BooleanDtype()), pser.astype(BooleanDtype()))
+
+            if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+                self._check_extension(kser.astype("string"), pser.astype("string"))
+                self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))
+            else:
+                self._check_extension(
+                    kser.astype("string"),
+                    pd.Series(["True", "False", None], name="x", dtype="string"),
+                )
+                self._check_extension(
+                    kser.astype(StringDtype()),
+                    pd.Series(["True", "False", None], name="x", dtype=StringDtype()),
+                )
 
         pser = pd.Series(["2020-10-27 00:00:01", None], name="x")
         kser = ks.Series(pser)
@@ -1413,6 +1594,16 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.astype("M"), pser.astype("M"))
         self.assert_eq(kser.astype("M").astype(str), pser.astype("M").astype(str))
         self.assert_eq(kser.astype("M").dt.date.astype(str), pser.astype("M").dt.date.astype(str))
+
+        if extension_object_dtypes_available:
+            from pandas import StringDtype
+
+            self._check_extension(
+                kser.astype("M").astype("string"), pser.astype("M").astype("string")
+            )
+            self._check_extension(
+                kser.astype("M").astype(StringDtype()), pser.astype("M").astype(StringDtype())
+            )
 
         with self.assertRaisesRegex(TypeError, "not understood"):
             kser.astype("int63")

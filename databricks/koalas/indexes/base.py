@@ -159,7 +159,7 @@ class Index(IndexOpsMixin):
     def _column_label(self):
         return self._kdf._internal.index_names[0]
 
-    def _with_new_scol(self, scol: spark.Column) -> "Index":
+    def _with_new_scol(self, scol: spark.Column, *, dtype=None) -> "Index":
         """
         Copy Koalas Index with the new Spark Column.
 
@@ -168,8 +168,10 @@ class Index(IndexOpsMixin):
         """
         internal = self._internal.copy(
             index_spark_columns=[scol.alias(SPARK_DEFAULT_INDEX_NAME)],
+            index_dtypes=[dtype],
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return DataFrame(internal).index
 
