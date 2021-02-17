@@ -91,9 +91,11 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertEqual(s.__repr__(), s.rename("a").__repr__())
 
     def _check_extension(self, kser, pser):
-        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-        self.assert_eq(kser, pser, check_exact=False)
-        self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+        if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+            self.assert_eq(kser, pser, check_exact=False)
+            self.assertTrue(isinstance(kser.dtype, extension_dtypes))
+        else:
+            self.assert_eq(kser, pser)
 
     @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
     def test_extension_dtypes(self):
@@ -1504,7 +1506,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         if extension_object_dtypes_available:
             from pandas import StringDtype
 
-            # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
             if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
                 self._check_extension(kser.astype("string"), pser.astype("string"))
                 self._check_extension(kser.astype(StringDtype()), pser.astype(StringDtype()))

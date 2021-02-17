@@ -201,13 +201,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf2 = ks.from_pandas(pdf2)
 
         def assert_eq(actual, expected):
-            self.assert_eq(actual, expected, check_exact=not check_extension)
-            if check_extension:
-                if isinstance(actual, DataFrame):
-                    for dtype in actual.dtypes:
-                        self.assertTrue(isinstance(dtype, extension_dtypes))
-                else:
-                    self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    if isinstance(actual, DataFrame):
+                        for dtype in actual.dtypes:
+                            self.assertTrue(isinstance(dtype, extension_dtypes))
+                    else:
+                        self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # Series
         assert_eq((kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).sort_index())
@@ -255,9 +258,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kser2 = ks.from_pandas(pser2)
 
         def assert_eq(actual, expected):
-            self.assert_eq(actual, expected, check_exact=not check_extension)
-            if check_extension:
-                self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # MultiIndex Series
         assert_eq((kser1 + kser2).sort_index(), (pser1 + pser2).sort_index())
@@ -317,16 +323,19 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         common_columns = set(kdf1.columns).intersection(kdf2.columns).intersection(kdf3.columns)
 
         def assert_eq(actual, expected):
-            self.assert_eq(actual, expected, check_exact=not check_extension)
-            if check_extension:
-                if isinstance(actual, DataFrame):
-                    for column, dtype in zip(actual.columns, actual.dtypes):
-                        if column in common_columns:
-                            self.assertTrue(isinstance(dtype, extension_dtypes))
-                        else:
-                            self.assertFalse(isinstance(dtype, extension_dtypes))
-                else:
-                    self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    if isinstance(actual, DataFrame):
+                        for column, dtype in zip(actual.columns, actual.dtypes):
+                            if column in common_columns:
+                                self.assertTrue(isinstance(dtype, extension_dtypes))
+                            else:
+                                self.assertFalse(isinstance(dtype, extension_dtypes))
+                    else:
+                        self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # Series
         assert_eq((kdf1.a - kdf2.b - kdf3.c).sort_index(), (pdf1.a - pdf2.b - pdf3.c).sort_index())
@@ -395,9 +404,12 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kser3 = ks.from_pandas(pser3)
 
         def assert_eq(actual, expected):
-            self.assert_eq(actual, expected, check_exact=not check_extension)
-            if check_extension:
-                self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # MultiIndex Series
         assert_eq((kser1 + kser2 - kser3).sort_index(), (pser1 + pser2 - pser3).sort_index())
@@ -510,8 +522,11 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
     )
     def test_bitwise_extension_dtype(self):
         def assert_eq(actual, expected):
-            self.assert_eq(actual, expected, check_exact=False)
-            self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=False)
+                self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         pser1 = pd.Series(
             [True, False, True, False, np.nan, np.nan, True, False, np.nan], dtype="boolean"

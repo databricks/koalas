@@ -96,10 +96,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf[index_cols], pdf[index_cols])
 
     def _check_extension(self, kdf, pdf):
-        # FIXME: check_exact=True; pandas' assert_xxx_equal doesn't support extention dtypes.
-        self.assert_eq(kdf, pdf, check_exact=False)
-        for dtype in kdf.dtypes:
-            self.assertTrue(isinstance(dtype, extension_dtypes))
+        if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+            self.assert_eq(kdf, pdf, check_exact=False)
+            for dtype in kdf.dtypes:
+                self.assertTrue(isinstance(dtype, extension_dtypes))
+        else:
+            self.assert_eq(kdf, pdf)
 
     @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
     def test_extension_dtypes(self):
