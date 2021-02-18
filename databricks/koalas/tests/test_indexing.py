@@ -697,6 +697,21 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kdf.loc[kdf.B > 0, "B"], pdf.loc[pdf.B > 0, "B"])
         # TODO?: self.assert_eq(kdf.loc[kdf.B > 0, ['A', 'C']], pdf.loc[pdf.B > 0, ['A', 'C']])
 
+    def test_loc_bool_list_like_col_select(self):
+        pdf = pd.DataFrame({"a": [1, 2], "b": [3, 4], "c": [5, 6]}, index=["x", "y"])
+        kdf = ks.from_pandas(pdf)
+
+        bool_list = [True, False, True]
+        self.assert_eq(kdf.loc[:, bool_list], pdf.loc[:, bool_list])
+        self.assert_eq(kdf.loc[:, np.array(bool_list)], pdf.loc[:, np.array(bool_list)])
+
+        pser = pd.Series(bool_list, index=pdf.columns)
+        self.assert_eq(kdf.loc[:, pser], pdf.loc[:, pser])
+
+        self.assertRaises(IndexError, lambda: kdf.loc[:, bool_list[:-1]])
+        self.assertRaises(IndexError, lambda: kdf.loc[:, np.array(bool_list + [True])])
+        self.assertRaises(SparkPandasIndexingError, lambda: kdf.loc[:, pd.Series(bool_list)])
+
     def test_getitem(self):
         pdf = pd.DataFrame(
             {

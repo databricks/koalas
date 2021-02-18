@@ -20,8 +20,9 @@ A loc indexer for Koalas DataFrame/Series.
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from functools import reduce
-from typing import Any, Optional, List, Tuple, TYPE_CHECKING, Union
+from typing import Any, Optional, List, Tuple, TYPE_CHECKING, Union, cast, Sized
 
+import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -758,7 +759,7 @@ class LocIndexer(LocIndexerLike):
 
     Not allowed inputs which pandas allows are:
 
-    - A boolean array of the same length as the axis being sliced,
+    - A boolean array of the same length as the axis being sliced (when axis=0),
       e.g. ``[True, False, True]``.
     - A ``callable`` function with one argument (the calling Series, DataFrame
       or Panel) and that returns valid output for indexing (one of the above)
@@ -1201,6 +1202,26 @@ class LocIndexer(LocIndexerLike):
             ]
             data_spark_columns = list(cols_sel)
             data_dtypes = None
+        elif all(isinstance(key, bool) for key in cols_sel) or all(
+            isinstance(key, np.bool_) for key in cols_sel
+        ):
+            if len(cast(Sized, cols_sel)) != len(self._internal.column_labels):
+                raise IndexError(
+                    "Boolean index has wrong length: %s instead of %s"
+                    % (len(cast(Sized, cols_sel)), len(self._internal.column_labels))
+                )
+            if isinstance(cols_sel, pd.Series) and not cols_sel.index.equals(self._kdf.columns):
+                raise SparkPandasIndexingError(
+                    "Unalignable boolean Series provided as indexer "
+                    "(index of the boolean Series and of the indexed object do not match)"
+                )
+            column_labels = [
+                self._internal.column_labels[i] for i, col in enumerate(cols_sel) if col
+            ]
+            data_spark_columns = [
+                self._internal.data_spark_columns[i] for i, col in enumerate(cols_sel) if col
+            ]
+            data_dtypes = [self._internal.data_dtypes[i] for i, col in enumerate(cols_sel) if col]
         elif any(isinstance(key, tuple) for key in cols_sel) and any(
             not is_name_like_tuple(key) for key in cols_sel
         ):
