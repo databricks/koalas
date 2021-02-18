@@ -757,9 +757,14 @@ class LocIndexer(LocIndexerLike):
 
     - A conditional boolean Series derived from the DataFrame or Series
 
+    - A boolean array of the same length as the column axis being sliced, e.g. [True, False, True].
+
+    - An alignable boolean pandas Series to the column axis being sliced.
+      The index of the key will be aligned before masking.
+
     Not allowed inputs which pandas allows are:
 
-    - A boolean array of the same length as the axis being sliced (when axis=0),
+    - A boolean array of the same length as the row axis being sliced,
       e.g. ``[True, False, True]``.
     - A ``callable`` function with one argument (the calling Series, DataFrame
       or Panel) and that returns valid output for indexing (one of the above)
@@ -851,6 +856,22 @@ class LocIndexer(LocIndexerLike):
     >>> df.loc[df['shield'] > 6, ['max_speed']]
                 max_speed
     sidewinder          7
+
+    A boolean array of the same length as the column axis being sliced.
+
+    >>> df.loc[:, [False, True]]
+                shield
+    cobra            2
+    viper            5
+    sidewinder       8
+
+    An alignable boolean Series to the column axis being sliced.
+
+    >>> df.loc[:, pd.Series([False, True], index=['max_speed', 'shield'])]
+                shield
+    cobra            2
+    viper            5
+    sidewinder       8
 
     **Setting values**
 
