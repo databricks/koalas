@@ -2756,8 +2756,6 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         others = (
             ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
             ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
-            [np.nan, 1, 3, 4, np.nan, 6],
-            (np.nan, 1, 3, 4, np.nan, 6),
         )
         # `add` and `radd`
         for other in others:
@@ -2844,8 +2842,6 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         others = (
             ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
             ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
-            [np.nan, 1, 3, 4, np.nan, 6],
-            (np.nan, 1, 3, 4, np.nan, 6),
         )
         # `add` and `radd`
         for other in others:
