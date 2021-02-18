@@ -757,7 +757,8 @@ class LocIndexer(LocIndexerLike):
 
     - A conditional boolean Series derived from the DataFrame or Series
 
-    - A boolean array of the same length as the column axis being sliced, e.g. [True, False, True].
+    - A boolean array of the same length as the column axis being sliced,
+      e.g. ``[True, False, True]``.
 
     - An alignable boolean pandas Series to the column axis being sliced.
       The index of the key will be aligned before masking.
