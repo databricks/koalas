@@ -813,3 +813,31 @@ def compare_disallow_null(left, right, comp):
 
 def compare_allow_null(left, right, comp):
     return left.isNull() | right.isNull() | comp(left, right)
+
+
+def check_same_length(left: "IndexOpsMixin", right: Union[list, tuple]):
+    """
+    Check if given `left` and `right` have the same length.
+    If True, return the converted pandas object and `right`.
+    This function is used for binary operations of Series and Index.
+    """
+    with ks.option_context("compute.ordered_head", True):
+        len_right = len(right)
+        if isinstance(left, ks.Series):
+            pindex_ops = left.head(len_right + 1)._to_internal_pandas()
+        elif isinstance(left, ks.Index):
+            pindex_ops = left._kdf.head(len_right + 1).index._to_internal_pandas()
+            # pandas < 1.2.0 doesn't fully support binary operations with list or tuple for Index.
+            # So, we convert list or tuple to the Index for this case.
+            if LooseVersion(pd.__version__) < LooseVersion("1.2.0"):
+                right = pd.Index(right, name=pindex_ops.name)
+        else:
+            raise TypeError("check_same_length allows only Series or Index")
+        len_pindex_ops = len(pindex_ops)
+        if len_pindex_ops != len_right:
+            raise ValueError(
+                "operands could not be broadcast together with shapes ({},) ({},)".format(
+                    len_pindex_ops, len_right
+                )
+            )
+        return pindex_ops, right
