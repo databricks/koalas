@@ -1434,10 +1434,6 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         )
         koalas_other = ks.from_pandas(pandas_other)
         self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
-        with self.assertRaisesRegex(
-            ValueError, "Can only compare identically-labeled Series objects"
-        ):
-            kser == koalas_other
 
         # other = Index
         pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
@@ -1465,24 +1461,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # other = list with the different length
         other = [np.nan, 1, 3, 4, np.nan]
-        with self.assertRaisesRegex(
-            ValueError, "operands could not be broadcast together with shapes"
-        ):
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
             kser.eq(other)
-        with self.assertRaisesRegex(
-            ValueError, "operands could not be broadcast together with shapes"
-        ):
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
             kser == other
 
         # other = tuple with the different length
         other = (np.nan, 1, 3, 4, np.nan)
-        with self.assertRaisesRegex(
-            ValueError, "operands could not be broadcast together with shapes"
-        ):
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
             kser.eq(other)
-        with self.assertRaisesRegex(
-            ValueError, "operands could not be broadcast together with shapes"
-        ):
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
             kser == other
 
     def test_align(self):

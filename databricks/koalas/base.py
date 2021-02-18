@@ -572,7 +572,19 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __abs__ = column_op(F.abs)
 
     # comparison operators
-    __eq__ = column_op(Column.__eq__)
+    def __eq__(self, other) -> Union["Series", "Index"]:  # type: ignore[override]
+        if isinstance(other, (list, tuple)):
+            with ks.option_context("compute.ordered_head", True):
+                pindex_ops = self.head(len(other) + 1)._to_internal_pandas()  # type: ignore
+                if len(pindex_ops) != len(other):
+                    raise ValueError("Lengths must be equal")
+                return ks.from_pandas(pindex_ops == other)  # type: ignore
+        # pandas always returns False for all items with dict and set.
+        elif isinstance(other, (dict, set)):
+            return self != self
+        else:
+            return column_op(Column.__eq__)(self, other)
+
     __ne__ = column_op(Column.__ne__)
     __lt__ = column_op(Column.__lt__)
     __le__ = column_op(Column.__le__)

@@ -635,7 +635,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     koalas = CachedAccessor("koalas", KoalasSeriesMethods)
 
     # Comparison Operators
-    def eq(self, other) -> bool:
+    def eq(self, other) -> "Series":
         """
         Compare if the current value is equal to the other.
 
@@ -657,26 +657,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         d    False
         Name: b, dtype: bool
         """
-        if isinstance(other, (list, tuple)):
-            other = ks.Index(other, name=self.name)
-        # pandas always returns False for all items with dict and set.
-        elif isinstance(other, (dict, set)):
-            return self != self
-        return IndexOpsMixin.__eq__(self, other)
+        return self == other
 
     equals = eq
-
-    def __eq__(self, other):
-        if isinstance(other, (list, tuple)):
-            other = ks.Index(other, name=self.name)
-        # pandas always returns False for all items with dict and set.
-        elif isinstance(other, (dict, set)):
-            return self != self
-        # pandas doesn't support `==` for different Index, but support for `eq` function.
-        elif isinstance(other, ks.Series):
-            if not self.index.equals(other.index):
-                raise ValueError("Can only compare identically-labeled Series objects")
-        return IndexOpsMixin.__eq__(self, other)
 
     def gt(self, other) -> "Series":
         """
