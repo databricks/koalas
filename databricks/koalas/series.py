@@ -372,7 +372,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 )
             internal = InternalFrame.from_pandas(pd.DataFrame(s))
             if s.name is None:
-                internal = internal.copy(column_labels=[None])
+                internal = internal.copy(column_labels=[None], preserve_dtypes=True)
             anchor = DataFrame(internal)
 
             self._anchor = anchor
@@ -399,7 +399,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         self._anchor = kdf
         object.__setattr__(kdf, "_kseries", {self._column_label: self})
 
-    def _with_new_scol(self, scol: spark.Column) -> "Series":
+    def _with_new_scol(self, scol: spark.Column, *, dtype=None) -> "Series":
         """
         Copy Koalas Series with the new Spark Column.
 
@@ -407,7 +407,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         :return: the copied Series
         """
         internal = self._internal.copy(
-            data_spark_columns=[scol.alias(name_like_string(self._column_label))]
+            data_spark_columns=[scol.alias(name_like_string(self._column_label))],
+            data_dtypes=[dtype],
         )
         return first_series(DataFrame(internal))
 
@@ -1057,8 +1058,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             index = (index,)
         scol = self.spark.column.alias(name_like_string(index))
 
-        internal = self._kdf._internal.copy(
-            column_labels=[index], data_spark_columns=[scol], column_label_names=None
+        internal = self._internal.copy(
+            column_labels=[index],
+            data_spark_columns=[scol],
+            column_label_names=None,
+            preserve_dtypes=True,
         )
         kdf = DataFrame(internal)  # type: DataFrame
 
@@ -4918,7 +4922,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             product_ksers = [other._kser_for(label) * self_kser for label in column_labels]
 
             dot_product_kser = DataFrame(
-                other._internal.with_new_columns(product_ksers, column_labels)
+                other._internal.with_new_columns(product_ksers, column_labels=column_labels)
             ).sum()
 
             return cast(Series, dot_product_kser).rename(self.name)

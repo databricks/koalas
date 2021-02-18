@@ -25,12 +25,19 @@ import pandas as pd
 import pyspark
 from pyspark import StorageLevel
 from pyspark.ml.linalg import SparseVector
+from pyspark.sql import functions as F
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
 from databricks.koalas.exceptions import PandasNotImplementedError
 from databricks.koalas.frame import CachedDataFrame
 from databricks.koalas.missing.frame import _MissingPandasLikeDataFrame
+from databricks.koalas.typedef.typehints import (
+    extension_dtypes,
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
 from databricks.koalas.testing.utils import (
     ReusedSQLTestCase,
     SQLTestUtils,
@@ -87,6 +94,98 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         column_mask = pdf.columns.isin(["a", "b"])
         index_cols = pdf.columns[column_mask]
         self.assert_eq(kdf[index_cols], pdf[index_cols])
+
+    def _check_extension(self, kdf, pdf):
+        if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+            self.assert_eq(kdf, pdf, check_exact=False)
+            for dtype in kdf.dtypes:
+                self.assertTrue(isinstance(dtype, extension_dtypes))
+        else:
+            self.assert_eq(kdf, pdf)
+
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_extension_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Series([1, 2, None, 4], dtype="Int8"),
+                "b": pd.Series([1, None, None, 4], dtype="Int16"),
+                "c": pd.Series([1, 2, None, None], dtype="Int32"),
+                "d": pd.Series([None, 2, None, 4], dtype="Int64"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf, pdf)
+        self._check_extension(kdf + F.lit(1).cast("byte"), pdf + 1)
+        self._check_extension(kdf + kdf, pdf + pdf)
+
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_astype_extension_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": [1, 2, None, 4],
+                "b": [1, None, None, 4],
+                "c": [1, 2, None, None],
+                "d": [None, 2, None, 4],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        astype = {"a": "Int8", "b": "Int16", "c": "Int32", "d": "Int64"}
+
+        self._check_extension(kdf.astype(astype), pdf.astype(astype))
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_extension_object_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Series(["a", "b", None, "c"], dtype="string"),
+                "b": pd.Series([True, None, False, True], dtype="boolean"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf, pdf)
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_astype_extension_object_dtypes(self):
+        pdf = pd.DataFrame({"a": ["a", "b", None, "c"], "b": [True, None, False, True]})
+        kdf = ks.from_pandas(pdf)
+
+        astype = {"a": "string", "b": "boolean"}
+
+        self._check_extension(kdf.astype(astype), pdf.astype(astype))
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_extension_float_dtypes(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Series([1.0, 2.0, None, 4.0], dtype="Float32"),
+                "b": pd.Series([1.0, None, 3.0, 4.0], dtype="Float64"),
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self._check_extension(kdf, pdf)
+        self._check_extension(kdf + 1, pdf + 1)
+        self._check_extension(kdf + kdf, pdf + pdf)
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_astype_extension_float_dtypes(self):
+        pdf = pd.DataFrame({"a": [1.0, 2.0, None, 4.0], "b": [1.0, None, 3.0, 4.0]})
+        kdf = ks.from_pandas(pdf)
+
+        astype = {"a": "Float32", "b": "Float64"}
+
+        self._check_extension(kdf.astype(astype), pdf.astype(astype))
 
     def test_insert(self):
         #

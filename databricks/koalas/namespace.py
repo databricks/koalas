@@ -2016,7 +2016,9 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
                 concat_kdf = DataFrame(
                     concat_kdf._internal.with_new_columns(
                         concat_kdf._internal.data_spark_columns + kdf._internal.data_spark_columns,
-                        concat_kdf._internal.column_labels + kdf._internal.column_labels,
+                        column_labels=(
+                            concat_kdf._internal.column_labels + kdf._internal.column_labels
+                        ),
                     )
                 )
             else:
@@ -2597,7 +2599,9 @@ def broadcast(obj) -> DataFrame:
     """
     if not isinstance(obj, DataFrame):
         raise ValueError("Invalid type : expected DataFrame got {}".format(type(obj).__name__))
-    return DataFrame(obj._internal.with_new_sdf(F.broadcast(obj._internal.spark_frame)))
+    return DataFrame(
+        obj._internal.with_new_sdf(F.broadcast(obj._internal.resolved_copy.spark_frame))
+    )
 
 
 def read_orc(

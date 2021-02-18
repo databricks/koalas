@@ -795,7 +795,7 @@ class DataFrame(Frame, Generic[T]):
                             .alias(name_like_string(label))
                         )
                         column_labels.append(label)
-                internal = self._internal.with_new_columns(applied, column_labels)
+                internal = self._internal.with_new_columns(applied, column_labels=column_labels)
                 return DataFrame(internal)
         else:
             return self._apply_series_op(lambda kser: getattr(kser, op)(other))
@@ -5504,7 +5504,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             sdf = self._internal.resolved_copy.spark_frame
             if get_option("compute.ordered_head"):
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
-            return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
+            return DataFrame(self._internal.with_new_sdf(sdf.limit(n), preserve_dtypes=True))
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None
@@ -5958,17 +5958,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         else:
             column_label_names = None
 
-        data_columns = [name_like_string(label) for label in column_labels]
-        data_spark_columns = [
-            self._internal.spark_column_for(label).alias(name)
-            for label, name in zip(self._internal.column_labels, data_columns)
+        ksers = [
+            self._kser_for(label).rename(name)
+            for label, name in zip(self._internal.column_labels, column_labels)
         ]
         self._update_internal_frame(
-            self._internal.with_new_columns(
-                data_spark_columns,
-                column_labels=column_labels,
-                column_label_names=column_label_names,
-            )
+            self._internal.with_new_columns(ksers, column_label_names=column_label_names)
         )
 
     @property
@@ -6434,7 +6429,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
         sdf = self._internal.resolved_copy.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
-        kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: ks.DataFrame
+        kdf = DataFrame(
+            self._internal.with_new_sdf(sdf, preserve_dtypes=True)
+        )  # type: ks.DataFrame
         if inplace:
             self._update_internal_frame(kdf._internal)
             return None

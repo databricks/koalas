@@ -15,6 +15,7 @@
 #
 from distutils.version import LooseVersion
 from itertools import product
+import unittest
 
 import pandas as pd
 import numpy as np
@@ -23,7 +24,14 @@ import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.config import set_option, reset_option
+from databricks.koalas.frame import DataFrame
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.typedef.typehints import (
+    extension_dtypes,
+    extension_dtypes_available,
+    extension_float_dtypes_available,
+    extension_object_dtypes_available,
+)
 
 
 class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
@@ -163,24 +171,61 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             ).set_index("b")
 
     def test_arithmetic(self):
-        kdf1 = self.kdf1
-        kdf2 = self.kdf2
-        pdf1 = self.pdf1
-        pdf2 = self.pdf2
-        kser1 = self.kser1
-        pser1 = self.pser1
-        kser2 = self.kser2
-        pser2 = self.pser2
+        self._test_arithmetic_frame(self.pdf1, self.pdf2, check_extension=False)
+        self._test_arithmetic_series(self.pser1, self.pser2, check_extension=False)
+
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_arithmetic_extension_dtypes(self):
+        self._test_arithmetic_frame(
+            self.pdf1.astype("Int64"), self.pdf2.astype("Int64"), check_extension=True
+        )
+        self._test_arithmetic_series(
+            self.pser1.astype(int).astype("Int64"),
+            self.pser2.astype(int).astype("Int64"),
+            check_extension=True,
+        )
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_arithmetic_extension_float_dtypes(self):
+        self._test_arithmetic_frame(
+            self.pdf1.astype("Float64"), self.pdf2.astype("Float64"), check_extension=True
+        )
+        self._test_arithmetic_series(
+            self.pser1.astype("Float64"), self.pser2.astype("Float64"), check_extension=True
+        )
+
+    def _test_arithmetic_frame(self, pdf1, pdf2, *, check_extension):
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+
+        def assert_eq(actual, expected):
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    if isinstance(actual, DataFrame):
+                        for dtype in actual.dtypes:
+                            self.assertTrue(isinstance(dtype, extension_dtypes))
+                    else:
+                        self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # Series
-        self.assert_eq((kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).sort_index())
+        assert_eq((kdf1.a - kdf2.b).sort_index(), (pdf1.a - pdf2.b).sort_index())
 
-        self.assert_eq((kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).sort_index())
+        assert_eq((kdf1.a * kdf2.a).sort_index(), (pdf1.a * pdf2.a).sort_index())
 
-        self.assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
+        if check_extension and not extension_float_dtypes_available:
+            self.assert_eq(
+                (kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index()
+            )
+        else:
+            assert_eq((kdf1["a"] / kdf2["a"]).sort_index(), (pdf1["a"] / pdf2["a"]).sort_index())
 
         # DataFrame
-        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
+        assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
 
         # Multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
@@ -190,65 +235,135 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf2.columns = columns
 
         # Series
-        self.assert_eq(
+        assert_eq(
             (kdf1[("x", "a")] - kdf2[("x", "b")]).sort_index(),
             (pdf1[("x", "a")] - pdf2[("x", "b")]).sort_index(),
         )
 
-        self.assert_eq(
+        assert_eq(
             (kdf1[("x", "a")] - kdf2["x"]["b"]).sort_index(),
             (pdf1[("x", "a")] - pdf2["x"]["b"]).sort_index(),
         )
 
-        self.assert_eq(
+        assert_eq(
             (kdf1["x"]["a"] - kdf2[("x", "b")]).sort_index(),
             (pdf1["x"]["a"] - pdf2[("x", "b")]).sort_index(),
         )
 
         # DataFrame
-        self.assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
+        assert_eq((kdf1 + kdf2).sort_index(), (pdf1 + pdf2).sort_index())
+
+    def _test_arithmetic_series(self, pser1, pser2, *, check_extension):
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        def assert_eq(actual, expected):
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # MultiIndex Series
-        self.assert_eq((kser1 + kser2).sort_index(), (pser1 + pser2).sort_index())
+        assert_eq((kser1 + kser2).sort_index(), (pser1 + pser2).sort_index())
 
-        self.assert_eq((kser1 - kser2).sort_index(), (pser1 - pser2).sort_index())
+        assert_eq((kser1 - kser2).sort_index(), (pser1 - pser2).sort_index())
 
-        self.assert_eq((kser1 * kser2).sort_index(), (pser1 * pser2).sort_index())
+        assert_eq((kser1 * kser2).sort_index(), (pser1 * pser2).sort_index())
 
-        self.assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
+        if check_extension and not extension_float_dtypes_available:
+            self.assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
+        else:
+            assert_eq((kser1 / kser2).sort_index(), (pser1 / pser2).sort_index())
 
     def test_arithmetic_chain(self):
-        kdf1 = self.kdf1
-        kdf2 = self.kdf2
-        kdf3 = self.kdf3
-        pdf1 = self.pdf1
-        pdf2 = self.pdf2
-        pdf3 = self.pdf3
-        kser1 = self.kser1
-        pser1 = self.pser1
-        kser2 = self.kser2
-        pser2 = self.pser2
-        kser3 = self.kser3
-        pser3 = self.pser3
-
-        # Series
-        self.assert_eq(
-            (kdf1.a - kdf2.b - kdf3.c).sort_index(), (pdf1.a - pdf2.b - pdf3.c).sort_index()
+        self._test_arithmetic_chain_frame(self.pdf1, self.pdf2, self.pdf3, check_extension=False)
+        self._test_arithmetic_chain_series(
+            self.pser1, self.pser2, self.pser3, check_extension=False
         )
 
-        self.assert_eq(
+    @unittest.skipIf(not extension_dtypes_available, "pandas extension dtypes are not available")
+    def test_arithmetic_chain_extension_dtypes(self):
+        self._test_arithmetic_chain_frame(
+            self.pdf1.astype("Int64"),
+            self.pdf2.astype("Int64"),
+            self.pdf3.astype("Int64"),
+            check_extension=True,
+        )
+        self._test_arithmetic_chain_series(
+            self.pser1.astype(int).astype("Int64"),
+            self.pser2.astype(int).astype("Int64"),
+            self.pser3.astype(int).astype("Int64"),
+            check_extension=True,
+        )
+
+    @unittest.skipIf(
+        not extension_float_dtypes_available, "pandas extension float dtypes are not available"
+    )
+    def test_arithmetic_chain_extension_float_dtypes(self):
+        self._test_arithmetic_chain_frame(
+            self.pdf1.astype("Float64"),
+            self.pdf2.astype("Float64"),
+            self.pdf3.astype("Float64"),
+            check_extension=True,
+        )
+        self._test_arithmetic_chain_series(
+            self.pser1.astype("Float64"),
+            self.pser2.astype("Float64"),
+            self.pser3.astype("Float64"),
+            check_extension=True,
+        )
+
+    def _test_arithmetic_chain_frame(self, pdf1, pdf2, pdf3, *, check_extension):
+        kdf1 = ks.from_pandas(pdf1)
+        kdf2 = ks.from_pandas(pdf2)
+        kdf3 = ks.from_pandas(pdf3)
+
+        common_columns = set(kdf1.columns).intersection(kdf2.columns).intersection(kdf3.columns)
+
+        def assert_eq(actual, expected):
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    if isinstance(actual, DataFrame):
+                        for column, dtype in zip(actual.columns, actual.dtypes):
+                            if column in common_columns:
+                                self.assertTrue(isinstance(dtype, extension_dtypes))
+                            else:
+                                self.assertFalse(isinstance(dtype, extension_dtypes))
+                    else:
+                        self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
+
+        # Series
+        assert_eq((kdf1.a - kdf2.b - kdf3.c).sort_index(), (pdf1.a - pdf2.b - pdf3.c).sort_index())
+
+        assert_eq(
             (kdf1.a * (kdf2.a * kdf3.c)).sort_index(), (pdf1.a * (pdf2.a * pdf3.c)).sort_index()
         )
 
-        self.assert_eq(
-            (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
-            (pdf1["a"] / pdf2["a"] / pdf3["c"]).sort_index(),
-        )
+        if check_extension and not extension_float_dtypes_available:
+            self.assert_eq(
+                (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
+                (pdf1["a"] / pdf2["a"] / pdf3["c"]).sort_index(),
+            )
+        else:
+            assert_eq(
+                (kdf1["a"] / kdf2["a"] / kdf3["c"]).sort_index(),
+                (pdf1["a"] / pdf2["a"] / pdf3["c"]).sort_index(),
+            )
 
         # DataFrame
-        self.assert_eq(
-            (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
-        )
+        if check_extension and (
+            LooseVersion("1.0") <= LooseVersion(pd.__version__) < LooseVersion("1.1")
+        ):
+            self.assert_eq(
+                (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
+            )
+        else:
+            assert_eq((kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index())
 
         # Multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b")])
@@ -260,30 +375,72 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         kdf3.columns = columns
         pdf3.columns = columns
 
+        common_columns = set(kdf1.columns).intersection(kdf2.columns).intersection(kdf3.columns)
+
         # Series
-        self.assert_eq(
+        assert_eq(
             (kdf1[("x", "a")] - kdf2[("x", "b")] - kdf3[("y", "c")]).sort_index(),
             (pdf1[("x", "a")] - pdf2[("x", "b")] - pdf3[("y", "c")]).sort_index(),
         )
 
-        self.assert_eq(
+        assert_eq(
             (kdf1[("x", "a")] * (kdf2[("x", "b")] * kdf3[("y", "c")])).sort_index(),
             (pdf1[("x", "a")] * (pdf2[("x", "b")] * pdf3[("y", "c")])).sort_index(),
         )
 
         # DataFrame
-        self.assert_eq(
-            (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
-        )
+        if check_extension and (
+            LooseVersion("1.0") <= LooseVersion(pd.__version__) < LooseVersion("1.1")
+        ):
+            self.assert_eq(
+                (kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index(), almost=True
+            )
+        else:
+            assert_eq((kdf1 + kdf2 - kdf3).sort_index(), (pdf1 + pdf2 - pdf3).sort_index())
+
+    def _test_arithmetic_chain_series(self, pser1, pser2, pser3, *, check_extension):
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+        kser3 = ks.from_pandas(pser3)
+
+        def assert_eq(actual, expected):
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=not check_extension)
+                if check_extension:
+                    self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
 
         # MultiIndex Series
-        self.assert_eq((kser1 + kser2 - kser3).sort_index(), (pser1 + pser2 - pser3).sort_index())
+        assert_eq((kser1 + kser2 - kser3).sort_index(), (pser1 + pser2 - pser3).sort_index())
 
-        self.assert_eq((kser1 * kser2 * kser3).sort_index(), (pser1 * pser2 * pser3).sort_index())
+        assert_eq((kser1 * kser2 * kser3).sort_index(), (pser1 * pser2 * pser3).sort_index())
 
-        self.assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
+        if check_extension and not extension_float_dtypes_available:
+            if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+                self.assert_eq(
+                    (kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index()
+                )
+            else:
+                expected = pd.Series(
+                    [249.0, np.nan, 0.0, 0.88, np.nan, np.nan, np.nan, np.nan, np.nan, -np.inf]
+                    + [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
+                    index=pd.MultiIndex(
+                        [
+                            ["cow", "falcon", "koala", "koalas", "lama"],
+                            ["length", "power", "speed", "weight"],
+                        ],
+                        [
+                            [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 3, 3, 3, 4, 4, 4],
+                            [0, 1, 2, 2, 3, 0, 0, 1, 2, 3, 0, 0, 3, 3, 0, 2, 3],
+                        ],
+                    ),
+                )
+                self.assert_eq((kser1 - kser2 / kser3).sort_index(), expected)
+        else:
+            assert_eq((kser1 - kser2 / kser3).sort_index(), (pser1 - pser2 / pser3).sort_index())
 
-        self.assert_eq((kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index())
+        assert_eq((kser1 + kser2 * kser3).sort_index(), (pser1 + pser2 * pser3).sort_index())
 
     def test_mod(self):
         pser = pd.Series([100, None, -300, None, 500, -700])
@@ -359,6 +516,48 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assert_eq(pser1 | pser2, (kser1 | kser2).sort_index())
         self.assert_eq(pser1 & pser2, (kser1 & kser2).sort_index())
+
+    @unittest.skipIf(
+        not extension_object_dtypes_available, "pandas extension object dtypes are not available"
+    )
+    def test_bitwise_extension_dtype(self):
+        def assert_eq(actual, expected):
+            if LooseVersion("1.1") <= LooseVersion(pd.__version__) < LooseVersion("1.2.2"):
+                self.assert_eq(actual, expected, check_exact=False)
+                self.assertTrue(isinstance(actual.dtype, extension_dtypes))
+            else:
+                self.assert_eq(actual, expected)
+
+        pser1 = pd.Series(
+            [True, False, True, False, np.nan, np.nan, True, False, np.nan], dtype="boolean"
+        )
+        pser2 = pd.Series(
+            [True, False, False, True, True, False, np.nan, np.nan, np.nan], dtype="boolean"
+        )
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        assert_eq((kser1 | kser2).sort_index(), pser1 | pser2)
+        assert_eq((kser1 & kser2).sort_index(), pser1 & pser2)
+
+        pser1 = pd.Series([True, False, np.nan], index=list("ABC"), dtype="boolean")
+        pser2 = pd.Series([False, True, np.nan], index=list("DEF"), dtype="boolean")
+        kser1 = ks.from_pandas(pser1)
+        kser2 = ks.from_pandas(pser2)
+
+        # a pandas bug?
+        # assert_eq((kser1 | kser2).sort_index(), pser1 | pser2)
+        # assert_eq((kser1 & kser2).sort_index(), pser1 & pser2)
+        assert_eq(
+            (kser1 | kser2).sort_index(),
+            pd.Series([True, None, None, None, True, None], index=list("ABCDEF"), dtype="boolean"),
+        )
+        assert_eq(
+            (kser1 & kser2).sort_index(),
+            pd.Series(
+                [None, False, None, False, None, None], index=list("ABCDEF"), dtype="boolean"
+            ),
+        )
 
     def test_concat_column_axis(self):
         pdf1 = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5]}, index=[1, 2, 3])
@@ -1365,15 +1564,41 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_series_ops(self):
         pser1 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x", index=[11, 12, 13, 14, 15, 16, 17])
-        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7], index=[11, 12, 13, 14, 15, 16, 17])
-        pidx1 = pd.Index([10, 11, 12, 13, 14, 15, 16])
+        pser2 = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x", index=[11, 12, 13, 14, 15, 16, 17])
+        pidx1 = pd.Index([10, 11, 12, 13, 14, 15, 16], name="x")
         kser1 = ks.from_pandas(pser1)
         kser2 = ks.from_pandas(pser2)
         kidx1 = ks.from_pandas(pidx1)
 
         self.assert_eq((kser1 + 1 + 10 * kser2).sort_index(), (pser1 + 1 + 10 * pser2).sort_index())
+        self.assert_eq(
+            (kser1 + 1 + 10 * kser2.rename()).sort_index(),
+            (pser1 + 1 + 10 * pser2.rename()).sort_index(),
+        )
+        self.assert_eq(
+            (kser1.rename() + 1 + 10 * kser2).sort_index(),
+            (pser1.rename() + 1 + 10 * pser2).sort_index(),
+        )
+        self.assert_eq(
+            (kser1.rename() + 1 + 10 * kser2.rename()).sort_index(),
+            (pser1.rename() + 1 + 10 * pser2.rename()).sort_index(),
+        )
+
         self.assert_eq(kser1 + 1 + 10 * kidx1, pser1 + 1 + 10 * pidx1)
+        self.assert_eq(kser1.rename() + 1 + 10 * kidx1, pser1.rename() + 1 + 10 * pidx1)
+        self.assert_eq(kser1 + 1 + 10 * kidx1.rename(None), pser1 + 1 + 10 * pidx1.rename(None))
+        self.assert_eq(
+            kser1.rename() + 1 + 10 * kidx1.rename(None),
+            pser1.rename() + 1 + 10 * pidx1.rename(None),
+        )
+
         self.assert_eq(kidx1 + 1 + 10 * kser1, pidx1 + 1 + 10 * pser1)
+        self.assert_eq(kidx1 + 1 + 10 * kser1.rename(), pidx1 + 1 + 10 * pser1.rename())
+        self.assert_eq(kidx1.rename(None) + 1 + 10 * kser1, pidx1.rename(None) + 1 + 10 * pser1)
+        self.assert_eq(
+            kidx1.rename(None) + 1 + 10 * kser1.rename(),
+            pidx1.rename(None) + 1 + 10 * pser1.rename(),
+        )
 
         pidx2 = pd.Index([11, 12, 13])
         kidx2 = ks.from_pandas(pidx2)
@@ -1389,12 +1614,20 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
             kidx2 + kser1
 
     def test_index_ops(self):
-        pidx1 = pd.Index([1, 2, 3, 4, 5])
-        pidx2 = pd.Index([6, 7, 8, 9, 10])
+        pidx1 = pd.Index([1, 2, 3, 4, 5], name="x")
+        pidx2 = pd.Index([6, 7, 8, 9, 10], name="x")
         kidx1 = ks.from_pandas(pidx1)
         kidx2 = ks.from_pandas(pidx2)
 
         self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
+        self.assert_eq(kidx1.rename(None) * 10 + kidx2, pidx1.rename(None) * 10 + pidx2)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(kidx1 * 10 + kidx2.rename(None), pidx1 * 10 + pidx2.rename(None))
+        else:
+            self.assert_eq(
+                kidx1 * 10 + kidx2.rename(None), (pidx1 * 10 + pidx2.rename(None)).rename(None)
+            )
 
         pidx3 = pd.Index([11, 12, 13])
         kidx3 = ks.from_pandas(pidx3)
@@ -1538,6 +1771,16 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=None))
         self.assertRaises(ValueError, lambda: kdf1.align(kdf3, axis=1))
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([np.nan, 2, 3])
+        kser_other = ks.from_pandas(pser_other)
+
+        self.assert_eq(pser.pow(pser_other), kser.pow(kser_other).sort_index())
+        self.assert_eq(pser ** pser_other, (kser ** kser_other).sort_index())
+        self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other).sort_index())
 
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
@@ -1706,3 +1949,16 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.align(kdf2, axis=0)
+
+    def test_pow_and_rpow(self):
+        pser = pd.Series([1, 2, np.nan])
+        kser = ks.from_pandas(pser)
+        pser_other = pd.Series([np.nan, 2, 3])
+        kser_other = ks.from_pandas(pser_other)
+
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser.pow(kser_other)
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser ** kser_other
+        with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+            kser.rpow(kser_other)
