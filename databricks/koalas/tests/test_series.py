@@ -2658,6 +2658,24 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.eq(pser), kser.eq(kser))
         self.assert_eq(pser == pser, kser == kser)
 
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other))
+            self.assert_eq(pser == other, kser == other)
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other))
+            self.assert_eq((pser == other).rename("x"), kser == other)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other))
+            self.assert_eq(pser == other, kser == other)
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other))
+            self.assert_eq((pser == other).rename("x"), kser == other)
+
         # other = dict
         other = {1: None, 2: None, 3: None, 4: None, np.nan: None, 6: None}
         self.assert_eq(pser.eq(other), kser.eq(other))

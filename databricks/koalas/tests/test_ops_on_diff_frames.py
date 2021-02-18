@@ -1688,8 +1688,6 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         others = (
             ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
             ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
-            [np.nan, 1, 3, 4, np.nan, 6],
-            (np.nan, 1, 3, 4, np.nan, 6),
         )
         for other in others:
             with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
