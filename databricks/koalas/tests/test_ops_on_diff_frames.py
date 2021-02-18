@@ -2396,7 +2396,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # other = list
         other = [np.nan, 1, 3, 4, np.nan, 6]
-        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
             self.assert_eq(pidx % other, kidx % other)
             self.assert_eq(other % pidx, other % kidx)
         else:
@@ -2411,7 +2411,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         # other = tuple
         other = (np.nan, 1, 3, 4, np.nan, 6)
-        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
             self.assert_eq(pidx % other, kidx % other)
             self.assert_eq(other % pidx, other % kidx)
         else:
