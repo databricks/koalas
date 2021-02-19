@@ -7358,7 +7358,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ):
                     continue
                 else:
-                    col = col + right_suffix
+                    # remove `right_prefix` here.
+                    col = (col + right_suffix)[len(right_prefix) :]
                     scol = scol.alias(col)
                     label = tuple([str(label[0]) + right_suffix] + list(label[1:]))
             exprs.append(scol)
