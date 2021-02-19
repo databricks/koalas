@@ -154,6 +154,7 @@ jobs:
         # sphinx-plotly-directive is not available on Conda.
         sed -i '/sphinx-plotly-directive/d' requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
+        pip install sphinx-plotly-directive  # pip-only dependency
         conda list
     - name: Run tests
       run: |

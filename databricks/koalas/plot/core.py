@@ -610,6 +610,61 @@ class KoalasPlotAccessor(PandasObject):
 
             >>> df = ks.DataFrame({'lab': ['A', 'B', 'C'], 'val': [10, 30, 20]})
             >>> df.plot.bar(x='lab', y='val')  # doctest: +SKIP
+
+        Plot a whole dataframe to a bar plot. Each column is stacked with a
+        distinct color along the horizontal axis.
+
+        .. plotly::
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> df.plot.bar()  # doctest: +SKIP
+
+        Instead of stacking, the figure can be split by column with plotly
+        APIs.
+
+        .. plotly::
+
+            >>> from plotly.subplots import make_subplots
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> fig = (make_subplots(rows=2, cols=1)
+            ...     .add_trace(df.plot.bar(y='speed').data[0], row=1, col=1)
+            ...     .add_trace(df.plot.bar(y='speed').data[0], row=1, col=1)
+            ...     .add_trace(df.plot.bar(y='lifespan').data[0], row=2, col=1))
+            >>> fig  # doctest: +SKIP
+
+        Plot a single column.
+
+        .. plotly::
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> df.plot.bar(y='speed')  # doctest: +SKIP
+
+        Plot only selected categories for the DataFrame.
+
+        .. plotly::
+
+            >>> speed = [0.1, 17.5, 40, 48, 52, 69, 88]
+            >>> lifespan = [2, 8, 70, 1.5, 25, 12, 28]
+            >>> index = ['snail', 'pig', 'elephant',
+            ...          'rabbit', 'giraffe', 'coyote', 'horse']
+            >>> df = ks.DataFrame({'speed': speed,
+            ...                    'lifespan': lifespan}, index=index)
+            >>> df.plot.bar(x='lifespan')  # doctest: +SKIP
         """
         from databricks.koalas import DataFrame, Series
 
