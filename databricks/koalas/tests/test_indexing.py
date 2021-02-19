@@ -600,6 +600,8 @@ class IndexingTest(ReusedSQLTestCase):
 
         pser = pd.Series(bool_list, index=pdf.columns)
         self.assert_eq(kdf.loc[:, pser], pdf.loc[:, pser])
+        pser = pd.Series(reversed(bool_list), index=reversed(pdf.columns))
+        self.assert_eq(kdf.loc[:, pser], pdf.loc[:, pser])
 
         self.assertRaises(IndexError, lambda: kdf.loc[:, bool_list[:-1]])
         self.assertRaises(IndexError, lambda: kdf.loc[:, np.array(bool_list + [True])])

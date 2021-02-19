@@ -1231,18 +1231,33 @@ class LocIndexer(LocIndexerLike):
                     "Boolean index has wrong length: %s instead of %s"
                     % (len(cast(Sized, cols_sel)), len(self._internal.column_labels))
                 )
-            if isinstance(cols_sel, pd.Series) and not cols_sel.index.equals(self._kdf.columns):
-                raise SparkPandasIndexingError(
-                    "Unalignable boolean Series provided as indexer "
-                    "(index of the boolean Series and of the indexed object do not match)"
-                )
-            column_labels = [
-                self._internal.column_labels[i] for i, col in enumerate(cols_sel) if col
-            ]
-            data_spark_columns = [
-                self._internal.data_spark_columns[i] for i, col in enumerate(cols_sel) if col
-            ]
-            data_dtypes = [self._internal.data_dtypes[i] for i, col in enumerate(cols_sel) if col]
+            if isinstance(cols_sel, pd.Series):
+                if not cols_sel.index.sort_values().equals(self._kdf.columns.sort_values()):
+                    raise SparkPandasIndexingError(
+                        "Unalignable boolean Series provided as indexer "
+                        "(index of the boolean Series and of the indexed object do not match)"
+                    )
+                else:
+                    cols_sel = [
+                        self._internal.spark_column_for((label,))
+                        for label, col in cols_sel.iteritems()
+                        if col
+                    ]
+                    column_labels = [
+                        (self._internal.spark_frame.select(col).columns[0],) for col in cols_sel
+                    ]
+                    data_spark_columns = list(cols_sel)
+                    data_dtypes = None
+            else:
+                column_labels = [
+                    self._internal.column_labels[i] for i, col in enumerate(cols_sel) if col
+                ]
+                data_spark_columns = [
+                    self._internal.data_spark_columns[i] for i, col in enumerate(cols_sel) if col
+                ]
+                data_dtypes = [
+                    self._internal.data_dtypes[i] for i, col in enumerate(cols_sel) if col
+                ]
         elif any(isinstance(key, tuple) for key in cols_sel) and any(
             not is_name_like_tuple(key) for key in cols_sel
         ):
