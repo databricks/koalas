@@ -7260,10 +7260,37 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if len(left_key_names) != len(right_key_names):
                 raise ValueError("len(left_keys) must equal len(right_keys)")
 
+        # We should distinguish the name to avoid ambiguous column name after merging.
+        right_prefix = "__right_"
+        right_key_names = [right_prefix + right_key_name for right_key_name in right_key_names]
+
         how = validate_how(how)
 
+        def resolve(internal, side):
+            rename = lambda col: "__{}_{}".format(side, col)
+            internal = internal.resolved_copy
+            sdf = internal.spark_frame
+            sdf = internal.spark_frame.select(
+                [
+                    scol_for(sdf, col).alias(rename(col))
+                    for col in sdf.columns
+                    if col not in HIDDEN_COLUMNS
+                ]
+                + list(HIDDEN_COLUMNS)
+            )
+            return internal.copy(
+                spark_frame=sdf,
+                index_spark_columns=[
+                    scol_for(sdf, rename(col)) for col in internal.index_spark_column_names
+                ],
+                data_spark_columns=[
+                    scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
+                ],
+                preserve_dtypes=True,
+            )
+
         left_internal = self._internal.resolved_copy
-        right_internal = right._internal.resolved_copy
+        right_internal = resolve(right._internal, "right")
 
         left_table = left_internal.spark_frame.alias("left_table")
         right_table = right_internal.spark_frame.alias("right_table")
@@ -7301,9 +7328,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol = left_scol_for(label)
             if label in duplicate_columns:
                 spark_column_name = left_internal.spark_column_name_for(label)
-                if spark_column_name in left_key_names and spark_column_name in right_key_names:
+                if (
+                    spark_column_name in left_key_names
+                    and (right_prefix + spark_column_name) in right_key_names
+                ):
                     right_scol = right_scol_for(label)
                     if how == "right":
+                        col = right_prefix + col
                         scol = right_scol
                     elif how == "full":
                         scol = F.when(scol.isNotNull(), scol).otherwise(right_scol).alias(col)
@@ -7321,7 +7352,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             scol = right_scol_for(label)
             if label in duplicate_columns:
                 spark_column_name = left_internal.spark_column_name_for(label)
-                if spark_column_name in left_key_names and spark_column_name in right_key_names:
+                if (
+                    spark_column_name in left_key_names
+                    and (right_prefix + spark_column_name) in right_key_names
+                ):
                     continue
                 else:
                     col = col + right_suffix
