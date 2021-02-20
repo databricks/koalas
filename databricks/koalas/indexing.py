@@ -621,7 +621,9 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 .alias(name_like_string(self._kdf_or_kser.name or SPARK_DEFAULT_SERIES_NAME))
             )
 
-            internal = self._internal.with_new_spark_column(self._kdf_or_kser._column_label, scol)
+            internal = self._internal.with_new_spark_column(
+                self._kdf_or_kser._column_label, scol  # TODO: dtype?
+            )
             self._kdf_or_kser._kdf._update_internal_frame(internal, requires_same_anchor=False)
         else:
             assert self._is_df

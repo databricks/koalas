@@ -2015,10 +2015,11 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
             if same_anchor(concat_kdf, kdf):
                 concat_kdf = DataFrame(
                     concat_kdf._internal.with_new_columns(
-                        concat_kdf._internal.data_spark_columns + kdf._internal.data_spark_columns,
-                        column_labels=(
-                            concat_kdf._internal.column_labels + kdf._internal.column_labels
-                        ),
+                        [
+                            concat_kdf._kser_for(label)
+                            for label in concat_kdf._internal.column_labels
+                        ]
+                        + [kdf._kser_for(label) for label in kdf._internal.column_labels]
                     )
                 )
             else:
@@ -2150,6 +2151,7 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
                         ],
                         column_labels=(kdf._internal.column_labels + columns_to_add),
                         data_spark_columns=[scol_for(sdf, col) for col in data_columns],
+                        data_dtypes=(kdf._internal.data_dtypes + ([None] * len(columns_to_add))),
                     )
                 )
 
@@ -2169,18 +2171,22 @@ def concat(objs, axis=0, join="outer", ignore_index=False, sort=False) -> Union[
     if ignore_index:
         index_spark_column_names = []
         index_names = []
+        index_dtypes = []
     else:
         index_spark_column_names = kdfs[0]._internal.index_spark_column_names
         index_names = kdfs[0]._internal.index_names
+        index_dtypes = kdfs[0]._internal.index_dtypes
 
     result_kdf = DataFrame(
         kdfs[0]._internal.copy(
             spark_frame=concatenated,
             index_spark_columns=[scol_for(concatenated, col) for col in index_spark_column_names],
             index_names=index_names,
+            index_dtypes=index_dtypes,
             data_spark_columns=[
                 scol_for(concatenated, col) for col in kdfs[0]._internal.data_spark_column_names
             ],
+            data_dtypes=None,  # TODO: dtypes?
         )
     )  # type: DataFrame
 
