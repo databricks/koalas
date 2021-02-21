@@ -7334,8 +7334,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ):
                     right_scol = right_scol_for(label)
                     if how == "right":
-                        col = right_prefix + col
-                        scol = right_scol
+                        scol = right_scol.alias(col)
                     elif how == "full":
                         scol = F.when(scol.isNotNull(), scol).otherwise(right_scol).alias(col)
                     else:
@@ -7348,8 +7347,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_columns.append(col)
             column_labels.append(label)
         for label in right_internal.column_labels:
-            col = right_internal.spark_column_name_for(label)
-            scol = right_scol_for(label)
+            # recover `right_prefix` here.
+            col = right_internal.spark_column_name_for(label)[len(right_prefix) :]
+            scol = right_scol_for(label).alias(col)
             if label in duplicate_columns:
                 spark_column_name = left_internal.spark_column_name_for(label)
                 if (
@@ -7358,8 +7358,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 ):
                     continue
                 else:
-                    # remove `right_prefix` here.
-                    col = (col + right_suffix)[len(right_prefix) :]
+                    col = col + right_suffix
                     scol = scol.alias(col)
                     label = tuple([str(label[0]) + right_suffix] + list(label[1:]))
             exprs.append(scol)
