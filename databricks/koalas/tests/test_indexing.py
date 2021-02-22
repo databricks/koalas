@@ -656,6 +656,17 @@ class IndexingTest(ReusedSQLTestCase):
         self.assertRaises(KeyError, lambda: kdf.loc[:, "bar":("baz", "one")])
         self.assertRaises(KeyError, lambda: kdf.loc[:, ("bar", "two"):"bar"])
 
+        # bool list-like column select
+        bool_list = [True, False, True, False]
+        self.assert_eq(kdf.loc[:, bool_list], pdf.loc[:, bool_list])
+        self.assert_eq(kdf.loc[:, np.array(bool_list)], pdf.loc[:, np.array(bool_list)])
+
+        pser = pd.Series(bool_list, index=pdf.columns)
+        self.assert_eq(kdf.loc[:, pser], pdf.loc[:, pser])
+
+        pser = pd.Series(reversed(bool_list), index=reversed(pdf.columns))
+        self.assert_eq(kdf.loc[:, pser], pdf.loc[:, pser])
+
         # non-string column names
         arrays = [np.array([0, 0, 1, 1]), np.array([1, 2, 1, 2])]
 

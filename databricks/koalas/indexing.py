@@ -1239,16 +1239,18 @@ class LocIndexer(LocIndexerLike):
                         "(index of the boolean Series and of the indexed object do not match)"
                     )
                 else:
-                    cols_sel = [
-                        self._internal.spark_column_for((label,))
-                        for label, col in cols_sel.iteritems()
-                        if col
-                    ]
                     column_labels = [
-                        (self._internal.spark_frame.select(col).columns[0],) for col in cols_sel
+                        column_label
+                        for column_label in self._internal.column_labels
+                        if cols_sel[column_label if len(column_label) > 1 else column_label[0]]
                     ]
-                    data_spark_columns = list(cols_sel)
-                    data_dtypes = None
+                    data_spark_columns = [
+                        self._internal.spark_column_for(column_label)
+                        for column_label in column_labels
+                    ]
+                    data_dtypes = [
+                        self._internal.dtype_for(column_label) for column_label in column_labels
+                    ]
             else:
                 column_labels = [
                     self._internal.column_labels[i] for i, col in enumerate(cols_sel) if col
