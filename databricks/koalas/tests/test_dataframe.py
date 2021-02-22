@@ -2030,6 +2030,54 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             )
         )
 
+    def test_merge_same_anchor(self):
+        pdf = pd.DataFrame(
+            {
+                "lkey": ["foo", "bar", "baz", "foo", "bar", "l"],
+                "rkey": ["baz", "foo", "bar", "baz", "foo", "r"],
+                "value": [1, 1, 3, 5, 6, 7],
+                "x": list("abcdef"),
+                "y": list("efghij"),
+            },
+            columns=["lkey", "rkey", "value", "x", "y"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        left_pdf = pdf[["lkey", "value", "x"]]
+        right_pdf = pdf[["rkey", "value", "y"]]
+        left_kdf = kdf[["lkey", "value", "x"]]
+        right_kdf = kdf[["rkey", "value", "y"]]
+
+        def check(op, right_kdf=right_kdf, right_pdf=right_pdf):
+            k_res = op(left_kdf, right_kdf)
+            k_res = k_res.to_pandas()
+            k_res = k_res.sort_values(by=list(k_res.columns))
+            k_res = k_res.reset_index(drop=True)
+            p_res = op(left_pdf, right_pdf)
+            p_res = p_res.sort_values(by=list(p_res.columns))
+            p_res = p_res.reset_index(drop=True)
+            self.assert_eq(k_res, p_res)
+
+        check(lambda left, right: left.merge(right))
+        check(lambda left, right: left.merge(right, on="value"))
+        check(lambda left, right: left.merge(right, left_on="lkey", right_on="rkey"))
+        check(lambda left, right: left.set_index("lkey").merge(right.set_index("rkey")))
+        check(
+            lambda left, right: left.set_index("lkey").merge(
+                right, left_index=True, right_on="rkey"
+            )
+        )
+        check(
+            lambda left, right: left.merge(
+                right.set_index("rkey"), left_on="lkey", right_index=True
+            )
+        )
+        check(
+            lambda left, right: left.set_index("lkey").merge(
+                right.set_index("rkey"), left_index=True, right_index=True
+            )
+        )
+
     def test_merge_retains_indices(self):
         left_pdf = pd.DataFrame({"A": [0, 1]})
         right_pdf = pd.DataFrame({"B": [1, 2]}, index=[1, 2])
