@@ -20,6 +20,11 @@ the time.
 
 In this chapter, it covers the recommended way and the supported ways in details.
 
+.. note::
+    The variadic generics support is experimental and unstable in Koalas.
+    The way of typing can change between minor releases without a warning.
+    See also `PEP 646 <https://www.python.org/dev/peps/pep-0646/>`_ for variadic generics in Python.
+
 
 Koalas DataFrame and Pandas DataFrame
 -------------------------------------
@@ -129,8 +134,4 @@ Likewise, ``dtype`` instances from pandas DataFrame can be used alone and let Ko
     ...     return pdf + 1
     ...
     >>> kdf.koalas.apply_batch(transform)
-
-.. warning::
-    This new style of type hinting is experimental. It could be changed or removed between minor
-    releases without warnings.
 
