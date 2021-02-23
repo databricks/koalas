@@ -7312,7 +7312,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             rename = lambda col: "__{}_{}".format(side, col)
             internal = internal.resolved_copy
             sdf = internal.spark_frame
-            sdf = internal.spark_frame.select(
+            sdf = sdf.select(
                 [
                     scol_for(sdf, col).alias(rename(col))
                     for col in sdf.columns
@@ -7328,7 +7328,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 data_spark_columns=[
                     scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
                 ],
-                preserve_dtypes=True,
             )
 
         left_internal = self._internal.resolved_copy
