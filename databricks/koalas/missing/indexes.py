@@ -100,12 +100,6 @@ class MissingPandasLikeIndex(object):
 class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
 
     # Properties
-    year = _unsupported_property("year", cls="DatetimeIndex")
-    month = _unsupported_property("month", cls="DatetimeIndex")
-    day = _unsupported_property("day", cls="DatetimeIndex")
-    hour = _unsupported_property("hour", cls="DatetimeIndex")
-    minute = _unsupported_property("minute", cls="DatetimeIndex")
-    second = _unsupported_property("second", cls="DatetimeIndex")
     microsecond = _unsupported_property("microsecond", cls="DatetimeIndex")
     nanosecond = _unsupported_property("nanosecond", cls="DatetimeIndex")
     date = _unsupported_property("date", cls="DatetimeIndex")
@@ -114,7 +108,6 @@ class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
     dayofyear = _unsupported_property("dayofyear", cls="DatetimeIndex")
     day_of_year = _unsupported_property("day_of_year", cls="DatetimeIndex")
     weekofyear = _unsupported_property("weekofyear", cls="DatetimeIndex")
-    week = _unsupported_property("week", cls="DatetimeIndex")
     dayofweek = _unsupported_property("dayofweek", cls="DatetimeIndex")
     day_of_week = _unsupported_property("day_of_week", cls="DatetimeIndex")
     weekday = _unsupported_property("weekday", cls="DatetimeIndex")

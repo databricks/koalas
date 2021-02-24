@@ -21,8 +21,12 @@ from pandas.api.types import is_hashable
 from pyspark._globals import _NoValue
 
 from databricks import koalas as ks
+from databricks.koalas import DataFrame
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
+
+from pyspark.sql import functions as F
+from pyspark.sql.types import DateType, TimestampType, LongType
 
 
 class DatetimeIndex(Index):
@@ -120,3 +124,52 @@ class DatetimeIndex(Index):
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'DatetimeIndex' object has no attribute '{}'".format(item))
+
+    @property
+    def year(self) -> Index:
+        """
+        The year of the datetime.
+        """
+        return self.spark.transform(lambda c: F.year(c).cast(LongType()))
+
+    @property
+    def month(self) -> Index:
+        """
+        The month of the timestamp as January = 1 December = 12.
+        """
+        return self.spark.transform(lambda c: F.month(c).cast(LongType()))
+
+    @property
+    def day(self) -> Index:
+        """
+        The days of the datetime.
+        """
+        return self.spark.transform(lambda c: F.dayofmonth(c).cast(LongType()))
+
+    @property
+    def hour(self) -> Index:
+        """
+        The hours of the datetime.
+        """
+        return self.spark.transform(lambda c: F.hour(c).cast(LongType()))
+
+    @property
+    def minute(self) -> Index:
+        """
+        The minutes of the datetime.
+        """
+        return self.spark.transform(lambda c: F.minute(c).cast(LongType()))
+
+    @property
+    def second(self) -> Index:
+        """
+        The seconds of the datetime.
+        """
+        return self.spark.transform(lambda c: F.second(c).cast(LongType()))
+
+    @property
+    def week(self) -> Index:
+        """
+        The week ordinal of the year.
+        """
+        return self.spark.transform(lambda c: F.weekofyear(c).cast(LongType()))
