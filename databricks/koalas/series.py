@@ -50,6 +50,7 @@ from pyspark.sql.window import Window
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.accessors import KoalasSeriesMethods
+from databricks.koalas.categorical import CategoricalAccessor
 from databricks.koalas.config import get_option
 from databricks.koalas.base import IndexOpsMixin
 from databricks.koalas.exceptions import SparkPandasIndexingError
@@ -5975,6 +5976,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
     # ----------------------------------------------------------------------
     dt = CachedAccessor("dt", DatetimeMethods)
     str = CachedAccessor("str", StringMethods)
+    cat = CachedAccessor("cat", CategoricalAccessor)
     plot = CachedAccessor("plot", KoalasPlotAccessor)
 
     # ----------------------------------------------------------------------

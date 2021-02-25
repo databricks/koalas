@@ -163,6 +163,24 @@ Numeric Index
    Int64Index
    Float64Index
 
+.. _api.categorical:
+
+CategoricalIndex
+----------------
+.. autosummary::
+   :toctree: api/
+
+   CategoricalIndex
+
+Categorical components
+~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   CategoricalIndex.codes
+   CategoricalIndex.categories
+   CategoricalIndex.ordered
+
 .. _api.multiindex:
 
 MultiIndex
