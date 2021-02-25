@@ -35,6 +35,9 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kdf.b, pdf.b)
         self.assert_eq(kdf.index, pdf.index)
 
+        self.assert_eq(kdf.sort_index(), pdf.sort_index())
+        self.assert_eq(kdf.sort_values("b"), pdf.sort_values("b"))
+
     def test_categorical_series(self):
         pser = pd.Series([1, 2, 3], dtype="category")
         kser = ks.Series([1, 2, 3], dtype="category")
@@ -45,10 +48,35 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kser.cat.ordered, pser.cat.ordered)
 
     def test_categorical_index(self):
-        pser = pd.Index([1, 2, 3], dtype="category")
-        kser = ks.Index([1, 2, 3], dtype="category")
+        pidx = pd.Index([1, 2, 3], dtype="category")
+        kidx = ks.Index([1, 2, 3], dtype="category")
 
-        self.assert_eq(kser, pser)
-        self.assert_eq(kser.categories, pser.categories)
-        self.assert_eq(kser.codes, pd.Index(pser.codes))
-        self.assert_eq(kser.ordered, pser.ordered)
+        self.assert_eq(kidx, pidx)
+        self.assert_eq(kidx.categories, pidx.categories)
+        self.assert_eq(kidx.codes, pd.Index(pidx.codes))
+        self.assert_eq(kidx.ordered, pidx.ordered)
+
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Categorical([1, 2, 3, 1, 2, 3]),
+                "b": pd.Categorical(["a", "b", "c", "a", "b", "c"], categories=["c", "b", "a"]),
+            },
+            index=pd.Categorical([10, 20, 30, 20, 30, 10], categories=[30, 10, 20], ordered=True),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        pidx = pdf.set_index("b").index
+        kidx = kdf.set_index("b").index
+
+        self.assert_eq(kidx, pidx)
+        self.assert_eq(kidx.categories, pidx.categories)
+        self.assert_eq(kidx.codes, pd.Index(pidx.codes))
+        self.assert_eq(kidx.ordered, pidx.ordered)
+
+        pidx = pdf.set_index(["a", "b"]).index.get_level_values(0)
+        kidx = kdf.set_index(["a", "b"]).index.get_level_values(0)
+
+        self.assert_eq(kidx, pidx)
+        self.assert_eq(kidx.categories, pidx.categories)
+        self.assert_eq(kidx.codes, pd.Index(pidx.codes))
+        self.assert_eq(kidx.ordered, pidx.ordered)

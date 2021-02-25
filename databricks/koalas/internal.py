@@ -987,7 +987,9 @@ class InternalFrame(object):
             pdf = pdf.astype(ext_dtypes, copy=True)
 
         for col, dtype in categorical_dtypes.items():
-            pdf[col] = pd.Categorical.from_codes(pdf[col], dtype=dtype)
+            pdf[col] = pd.Categorical.from_codes(
+                pdf[col], categories=dtype.categories, ordered=dtype.ordered
+            )
 
         append = False
         for index_field in self.index_spark_column_names:
