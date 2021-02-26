@@ -16,7 +16,7 @@
 import pandas as pd
 from pandas.api.types import is_hashable
 
-import databricks.koalas as ks
+from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
 
 
