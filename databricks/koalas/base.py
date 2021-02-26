@@ -63,6 +63,7 @@ from databricks.koalas.utils import (
     scol_for,
     validate_axis,
     ERROR_MESSAGE_CANNOT_COMBINE,
+    check_same_length,
 )
 from databricks.koalas.frame import DataFrame
 
@@ -330,6 +331,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops + other)  # type: ignore
         if not isinstance(self.spark.data_type, StringType) and (
             (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
             or isinstance(other, str)
@@ -348,6 +352,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__add__)(self, other)
 
     def __sub__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops - other)  # type: ignore
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -392,6 +399,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(Column.__sub__)(self, other)
 
     def __mul__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops * other)  # type: ignore
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
@@ -431,6 +441,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         |          -10          |   null  | -np.inf |
         +-----------------------|---------|---------+
         """
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops / other)  # type: ignore
 
         if (
             isinstance(self.spark.data_type, StringType)
@@ -449,6 +462,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(truediv)(self, other)
 
     def __mod__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops % other)  # type: ignore
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -462,6 +478,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(mod)(self, other)
 
     def __radd__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other + pindex_ops)  # type: ignore
+        if isinstance(other, (list, tuple)):
+            other = ks.Index(other, name=self.name)  # type: ignore
         # Handle 'literal' + df['col']
         if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
             raise TypeError("string addition can only be applied to string series or literals.")
@@ -475,6 +496,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return column_op(Column.__radd__)(self, other)
 
     def __rsub__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other - pindex_ops)  # type: ignore
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("substraction can not be applied to string series or literals.")
 
@@ -504,9 +528,12 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 return -column_op(F.datediff)(self, F.lit(other)).astype("long")
             else:
                 raise TypeError("date subtraction can only be applied to date series.")
-        return column_op(Column.__rsub__)(self, other)
+        return column_op(lambda left, right: right - left)(self, other)
 
     def __rmul__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other * pindex_ops)  # type: ignore
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
@@ -521,6 +548,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(Column.__rmul__)(self, other)
 
     def __rtruediv__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other / pindex_ops)  # type: ignore
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -548,6 +578,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         |          -10          |   null  | -np.inf |
         +-----------------------|---------|---------+
         """
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops // other)  # type: ignore
         if (
             isinstance(self.spark.data_type, StringType)
             or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
@@ -569,6 +602,11 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(floordiv)(self, other)
 
     def __rfloordiv__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other // pindex_ops)  # type: ignore
+        if isinstance(other, (list, tuple)):
+            other = ks.Index(other, name=self.name)  # type: ignore
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -580,6 +618,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return numpy_column_op(rfloordiv)(self, other)
 
     def __rmod__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other % pindex_ops)  # type: ignore
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("modulo can not be applied on string series or literals.")
 
@@ -589,12 +630,20 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return column_op(rmod)(self, other)
 
     def __pow__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(pindex_ops ** other)  # type: ignore
+
         def pow_func(left, right):
             return F.when(left == 1, left).otherwise(Column.__pow__(left, right))
 
         return column_op(pow_func)(self, other)
 
     def __rpow__(self, other) -> Union["Series", "Index"]:
+        if isinstance(other, (list, tuple)):
+            pindex_ops, other = check_same_length(self, other)
+            return ks.from_pandas(other ** pindex_ops)  # type: ignore
+
         def rpow_func(left, right):
             return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
 

@@ -1727,6 +1727,1060 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser ** pser_other, (kser ** kser_other).sort_index())
         self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other).sort_index())
 
+    def test_series_add_and_radd(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.add(pandas_other), kser.add(koalas_other).sort_index())
+        self.assert_eq(pser + pandas_other, (kser + koalas_other).sort_index())
+        self.assert_eq(pser.radd(pandas_other), kser.radd(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.add(pandas_other), kser.add(koalas_other).sort_index())
+        self.assert_eq(pser + pandas_other, (kser + koalas_other).sort_index())
+        self.assert_eq(pser.radd(pandas_other), kser.radd(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.add(other), kser.add(other).sort_index())
+            self.assert_eq(pser + other, (kser + other).sort_index())
+            self.assert_eq(pser.radd(other), kser.radd(other).sort_index())
+            self.assert_eq(other + pser, (other + kser).sort_index())
+        else:
+            self.assert_eq(pser.add(other).rename("x"), kser.add(other).sort_index())
+            self.assert_eq((pser + other).rename("x"), (kser + other).sort_index())
+            self.assert_eq(pser.radd(other).rename("x"), kser.radd(other).sort_index())
+            self.assert_eq((other + pser).rename("x"), (other + kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.add(other), kser.add(other).sort_index())
+            self.assert_eq(pser + other, (kser + other).sort_index())
+            self.assert_eq(pser.radd(other), kser.radd(other).sort_index())
+            self.assert_eq(other + pser, (other + kser).sort_index())
+        else:
+            self.assert_eq(pser.add(other).rename("x"), kser.add(other).sort_index())
+            self.assert_eq((pser + other).rename("x"), (kser + other).sort_index())
+            self.assert_eq(pser.radd(other).rename("x"), kser.radd(other).sort_index())
+            self.assert_eq((other + pser).rename("x"), (other + kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.add(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser + other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.radd(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other + kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.add(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser + other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.radd(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other + kser
+
+    def test_series_sub_and_rsub(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.sub(pandas_other), kser.sub(koalas_other).sort_index())
+        self.assert_eq(pser - pandas_other, (kser - koalas_other).sort_index())
+        self.assert_eq(pser.rsub(pandas_other), kser.rsub(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.sub(pandas_other), kser.sub(koalas_other).sort_index())
+        self.assert_eq(pser - pandas_other, (kser - koalas_other).sort_index())
+        self.assert_eq(pser.rsub(pandas_other), kser.rsub(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.sub(other), kser.sub(other).sort_index())
+            self.assert_eq(pser - other, (kser - other).sort_index())
+            self.assert_eq(pser.rsub(other), kser.rsub(other).sort_index())
+            self.assert_eq(other - pser, (other - kser).sort_index())
+        else:
+            self.assert_eq(pser.sub(other).rename("x"), kser.sub(other).sort_index())
+            self.assert_eq((pser - other).rename("x"), (kser - other).sort_index())
+            self.assert_eq(pser.rsub(other).rename("x"), kser.rsub(other).sort_index())
+            self.assert_eq((other - pser).rename("x"), (other - kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.sub(other), kser.sub(other).sort_index())
+            self.assert_eq(pser - other, (kser - other).sort_index())
+            self.assert_eq(pser.rsub(other), kser.rsub(other).sort_index())
+            self.assert_eq(other - pser, (other - kser).sort_index())
+        else:
+            self.assert_eq(pser.sub(other).rename("x"), kser.sub(other).sort_index())
+            self.assert_eq((pser - other).rename("x"), (kser - other).sort_index())
+            self.assert_eq(pser.rsub(other).rename("x"), kser.rsub(other).sort_index())
+            self.assert_eq((other - pser).rename("x"), (other - kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.sub(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser - other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rsub(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other - kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.sub(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser - other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rsub(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other - kser
+
+    def test_series_mul_and_rmul(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.mul(pandas_other), kser.mul(koalas_other).sort_index())
+        self.assert_eq(pser * pandas_other, (kser * koalas_other).sort_index())
+        self.assert_eq(pser.rmul(pandas_other), kser.rmul(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.mul(pandas_other), kser.mul(koalas_other).sort_index())
+        self.assert_eq(pser * pandas_other, (kser * koalas_other).sort_index())
+        self.assert_eq(pser.rmul(pandas_other), kser.rmul(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.mul(other), kser.mul(other).sort_index())
+            self.assert_eq(pser * other, (kser * other).sort_index())
+            self.assert_eq(pser.rmul(other), kser.rmul(other).sort_index())
+            self.assert_eq(other * pser, (other * kser).sort_index())
+        else:
+            self.assert_eq(pser.mul(other).rename("x"), kser.mul(other).sort_index())
+            self.assert_eq((pser * other).rename("x"), (kser * other).sort_index())
+            self.assert_eq(pser.rmul(other).rename("x"), kser.rmul(other).sort_index())
+            self.assert_eq((other * pser).rename("x"), (other * kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.mul(other), kser.mul(other).sort_index())
+            self.assert_eq(pser * other, (kser * other).sort_index())
+            self.assert_eq(pser.rmul(other), kser.rmul(other).sort_index())
+            self.assert_eq(other * pser, (other * kser).sort_index())
+        else:
+            self.assert_eq(pser.mul(other).rename("x"), kser.mul(other).sort_index())
+            self.assert_eq((pser * other).rename("x"), (kser * other).sort_index())
+            self.assert_eq(pser.rmul(other).rename("x"), kser.rmul(other).sort_index())
+            self.assert_eq((other * pser).rename("x"), (other * kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.mul(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser * other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rmul(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other * kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.mul(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser * other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rmul(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other * kser
+
+    def test_series_pow_and_rpow(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.pow(pandas_other), kser.pow(koalas_other).sort_index())
+        self.assert_eq(pser ** pandas_other, (kser ** koalas_other).sort_index())
+        self.assert_eq(pser.rpow(pandas_other), kser.rpow(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.pow(pandas_other), kser.pow(koalas_other).sort_index())
+        self.assert_eq(pser ** pandas_other, (kser ** koalas_other).sort_index())
+        self.assert_eq(pser.rpow(pandas_other), kser.rpow(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.pow(other), kser.pow(other).sort_index())
+            self.assert_eq(pser ** other, (kser ** other).sort_index())
+            self.assert_eq(pser.rpow(other), kser.rpow(other).sort_index())
+            self.assert_eq(other ** pser, (other ** kser).sort_index())
+        else:
+            self.assert_eq(pser.pow(other).rename("x"), kser.pow(other).sort_index())
+            self.assert_eq((pser ** other).rename("x"), (kser ** other).sort_index())
+            self.assert_eq(pser.rpow(other).rename("x"), kser.rpow(other).sort_index())
+            self.assert_eq((other ** pser).rename("x"), (other ** kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.pow(other), kser.pow(other).sort_index())
+            self.assert_eq(pser ** other, (kser ** other).sort_index())
+            self.assert_eq(pser.rpow(other), kser.rpow(other).sort_index())
+            self.assert_eq(other ** pser, (other ** kser).sort_index())
+        else:
+            self.assert_eq(pser.pow(other).rename("x"), kser.pow(other).sort_index())
+            self.assert_eq((pser ** other).rename("x"), (kser ** other).sort_index())
+            self.assert_eq(pser.rpow(other).rename("x"), kser.rpow(other).sort_index())
+            self.assert_eq((other ** pser).rename("x"), (other ** kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.pow(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser ** other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rpow(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other ** kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.pow(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser ** other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rpow(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other ** kser
+
+    def test_series_mod_and_rmod(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.mod(pandas_other), kser.mod(koalas_other).sort_index())
+        self.assert_eq(pser % pandas_other, (kser % koalas_other).sort_index())
+        self.assert_eq(pser.rmod(pandas_other), kser.rmod(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.mod(pandas_other), kser.mod(koalas_other).sort_index())
+        self.assert_eq(pser % pandas_other, (kser % koalas_other).sort_index())
+        self.assert_eq(pser.rmod(pandas_other), kser.rmod(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.mod(other), kser.mod(other).sort_index())
+            self.assert_eq(pser % other, (kser % other).sort_index())
+            self.assert_eq(pser.rmod(other), kser.rmod(other).sort_index())
+            self.assert_eq(other % pser, (other % kser).sort_index())
+        else:
+            self.assert_eq(pser.mod(other).rename("x"), kser.mod(other).sort_index())
+            self.assert_eq((pser % other).rename("x"), (kser % other).sort_index())
+            self.assert_eq(pser.rmod(other).rename("x"), kser.rmod(other).sort_index())
+            self.assert_eq((other % pser).rename("x"), (other % kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.mod(other), kser.mod(other).sort_index())
+            self.assert_eq(pser % other, (kser % other).sort_index())
+            self.assert_eq(pser.rmod(other), kser.rmod(other).sort_index())
+            self.assert_eq(other % pser, (other % kser).sort_index())
+        else:
+            self.assert_eq(pser.mod(other).rename("x"), kser.mod(other).sort_index())
+            self.assert_eq((pser % other).rename("x"), (kser % other).sort_index())
+            self.assert_eq(pser.rmod(other).rename("x"), kser.rmod(other).sort_index())
+            self.assert_eq((other % pser).rename("x"), (other % kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.mod(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser % other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rmod(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other % kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.mod(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser % other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rmod(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other % kser
+
+    def test_series_div_and_rdiv(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.div(pandas_other), kser.div(koalas_other).sort_index())
+        self.assert_eq(pser / pandas_other, (kser / koalas_other).sort_index())
+        self.assert_eq(pser.rdiv(pandas_other), kser.rdiv(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.div(pandas_other), kser.div(koalas_other).sort_index())
+        self.assert_eq(pser / pandas_other, (kser / koalas_other).sort_index())
+        self.assert_eq(pser.rdiv(pandas_other), kser.rdiv(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.div(other), kser.div(other).sort_index())
+            self.assert_eq(pser / other, (kser / other).sort_index())
+            self.assert_eq(pser.rdiv(other), kser.rdiv(other).sort_index())
+            self.assert_eq(other / pser, (other / kser).sort_index())
+        else:
+            self.assert_eq(pser.div(other).rename("x"), kser.div(other).sort_index())
+            self.assert_eq((pser / other).rename("x"), (kser / other).sort_index())
+            self.assert_eq(pser.rdiv(other).rename("x"), kser.rdiv(other).sort_index())
+            self.assert_eq((other / pser).rename("x"), (other / kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.div(other), kser.div(other).sort_index())
+            self.assert_eq(pser / other, (kser / other).sort_index())
+            self.assert_eq(pser.rdiv(other), kser.rdiv(other).sort_index())
+            self.assert_eq(other / pser, (other / kser).sort_index())
+        else:
+            self.assert_eq(pser.div(other).rename("x"), kser.div(other).sort_index())
+            self.assert_eq((pser / other).rename("x"), (kser / other).sort_index())
+            self.assert_eq(pser.rdiv(other).rename("x"), kser.rdiv(other).sort_index())
+            self.assert_eq((other / pser).rename("x"), (other / kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.div(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser / other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rdiv(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other / kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.div(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser / other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rdiv(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other / kser
+
+    def test_series_floordiv_and_rfloordiv(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.floordiv(pandas_other), kser.floordiv(koalas_other).sort_index())
+        self.assert_eq(pser // pandas_other, (kser // koalas_other).sort_index())
+        self.assert_eq(pser.rfloordiv(pandas_other), kser.rfloordiv(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.floordiv(pandas_other), kser.floordiv(koalas_other).sort_index())
+        self.assert_eq(pser // pandas_other, (kser // koalas_other).sort_index())
+        self.assert_eq(pser.rfloordiv(pandas_other), kser.rfloordiv(koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.floordiv(other), kser.floordiv(other).sort_index())
+            self.assert_eq(pser // other, (kser // other).sort_index())
+            self.assert_eq(pser.rfloordiv(other), kser.rfloordiv(other).sort_index())
+            self.assert_eq(other // pser, (other // kser).sort_index())
+        else:
+            self.assert_eq(pser.floordiv(other).rename("x"), kser.floordiv(other).sort_index())
+            self.assert_eq((pser // other).rename("x"), (kser // other).sort_index())
+            self.assert_eq(pser.rfloordiv(other).rename("x"), kser.rfloordiv(other).sort_index())
+            self.assert_eq((other // pser).rename("x"), (other // kser).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.floordiv(other), kser.floordiv(other).sort_index())
+            self.assert_eq(pser // other, (kser // other).sort_index())
+            self.assert_eq(pser.rfloordiv(other), kser.rfloordiv(other).sort_index())
+            self.assert_eq(other // pser, (other // kser).sort_index())
+        else:
+            self.assert_eq(pser.floordiv(other).rename("x"), kser.floordiv(other).sort_index())
+            self.assert_eq((pser // other).rename("x"), (kser // other).sort_index())
+            self.assert_eq(pser.rfloordiv(other).rename("x"), kser.rfloordiv(other).sort_index())
+            self.assert_eq((other // pser).rename("x"), (other // kser).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.floordiv(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser // other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rfloordiv(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other // kser
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.floordiv(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser // other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kser.rfloordiv(other)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other // kser
+
+    def test_index_add_and_radd(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx + pandas_other, (kidx + koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx + pandas_other, kidx + koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx + other, kidx + other)
+            self.assert_eq(other + pidx, other + kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 3.0, 6.0, 8.0, np.nan, 12.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx + other)
+            self.assert_eq(expected_result, other + kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx + other, kidx + other)
+            self.assert_eq(other + pidx, other + kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 3.0, 6.0, 8.0, np.nan, 12.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx + other)
+            self.assert_eq(expected_result, other + kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx + other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other + kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx + other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other + kidx
+
+    def test_index_sub_and_rsub(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx - pandas_other, (kidx - koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx - pandas_other, kidx - koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx - other, kidx - other)
+            self.assert_eq(other - pidx, other - kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 1.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx - other)
+            expected_result = ks.Index(
+                [np.nan, -1.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other - kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx - other, kidx - other)
+            self.assert_eq(other - pidx, other - kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 1.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx - other)
+            expected_result = ks.Index(
+                [np.nan, -1.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other - kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx - other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other - kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx - other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other - kidx
+
+    def test_index_mul_and_rmul(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx * pandas_other, (kidx * koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx * pandas_other, kidx * koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx * other, kidx * other)
+            self.assert_eq(other * pidx, other * kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 2.0, 9.0, 16.0, np.nan, 36.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx * other)
+            self.assert_eq(expected_result, other * kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx * other, kidx * other)
+            self.assert_eq(other * pidx, other * kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 2.0, 9.0, 16.0, np.nan, 36.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx * other)
+            self.assert_eq(expected_result, other * kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx * other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other * kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx * other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other * kidx
+
+    def test_index_pow_and_rpow(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx ** pandas_other, (kidx ** koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx ** pandas_other, kidx ** koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx ** other, kidx ** other)
+            self.assert_eq(other ** pidx, other ** kidx)
+        else:
+            expected_result = ks.Index(
+                [1.0, 2.0, 27.0, 256.0, np.nan, 46656.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx ** other)
+            expected_result = ks.Index(
+                [np.nan, 1.0, 27.0, 256.0, np.nan, 46656.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other ** kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx ** other, kidx ** other)
+            self.assert_eq(other ** pidx, other ** kidx)
+        else:
+            expected_result = ks.Index(
+                [1.0, 2.0, 27.0, 256.0, np.nan, 46656.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx ** other)
+            expected_result = ks.Index(
+                [np.nan, 1.0, 27.0, 256.0, np.nan, 46656.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other ** kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx ** other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other ** kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx ** other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other ** kidx
+
+    def test_index_mod_and_rmod(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx % pandas_other, (kidx % koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx % pandas_other, kidx % koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pidx % other, kidx % other)
+            self.assert_eq(other % pidx, other % kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 0.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx % other)
+            expected_result = ks.Index(
+                [np.nan, 1.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other % kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pidx % other, kidx % other)
+            self.assert_eq(other % pidx, other % kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 0.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx % other)
+            expected_result = ks.Index(
+                [np.nan, 1.0, 0.0, 0.0, np.nan, 0.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other % kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx % other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other % kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx % other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other % kidx
+
+    def test_index_div_and_rdiv(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx / pandas_other, (kidx / koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx / pandas_other, kidx / koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx / other, kidx / other)
+            self.assert_eq(other / pidx, other / kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 2.0, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx / other)
+            expected_result = ks.Index(
+                [np.nan, 0.5, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other / kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx / other, kidx / other)
+            self.assert_eq(other / pidx, other / kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 2.0, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx / other)
+            expected_result = ks.Index(
+                [np.nan, 0.5, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other / kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx / other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other / kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx / other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other / kidx
+
+    def test_index_floordiv_and_rfloordiv(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        # other = Series
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], name="x", index=[10, 20, 30, 40, 50, 60]
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx // pandas_other, (kidx // koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pidx // pandas_other, kidx // koalas_other)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx // other, kidx // other)
+            self.assert_eq(other // pidx, other // kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 2.0, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx // other)
+            expected_result = ks.Index(
+                [np.nan, 0.0, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other // kidx)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.0"):
+            self.assert_eq(pidx // other, kidx // other)
+            self.assert_eq(other // pidx, other // kidx)
+        else:
+            expected_result = ks.Index(
+                [np.nan, 2.0, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, kidx // other)
+            expected_result = ks.Index(
+                [np.nan, 0.0, 1.0, 1.0, np.nan, 1.0], dtype="float64", name="x"
+            )
+            self.assert_eq(expected_result, other // kidx)
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx // other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other // kidx
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            kidx // other
+        with self.assertRaisesRegex(
+            ValueError, "operands could not be broadcast together with shapes"
+        ):
+            other // kidx
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod
@@ -1893,3 +2947,140 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
             kser ** kser_other
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kser.rpow(kser_other)
+
+    def test_series_binary_operators(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        others = (
+            ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+            ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+        )
+        # `add` and `radd`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.add(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser + other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.radd(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other + kser
+        # `rub` and `rsub`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.sub(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser - other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.rsub(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other - kser
+        # `mul` and `rmul`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.mul(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser * other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.rmul(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other * kser
+        # `pow` and `rpow`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.pow(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser ** other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.rpow(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other ** kser
+        # `mod` and `rmod`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.mod(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser % other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.rmod(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other % kser
+        # `div` and `rdiv`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.div(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser / other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.rdiv(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other / kser
+        # `floordiv` and `rfloordiv`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.floordiv(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser // other
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.rfloordiv(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other // kser
+
+    def test_index_binary_operators(self):
+        pidx = pd.Index([1, 2, 3, 4, 5, 6], name="x")
+        kidx = ks.from_pandas(pidx)
+
+        others = (
+            ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+            ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+        )
+        # `add` and `radd`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx + other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other + kidx
+        # `rub` and `rsub`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx - other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other - kidx
+        # `mul` and `rmul`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx * other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other * kidx
+        # `pow` and `rpow`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx ** other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other ** kidx
+        # `mod` and `rmod`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx % other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other % kidx
+        # `div` and `rdiv`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx / other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other / kidx
+        # `floordiv` and `rfloordiv`
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kidx // other
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                other // kidx

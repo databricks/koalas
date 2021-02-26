@@ -102,7 +102,7 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
+    def __new__(cls, data: Union[DataFrame, list, tuple], dtype=None, name=None, names=None):
         from databricks.koalas.indexes.datetimes import DatetimeIndex
         from databricks.koalas.indexes.multi import MultiIndex
         from databricks.koalas.indexes.numeric import Float64Index, Int64Index
