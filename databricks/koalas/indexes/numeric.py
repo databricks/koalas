@@ -29,30 +29,6 @@ class NumericIndex(Index):
     pass
 
 
-_class_descr = """
-    Immutable ndarray implementing an ordered, sliceable set. The basic object
-    storing axis labels for all pandas objects. {klass}s is a special case
-    of `Index` with purely {ltype}s labels.
-
-    Parameters
-    ----------
-    data : array-like (1-dimensional)
-    dtype : NumPy dtype (default: {dtype}s)
-    copy : bool
-        Make a copy of input ndarray.
-    name : object
-        Name to be stored in the index.
-
-    See Also
-    --------
-    Index : The base pandas Index type.
-
-    Notes
-    -----
-    An Index instance can **only** contain hashable objects.
-"""
-
-
 class IntegerIndex(NumericIndex):
     """
     This is an abstract class for Int64Index.
@@ -62,16 +38,34 @@ class IntegerIndex(NumericIndex):
 
 
 class Int64Index(IntegerIndex):
-    __doc__ = (
-        _class_descr.format(klass="Int64Index", ltype="integer", dtype="int64")
-        + """
+    """
+    Immutable sequence used for indexing and alignment. The basic object
+    storing axis labels for all pandas objects. Int64Index is a special case
+    of `Index` with purely integer labels.
+
+    Parameters
+    ----------
+    data : array-like (1-dimensional)
+    dtype : NumPy dtype (default: int64)
+    copy : bool
+        Make a copy of input ndarray.
+    name : object
+        Name to be stored in the index.
+
+    See Also
+    --------
+    Index : The base Koalas Index type.
+    Float64Index : A special case of :class:`Index` with purely float labels.
+
+    Notes
+    -----
+    An Index instance can **only** contain hashable objects.
 
     Examples
     --------
     >>> ks.Int64Index([1, 2, 3])
     Int64Index([1, 2, 3], dtype='int64')
     """
-    )
 
     def __new__(cls, data=None, dtype=None, copy=False, name=None):
         if not is_hashable(name):
@@ -81,16 +75,34 @@ class Int64Index(IntegerIndex):
 
 
 class Float64Index(NumericIndex):
-    __doc__ = (
-        _class_descr.format(klass="Float64Index", ltype="float", dtype="float64")
-        + """
+    """
+    Immutable sequence used for indexing and alignment. The basic object
+    storing axis labels for all pandas objects. Float64Index is a special case
+    of `Index` with purely float labels.
+
+    Parameters
+    ----------
+    data : array-like (1-dimensional)
+    dtype : NumPy dtype (default: float64)
+    copy : bool
+        Make a copy of input ndarray.
+    name : object
+        Name to be stored in the index.
+
+    See Also
+    --------
+    Index : The base Koalas Index type.
+    Int64Index : A special case of :class:`Index` with purely integer labels.
+
+    Notes
+    -----
+    An Index instance can **only** contain hashable objects.
 
     Examples
     --------
     >>> ks.Float64Index([1.0, 2.0, 3.0])
     Float64Index([1.0, 2.0, 3.0], dtype='float64')
     """
-    )
 
     def __new__(cls, data=None, dtype=None, copy=False, name=None):
         if not is_hashable(name):
