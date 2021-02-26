@@ -15,7 +15,7 @@
 #
 
 from functools import partial
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, List, Optional, Tuple, Union
 import warnings
 
 import pandas as pd
@@ -106,24 +106,14 @@ class Index(IndexOpsMixin):
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __new__(
-        cls, data=None, dtype=None, copy=False, name=None, tupleize_cols=True, **kwargs
-    ) -> "Index":
+    def __new__(cls, data=None, dtype=None, copy=False, name=None, tupleize_cols=True, **kwargs):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
 
-        return cast(
-            Index,
-            ks.from_pandas(
-                pd.Index(
-                    data=data,
-                    dtype=dtype,
-                    copy=copy,
-                    name=name,
-                    tupleize_cols=tupleize_cols,
-                    **kwargs
-                )
-            ),
+        return ks.from_pandas(
+            pd.Index(
+                data=data, dtype=dtype, copy=copy, name=name, tupleize_cols=tupleize_cols, **kwargs
+            )
         )
 
     @staticmethod
