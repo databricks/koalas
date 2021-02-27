@@ -23,7 +23,34 @@ if TYPE_CHECKING:
 
 
 class CategoricalAccessor(object):
-    """ Accessor object for categorical properties of the Series values. """
+    """
+    Accessor object for categorical properties of the Series values.
+
+    Examples
+    --------
+    >>> s = ks.Series(list("abbccc"), dtype="category")
+    >>> s
+    0    a
+    1    b
+    2    b
+    3    c
+    4    c
+    5    c
+    dtype: category
+    Categories (3, object): ['a', 'b', 'c']
+
+    >>> s.cat.categories
+    Index(['a', 'b', 'c'], dtype='object')
+
+    >>> s.cat.codes
+    0    0
+    1    1
+    2    1
+    3    2
+    4    2
+    5    2
+    dtype: int8
+    """
 
     def __init__(self, series: "ks.Series"):
         if not isinstance(series.dtype, CategoricalDtype):
@@ -32,7 +59,25 @@ class CategoricalAccessor(object):
 
     @property
     def categories(self) -> pd.Index:
-        """ The categories of this categorical. """
+        """
+        The categories of this categorical.
+
+        Examples
+        --------
+        >>> s = ks.Series(list("abbccc"), dtype="category")
+        >>> s
+        0    a
+        1    b
+        2    b
+        3    c
+        4    c
+        5    c
+        dtype: category
+        Categories (3, object): ['a', 'b', 'c']
+
+        >>> s.cat.categories
+        Index(['a', 'b', 'c'], dtype='object')
+        """
         return self._data.dtype.categories
 
     @categories.setter
@@ -40,14 +85,56 @@ class CategoricalAccessor(object):
         raise NotImplementedError()
 
     @property
-    def codes(self) -> "ks.Series":
-        """ Return Series of codes as well as the index. """
-        return self._data._with_new_scol(self._data.spark.column).rename()
+    def ordered(self) -> bool:
+        """
+        Whether the categories have an ordered relationship.
+
+        Examples
+        --------
+        >>> s = ks.Series(list("abbccc"), dtype="category")
+        >>> s
+        0    a
+        1    b
+        2    b
+        3    c
+        4    c
+        5    c
+        dtype: category
+        Categories (3, object): ['a', 'b', 'c']
+
+        >>> s.cat.ordered
+        False
+        """
+        return self._data.dtype.ordered
 
     @property
-    def ordered(self) -> bool:
-        """ Whether the categories have an ordered relationship. """
-        return self._data.dtype.ordered
+    def codes(self) -> "ks.Series":
+        """
+        Return Series of codes as well as the index.
+
+        Examples
+        --------
+        >>> s = ks.Series(list("abbccc"), dtype="category")
+        >>> s
+        0    a
+        1    b
+        2    b
+        3    c
+        4    c
+        5    c
+        dtype: category
+        Categories (3, object): ['a', 'b', 'c']
+
+        >>> s.cat.codes
+        0    0
+        1    1
+        2    1
+        3    2
+        4    2
+        5    2
+        dtype: int8
+        """
+        return self._data._with_new_scol(self._data.spark.column).rename()
 
     def add_categories(self, new_categories, inplace: bool = False):
         raise NotImplementedError()
