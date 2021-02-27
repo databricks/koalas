@@ -20,8 +20,9 @@ A loc indexer for Koalas DataFrame/Series.
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from functools import reduce
-from typing import Any, Optional, List, Tuple, TYPE_CHECKING, Union
+from typing import Any, Optional, List, Tuple, TYPE_CHECKING, Union, cast, Sized
 
+import pandas as pd
 from pandas.api.types import is_list_like
 from pyspark import sql as spark
 from pyspark.sql import functions as F
@@ -758,9 +759,15 @@ class LocIndexer(LocIndexerLike):
 
     - A conditional boolean Series derived from the DataFrame or Series
 
+    - A boolean array of the same length as the column axis being sliced,
+      e.g. ``[True, False, True]``.
+
+    - An alignable boolean pandas Series to the column axis being sliced.
+      The index of the key will be aligned before masking.
+
     Not allowed inputs which pandas allows are:
 
-    - A boolean array of the same length as the axis being sliced,
+    - A boolean array of the same length as the row axis being sliced,
       e.g. ``[True, False, True]``.
     - A ``callable`` function with one argument (the calling Series, DataFrame
       or Panel) and that returns valid output for indexing (one of the above)
@@ -852,6 +859,22 @@ class LocIndexer(LocIndexerLike):
     >>> df.loc[df['shield'] > 6, ['max_speed']]
                 max_speed
     sidewinder          7
+
+    A boolean array of the same length as the column axis being sliced.
+
+    >>> df.loc[:, [False, True]]
+                shield
+    cobra            2
+    viper            5
+    sidewinder       8
+
+    An alignable boolean Series to the column axis being sliced.
+
+    >>> df.loc[:, pd.Series([False, True], index=['max_speed', 'shield'])]
+                shield
+    cobra            2
+    viper            5
+    sidewinder       8
 
     **Setting values**
 
@@ -1203,6 +1226,43 @@ class LocIndexer(LocIndexerLike):
             ]
             data_spark_columns = list(cols_sel)
             data_dtypes = None
+        elif all(isinstance(key, bool) for key in cols_sel) or all(
+            isinstance(key, np.bool_) for key in cols_sel
+        ):
+            if len(cast(Sized, cols_sel)) != len(self._internal.column_labels):
+                raise IndexError(
+                    "Boolean index has wrong length: %s instead of %s"
+                    % (len(cast(Sized, cols_sel)), len(self._internal.column_labels))
+                )
+            if isinstance(cols_sel, pd.Series):
+                if not cols_sel.index.sort_values().equals(self._kdf.columns.sort_values()):
+                    raise SparkPandasIndexingError(
+                        "Unalignable boolean Series provided as indexer "
+                        "(index of the boolean Series and of the indexed object do not match)"
+                    )
+                else:
+                    column_labels = [
+                        column_label
+                        for column_label in self._internal.column_labels
+                        if cols_sel[column_label if len(column_label) > 1 else column_label[0]]
+                    ]
+                    data_spark_columns = [
+                        self._internal.spark_column_for(column_label)
+                        for column_label in column_labels
+                    ]
+                    data_dtypes = [
+                        self._internal.dtype_for(column_label) for column_label in column_labels
+                    ]
+            else:
+                column_labels = [
+                    self._internal.column_labels[i] for i, col in enumerate(cols_sel) if col
+                ]
+                data_spark_columns = [
+                    self._internal.data_spark_columns[i] for i, col in enumerate(cols_sel) if col
+                ]
+                data_dtypes = [
+                    self._internal.data_dtypes[i] for i, col in enumerate(cols_sel) if col
+                ]
         elif any(isinstance(key, tuple) for key in cols_sel) and any(
             not is_name_like_tuple(key) for key in cols_sel
         ):

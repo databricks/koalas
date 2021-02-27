@@ -70,22 +70,26 @@ class Index(IndexOpsMixin):
     Koalas Index that corresponds to pandas Index logically. This might hold Spark Column
     internally.
 
-    :ivar _kdf: The parent dataframe
-    :type _kdf: DataFrame
-    :ivar _scol: Spark Column instance
-    :type _scol: pyspark.Column
-
     Parameters
     ----------
-    data : DataFrame or list
-        Index can be created by DataFrame or list
+    data : array-like (1-dimensional)
     dtype : dtype, default None
-        Data type to force. Only a single dtype is allowed. If None, infer
-    name : name of index, hashable
+        If dtype is None, we find the dtype that best fits the data.
+        If an actual dtype is provided, we coerce to that dtype if it's safe.
+        Otherwise, an error will be raised.
+    copy : bool
+        Make a copy of input ndarray.
+    name : object
+        Name to be stored in the index.
+    tupleize_cols : bool (default: True)
+        When True, attempt to create a MultiIndex if possible.
 
     See Also
     --------
     MultiIndex : A multi-level, or hierarchical, Index.
+    DatetimeIndex : Index of datetime64 data.
+    Int64Index : A special case of :class:`Index` with purely integer labels.
+    Float64Index : A special case of :class:`Index` with purely float labels.
 
     Examples
     --------
@@ -95,54 +99,50 @@ class Index(IndexOpsMixin):
     >>> ks.DataFrame({'a': [1, 2, 3]}, index=list('abc')).index
     Index(['a', 'b', 'c'], dtype='object')
 
-    >>> Index([1, 2, 3])
+    >>> ks.Index([1, 2, 3])
     Int64Index([1, 2, 3], dtype='int64')
 
-    >>> Index(list('abc'))
+    >>> ks.Index(list('abc'))
     Index(['a', 'b', 'c'], dtype='object')
     """
 
-    def __new__(cls, data: Union[DataFrame, list], dtype=None, name=None, names=None):
+    def __new__(cls, data=None, dtype=None, copy=False, name=None, tupleize_cols=True, **kwargs):
+        if not is_hashable(name):
+            raise TypeError("Index.name must be a hashable type")
+
+        return ks.from_pandas(
+            pd.Index(
+                data=data, dtype=dtype, copy=copy, name=name, tupleize_cols=tupleize_cols, **kwargs
+            )
+        )
+
+    @staticmethod
+    def _new_instance(anchor: DataFrame) -> "Index":
         from databricks.koalas.indexes.category import CategoricalIndex
         from databricks.koalas.indexes.datetimes import DatetimeIndex
         from databricks.koalas.indexes.multi import MultiIndex
         from databricks.koalas.indexes.numeric import Float64Index, Int64Index
 
-        assert data is not None
-
-        if not isinstance(data, DataFrame):
-            if isinstance(data, list) and all([isinstance(item, tuple) for item in data]):
-                return MultiIndex.from_tuples(data, names=names)
-
-            if not is_hashable(name):
-                raise TypeError("Index.name must be a hashable type")
-
-            index = pd.Index(data=data, dtype=dtype, name=name)
-            return DataFrame(index=index).index
-
-        assert dtype is None
-        assert name is None
-
-        if data._internal.index_level > 1:
+        if anchor._internal.index_level > 1:
             instance = object.__new__(MultiIndex)
-        elif isinstance(data._internal.index_dtypes[0], CategoricalDtype):
+        elif isinstance(anchor._internal.index_dtypes[0], CategoricalDtype):
             instance = object.__new__(CategoricalIndex)
         elif isinstance(
-            data._internal.spark_type_for(data._internal.index_spark_columns[0]), IntegralType
+            anchor._internal.spark_type_for(anchor._internal.index_spark_columns[0]), IntegralType
         ):
             instance = object.__new__(Int64Index)
         elif isinstance(
-            data._internal.spark_type_for(data._internal.index_spark_columns[0]), FractionalType
+            anchor._internal.spark_type_for(anchor._internal.index_spark_columns[0]), FractionalType
         ):
             instance = object.__new__(Float64Index)
         elif isinstance(
-            data._internal.spark_type_for(data._internal.index_spark_columns[0]), TimestampType
+            anchor._internal.spark_type_for(anchor._internal.index_spark_columns[0]), TimestampType
         ):
             instance = object.__new__(DatetimeIndex)
         else:
             instance = object.__new__(Index)
 
-        instance._anchor = data
+        instance._anchor = anchor
         return instance
 
     @property
@@ -1132,21 +1132,19 @@ class Index(IndexOpsMixin):
         """
         internal = self._internal.resolved_copy
         sdf = internal.spark_frame[~internal.index_spark_columns[0].isin(labels)]
-        return Index(
-            DataFrame(
-                InternalFrame(
-                    spark_frame=sdf,
-                    index_spark_columns=[
-                        scol_for(sdf, col) for col in self._internal.index_spark_column_names
-                    ],
-                    index_names=self._internal.index_names,
-                    index_dtypes=self._internal.index_dtypes,
-                    column_labels=[],
-                    data_spark_columns=[],
-                    data_dtypes=[],
-                )
-            )
+
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_spark_columns=[
+                scol_for(sdf, col) for col in self._internal.index_spark_column_names
+            ],
+            index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
+            column_labels=[],
+            data_spark_columns=[],
+            data_dtypes=[],
         )
+        return DataFrame(internal).index
 
     def _validate_index_level(self, level):
         """
@@ -1381,7 +1379,7 @@ class Index(IndexOpsMixin):
             index_names=self._internal.index_names,
             index_dtypes=self._internal.index_dtypes,
         )
-        result = Index(DataFrame(internal))
+        result = DataFrame(internal).index
 
         if result_name:
             result.name = result_name
