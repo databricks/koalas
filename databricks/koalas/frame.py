@@ -3260,7 +3260,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         from databricks.koalas.indexes.base import Index
 
-        return Index(self)
+        return Index._new_instance(self)
 
     @property
     def empty(self) -> bool:
