@@ -95,17 +95,68 @@ class CategoricalIndex(Index):
 
     @property
     def codes(self) -> Index:
-        """ The category codes of this categorical. """
+        """
+        The category codes of this categorical.
+
+        Codes are an Index of integers which are the positions of the actual
+        values in the categories Index.
+
+        There is no setter, use the other categorical methods and the normal item
+        setter to change values in the categorical.
+
+        Returns
+        -------
+        Index
+            A non-writable view of the `codes` Index.
+
+        Examples
+        --------
+        >>> idx = ks.CategoricalIndex(list("abbccc"))
+        >>> idx  # doctest: +NORMALIZE_WHITESPACE
+        CategoricalIndex(['a', 'b', 'b', 'c', 'c', 'c'],
+                         categories=['a', 'b', 'c'], ordered=False, dtype='category')
+
+        >>> idx.codes
+        Int64Index([0, 1, 1, 2, 2, 2], dtype='int64')
+        """
         return self._with_new_scol(self.spark.column).rename(None)
 
     @property
     def categories(self) -> pd.Index:
-        """ The categories of this categorical. """
+        """
+        The categories of this categorical.
+
+        Examples
+        --------
+        >>> idx = ks.CategoricalIndex(list("abbccc"))
+        >>> idx  # doctest: +NORMALIZE_WHITESPACE
+        CategoricalIndex(['a', 'b', 'b', 'c', 'c', 'c'],
+                         categories=['a', 'b', 'c'], ordered=False, dtype='category')
+
+        >>> idx.categories
+        Index(['a', 'b', 'c'], dtype='object')
+        """
         return self.dtype.categories
+
+    @categories.setter
+    def categories(self, categories):
+        raise NotImplementedError()
 
     @property
     def ordered(self) -> bool:
-        """ Whether the categories have an ordered relationship. """
+        """
+        Whether the categories have an ordered relationship.
+
+        Examples
+        --------
+        >>> idx = ks.CategoricalIndex(list("abbccc"))
+        >>> idx  # doctest: +NORMALIZE_WHITESPACE
+        CategoricalIndex(['a', 'b', 'b', 'c', 'c', 'c'],
+                         categories=['a', 'b', 'c'], ordered=False, dtype='category')
+
+        >>> idx.ordered
+        False
+        """
         return self.dtype.ordered
 
     def __getattr__(self, item: str) -> Any:
