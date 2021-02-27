@@ -29,7 +29,7 @@ class CategoricalAccessor(object):
     Examples
     --------
     >>> s = ks.Series(list("abbccc"), dtype="category")
-    >>> s
+    >>> s  # doctest: +SKIP
     0    a
     1    b
     2    b
@@ -65,7 +65,7 @@ class CategoricalAccessor(object):
         Examples
         --------
         >>> s = ks.Series(list("abbccc"), dtype="category")
-        >>> s
+        >>> s  # doctest: +SKIP
         0    a
         1    b
         2    b
@@ -92,7 +92,7 @@ class CategoricalAccessor(object):
         Examples
         --------
         >>> s = ks.Series(list("abbccc"), dtype="category")
-        >>> s
+        >>> s  # doctest: +SKIP
         0    a
         1    b
         2    b
@@ -115,7 +115,7 @@ class CategoricalAccessor(object):
         Examples
         --------
         >>> s = ks.Series(list("abbccc"), dtype="category")
-        >>> s
+        >>> s  # doctest: +SKIP
         0    a
         1    b
         2    b
