@@ -17,7 +17,9 @@ from functools import partial
 from typing import Any
 
 import pandas as pd
+from pandas.api.types import is_hashable
 
+from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeCategoricalIndex
 
@@ -26,15 +28,70 @@ class CategoricalIndex(Index):
     """
     Index based on an underlying `Categorical`.
 
-    CategoricalIndex, like Categorical, can only take on a limited,
+    CategoricalIndex can only take on a limited,
     and usually fixed, number of possible values (`categories`). Also,
-    like Categorical, it might have an order, but numerical operations
+    it might have an order, but numerical operations
     (additions, divisions, ...) are not possible.
+
+    Parameters
+    ----------
+    data : array-like (1-dimensional)
+        The values of the categorical. If `categories` are given, values not in
+        `categories` will be replaced with NaN.
+    categories : index-like, optional
+        The categories for the categorical. Items need to be unique.
+        If the categories are not given here (and also not in `dtype`), they
+        will be inferred from the `data`.
+    ordered : bool, optional
+        Whether or not this categorical is treated as an ordered
+        categorical. If not given here or in `dtype`, the resulting
+        categorical will be unordered.
+    dtype : CategoricalDtype or "category", optional
+        If :class:`CategoricalDtype`, cannot be used together with
+        `categories` or `ordered`.
+    copy : bool, default False
+        Make a copy of input ndarray.
+    name : object, optional
+        Name to be stored in the index.
 
     See Also
     --------
-    Index : The base pandas Index type.
+    Index : The base Koalas Index type.
+
+    Examples
+    --------
+    >>> ks.CategoricalIndex(["a", "b", "c", "a", "b", "c"])  # doctest: +NORMALIZE_WHITESPACE
+    CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
+                     categories=['a', 'b', 'c'], ordered=False, dtype='category')
+
+    ``CategoricalIndex`` can also be instantiated from a ``Categorical``:
+
+    >>> c = pd.Categorical(["a", "b", "c", "a", "b", "c"])
+    >>> ks.CategoricalIndex(c)  # doctest: +NORMALIZE_WHITESPACE
+    CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
+                     categories=['a', 'b', 'c'], ordered=False, dtype='category')
+
+    Ordered ``CategoricalIndex`` can have a min and max value.
+
+    >>> ci = ks.CategoricalIndex(
+    ...     ["a", "b", "c", "a", "b", "c"], ordered=True, categories=["c", "b", "a"]
+    ... )
+    >>> ci  # doctest: +NORMALIZE_WHITESPACE
+    CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
+                     categories=['c', 'b', 'a'], ordered=True, dtype='category')
+    >>> ci.min()  # FIXME  # doctest: +SKIP
+    'c'
     """
+
+    def __new__(cls, data=None, categories=None, ordered=None, dtype=None, copy=False, name=None):
+        if not is_hashable(name):
+            raise TypeError("Index.name must be a hashable type")
+
+        return ks.from_pandas(
+            pd.CategoricalIndex(
+                data=data, categories=categories, ordered=ordered, dtype=dtype, name=name
+            )
+        )
 
     @property
     def codes(self) -> Index:
