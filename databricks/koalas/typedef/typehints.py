@@ -83,6 +83,15 @@ class SeriesType(typing.Generic[T]):
         return "SeriesType[{}]".format(self.tpe)
 
 
+# An index of data, with the data type.
+class IndexType(typing.Generic[T]):
+    def __init__(self, tpe):
+        self.tpe = tpe  # type: types.DataType
+
+    def __repr__(self):
+        return "IndexType[{}]".format(self.tpe)
+
+
 class DataFrameType(object):
     def __init__(self, tpe, names=None):
         if names is None:

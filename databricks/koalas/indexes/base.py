@@ -15,7 +15,8 @@
 #
 
 from functools import partial
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Generic, List, Optional, Tuple, TypeVar, Union
+import sys
 import warnings
 
 import pandas as pd
@@ -62,10 +63,12 @@ from databricks.koalas.internal import (
     SPARK_DEFAULT_INDEX_NAME,
     SPARK_INDEX_NAME_FORMAT,
 )
-from databricks.koalas.typedef import Scalar
+from databricks.koalas.typedef import Scalar, IndexType
+
+T = TypeVar("T")
 
 
-class Index(IndexOpsMixin):
+class Index(IndexOpsMixin, Generic[T]):
     """
     Koalas Index that corresponds to pandas Index logically. This might hold Spark Column
     internally.
@@ -115,6 +118,11 @@ class Index(IndexOpsMixin):
                 data=data, dtype=dtype, copy=copy, name=name, tupleize_cols=tupleize_cols, **kwargs
             )
         )
+
+    if sys.version_info >= (3, 7):
+        # In order to support the type hints such as Index[...]. See DataFrame.__class_getitem__.
+        def __class_getitem__(cls, tpe):
+            return IndexType[tpe]
 
     @staticmethod
     def _new_instance(anchor: DataFrame) -> "Index":
