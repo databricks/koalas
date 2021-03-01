@@ -80,6 +80,13 @@ class DatetimeIndex(Index):
     --------
     >>> ks.DatetimeIndex(['1970-01-01', '1970-01-01', '1970-01-01'])
     DatetimeIndex(['1970-01-01', '1970-01-01', '1970-01-01'], dtype='datetime64[ns]', freq=None)
+
+    From a Seires:
+
+    >>> from datetime import datetime
+    >>> s = ks.Series([datetime(2021, 3, 1), datetime(2021, 3, 2)], index=[10, 20])
+    >>> ks.DatetimeIndex(s)
+    DatetimeIndex(['2021-03-01', '2021-03-02'], dtype='datetime64[ns]', freq=None)
     """
 
     def __new__(

@@ -66,6 +66,12 @@ class Int64Index(IntegerIndex):
     --------
     >>> ks.Int64Index([1, 2, 3])
     Int64Index([1, 2, 3], dtype='int64')
+
+    From a Seires:
+
+    >>> s = ks.Series([1, 2, 3], name="a", index=[10, 20, 30])
+    >>> ks.Int64Index(s)
+    Int64Index([1, 2, 3], dtype='int64', name='a')
     """
 
     def __new__(cls, data=None, dtype=None, copy=False, name=None):
@@ -108,6 +114,12 @@ class Float64Index(NumericIndex):
     --------
     >>> ks.Float64Index([1.0, 2.0, 3.0])
     Float64Index([1.0, 2.0, 3.0], dtype='float64')
+
+    From a Seires:
+
+    >>> s = ks.Series([1, 2, 3], name="a", index=[10, 20, 30])
+    >>> ks.Float64Index(s)
+    Float64Index([1.0, 2.0, 3.0], dtype='float64', name='a')
     """
 
     def __new__(cls, data=None, dtype=None, copy=False, name=None):
