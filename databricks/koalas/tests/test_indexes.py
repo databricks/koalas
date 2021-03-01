@@ -71,10 +71,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(ks.Index(kser, dtype="float"), pd.Index(pser, dtype="float"))
         self.assert_eq(ks.Index(kser, name="x"), pd.Index(pser, name="x"))
 
-        self.assert_eq(ks.Int64Index(kser), pd.Int64Index(pser))
-        self.assert_eq(ks.Float64Index(kser), pd.Float64Index(pser))
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(ks.Int64Index(kser), pd.Int64Index(pser))
+            self.assert_eq(ks.Float64Index(kser), pd.Float64Index(pser))
+        else:
+            self.assert_eq(ks.Int64Index(kser), pd.Int64Index(pser).rename("a"))
+            self.assert_eq(ks.Float64Index(kser), pd.Float64Index(pser).rename("a"))
 
-        pser = pd.Series([datetime(2021, 3, 1), datetime(2021, 3, 2)], index=[10, 20])
+        pser = pd.Series([datetime(2021, 3, 1), datetime(2021, 3, 2)], name="x", index=[10, 20])
         kser = ks.from_pandas(pser)
 
         self.assert_eq(ks.Index(kser), pd.Index(pser))
