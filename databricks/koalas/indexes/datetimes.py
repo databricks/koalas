@@ -30,9 +30,6 @@ class DatetimeIndex(Index):
     """
     Immutable ndarray-like of datetime64 data.
 
-    Represented internally as int64, and which can be boxed to Timestamp objects
-    that are subclasses of datetime and carry metadata.
-
     Parameters
     ----------
     data : array-like (1-dimensional), optional
@@ -64,7 +61,7 @@ class DatetimeIndex(Index):
         If True, parse dates in `data` with the day first order.
     yearfirst : bool, default False
         If True parse dates in `data` with the year first order.
-    dtype : numpy.dtype or DatetimeTZDtype or str, default None
+    dtype : numpy.dtype or str, default None
         Note that the only NumPy dtype allowed is ‘datetime64[ns]’.
     copy : bool, default False
         Make a copy of input ndarray.
