@@ -21,12 +21,11 @@ from pandas.api.types import is_hashable
 from pyspark._globals import _NoValue
 
 from databricks import koalas as ks
-from databricks.koalas import DataFrame
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
 
 from pyspark.sql import functions as F
-from pyspark.sql.types import DateType, TimestampType, LongType
+from pyspark.sql.types import LongType
 
 
 class DatetimeIndex(Index):
