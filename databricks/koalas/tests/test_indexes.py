@@ -332,17 +332,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(KeyError, "Requested level (hi)*"):
             kidx.unique(level="hi")
 
-    def test_datetime_index(self):
-        pid = pd.DatetimeIndex([0])
-        kid = ks.from_pandas(pid)
+    def test_datetime_index_properties(self):
+        pids = pd.DatetimeIndex([0]), pd.DatetimeIndex(["1970-01-01", "1970-01-01", "1970-01-01"])
 
-        self.assert_eq(kid.year, pid.year)
-        self.assert_eq(kid.month, pid.month)
-        self.assert_eq(kid.day, pid.day)
-        self.assert_eq(kid.hour, pid.hour)
-        self.assert_eq(kid.minute, pid.minute)
-        self.assert_eq(kid.second, pid.second)
-        self.assert_eq(kid.week, pid.week)
+        for pid in pids:
+            kid = ks.from_pandas(pid)
+
+            self.assert_eq(kid.year, pid.year)
+            self.assert_eq(kid.month, pid.month)
+            self.assert_eq(kid.day, pid.day)
+            self.assert_eq(kid.hour, pid.hour)
+            self.assert_eq(kid.minute, pid.minute)
+            self.assert_eq(kid.second, pid.second)
+            self.assert_eq(kid.week, pid.week)
 
     def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
