@@ -105,20 +105,17 @@ class Index(IndexOpsMixin):
     >>> ks.Index(list('abc'))
     Index(['a', 'b', 'c'], dtype='object')
 
-    From a Seires:
+    From a Series:
 
-    >>> s = ks.Series([1, 2, 3], name="a", index=[10, 20, 30])
+    >>> s = ks.Series([1, 2, 3], index=[10, 20, 30])
     >>> ks.Index(s)
-    Int64Index([1, 2, 3], dtype='int64', name='a')
+    Int64Index([1, 2, 3], dtype='int64')
 
-    >>> s = ks.Series([1.0, 2.0, 3.0], name="a", index=[10, 20, 30])
-    >>> ks.Index(s)
-    Float64Index([1.0, 2.0, 3.0], dtype='float64', name='a')
+    From an Index:
 
-    >>> from datetime import datetime
-    >>> s = ks.Series([datetime(2021, 3, 1), datetime(2021, 3, 2)], index=[10, 20])
-    >>> ks.Index(s)
-    DatetimeIndex(['2021-03-01', '2021-03-02'], dtype='datetime64[ns]', freq=None)
+    >>> idx = ks.Index([1, 2, 3])
+    >>> ks.Index(idx)
+    Int64Index([1, 2, 3], dtype='int64')
     """
 
     def __new__(cls, data=None, dtype=None, copy=False, name=None, tupleize_cols=True, **kwargs):
