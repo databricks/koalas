@@ -18,6 +18,7 @@ from pandas.api.types import is_hashable
 
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.series import Series
 
 
 class NumericIndex(Index):
@@ -71,6 +72,11 @@ class Int64Index(IntegerIndex):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
 
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "int64"
+            return Index(data, dtype=dtype, copy=copy, name=name)
+
         return ks.from_pandas(pd.Int64Index(data=data, dtype=dtype, copy=copy, name=name))
 
 
@@ -107,5 +113,10 @@ class Float64Index(NumericIndex):
     def __new__(cls, data=None, dtype=None, copy=False, name=None):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "float64"
+            return Index(data, dtype=dtype, copy=copy, name=name)
 
         return ks.from_pandas(pd.Float64Index(data=data, dtype=dtype, copy=copy, name=name))

@@ -110,6 +110,31 @@ class Index(IndexOpsMixin):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
 
+        if isinstance(data, Series):
+            if dtype is not None:
+                data = data.astype(dtype)
+            if name is not None:
+                data = data.rename(name)
+
+            internal = InternalFrame(
+                spark_frame=data._internal.spark_frame,
+                index_spark_columns=data._internal.data_spark_columns,
+                index_names=data._internal.column_labels,
+                index_dtypes=data._internal.data_dtypes,
+                column_labels=[],
+                data_spark_columns=[],
+                data_dtypes=[],
+            )
+            return DataFrame(internal).index
+        elif isinstance(data, Index):
+            if copy:
+                data = data.copy()
+            if dtype is not None:
+                data = data.astype(dtype)
+            if name is not None:
+                data = data.rename(name)
+            return data
+
         return ks.from_pandas(
             pd.Index(
                 data=data, dtype=dtype, copy=copy, name=name, tupleize_cols=tupleize_cols, **kwargs

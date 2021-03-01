@@ -23,6 +23,7 @@ from pyspark._globals import _NoValue
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
+from databricks.koalas.series import Series
 
 
 class DatetimeIndex(Index):
@@ -96,6 +97,11 @@ class DatetimeIndex(Index):
     ):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "datetime64[ns]"
+            return Index(data, dtype=dtype, copy=copy, name=name)
 
         kwargs = dict(
             data=data,
