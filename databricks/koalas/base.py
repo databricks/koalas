@@ -45,7 +45,6 @@ from databricks.koalas import numpy_compat
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.internal import (
     InternalFrame,
-    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
@@ -125,23 +124,17 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
 
         with option_context("compute.default_index_type", "distributed-sequence"):
             if isinstance(this_index_ops, Index) and all(isinstance(col, Index) for col in cols):
-                return (
-                    cast(
-                        Series,
-                        column_op(func)(
-                            this_index_ops.to_series().reset_index(drop=True),
-                            *[
-                                arg.to_series().reset_index(drop=True)
-                                if isinstance(arg, Index)
-                                else arg
-                                for arg in args
-                            ]
-                        ),
-                    )
-                    .sort_index()
-                    .to_frame(DEFAULT_SERIES_NAME)
-                    .set_index(DEFAULT_SERIES_NAME)
-                    .index.rename(this_index_ops.name)
+                return Index(
+                    column_op(func)(
+                        this_index_ops.to_series().reset_index(drop=True),
+                        *[
+                            arg.to_series().reset_index(drop=True)
+                            if isinstance(arg, Index)
+                            else arg
+                            for arg in args
+                        ]
+                    ).sort_index(),
+                    name=this_index_ops.name,
                 )
             elif isinstance(this_index_ops, Series):
                 this = this_index_ops.reset_index()

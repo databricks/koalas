@@ -104,11 +104,48 @@ class Index(IndexOpsMixin):
 
     >>> ks.Index(list('abc'))
     Index(['a', 'b', 'c'], dtype='object')
+
+    From a Series:
+
+    >>> s = ks.Series([1, 2, 3], index=[10, 20, 30])
+    >>> ks.Index(s)
+    Int64Index([1, 2, 3], dtype='int64')
+
+    From an Index:
+
+    >>> idx = ks.Index([1, 2, 3])
+    >>> ks.Index(idx)
+    Int64Index([1, 2, 3], dtype='int64')
     """
 
     def __new__(cls, data=None, dtype=None, copy=False, name=None, tupleize_cols=True, **kwargs):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, Series):
+            if dtype is not None:
+                data = data.astype(dtype)
+            if name is not None:
+                data = data.rename(name)
+
+            internal = InternalFrame(
+                spark_frame=data._internal.spark_frame,
+                index_spark_columns=data._internal.data_spark_columns,
+                index_names=data._internal.column_labels,
+                index_dtypes=data._internal.data_dtypes,
+                column_labels=[],
+                data_spark_columns=[],
+                data_dtypes=[],
+            )
+            return DataFrame(internal).index
+        elif isinstance(data, Index):
+            if copy:
+                data = data.copy()
+            if dtype is not None:
+                data = data.astype(dtype)
+            if name is not None:
+                data = data.rename(name)
+            return data
 
         return ks.from_pandas(
             pd.Index(
