@@ -137,6 +137,7 @@ class DatetimeIndex(Index):
                 return partial(property_or_func, self)
         raise AttributeError("'DatetimeIndex' object has no attribute '{}'".format(item))
 
+    # Properties
     @property
     def year(self) -> Index:
         """
@@ -221,20 +222,17 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> s = ks.from_pandas(pd.date_range('2016-12-31', '2017-01-08', freq='D').to_series())
-        >>> s.dt.dayofweek
-        2016-12-31    5
-        2017-01-01    6
-        2017-01-02    0
-        2017-01-03    1
-        2017-01-04    2
-        2017-01-05    3
-        2017-01-06    4
-        2017-01-07    5
-        2017-01-08    6
-        dtype: int64
+        >>> idx = ks.from_pandas(pd.date_range('2016-12-31', '2017-01-08', freq='D'))
+        >>> idx.dayofweek
+        Int64Index([5, 6, 0, 1, 2, 3, 4, 5, 6], dtype='int64')
         """
         return Index(self.to_series().dt.dayofweek)
+
+    @property
+    def day_of_week(self) -> Index:
+        return self.dayofweek
+
+    day_of_week.__doc__ = dayofweek.__doc__
 
     @property
     def weekday(self) -> Index:
@@ -248,6 +246,12 @@ class DatetimeIndex(Index):
         The ordinal day of the year.
         """
         return Index(self.to_series().dt.dayofyear)
+
+    @property
+    def day_of_year(self) -> Index:
+        return self.dayofyear
+
+    day_of_year.__doc__ = dayofyear.__doc__
 
     @property
     def quarter(self) -> Index:
@@ -273,7 +277,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-
+        >>> idx = ks.from_pandas(pd.date_range("2018-02-27", periods=3))
+        >>> idx.is_month_start
+        Index([False, False, True], dtype='object')
         """
         return Index(self.to_series().dt.is_month_start)
 
@@ -294,7 +300,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-
+        >>> idx = ks.from_pandas(pd.date_range("2018-02-27", periods=3))
+        >>> idx.is_month_end
+        Index([False, True, False], dtype='object')
         """
         return Index(self.to_series().dt.is_month_end)
 
@@ -315,7 +323,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-
+        >>> idx = ks.from_pandas(pd.date_range('2017-03-30', periods=4))
+        >>> idx.is_quarter_start
+        Index([False, False, True, False], dtype='object')
         """
         return Index(self.to_series().dt.is_quarter_start)
 
@@ -336,7 +346,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-
+        >>> idx = ks.from_pandas(pd.date_range('2017-03-30', periods=4))
+        >>> idx.is_quarter_end
+        Index([False, True, False, False], dtype='object')
         """
         return Index(self.to_series().dt.is_quarter_end)
 
@@ -356,6 +368,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
+        >>> idx = ks.from_pandas(pd.date_range("2017-12-30", periods=3))
+        >>> idx.is_year_start
+        Index([False, False, True], dtype='object')
         """
         return Index(self.to_series().dt.is_year_start)
 
@@ -375,6 +390,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
+        >>> idx = ks.from_pandas(pd.date_range("2017-12-30", periods=3))
+        >>> idx.is_year_end
+        Index([False, True, False], dtype='object')
         """
         return Index(self.to_series().dt.is_year_end)
 
@@ -395,7 +413,9 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-
+        >>> idx = ks.from_pandas(pd.date_range("2012-01-01", "2015-01-01", freq="Y"))
+        >>> idx.is_leap_year
+        Index([True, False, False], dtype='object')
         """
         return Index(self.to_series().dt.is_leap_year)
 

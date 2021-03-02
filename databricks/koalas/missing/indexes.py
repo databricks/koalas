@@ -104,8 +104,6 @@ class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
     date = _unsupported_property("date", cls="DatetimeIndex")
     time = _unsupported_property("time", cls="DatetimeIndex")
     timetz = _unsupported_property("timetz", cls="DatetimeIndex")
-    day_of_year = _unsupported_property("day_of_year", cls="DatetimeIndex")
-    day_of_week = _unsupported_property("day_of_week", cls="DatetimeIndex")
     tz = _unsupported_property("tz", cls="DatetimeIndex")
     freq = _unsupported_property("freq", cls="DatetimeIndex")
     freqstr = _unsupported_property("freqstr", cls="DatetimeIndex")

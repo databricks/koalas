@@ -381,7 +381,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
         for pid in pids:
             kid = ks.from_pandas(pid)
-
             self.assert_eq(kid.year, pid.year)
             self.assert_eq(kid.month, pid.month)
             self.assert_eq(kid.day, pid.day)
@@ -404,6 +403,10 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kid.is_year_start, ks.Index(pid.is_year_start))
             self.assert_eq(kid.is_year_end, ks.Index(pid.is_year_end))
             self.assert_eq(kid.is_leap_year, ks.Index(pid.is_leap_year))
+
+            if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
+                self.assert_eq(kid.day_of_year, pid.day_of_year)
+                self.assert_eq(kid.day_of_week, pid.day_of_week)
 
     def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
