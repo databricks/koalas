@@ -370,6 +370,41 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(KeyError, "Requested level (hi)*"):
             kidx.unique(level="hi")
 
+    def test_datetime_index_properties(self):
+        pids = [
+            pd.DatetimeIndex([0]),
+            pd.DatetimeIndex(["2004-01-01", "2002-12-31", "2000-04-01"]),
+        ] + [
+            pd.date_range("2000-01-01", periods=3, freq=unit)
+            for unit in ["ns", "us", "ms", "s", "m", "h", "D"]
+        ]
+
+        for pid in pids:
+            kid = ks.from_pandas(pid)
+
+            self.assert_eq(kid.year, pid.year)
+            self.assert_eq(kid.month, pid.month)
+            self.assert_eq(kid.day, pid.day)
+            self.assert_eq(kid.hour, pid.hour)
+            self.assert_eq(kid.minute, pid.minute)
+            self.assert_eq(kid.second, pid.second)
+            self.assert_eq(kid.microsecond, pid.microsecond)
+            self.assert_eq(kid.week, pid.week)
+            self.assert_eq(kid.weekofyear, pid.weekofyear)
+            self.assert_eq(kid.dayofweek, pid.dayofweek)
+            self.assert_eq(kid.weekday, pid.weekday)
+            self.assert_eq(kid.dayofyear, pid.dayofyear)
+            self.assert_eq(kid.quarter, pid.quarter)
+            self.assert_eq(kid.daysinmonth, pid.daysinmonth)
+            self.assert_eq(kid.days_in_month, pid.days_in_month)
+            self.assert_eq(kid.is_month_start, ks.Index(pid.is_month_start))
+            self.assert_eq(kid.is_month_end, ks.Index(pid.is_month_end))
+            self.assert_eq(kid.is_quarter_start, ks.Index(pid.is_quarter_start))
+            self.assert_eq(kid.is_quarter_end, ks.Index(pid.is_quarter_end))
+            self.assert_eq(kid.is_year_start, ks.Index(pid.is_year_start))
+            self.assert_eq(kid.is_year_end, ks.Index(pid.is_year_end))
+            self.assert_eq(kid.is_leap_year, ks.Index(pid.is_leap_year))
+
     def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
         idx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))

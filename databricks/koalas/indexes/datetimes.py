@@ -136,3 +136,278 @@ class DatetimeIndex(Index):
             else:
                 return partial(property_or_func, self)
         raise AttributeError("'DatetimeIndex' object has no attribute '{}'".format(item))
+
+    @property
+    def year(self) -> Index:
+        """
+        The year of the datetime.
+        """
+        return Index(self.to_series().dt.year)
+
+    @property
+    def month(self) -> Index:
+        """
+        The month of the timestamp as January = 1 December = 12.
+        """
+        return Index(self.to_series().dt.month)
+
+    @property
+    def day(self) -> Index:
+        """
+        The days of the datetime.
+        """
+        return Index(self.to_series().dt.day)
+
+    @property
+    def hour(self) -> Index:
+        """
+        The hours of the datetime.
+        """
+        return Index(self.to_series().dt.hour)
+
+    @property
+    def minute(self) -> Index:
+        """
+        The minutes of the datetime.
+        """
+        return Index(self.to_series().dt.minute)
+
+    @property
+    def second(self) -> Index:
+        """
+        The seconds of the datetime.
+        """
+        return Index(self.to_series().dt.second)
+
+    @property
+    def microsecond(self) -> Index:
+        """
+        The microseconds of the datetime.
+        """
+        return Index(self.to_series().dt.microsecond)
+
+    @property
+    def week(self) -> Index:
+        """
+        The week ordinal of the year.
+        """
+        return Index(self.to_series().dt.week)
+
+    @property
+    def weekofyear(self) -> Index:
+        return Index(self.to_series().dt.weekofyear)
+
+    weekofyear.__doc__ = week.__doc__
+
+    @property
+    def dayofweek(self) -> Index:
+        """
+        The day of the week with Monday=0, Sunday=6.
+        Return the day of the week. It is assumed the week starts on
+        Monday, which is denoted by 0 and ends on Sunday which is denoted
+        by 6. This method is available on both Series with datetime
+        values (using the `dt` accessor) or DatetimeIndex.
+
+        Returns
+        -------
+        Series or Index
+            Containing integers indicating the day number.
+
+        See Also
+        --------
+        Series.dt.dayofweek : Alias.
+        Series.dt.weekday : Alias.
+        Series.dt.day_name : Returns the name of the day of the week.
+
+        Examples
+        --------
+        >>> s = ks.from_pandas(pd.date_range('2016-12-31', '2017-01-08', freq='D').to_series())
+        >>> s.dt.dayofweek
+        2016-12-31    5
+        2017-01-01    6
+        2017-01-02    0
+        2017-01-03    1
+        2017-01-04    2
+        2017-01-05    3
+        2017-01-06    4
+        2017-01-07    5
+        2017-01-08    6
+        dtype: int64
+        """
+        return Index(self.to_series().dt.dayofweek)
+
+    @property
+    def weekday(self) -> Index:
+        return Index(self.to_series().dt.weekday)
+
+    weekday.__doc__ = dayofweek.__doc__
+
+    @property
+    def dayofyear(self) -> Index:
+        """
+        The ordinal day of the year.
+        """
+        return Index(self.to_series().dt.dayofyear)
+
+    @property
+    def quarter(self) -> Index:
+        """
+        The quarter of the date.
+        """
+        return Index(self.to_series().dt.quarter)
+
+    @property
+    def is_month_start(self) -> Index:
+        """
+        Indicates whether the date is the first day of the month.
+
+        Returns
+        -------
+        Index
+            Returns a Index with boolean values
+
+        See Also
+        --------
+        is_month_end : Return a boolean indicating whether the date
+            is the last day of the month.
+
+        Examples
+        --------
+
+        """
+        return Index(self.to_series().dt.is_month_start)
+
+    @property
+    def is_month_end(self) -> Index:
+        """
+        Indicates whether the date is the last day of the month.
+
+        Returns
+        -------
+        Index
+            Returns a Index with boolean values.
+
+        See Also
+        --------
+        is_month_start : Return a boolean indicating whether the date
+            is the first day of the month.
+
+        Examples
+        --------
+
+        """
+        return Index(self.to_series().dt.is_month_end)
+
+    @property
+    def is_quarter_start(self) -> Index:
+        """
+        Indicator for whether the date is the first day of a quarter.
+
+        Returns
+        -------
+        is_quarter_start : Index
+            Returns an Index with boolean values.
+
+        See Also
+        --------
+        quarter : Return the quarter of the date.
+        is_quarter_end : Similar property for indicating the quarter start.
+
+        Examples
+        --------
+
+        """
+        return Index(self.to_series().dt.is_quarter_start)
+
+    @property
+    def is_quarter_end(self) -> Index:
+        """
+        Indicator for whether the date is the last day of a quarter.
+
+        Returns
+        -------
+        is_quarter_end : Index
+            Returns an Index with boolean values.
+
+        See Also
+        --------
+        quarter : Return the quarter of the date.
+        is_quarter_start : Similar property indicating the quarter start.
+
+        Examples
+        --------
+
+        """
+        return Index(self.to_series().dt.is_quarter_end)
+
+    @property
+    def is_year_start(self) -> Index:
+        """
+        Indicate whether the date is the first day of a year.
+
+        Returns
+        -------
+        Index
+            Returns an Index with boolean values.
+
+        See Also
+        --------
+        is_year_end : Similar property indicating the last day of the year.
+
+        Examples
+        --------
+        """
+        return Index(self.to_series().dt.is_year_start)
+
+    @property
+    def is_year_end(self) -> Index:
+        """
+        Indicate whether the date is the last day of the year.
+
+        Returns
+        -------
+        Index
+            Returns an Index with boolean values.
+
+        See Also
+        --------
+        is_year_start : Similar property indicating the start of the year.
+
+        Examples
+        --------
+        """
+        return Index(self.to_series().dt.is_year_end)
+
+    @property
+    def is_leap_year(self) -> Index:
+        """
+        Boolean indicator if the date belongs to a leap year.
+
+        A leap year is a year, which has 366 days (instead of 365) including
+        29th of February as an intercalary day.
+        Leap years are years which are multiples of four with the exception
+        of years divisible by 100 but not by 400.
+
+        Returns
+        -------
+        Index
+             Booleans indicating if dates belong to a leap year.
+
+        Examples
+        --------
+
+        """
+        return Index(self.to_series().dt.is_leap_year)
+
+    @property
+    def daysinmonth(self) -> Index:
+        """
+        The number of days in the month.
+        """
+        return Index(self.to_series().dt.daysinmonth)
+
+    @property
+    def days_in_month(self) -> Index:
+        return Index(self.to_series().dt.days_in_month)
+
+    days_in_month.__doc__ = daysinmonth.__doc__
