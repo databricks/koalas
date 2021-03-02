@@ -46,7 +46,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
     def kdf(self):
         return ks.from_pandas(self.pdf)
 
-    def test_index(self):
+    def test_index_basic(self):
         for pdf in [
             pd.DataFrame(np.random.randn(10, 5), index=np.random.randint(100, size=10)),
             pd.DataFrame(
@@ -64,6 +64,44 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kdf = ks.from_pandas(pdf)
             self.assert_eq(kdf.index, pdf.index)
             self.assert_eq(type(kdf.index).__name__, type(pdf.index).__name__)
+
+    def test_index_from_series(self):
+        pser = pd.Series([1, 2, 3], name="a", index=[10, 20, 30])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(ks.Index(kser), pd.Index(pser))
+        self.assert_eq(ks.Index(kser, dtype="float"), pd.Index(pser, dtype="float"))
+        self.assert_eq(ks.Index(kser, name="x"), pd.Index(pser, name="x"))
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+            self.assert_eq(ks.Int64Index(kser), pd.Int64Index(pser))
+            self.assert_eq(ks.Float64Index(kser), pd.Float64Index(pser))
+        else:
+            self.assert_eq(ks.Int64Index(kser), pd.Int64Index(pser).rename("a"))
+            self.assert_eq(ks.Float64Index(kser), pd.Float64Index(pser).rename("a"))
+
+        pser = pd.Series([datetime(2021, 3, 1), datetime(2021, 3, 2)], name="x", index=[10, 20])
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(ks.Index(kser), pd.Index(pser))
+        self.assert_eq(ks.DatetimeIndex(kser), pd.DatetimeIndex(pser))
+
+    def test_index_from_index(self):
+        pidx = pd.Index([1, 2, 3], name="a")
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(ks.Index(kidx), pd.Index(pidx))
+        self.assert_eq(ks.Index(kidx, dtype="float"), pd.Index(pidx, dtype="float"))
+        self.assert_eq(ks.Index(kidx, name="x"), pd.Index(pidx, name="x"))
+
+        self.assert_eq(ks.Int64Index(kidx), pd.Int64Index(pidx))
+        self.assert_eq(ks.Float64Index(kidx), pd.Float64Index(pidx))
+
+        pidx = pd.DatetimeIndex(["2021-03-01", "2021-03-02"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(ks.Index(kidx), pd.Index(pidx))
+        self.assert_eq(ks.DatetimeIndex(kidx), pd.DatetimeIndex(pidx))
 
     def test_index_getattr(self):
         kidx = self.kdf.index

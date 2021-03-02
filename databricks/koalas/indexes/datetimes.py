@@ -23,14 +23,12 @@ from pyspark._globals import _NoValue
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
+from databricks.koalas.series import Series
 
 
 class DatetimeIndex(Index):
     """
     Immutable ndarray-like of datetime64 data.
-
-    Represented internally as int64, and which can be boxed to Timestamp objects
-    that are subclasses of datetime and carry metadata.
 
     Parameters
     ----------
@@ -63,7 +61,7 @@ class DatetimeIndex(Index):
         If True, parse dates in `data` with the day first order.
     yearfirst : bool, default False
         If True parse dates in `data` with the year first order.
-    dtype : numpy.dtype or DatetimeTZDtype or str, default None
+    dtype : numpy.dtype or str, default None
         Note that the only NumPy dtype allowed is ‘datetime64[ns]’.
     copy : bool, default False
         Make a copy of input ndarray.
@@ -78,6 +76,19 @@ class DatetimeIndex(Index):
     Examples
     --------
     >>> ks.DatetimeIndex(['1970-01-01', '1970-01-01', '1970-01-01'])
+    DatetimeIndex(['1970-01-01', '1970-01-01', '1970-01-01'], dtype='datetime64[ns]', freq=None)
+
+    From a Series:
+
+    >>> from datetime import datetime
+    >>> s = ks.Series([datetime(2021, 3, 1), datetime(2021, 3, 2)], index=[10, 20])
+    >>> ks.DatetimeIndex(s)
+    DatetimeIndex(['2021-03-01', '2021-03-02'], dtype='datetime64[ns]', freq=None)
+
+    From an Index:
+
+    >>> idx = ks.DatetimeIndex(['1970-01-01', '1970-01-01', '1970-01-01'])
+    >>> ks.DatetimeIndex(idx)
     DatetimeIndex(['1970-01-01', '1970-01-01', '1970-01-01'], dtype='datetime64[ns]', freq=None)
     """
 
@@ -96,6 +107,11 @@ class DatetimeIndex(Index):
     ):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "datetime64[ns]"
+            return Index(data, dtype=dtype, copy=copy, name=name)
 
         kwargs = dict(
             data=data,
