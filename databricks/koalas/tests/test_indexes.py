@@ -408,6 +408,30 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(kidx.day_of_year, pidx.day_of_year)
                 self.assert_eq(kidx.day_of_week, pidx.day_of_week)
 
+    def test_datetime_index_ceil(self):
+        fixed_freqs = [
+            "D",
+            "H",
+            "T",  # min
+            "S",
+            "L",  # ms
+            "U",  # us
+            # 'N'
+        ]
+        non_fixed_freqs = ["W", "Q"]
+        pidx_list = [
+            pd.DatetimeIndex([0]),
+            pd.DatetimeIndex(["2004-01-01", "2002-12-31", "2000-04-01"]),
+        ] + [
+            pd.date_range("2000-01-01", periods=3, freq=freq)
+            for freq in (fixed_freqs + non_fixed_freqs)
+        ]
+
+        for pidx in pidx_list:
+            kidx = ks.from_pandas(pidx)
+            for freq in fixed_freqs:
+                self.assert_eq(kidx.ceil(freq), pidx.ceil(freq))
+
     def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
         idx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
