@@ -371,7 +371,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx.unique(level="hi")
 
     def test_datetime_index_properties(self):
-        pids = [
+        pidx_list = [
             pd.DatetimeIndex([0]),
             pd.DatetimeIndex(["2004-01-01", "2002-12-31", "2000-04-01"]),
         ] + [
@@ -379,34 +379,34 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             for unit in ["ns", "us", "ms", "s", "m", "h", "D"]
         ]
 
-        for pid in pids:
-            kid = ks.from_pandas(pid)
-            self.assert_eq(kid.year, pid.year)
-            self.assert_eq(kid.month, pid.month)
-            self.assert_eq(kid.day, pid.day)
-            self.assert_eq(kid.hour, pid.hour)
-            self.assert_eq(kid.minute, pid.minute)
-            self.assert_eq(kid.second, pid.second)
-            self.assert_eq(kid.microsecond, pid.microsecond)
-            self.assert_eq(kid.week, pid.week)
-            self.assert_eq(kid.weekofyear, pid.weekofyear)
-            self.assert_eq(kid.dayofweek, pid.dayofweek)
-            self.assert_eq(kid.weekday, pid.weekday)
-            self.assert_eq(kid.dayofyear, pid.dayofyear)
-            self.assert_eq(kid.quarter, pid.quarter)
-            self.assert_eq(kid.daysinmonth, pid.daysinmonth)
-            self.assert_eq(kid.days_in_month, pid.days_in_month)
-            self.assert_eq(kid.is_month_start, pd.Index(pid.is_month_start))
-            self.assert_eq(kid.is_month_end, pd.Index(pid.is_month_end))
-            self.assert_eq(kid.is_quarter_start, pd.Index(pid.is_quarter_start))
-            self.assert_eq(kid.is_quarter_end, pd.Index(pid.is_quarter_end))
-            self.assert_eq(kid.is_year_start, pd.Index(pid.is_year_start))
-            self.assert_eq(kid.is_year_end, pd.Index(pid.is_year_end))
-            self.assert_eq(kid.is_leap_year, pd.Index(pid.is_leap_year))
+        for pidx in pidx_list:
+            kidx = ks.from_pandas(pidx)
+            self.assert_eq(kidx.year, pidx.year)
+            self.assert_eq(kidx.month, pidx.month)
+            self.assert_eq(kidx.day, pidx.day)
+            self.assert_eq(kidx.hour, pidx.hour)
+            self.assert_eq(kidx.minute, pidx.minute)
+            self.assert_eq(kidx.second, pidx.second)
+            self.assert_eq(kidx.microsecond, pidx.microsecond)
+            self.assert_eq(kidx.week, pidx.week)
+            self.assert_eq(kidx.weekofyear, pidx.weekofyear)
+            self.assert_eq(kidx.dayofweek, pidx.dayofweek)
+            self.assert_eq(kidx.weekday, pidx.weekday)
+            self.assert_eq(kidx.dayofyear, pidx.dayofyear)
+            self.assert_eq(kidx.quarter, pidx.quarter)
+            self.assert_eq(kidx.daysinmonth, pidx.daysinmonth)
+            self.assert_eq(kidx.days_in_month, pidx.days_in_month)
+            self.assert_eq(kidx.is_month_start, pd.Index(pidx.is_month_start))
+            self.assert_eq(kidx.is_month_end, pd.Index(pidx.is_month_end))
+            self.assert_eq(kidx.is_quarter_start, pd.Index(pidx.is_quarter_start))
+            self.assert_eq(kidx.is_quarter_end, pd.Index(pidx.is_quarter_end))
+            self.assert_eq(kidx.is_year_start, pd.Index(pidx.is_year_start))
+            self.assert_eq(kidx.is_year_end, pd.Index(pidx.is_year_end))
+            self.assert_eq(kidx.is_leap_year, pd.Index(pidx.is_leap_year))
 
             if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
-                self.assert_eq(kid.day_of_year, pid.day_of_year)
-                self.assert_eq(kid.day_of_week, pid.day_of_week)
+                self.assert_eq(kidx.day_of_year, pidx.day_of_year)
+                self.assert_eq(kidx.day_of_week, pidx.day_of_week)
 
     def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
