@@ -370,6 +370,44 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(KeyError, "Requested level (hi)*"):
             kidx.unique(level="hi")
 
+    def test_datetime_index_properties(self):
+        pidx_list = [
+            pd.DatetimeIndex([0]),
+            pd.DatetimeIndex(["2004-01-01", "2002-12-31", "2000-04-01"]),
+        ] + [
+            pd.date_range("2000-01-01", periods=3, freq=unit)
+            for unit in ["ns", "us", "ms", "s", "m", "h", "D"]
+        ]
+
+        for pidx in pidx_list:
+            kidx = ks.from_pandas(pidx)
+            self.assert_eq(kidx.year, pidx.year)
+            self.assert_eq(kidx.month, pidx.month)
+            self.assert_eq(kidx.day, pidx.day)
+            self.assert_eq(kidx.hour, pidx.hour)
+            self.assert_eq(kidx.minute, pidx.minute)
+            self.assert_eq(kidx.second, pidx.second)
+            self.assert_eq(kidx.microsecond, pidx.microsecond)
+            self.assert_eq(kidx.week, pidx.week)
+            self.assert_eq(kidx.weekofyear, pidx.weekofyear)
+            self.assert_eq(kidx.dayofweek, pidx.dayofweek)
+            self.assert_eq(kidx.weekday, pidx.weekday)
+            self.assert_eq(kidx.dayofyear, pidx.dayofyear)
+            self.assert_eq(kidx.quarter, pidx.quarter)
+            self.assert_eq(kidx.daysinmonth, pidx.daysinmonth)
+            self.assert_eq(kidx.days_in_month, pidx.days_in_month)
+            self.assert_eq(kidx.is_month_start, pd.Index(pidx.is_month_start))
+            self.assert_eq(kidx.is_month_end, pd.Index(pidx.is_month_end))
+            self.assert_eq(kidx.is_quarter_start, pd.Index(pidx.is_quarter_start))
+            self.assert_eq(kidx.is_quarter_end, pd.Index(pidx.is_quarter_end))
+            self.assert_eq(kidx.is_year_start, pd.Index(pidx.is_year_start))
+            self.assert_eq(kidx.is_year_end, pd.Index(pidx.is_year_end))
+            self.assert_eq(kidx.is_leap_year, pd.Index(pidx.is_leap_year))
+
+            if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
+                self.assert_eq(kidx.day_of_year, pidx.day_of_year)
+                self.assert_eq(kidx.day_of_week, pidx.day_of_week)
+
     def test_multi_index_copy(self):
         arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
         idx = pd.MultiIndex.from_arrays(arrays, names=("number", "color"))
