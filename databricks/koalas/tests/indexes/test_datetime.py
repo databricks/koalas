@@ -17,8 +17,8 @@
 from distutils.version import LooseVersion
 
 import pandas as pd
-import databricks.koalas as ks
 
+import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
