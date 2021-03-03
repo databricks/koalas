@@ -5100,7 +5100,11 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             should_return_series = False
             where = [where]
         index_scol = self._internal.index_spark_columns[0]
-        cond = [F.max(F.when(index_scol <= index, self.spark.column)) for index in where]
+        index_type = self._internal.spark_type_for(index_scol)
+        cond = [
+            F.max(F.when(index_scol <= F.lit(index).cast(index_type), self.spark.column))
+            for index in where
+        ]
         sdf = self._internal.spark_frame.select(cond)
         if not should_return_series:
             with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):

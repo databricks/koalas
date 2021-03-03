@@ -2042,7 +2042,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaises(ValueError, lambda: kser.asof(20))
 
         pidx = pd.DatetimeIndex(["2013-12-31", "2014-01-02", "2014-01-03"])
-        pser = pd.Series([1, np.nan, 3], index=pidx)
+        pser = pd.Series([1, 2, np.nan], index=pidx)
         kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.asof("2014-01-01"), pser.asof("2014-01-01"))

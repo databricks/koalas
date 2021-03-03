@@ -2110,9 +2110,13 @@ class Index(IndexOpsMixin):
         """
         sdf = self._internal.spark_frame
         if self.is_monotonic_increasing:
-            sdf = sdf.where(self.spark.column <= label).select(F.max(self.spark.column))
+            sdf = sdf.where(self.spark.column <= F.lit(label).cast(self.spark.data_type)).select(
+                F.max(self.spark.column)
+            )
         elif self.is_monotonic_decreasing:
-            sdf = sdf.where(self.spark.column >= label).select(F.min(self.spark.column))
+            sdf = sdf.where(self.spark.column >= F.lit(label).cast(self.spark.data_type)).select(
+                F.min(self.spark.column)
+            )
         else:
             raise ValueError("index must be monotonic increasing or decreasing")
 
