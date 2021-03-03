@@ -323,3 +323,7 @@ Time/date components
    DatetimeIndex.is_leap_year
    DatetimeIndex.daysinmonth
    DatetimeIndex.days_in_month
+
+Time-specific operations
+~~~~~~~~~~~~~~~~~~~~~~~~
+   DatetimeIndex.ceil
