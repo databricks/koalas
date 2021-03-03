@@ -294,8 +294,8 @@ DatatimeIndex
 
    DatetimeIndex
 
-Properties
-~~~~~~~~~~
+Time/date components
+~~~~~~~~~~~~~~~~~~~~
 .. autosummary::
    :toctree: api/
 
