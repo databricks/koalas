@@ -68,7 +68,7 @@ from databricks.koalas.internal import (
 )
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
-from databricks.koalas.indexes import Index
+from databricks.koalas.indexes import Index, DatetimeIndex
 
 
 __all__ = [
@@ -83,6 +83,7 @@ __all__ = [
     "read_excel",
     "read_html",
     "to_datetime",
+    "date_range",
     "get_dummies",
     "concat",
     "melt",
@@ -199,7 +200,7 @@ def read_csv(
     quotechar=None,
     escapechar=None,
     comment=None,
-    **options
+    **options,
 ) -> Union[DataFrame, Series]:
     """Read CSV (comma-separated) file into DataFrame or Series.
 
@@ -467,7 +468,7 @@ def read_delta(
     version: Optional[str] = None,
     timestamp: Optional[str] = None,
     index_col: Optional[Union[str, List[str]]] = None,
-    **options
+    **options,
 ) -> DataFrame:
     """
     Read a Delta Lake table on some file system and return a DataFrame.
@@ -596,7 +597,7 @@ def read_spark_io(
     format: Optional[str] = None,
     schema: Union[str, "StructType"] = None,
     index_col: Optional[Union[str, List[str]]] = None,
-    **options
+    **options,
 ) -> DataFrame:
     """Load a DataFrame from a Spark data source.
 
@@ -832,7 +833,7 @@ def read_excel(
     skipfooter=0,
     convert_float=True,
     mangle_dupe_cols=True,
-    **kwds
+    **kwds,
 ) -> Union[DataFrame, Series, OrderedDict]:
     """
     Read an Excel file into a Koalas DataFrame or Series.
@@ -1060,7 +1061,7 @@ def read_excel(
             skipfooter=skipfooter,
             convert_float=convert_float,
             mangle_dupe_cols=mangle_dupe_cols,
-            **kwds
+            **kwds,
         )
 
     if isinstance(io, str):
@@ -1592,6 +1593,158 @@ def to_datetime(
         unit=unit,
         infer_datetime_format=infer_datetime_format,
         origin=origin,
+    )
+
+
+def date_range(
+    start=None,
+    end=None,
+    periods=None,
+    freq=None,
+    tz=None,
+    normalize=False,
+    name=None,
+    closed=None,
+    **kwargs,
+) -> DatetimeIndex:
+    """
+    Return a fixed frequency DatetimeIndex.
+
+    Parameters
+    ----------
+    start : str or datetime-like, optional
+        Left bound for generating dates.
+    end : str or datetime-like, optional
+        Right bound for generating dates.
+    periods : int, optional
+        Number of periods to generate.
+    freq : str or DateOffset, default 'D'
+        Frequency strings can have multiples, e.g. '5H'.
+    tz : str or tzinfo, optional
+        Time zone name for returning localized DatetimeIndex, for example
+        'Asia/Hong_Kong'. By default, the resulting DatetimeIndex is
+        timezone-naive.
+    normalize : bool, default False
+        Normalize start/end dates to midnight before generating date range.
+    name : str, default None
+        Name of the resulting DatetimeIndex.
+    closed : {None, 'left', 'right'}, optional
+        Make the interval closed with respect to the given frequency to
+        the 'left', 'right', or both sides (None, the default).
+    **kwargs
+        For compatibility. Has no effect on the result.
+
+    Returns
+    -------
+    rng : DatetimeIndex
+
+    See Also
+    --------
+    DatetimeIndex : An immutable container for datetimes.
+
+    Notes
+    -----
+    Of the four parameters ``start``, ``end``, ``periods``, and ``freq``,
+    exactly three must be specified. If ``freq`` is omitted, the resulting
+    ``DatetimeIndex`` will have ``periods`` linearly spaced elements between
+    ``start`` and ``end`` (closed on both sides).
+
+    To learn more about the frequency strings, please see `this link
+    <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases>`__.
+
+    Examples
+    --------
+    **Specifying the values**
+
+    The next four examples generate the same `DatetimeIndex`, but vary
+    the combination of `start`, `end` and `periods`.
+
+    Specify `start` and `end`, with the default daily frequency.
+
+    >>> ks.date_range(start='1/1/2018', end='1/08/2018')
+    DatetimeIndex(['2018-01-01', '2018-01-02', '2018-01-03', '2018-01-04',
+                   '2018-01-05', '2018-01-06', '2018-01-07', '2018-01-08'],
+                  dtype='datetime64[ns]', freq=None)
+
+    Specify `start` and `periods`, the number of periods (days).
+
+    >>> ks.date_range(start='1/1/2018', periods=8)
+    DatetimeIndex(['2018-01-01', '2018-01-02', '2018-01-03', '2018-01-04',
+                   '2018-01-05', '2018-01-06', '2018-01-07', '2018-01-08'],
+                  dtype='datetime64[ns]', freq=None)
+
+    Specify `end` and `periods`, the number of periods (days).
+
+    >>> ks.date_range(end='1/1/2018', periods=8)
+    DatetimeIndex(['2017-12-25', '2017-12-26', '2017-12-27', '2017-12-28',
+                   '2017-12-29', '2017-12-30', '2017-12-31', '2018-01-01'],
+                  dtype='datetime64[ns]', freq=None)
+
+    Specify `start`, `end`, and `periods`; the frequency is generated
+    automatically (linearly spaced).
+
+    >>> ks.date_range(start='2018-04-24', end='2018-04-27', periods=3)
+    DatetimeIndex(['2018-04-24 00:00:00', '2018-04-25 12:00:00',
+                   '2018-04-27 00:00:00'],
+                  dtype='datetime64[ns]', freq=None)
+
+    **Other Parameters**
+
+    Changed the `freq` (frequency) to ``'M'`` (month end frequency).
+
+    >>> ks.date_range(start='1/1/2018', periods=5, freq='M')
+    DatetimeIndex(['2018-01-31', '2018-02-28', '2018-03-31', '2018-04-30',
+                   '2018-05-31'],
+                  dtype='datetime64[ns]', freq=None)
+
+    Multiples are allowed
+
+    >>> ks.date_range(start='1/1/2018', periods=5, freq='3M')
+    DatetimeIndex(['2018-01-31', '2018-04-30', '2018-07-31', '2018-10-31',
+                   '2019-01-31'],
+                  dtype='datetime64[ns]', freq=None)
+
+    `freq` can also be specified as an Offset object.
+
+    >>> ks.date_range(start='1/1/2018', periods=5, freq=pd.offsets.MonthEnd(3))
+    DatetimeIndex(['2018-01-31', '2018-04-30', '2018-07-31', '2018-10-31',
+                   '2019-01-31'],
+                  dtype='datetime64[ns]', freq=None)
+
+    `closed` controls whether to include `start` and `end` that are on the
+    boundary. The default includes boundary points on either end.
+
+    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed=None)
+    DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'],
+                  dtype='datetime64[ns]', freq=None)
+
+    Use ``closed='left'`` to exclude `end` if it falls on the boundary.
+
+    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='left')
+    DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03'],
+                  dtype='datetime64[ns]', freq=None)
+
+    Use ``closed='right'`` to exclude `start` if it falls on the boundary.
+
+    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='right')
+    DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'],
+                  dtype='datetime64[ns]', freq=None)
+    """
+    assert freq not in ["N", "ns"], "nanoseconds is not supported"
+    assert tz is None, "Localized DatetimeIndex is not supported"
+
+    return ks.from_pandas(
+        pd.date_range(
+            start=start,
+            end=end,
+            periods=periods,
+            freq=freq,
+            tz=tz,
+            normalize=normalize,
+            name=name,
+            closed=closed,
+            **kwargs,
+        )
     )
 
 
@@ -2614,7 +2767,7 @@ def read_orc(
     path,
     columns: Optional[List[str]] = None,
     index_col: Optional[Union[str, List[str]]] = None,
-    **options
+    **options,
 ) -> "DataFrame":
     """
     Load an ORC object from the file path, returning a DataFrame.
