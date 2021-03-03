@@ -1033,6 +1033,40 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         ):
             kidx.argmax()
 
+    def test_min(self):
+        pidx = pd.Index([3, 2, 1])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.min(), kidx.min())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2)])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.min(), kmidx.min())
+
+        pidx = pd.DatetimeIndex(["2021-02-01", "2021-01-01", "2021-04-01", "2021-03-01"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.min(), kidx.min())
+
+    def test_max(self):
+        pidx = pd.Index([3, 2, 1])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.max(), kidx.max())
+
+        # MultiIndex
+        pmidx = pd.MultiIndex.from_tuples([("a", "x", 1), ("b", "y", 2)])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assert_eq(pmidx.max(), kmidx.max())
+
+        pidx = pd.DatetimeIndex(["2021-02-01", "2021-01-01", "2021-04-01", "2021-03-01"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(pidx.max(), kidx.max())
+
     def test_monotonic(self):
         # test monotonic_increasing & monotonic_decreasing for MultiIndex.
         # Since the Behavior for null value was changed in pandas >= 1.0.0,
@@ -1309,6 +1343,14 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
         self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
         self.assert_eq(repr(kidx.asof("1999-01-02")), repr(pidx.asof("1999-01-02")))
+        self.assert_eq(kidx.asof("2014-01-04"), pidx.asof("2014-01-04"))
+
+        pidx = pd.DatetimeIndex(["2013-12-31", "2014-01-02", "2014-01-03"])
+        kidx = ks.from_pandas(pidx)
+
+        self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
+        self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
+        self.assert_eq(repr(kidx.asof("1999-01-02")), repr(pidx.asof("1999-01-02")))
 
         # Decreasing values
         pidx = pd.Index(["2014-01-03", "2014-01-02", "2013-12-31"])
@@ -1318,6 +1360,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
         self.assert_eq(kidx.asof("1999-01-02"), pidx.asof("1999-01-02"))
         self.assert_eq(repr(kidx.asof("2015-01-02")), repr(pidx.asof("2015-01-02")))
+
+        pidx = pd.DatetimeIndex(["2014-01-03", "2014-01-02", "2013-12-31"])
+        kidx = ks.from_pandas(pidx)
+
+        # TODO: a pandas bug?
+        # self.assert_eq(kidx.asof("2014-01-01"), pidx.asof("2014-01-01"))
+        # self.assert_eq(kidx.asof("2014-01-02"), pidx.asof("2014-01-02"))
+        # self.assert_eq(kidx.asof("1999-01-02"), pidx.asof("1999-01-02"))
+        # self.assert_eq(repr(kidx.asof("2015-01-02")), repr(pidx.asof("2015-01-02")))
+        self.assert_eq(kidx.asof("2014-01-01"), pd.Timestamp("2014-01-02 00:00:00"))
+        self.assert_eq(kidx.asof("2014-01-02"), pd.Timestamp("2014-01-02 00:00:00"))
+        self.assert_eq(kidx.asof("1999-01-02"), pd.Timestamp("2013-12-31 00:00:00"))
+        self.assert_eq(repr(kidx.asof("2015-01-02")), repr(pd.NaT))
 
         # Not increasing, neither decreasing (ValueError)
         kidx = ks.Index(["2013-12-31", "2015-01-02", "2014-01-03"])

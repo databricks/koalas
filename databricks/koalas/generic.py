@@ -50,8 +50,10 @@ from databricks.koalas.utils import (
     is_name_like_value,
     name_like_string,
     scol_for,
+    sql_conf,
     validate_arguments_and_invoke_function,
     validate_axis,
+    SPARK_CONF_ARROW_ENABLED,
 )
 from databricks.koalas.window import Rolling, Expanding
 
@@ -2336,18 +2338,22 @@ class Frame(object, metaclass=ABCMeta):
 
         cond = reduce(lambda x, y: x & y, map(lambda x: x.isNotNull(), data_spark_columns))
 
-        first_valid_row = (
-            self._internal.spark_frame.filter(cond)
-            .select(self._internal.index_spark_columns)
-            .first()
-        )
+        with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+            # Disable Arrow to keep row ordering.
+            first_valid_row = (
+                self._internal.spark_frame.filter(cond)
+                .select(self._internal.index_spark_columns)
+                .limit(1)
+                .toPandas()
+            )
 
         # For Empty Series or DataFrame, returns None.
-        if first_valid_row is None:
+        if len(first_valid_row) == 0:
             return None
 
+        first_valid_row = first_valid_row.iloc[0]
         if len(first_valid_row) == 1:
-            return first_valid_row[0]
+            return first_valid_row.iloc[0]
         else:
             return tuple(first_valid_row)
 

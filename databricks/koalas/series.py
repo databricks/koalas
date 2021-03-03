@@ -72,10 +72,12 @@ from databricks.koalas.utils import (
     name_like_string,
     same_anchor,
     scol_for,
+    sql_conf,
     validate_arguments_and_invoke_function,
     validate_axis,
     validate_bool_kwarg,
     verify_temp_column_name,
+    SPARK_CONF_ARROW_ENABLED,
 )
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.spark import functions as SF
@@ -5101,7 +5103,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         cond = [F.max(F.when(index_scol <= index, self.spark.column)) for index in where]
         sdf = self._internal.spark_frame.select(cond)
         if not should_return_series:
-            result = sdf.head()[0]
+            with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                # Disable Arrow to keep row ordering.
+                result = sdf.limit(1).toPandas().iloc[0, 0]
             return result if result is not None else np.nan
 
         # The data is expected to be small so it's fine to transpose/use default index.
@@ -6104,10 +6108,12 @@ def unpack_scalar(sdf):
     Takes a dataframe that is supposed to contain a single row with a single scalar value,
     and returns this value.
     """
-    l = sdf.head(2)
+    with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+        # Disable Arrow to keep row ordering.
+        l = sdf.limit(2).toPandas()
     assert len(l) == 1, (sdf, l)
-    row = l[0]
-    l2 = list(row.asDict().values())
+    row = l.iloc[0]
+    l2 = list(row)
     assert len(l2) == 1, (row, l2)
     return l2[0]
 

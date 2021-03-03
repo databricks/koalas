@@ -52,9 +52,11 @@ from databricks.koalas.utils import (
     name_like_string,
     same_anchor,
     scol_for,
+    sql_conf,
     verify_temp_column_name,
     validate_bool_kwarg,
     ERROR_MESSAGE_CANNOT_COMBINE,
+    SPARK_CONF_ARROW_ENABLED,
 )
 from databricks.koalas.internal import (
     InternalFrame,
@@ -228,9 +230,13 @@ class Index(IndexOpsMixin):
         -------
         String with a summarized representation of the index
         """
-        head, tail, total_count = self._internal.spark_frame.select(
-            F.first(self.spark.column), F.last(self.spark.column), F.count(F.expr("*"))
-        ).first()
+        head, tail, total_count = tuple(
+            self._internal.spark_frame.select(
+                F.first(self.spark.column), F.last(self.spark.column), F.count(F.expr("*"))
+            )
+            .toPandas()
+            .iloc[0]
+        )
 
         if total_count > 0:
             index_summary = ", %s to %s" % (pprint_thing(head), pprint_thing(tail))
@@ -1516,8 +1522,12 @@ class Index(IndexOpsMixin):
         ('a', 'x', 1)
         """
         sdf = self._internal.spark_frame
-        min_row = sdf.select(F.min(F.struct(self._internal.index_spark_columns))).head()
-        result = tuple(min_row[0])
+        min_row = (
+            sdf.select(F.min(F.struct(self._internal.index_spark_columns)).alias("min_row"))
+            .select("min_row.*")
+            .toPandas()
+        )
+        result = tuple(min_row.iloc[0])
 
         return result if len(result) > 1 else result[0]
 
@@ -1553,8 +1563,12 @@ class Index(IndexOpsMixin):
         ('b', 'y', 2)
         """
         sdf = self._internal.spark_frame
-        max_row = sdf.select(F.max(F.struct(self._internal.index_spark_columns))).head()
-        result = tuple(max_row[0])
+        max_row = (
+            sdf.select(F.max(F.struct(self._internal.index_spark_columns)).alias("max_row"))
+            .select("max_row.*")
+            .toPandas()
+        )
+        result = tuple(max_row.iloc[0])
 
         return result if len(result) > 1 else result[0]
 
@@ -2101,7 +2115,10 @@ class Index(IndexOpsMixin):
             sdf = sdf.where(self.spark.column >= label).select(F.min(self.spark.column))
         else:
             raise ValueError("index must be monotonic increasing or decreasing")
-        result = sdf.head()[0]
+
+        with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+            # Disable Arrow to keep row ordering.
+            result = sdf.limit(1).toPandas().iloc[0, 0]
         return result if result is not None else np.nan
 
     def union(self, other, sort=None) -> "Index":

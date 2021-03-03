@@ -19,6 +19,7 @@ Commonly used utils in Koalas.
 
 import functools
 from collections import OrderedDict
+from contextlib import contextmanager
 from distutils.version import LooseVersion
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
@@ -51,6 +52,12 @@ ERROR_MESSAGE_CANNOT_COMBINE = (
     "Cannot combine the series or dataframe because it comes from a different dataframe. "
     "In order to allow this operation, enable 'compute.ops_on_diff_frames' option."
 )
+
+
+if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+    SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.enabled"
+else:
+    SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.pyspark.enabled"
 
 
 def same_anchor(
@@ -468,6 +475,32 @@ def default_session(conf=None):
                 "environment variable only when you use pyarrow>=0.15 and pyspark<3.0."
             )
     return session
+
+
+@contextmanager
+def sql_conf(pairs, *, spark=None):
+    """
+    A convenient context manager to set `value` to the Spark SQL configuration `key` and
+    then restores it back when it exits.
+    """
+    assert isinstance(pairs, dict), "pairs should be a dictionary."
+
+    if spark is None:
+        spark = default_session()
+
+    keys = pairs.keys()
+    new_values = pairs.values()
+    old_values = [spark.conf.get(key, None) for key in keys]
+    for key, new_value in zip(keys, new_values):
+        spark.conf.set(key, new_value)
+    try:
+        yield
+    finally:
+        for key, old_value in zip(keys, old_values):
+            if old_value is None:
+                spark.conf.unset(key)
+            else:
+                spark.conf.set(key, old_value)
 
 
 def validate_arguments_and_invoke_function(

@@ -1075,6 +1075,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             ].sort_index(),
         )
 
+        pdf = pd.DataFrame(
+            [datetime(2019, 2, 2, 0, 0, 0, 0), datetime(2019, 2, 3, 0, 0, 0, 0)],
+            columns=["timestamp"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.timestamp.min(), pdf.timestamp.min())
+        self.assert_eq(kdf.timestamp.max(), pdf.timestamp.max())
+
     def test_droplevel(self):
         pdf = (
             pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
@@ -5198,6 +5207,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         # Empty DataFrame
         pdf = pd.Series([]).to_frame()
         kdf = ks.Series([]).to_frame()
+        self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
+
+        pdf = pd.DataFrame(
+            {"a": [None, 2, 3, 2], "b": [None, 2.0, 3.0, 1.0], "c": [None, 200, 400, 200]},
+            index=[
+                datetime(2021, 1, 1),
+                datetime(2021, 2, 1),
+                datetime(2021, 3, 1),
+                datetime(2021, 4, 1),
+            ],
+        )
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
 
     def test_product(self):
