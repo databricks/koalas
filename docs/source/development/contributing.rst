@@ -56,7 +56,7 @@ If you are using Conda, the Koalas installation and development environment are 
     conda create --name koalas-dev-env python=3.6
     conda activate koalas-dev-env
     conda install -c conda-forge pyspark=2.4
-    conda install -c conda-forge --yes --file requirements-dev.txt
+    pip install -r requirements-dev.txt
     pip install -e .  # installs koalas from current checkout
 
 Once setup, make sure you switch to `koalas-dev-env` before development:

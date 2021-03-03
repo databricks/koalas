@@ -268,7 +268,7 @@ plotting.sample_ratio           None           'plotting.sample_ratio' sets the 
                                                that will be plotted for sample-based plots such as
                                                `plot.line` and `plot.area`. This option defaults to
                                                'plotting.max_rows' option.
-plotting.backend                'matplotlib'   Backend to use for plotting. Default is matplotlib.
+plotting.backend                'plotly'       Backend to use for plotting. Default is plotly.
                                                Supports any package that has a top-level `.plot`
                                                method. Some options are: [matplotlib, plotly,
                                                pandas_bokeh, pandas_altair].
