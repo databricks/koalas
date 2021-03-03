@@ -189,6 +189,7 @@ class Index(IndexOpsMixin):
         return internal.copy(
             column_labels=internal.index_names,
             data_spark_columns=internal.index_spark_columns,
+            data_dtypes=internal.index_dtypes,
             column_label_names=None,
         )
 
@@ -772,7 +773,7 @@ class Index(IndexOpsMixin):
         if not isinstance(value, (float, int, str, bool)):
             raise TypeError("Unsupported type %s" % type(value).__name__)
         sdf = self._internal.spark_frame.fillna(value)
-        result = DataFrame(self._kdf._internal.with_new_sdf(sdf)).index
+        result = DataFrame(self._kdf._internal.with_new_sdf(sdf)).index  # TODO: dtype?
         return result
 
     # TODO: ADD keep parameter
@@ -807,6 +808,7 @@ class Index(IndexOpsMixin):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
         return DataFrame(internal).index
 
@@ -839,16 +841,15 @@ class Index(IndexOpsMixin):
         """
         if not is_hashable(name):
             raise TypeError("Series.name must be a hashable type")
-        kdf = self._kdf
         scol = self.spark.column
         if name is not None:
             scol = scol.alias(name_like_string(name))
-        elif kdf._internal.index_level == 1:
+        elif self._internal.index_level == 1:
             name = self.name
         column_labels = [
             name if is_name_like_tuple(name) else (name,)
         ]  # type: List[Optional[Tuple]]
-        internal = kdf._internal.copy(
+        internal = self._internal.copy(
             column_labels=column_labels, data_spark_columns=[scol], column_label_names=None
         )
         return first_series(DataFrame(internal))
@@ -919,16 +920,20 @@ class Index(IndexOpsMixin):
         if index:
             index_spark_columns = self._internal.index_spark_columns
             index_names = self._internal.index_names
+            index_dtypes = self._internal.index_dtypes
         else:
             index_spark_columns = []
             index_names = []
+            index_dtypes = []
 
         internal = InternalFrame(
             spark_frame=self._internal.spark_frame,
             index_spark_columns=index_spark_columns,
             index_names=index_names,
+            index_dtypes=index_dtypes,
             column_labels=names,
             data_spark_columns=self._internal.index_spark_columns,
+            data_dtypes=self._internal.index_dtypes,
         )
         return DataFrame(internal)
 
@@ -1083,6 +1088,7 @@ class Index(IndexOpsMixin):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
         return DataFrame(internal).index
 
@@ -1132,6 +1138,7 @@ class Index(IndexOpsMixin):
                     scol_for(sdf, col) for col in self._internal.index_spark_column_names
                 ],
                 index_names=self._internal.index_names,
+                index_dtypes=self._internal.index_dtypes,
             )
         ).index
 
@@ -1159,14 +1166,17 @@ class Index(IndexOpsMixin):
         """
         internal = self._internal.resolved_copy
         sdf = internal.spark_frame[~internal.index_spark_columns[0].isin(labels)]
+
         internal = InternalFrame(
             spark_frame=sdf,
             index_spark_columns=[
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return DataFrame(internal).index
 
@@ -1311,11 +1321,15 @@ class Index(IndexOpsMixin):
                 "left.".format(len(level), nlevels)
             )
 
-        index_spark_columns, index_names = zip(
+        index_spark_columns, index_names, index_dtypes = zip(
             *[
                 item
                 for i, item in enumerate(
-                    zip(self._internal.index_spark_columns, self._internal.index_names,)
+                    zip(
+                        self._internal.index_spark_columns,
+                        self._internal.index_names,
+                        self._internal.index_dtypes,
+                    )
                 )
                 if i not in int_level
             ]
@@ -1324,8 +1338,10 @@ class Index(IndexOpsMixin):
         internal = self._internal.copy(
             index_spark_columns=list(index_spark_columns),
             index_names=list(index_names),
+            index_dtypes=list(index_dtypes),
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return DataFrame(internal).index
 
@@ -1395,6 +1411,7 @@ class Index(IndexOpsMixin):
                 scol_for(sdf_symdiff, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
         result = DataFrame(internal).index
 
@@ -1475,6 +1492,7 @@ class Index(IndexOpsMixin):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
         return DataFrame(internal).index
 
@@ -1667,6 +1685,7 @@ class Index(IndexOpsMixin):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
 
         return DataFrame(internal).index
@@ -1724,7 +1743,7 @@ class Index(IndexOpsMixin):
         else:
             index_names = None
 
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf_appended,
             index_spark_columns=[
                 scol_for(sdf_appended, col) for col in self._internal.index_spark_column_names
@@ -1944,6 +1963,7 @@ class Index(IndexOpsMixin):
                 scol_for(sdf_diff, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
         result = DataFrame(internal).index
         # Name(s) will be kept when only name(s) of (Multi)Index are the same.
@@ -2172,7 +2192,7 @@ class Index(IndexOpsMixin):
             sdf = sdf.drop_duplicates()
         if sort:
             sdf = sdf.sort(self._internal.index_spark_column_names)
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf,
             index_spark_columns=[
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
@@ -2264,7 +2284,7 @@ class Index(IndexOpsMixin):
             index_names = self._internal.index_names
         else:
             index_names = None
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=spark_frame_intersected,
             index_spark_columns=[scol_for(spark_frame_intersected, SPARK_DEFAULT_INDEX_NAME)],
             index_names=index_names,
@@ -2332,7 +2352,7 @@ class Index(IndexOpsMixin):
         sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
         sdf = sdf_before.union(sdf_middle).union(sdf_after)
 
-        internal = self._internal.with_new_sdf(sdf)
+        internal = self._internal.with_new_sdf(sdf)  # TODO: dtype?
         return DataFrame(internal).index
 
     def view(self) -> "Index":
