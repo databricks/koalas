@@ -81,18 +81,17 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'numpydoc',  # handle NumPy documentation formatted docstrings. Needs to install
-    'matplotlib.sphinxext.plot_directive',  # For visualize plot result
+    'sphinx_plotly_directive',  # For visualize plot result
     'nbsphinx',  # Converts Jupyter Notebook to reStructuredText files for Sphinx.
     # For ipython directive in reStructuredText files.
     'IPython.sphinxext.ipython_console_highlighting',
 ]
 
-# matplotlib plot directive
-plot_include_source = True
-plot_formats = [("png", 90)]
-plot_html_show_formats = False
-plot_html_show_source_link = False
-plot_pre_code = """import numpy as np
+# plotly plot directive
+plotly_include_source = True
+plotly_html_show_formats = False
+plotly_html_show_source_link = False
+plotly_pre_code = """import numpy as np
 import pandas as pd
 import databricks.koalas as ks"""
 
