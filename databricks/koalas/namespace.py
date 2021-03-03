@@ -1733,18 +1733,21 @@ def date_range(
     assert freq not in ["N", "ns"], "nanoseconds is not supported"
     assert tz is None, "Localized DatetimeIndex is not supported"
 
-    return ks.from_pandas(
-        pd.date_range(
-            start=start,
-            end=end,
-            periods=periods,
-            freq=freq,
-            tz=tz,
-            normalize=normalize,
-            name=name,
-            closed=closed,
-            **kwargs,
-        )
+    return cast(
+        DatetimeIndex,
+        ks.from_pandas(
+            pd.date_range(
+                start=start,
+                end=end,
+                periods=periods,
+                freq=freq,
+                tz=tz,
+                normalize=normalize,
+                name=name,
+                closed=closed,
+                **kwargs,
+            )
+        ),
     )
 
 
