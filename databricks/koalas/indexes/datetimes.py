@@ -431,3 +431,49 @@ class DatetimeIndex(Index):
         return Index(self.to_series().dt.days_in_month)
 
     days_in_month.__doc__ = daysinmonth.__doc__
+
+    # Methods
+    def ceil(self, freq, *args, **kwargs) -> Index:
+        """
+        Perform floor operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to ceil the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        nonexistent : 'shift_forward', 'shift_backward, 'NaT', timedelta, default 'raise'
+            A nonexistent time does not exist in a particular timezone
+            where clocks moved forward due to DST.
+
+            - 'shift_forward' will shift the nonexistent time forward to the
+              closest existing time
+            - 'shift_backward' will shift the nonexistent time backward to the
+              closest existing time
+            - 'NaT' will return NaT where there are nonexistent times
+            - timedelta objects will shift nonexistent times by the timedelta
+            - 'raise' will raise an NonExistentTimeError if there are
+              nonexistent times
+
+            .. note:: this option only works with pandas 0.24.0+
+
+        Returns
+        -------
+        Index
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.from_pandas(pd.date_range('1/1/2018 11:59:00', periods=3, freq='min'))
+        >>> rng.ceil('H')
+        DatetimeIndex(['2018-01-01 12:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 13:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        assert freq not in ["N", "ns"], "nanoseconds is not supported"
+
+        return Index(self.to_series().dt.ceil(freq, *args, **kwargs))
