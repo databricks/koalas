@@ -111,6 +111,18 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
 
         self._disallow_nanoseconds(self.kidxs[0].round)
 
+    def test_day_name(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(kidx.day_name(), pidx.day_name())
+            self.assert_eq(kidx.day_name(locale="zh_CN.UTF-8"), pidx.day_name(locale="zh_CN.UTF-8"))
+
+    def test_month_name(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(kidx.day_name(), pidx.day_name())
+            self.assert_eq(
+                kidx.month_name(locale="zh_CN.UTF-8"), pidx.month_name(locale="zh_CN.UTF-8")
+            )
+
     def test_normalize(self):
         for kidx, pidx in self.idx_pairs:
             self.assert_eq(kidx.normalize(), pidx.normalize())
