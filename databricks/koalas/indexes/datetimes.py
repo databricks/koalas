@@ -431,3 +431,99 @@ class DatetimeIndex(Index):
         return Index(self.to_series().dt.days_in_month)
 
     days_in_month.__doc__ = daysinmonth.__doc__
+
+    # Methods
+    def ceil(self, freq, *args, **kwargs) -> "DatetimeIndex":
+        """
+        Perform floor operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to ceil the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        Returns
+        -------
+        DatetimeIndex
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.date_range('1/1/2018 11:59:00', periods=3, freq='min')
+        >>> rng.ceil('H')  # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2018-01-01 12:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 13:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        disallow_nanoseconds(freq)
+
+        return DatetimeIndex(self.to_series().dt.ceil(freq, *args, **kwargs))
+
+    def floor(self, freq, *args, **kwargs) -> "DatetimeIndex":
+        """
+        Perform floor operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to floor the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        Returns
+        -------
+        DatetimeIndex
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.date_range('1/1/2018 11:59:00', periods=3, freq='min')
+        >>> rng.floor("H")  # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2018-01-01 11:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 12:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        disallow_nanoseconds(freq)
+
+        return DatetimeIndex(self.to_series().dt.floor(freq, *args, **kwargs))
+
+    def round(self, freq, *args, **kwargs) -> "DatetimeIndex":
+        """
+        Perform round operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to round the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        Returns
+        -------
+        DatetimeIndex
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.date_range('1/1/2018 11:59:00', periods=3, freq='min')
+        >>> rng.round("H")  # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2018-01-01 12:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 12:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        disallow_nanoseconds(freq)
+
+        return DatetimeIndex(self.to_series().dt.round(freq, *args, **kwargs))
+
+
+def disallow_nanoseconds(freq):
+    if freq in ["N", "ns"]:
+        raise ValueError("nanoseconds is not supported")

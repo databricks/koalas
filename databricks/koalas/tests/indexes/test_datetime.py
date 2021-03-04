@@ -85,3 +85,28 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
             if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
                 self.assert_eq(kidx.day_of_year, pidx.day_of_year)
                 self.assert_eq(kidx.day_of_week, pidx.day_of_week)
+
+    def test_ceil(self):
+        for kidx, pidx in self.idx_pairs:
+            for freq in self.fixed_freqs:
+                self.assert_eq(kidx.ceil(freq), pidx.ceil(freq))
+
+        self.disallow_nanoseconds(self.kidxs[0].ceil)
+
+    def test_floor(self):
+        for kidx, pidx in self.idx_pairs:
+            for freq in self.fixed_freqs:
+                self.assert_eq(kidx.floor(freq), pidx.floor(freq))
+
+        self.disallow_nanoseconds(self.kidxs[0].floor)
+
+    def test_round(self):
+        for kidx, pidx in self.idx_pairs:
+            for freq in self.fixed_freqs:
+                self.assert_eq(kidx.round(freq), pidx.round(freq))
+
+        self.disallow_nanoseconds(self.kidxs[0].round)
+
+    def disallow_nanoseconds(self, f):
+        self.assertRaises(ValueError, lambda: f(freq="ns"))
+        self.assertRaises(ValueError, lambda: f(freq="N"))
