@@ -119,6 +119,7 @@ __all__ = [  # noqa: F405
     "read_csv",
     "read_parquet",
     "to_datetime",
+    "date_range",
     "from_pandas",
     "get_dummies",
     "DataFrame",

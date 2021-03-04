@@ -1011,26 +1011,32 @@ class InternalFrame(object):
             spark_frame=sdf,
             index_spark_columns=[scol_for(sdf, col) for col in self.index_spark_column_names],
             data_spark_columns=[scol_for(sdf, col) for col in self.data_spark_column_names],
-            preserve_dtypes=True,
         )
 
     def with_new_sdf(
         self,
         spark_frame: spark.DataFrame,
-        data_columns: Optional[List[str]] = None,
         *,
-        preserve_dtypes: bool = False
+        index_dtypes: Optional[List[Dtype]] = None,
+        data_columns: Optional[List[str]] = None,
+        data_dtypes: Optional[List[Dtype]] = None
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates by the specified Spark DataFrame.
 
         :param spark_frame: the new Spark DataFrame
-        :param data_columns: the new column names.
-            If None, the original one is used.
-        :param preserve_dtypes: whether the dtypes can be preserved.
-            If True, the original dtypes are used; otherwise the dtypes will be inferred from
-            the new Spark DataFrame.
+        :param index_dtypes: the index dtypes. If None, the original dtyeps are used.
+        :param data_columns: the new column names. If None, the original one is used.
+        :param data_dtypes: the data dtypes. If None, the original dtyeps are used.
         :return: the copied InternalFrame.
         """
+        if index_dtypes is None:
+            index_dtypes = self.index_dtypes
+        else:
+            assert len(index_dtypes) == len(self.index_dtypes), (
+                len(index_dtypes),
+                len(self.index_dtypes),
+            )
+
         if data_columns is None:
             data_columns = self.data_spark_column_names
         else:
@@ -1038,12 +1044,22 @@ class InternalFrame(object):
                 len(data_columns),
                 len(self.column_labels),
             )
+
+        if data_dtypes is None:
+            data_dtypes = self.data_dtypes
+        else:
+            assert len(data_dtypes) == len(self.column_labels), (
+                len(data_dtypes),
+                len(self.column_labels),
+            )
+
         sdf = spark_frame.drop(NATURAL_ORDER_COLUMN_NAME)
         return self.copy(
             spark_frame=sdf,
             index_spark_columns=[scol_for(sdf, col) for col in self.index_spark_column_names],
+            index_dtypes=index_dtypes,
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
-            preserve_dtypes=preserve_dtypes,
+            data_dtypes=data_dtypes,
         )
 
     def with_new_columns(
@@ -1131,7 +1147,6 @@ class InternalFrame(object):
             data_spark_columns=data_spark_columns,
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
-            preserve_dtypes=True,
         )
 
     def with_filter(self, pred: Union[spark.Column, "Series"]) -> "InternalFrame":
@@ -1149,18 +1164,23 @@ class InternalFrame(object):
             spark_type = self.spark_frame.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
 
-        return self.with_new_sdf(
-            self.spark_frame.filter(pred).select(self.spark_columns), preserve_dtypes=True
-        )
+        return self.with_new_sdf(self.spark_frame.filter(pred).select(self.spark_columns))
 
     def with_new_spark_column(
-        self, column_label: Tuple, scol: spark.Column, *, keep_order: bool = True
+        self,
+        column_label: Tuple,
+        scol: spark.Column,
+        *,
+        dtype: Optional[Dtype] = None,
+        keep_order: bool = True
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Column.
 
         :param column_label: the column label to be updated.
         :param scol: the new Spark Column
+        :param dtype: the new dtype.
+            If not specified, the dtypes will be inferred from the spark Column.
         :return: the copied InternalFrame.
         """
         assert column_label in self.column_labels, column_label
@@ -1168,7 +1188,11 @@ class InternalFrame(object):
         idx = self.column_labels.index(column_label)
         data_spark_columns = self.data_spark_columns.copy()
         data_spark_columns[idx] = scol
-        return self.with_new_columns(data_spark_columns, keep_order=keep_order)
+        data_dtypes = self.data_dtypes.copy()
+        data_dtypes[idx] = dtype
+        return self.with_new_columns(
+            data_spark_columns, data_dtypes=data_dtypes, keep_order=keep_order
+        )
 
     def select_column(self, column_label: Tuple) -> "InternalFrame":
         """
@@ -1188,6 +1212,7 @@ class InternalFrame(object):
 
     def copy(
         self,
+        *,
         spark_frame: Union[spark.DataFrame, _NoValueType] = _NoValue,
         index_spark_columns: Union[List[spark.Column], _NoValueType] = _NoValue,
         index_names: Union[List[Optional[Tuple]], _NoValueType] = _NoValue,
@@ -1195,9 +1220,7 @@ class InternalFrame(object):
         column_labels: Optional[Union[List[Tuple], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
         data_dtypes: Optional[Union[List[Dtype], _NoValueType]] = _NoValue,
-        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
-        *,
-        preserve_dtypes: bool = False  # TODO: remove eventually.
+        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
@@ -1205,20 +1228,13 @@ class InternalFrame(object):
         :param index_spark_columns: the list of Spark Column.
                                     If not specified, the original ones are used.
         :param index_names: the index names. If not specified, the original ones are used.
-        :param index_dtypes: the index dtypes. If not specified, the original dtyeps are used
-                             if preserve_dtypes is True; otherwise the dtypes will be inferred
-                             from the corresponding `index_spark_columns`.
+        :param index_dtypes: the index dtypes. If not specified, the original dtyeps are used.
         :param column_labels: the new column labels. If not specified, the original ones are used.
         :param data_spark_columns: the new Spark Columns.
                                    If not specified, the original ones are used.
-        :param data_dtypes: the data dtypes. If not specified, the original dtyeps are used
-                             if preserve_dtypes is True; otherwise the dtypes will be inferred
-                             from the corresponding `data_spark_columns`.
+        :param data_dtypes: the data dtypes. If not specified, the original dtyeps are used.
         :param column_label_names: the new names of the column index levels.
                                    If not specified, the original ones are used.
-        :param preserve_dtypes: whether the dtypes can be preserved.
-                                If True, the original dtypes are used; otherwise the dtypes will be
-                                inferred from the new Spark columns.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
@@ -1228,13 +1244,13 @@ class InternalFrame(object):
         if index_names is _NoValue:
             index_names = self.index_names
         if index_dtypes is _NoValue:
-            index_dtypes = self.index_dtypes if preserve_dtypes else None
+            index_dtypes = self.index_dtypes
         if column_labels is _NoValue:
             column_labels = self.column_labels
         if data_spark_columns is _NoValue:
             data_spark_columns = self.data_spark_columns
         if data_dtypes is _NoValue:
-            data_dtypes = self.data_dtypes if preserve_dtypes else None
+            data_dtypes = self.data_dtypes
         if column_label_names is _NoValue:
             column_label_names = self.column_label_names
         return InternalFrame(
@@ -1273,9 +1289,6 @@ class InternalFrame(object):
         ]
         index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(index_names))]
 
-        index_dtypes = [index.get_level_values(i).dtype for i in range(len(index_names))]
-        data_dtypes = list(pdf.dtypes)
-
         pdf.index.names = index_columns
         reset_index = pdf.reset_index()
         reset_index.columns = index_columns + data_columns
@@ -1287,6 +1300,10 @@ class InternalFrame(object):
                 for name, col in reset_index.iteritems()
             ]
         )
+
+        index_dtypes = list(reset_index.dtypes)[: len(index_names)]
+        data_dtypes = list(reset_index.dtypes)[len(index_names) :]
+
         for name, col in reset_index.iteritems():
             dt = col.dtype
             if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):

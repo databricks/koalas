@@ -215,7 +215,7 @@ def download_pandoc_if_needed(path):
         if not os.path.isfile(filename) or not os.path.isfile("pandoc"):
             def download_pandoc():
                 try:
-                    return pandoc_download.download_pandoc(targetfolder=path, version="latest")
+                    return pandoc_download.download_pandoc(targetfolder=path, version="1.19.1")
                 except Exception as e:
                     if os.path.isfile(filename):
                         os.remove(filename)

@@ -223,11 +223,11 @@ _options = [
     Option(
         key="plotting.backend",
         doc=(
-            "Backend to use for plotting. Default is matplotlib. "
+            "Backend to use for plotting. Default is plotly. "
             "Supports any package that has a top-level `.plot` method. "
             "Known options are: [matplotlib, plotly]."
         ),
-        default="matplotlib",
+        default="plotly",
         types=str,
     ),
 ]  # type: List[Option]
