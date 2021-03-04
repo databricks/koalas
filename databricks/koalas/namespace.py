@@ -1605,7 +1605,7 @@ def date_range(
     normalize=False,
     name=None,
     closed=None,
-    **kwargs,
+    **kwargs
 ) -> DatetimeIndex:
     """
     Return a fixed frequency DatetimeIndex.
@@ -1745,7 +1745,7 @@ def date_range(
                 normalize=normalize,
                 name=name,
                 closed=closed,
-                **kwargs,
+                **kwargs
             )
         ),
     )
