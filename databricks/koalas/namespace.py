@@ -200,7 +200,7 @@ def read_csv(
     quotechar=None,
     escapechar=None,
     comment=None,
-    **options,
+    **options
 ) -> Union[DataFrame, Series]:
     """Read CSV (comma-separated) file into DataFrame or Series.
 
@@ -468,7 +468,7 @@ def read_delta(
     version: Optional[str] = None,
     timestamp: Optional[str] = None,
     index_col: Optional[Union[str, List[str]]] = None,
-    **options,
+    **options
 ) -> DataFrame:
     """
     Read a Delta Lake table on some file system and return a DataFrame.
@@ -597,7 +597,7 @@ def read_spark_io(
     format: Optional[str] = None,
     schema: Union[str, "StructType"] = None,
     index_col: Optional[Union[str, List[str]]] = None,
-    **options,
+    **options
 ) -> DataFrame:
     """Load a DataFrame from a Spark data source.
 
@@ -833,7 +833,7 @@ def read_excel(
     skipfooter=0,
     convert_float=True,
     mangle_dupe_cols=True,
-    **kwds,
+    **kwds
 ) -> Union[DataFrame, Series, OrderedDict]:
     """
     Read an Excel file into a Koalas DataFrame or Series.
@@ -1061,7 +1061,7 @@ def read_excel(
             skipfooter=skipfooter,
             convert_float=convert_float,
             mangle_dupe_cols=mangle_dupe_cols,
-            **kwds,
+            **kwds
         )
 
     if isinstance(io, str):
@@ -2770,7 +2770,7 @@ def read_orc(
     path,
     columns: Optional[List[str]] = None,
     index_col: Optional[Union[str, List[str]]] = None,
-    **options,
+    **options
 ) -> "DataFrame":
     """
     Load an ORC object from the file path, returning a DataFrame.
