@@ -1661,21 +1661,21 @@ def date_range(
 
     Specify `start` and `end`, with the default daily frequency.
 
-    >>> ks.date_range(start='1/1/2018', end='1/08/2018')
+    >>> ks.date_range(start='1/1/2018', end='1/08/2018')  # doctest: +NORMALIZE_WHITESPACEq
     DatetimeIndex(['2018-01-01', '2018-01-02', '2018-01-03', '2018-01-04',
                    '2018-01-05', '2018-01-06', '2018-01-07', '2018-01-08'],
                   dtype='datetime64[ns]', freq=None)
 
     Specify `start` and `periods`, the number of periods (days).
 
-    >>> ks.date_range(start='1/1/2018', periods=8)
+    >>> ks.date_range(start='1/1/2018', periods=8)  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-01', '2018-01-02', '2018-01-03', '2018-01-04',
                    '2018-01-05', '2018-01-06', '2018-01-07', '2018-01-08'],
                   dtype='datetime64[ns]', freq=None)
 
     Specify `end` and `periods`, the number of periods (days).
 
-    >>> ks.date_range(end='1/1/2018', periods=8)
+    >>> ks.date_range(end='1/1/2018', periods=8)  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-12-25', '2017-12-26', '2017-12-27', '2017-12-28',
                    '2017-12-29', '2017-12-30', '2017-12-31', '2018-01-01'],
                   dtype='datetime64[ns]', freq=None)
@@ -1683,7 +1683,7 @@ def date_range(
     Specify `start`, `end`, and `periods`; the frequency is generated
     automatically (linearly spaced).
 
-    >>> ks.date_range(start='2018-04-24', end='2018-04-27', periods=3)
+    >>> ks.date_range(start='2018-04-24', end='2018-04-27', periods=3)  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-04-24 00:00:00', '2018-04-25 12:00:00',
                    '2018-04-27 00:00:00'],
                   dtype='datetime64[ns]', freq=None)
@@ -1692,21 +1692,21 @@ def date_range(
 
     Changed the `freq` (frequency) to ``'M'`` (month end frequency).
 
-    >>> ks.date_range(start='1/1/2018', periods=5, freq='M')
+    >>> ks.date_range(start='1/1/2018', periods=5, freq='M')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-31', '2018-02-28', '2018-03-31', '2018-04-30',
                    '2018-05-31'],
                   dtype='datetime64[ns]', freq=None)
 
     Multiples are allowed
 
-    >>> ks.date_range(start='1/1/2018', periods=5, freq='3M')
+    >>> ks.date_range(start='1/1/2018', periods=5, freq='3M')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-31', '2018-04-30', '2018-07-31', '2018-10-31',
                    '2019-01-31'],
                   dtype='datetime64[ns]', freq=None)
 
     `freq` can also be specified as an Offset object.
 
-    >>> ks.date_range(start='1/1/2018', periods=5, freq=pd.offsets.MonthEnd(3))
+    >>> ks.date_range(start='1/1/2018', periods=5, freq=pd.offsets.MonthEnd(3))  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-31', '2018-04-30', '2018-07-31', '2018-10-31',
                    '2019-01-31'],
                   dtype='datetime64[ns]', freq=None)
@@ -1714,18 +1714,17 @@ def date_range(
     `closed` controls whether to include `start` and `end` that are on the
     boundary. The default includes boundary points on either end.
 
-    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed=None)
+    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed=None)  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'], dtype='datetime64[ns]', freq=None)
-
 
     Use ``closed='left'`` to exclude `end` if it falls on the boundary.
 
-    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='left')
+    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='left')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03'], dtype='datetime64[ns]', freq=None)
 
     Use ``closed='right'`` to exclude `start` if it falls on the boundary.
 
-    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='right')
+    >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='right')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'], dtype='datetime64[ns]', freq=None)
     """
     assert freq not in ["N", "ns"], "nanoseconds is not supported"
