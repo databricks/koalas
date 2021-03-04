@@ -22,6 +22,7 @@ from pandas.api.types import is_hashable
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeCategoricalIndex
+from databricks.koalas.series import Series
 
 
 class CategoricalIndex(Index):
@@ -81,11 +82,30 @@ class CategoricalIndex(Index):
                      categories=['c', 'b', 'a'], ordered=True, dtype='category')
     >>> ci.min()  # FIXME  # doctest: +SKIP
     'c'
+
+    From a Series:
+
+    >>> s = ks.Series(["a", "b", "c", "a", "b", "c"], index=[10, 20, 30, 40, 50, 60])
+    >>> ks.CategoricalIndex(s)  # FIXME  # doctest: +SKIP, +NORMALIZE_WHITESPACE
+    CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
+                     categories=['a', 'b', 'c'], ordered=False, dtype='category')
+
+    From an Index:
+
+    >>> idx = ks.Index(["a", "b", "c", "a", "b", "c"])
+    >>> ks.CategoricalIndex(idx)  # FIXME  # doctest: +SKIP, +NORMALIZE_WHITESPACE
+    CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
+                     categories=['a', 'b', 'c'], ordered=False, dtype='category')
     """
 
     def __new__(cls, data=None, categories=None, ordered=None, dtype=None, copy=False, name=None):
         if not is_hashable(name):
             raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "category"
+            return Index(data, dtype=dtype, copy=copy, name=name)
 
         return ks.from_pandas(
             pd.CategoricalIndex(

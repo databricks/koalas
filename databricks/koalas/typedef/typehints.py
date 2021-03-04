@@ -177,7 +177,7 @@ def as_spark_type(
         return types.TimestampType()
 
     # categorical types
-    elif isinstance(tpe, CategoricalDtype):
+    elif isinstance(tpe, CategoricalDtype) or (isinstance(tpe, str) and type == "category"):
         return types.LongType()
 
     # extension types
