@@ -1715,20 +1715,18 @@ def date_range(
     boundary. The default includes boundary points on either end.
 
     >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed=None)
-    DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'],
-                  dtype='datetime64[ns]', freq=None)
+    DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'], dtype='datetime64[ns]', freq=None)
+
 
     Use ``closed='left'`` to exclude `end` if it falls on the boundary.
 
     >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='left')
-    DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03'],
-                  dtype='datetime64[ns]', freq=None)
+    DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03'], dtype='datetime64[ns]', freq=None)
 
     Use ``closed='right'`` to exclude `start` if it falls on the boundary.
 
     >>> ks.date_range(start='2017-01-01', end='2017-01-04', closed='right')
-    DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'],
-                  dtype='datetime64[ns]', freq=None)
+    DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'], dtype='datetime64[ns]', freq=None)
     """
     assert freq not in ["N", "ns"], "nanoseconds is not supported"
     assert tz is None, "Localized DatetimeIndex is not supported"
