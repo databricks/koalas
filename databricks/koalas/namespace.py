@@ -1661,7 +1661,7 @@ def date_range(
 
     Specify `start` and `end`, with the default daily frequency.
 
-    >>> ks.date_range(start='1/1/2018', end='1/08/2018')  # doctest: +NORMALIZE_WHITESPACEq
+    >>> ks.date_range(start='1/1/2018', end='1/08/2018')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-01', '2018-01-02', '2018-01-03', '2018-01-04',
                    '2018-01-05', '2018-01-06', '2018-01-07', '2018-01-08'],
                   dtype='datetime64[ns]', freq=None)
