@@ -15,6 +15,7 @@
 #
 
 import base64
+from distutils.version import LooseVersion
 from io import BytesIO
 
 import matplotlib
@@ -33,10 +34,16 @@ class SeriesPlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pd.set_option("plotting.backend", "matplotlib")
+        set_option("plotting.backend", "matplotlib")
         set_option("plotting.max_rows", 1000)
 
     @classmethod
     def tearDownClass(cls):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25"):
+            pd.reset_option("plotting.backend")
+        reset_option("plotting.backend")
         reset_option("plotting.max_rows")
         super().tearDownClass()
 
@@ -193,6 +200,28 @@ class SeriesPlotMatplotlibTest(ReusedSQLTestCase, TestUtils):
         bin2 = self.plot_to_base64(ax2)
 
         self.assertEqual(bin1, bin2)
+
+    def test_hist(self):
+        pdf = pd.DataFrame(
+            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],}, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10]
+        )
+
+        kdf = ks.from_pandas(pdf)
+
+        def plot_to_base64(ax):
+            bytes_data = BytesIO()
+            ax.figure.savefig(bytes_data, format="png")
+            bytes_data.seek(0)
+            b64_data = base64.b64encode(bytes_data.read())
+            plt.close(ax.figure)
+            return b64_data
+
+        _, ax1 = plt.subplots(1, 1)
+        # Using plot.hist() because pandas changes ticks props when called hist()
+        ax1 = pdf["a"].plot.hist()
+        _, ax2 = plt.subplots(1, 1)
+        ax2 = kdf["a"].hist()
+        self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
 
     def test_hist_plot(self):
         pdf = self.pdf1

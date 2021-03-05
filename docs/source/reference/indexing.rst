@@ -293,3 +293,33 @@ DatatimeIndex
    :toctree: api/
 
    DatetimeIndex
+
+Time/date components
+~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   DatetimeIndex.year
+   DatetimeIndex.month
+   DatetimeIndex.day
+   DatetimeIndex.hour
+   DatetimeIndex.minute
+   DatetimeIndex.second
+   DatetimeIndex.microsecond
+   DatetimeIndex.week
+   DatetimeIndex.weekofyear
+   DatetimeIndex.dayofweek
+   DatetimeIndex.day_of_week
+   DatetimeIndex.weekday
+   DatetimeIndex.dayofyear
+   DatetimeIndex.day_of_year
+   DatetimeIndex.quarter
+   DatetimeIndex.is_month_start
+   DatetimeIndex.is_month_end
+   DatetimeIndex.is_quarter_start
+   DatetimeIndex.is_quarter_end
+   DatetimeIndex.is_year_start
+   DatetimeIndex.is_year_end
+   DatetimeIndex.is_leap_year
+   DatetimeIndex.daysinmonth
+   DatetimeIndex.days_in_month

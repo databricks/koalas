@@ -45,7 +45,6 @@ from databricks.koalas import numpy_compat
 from databricks.koalas.config import get_option, option_context
 from databricks.koalas.internal import (
     InternalFrame,
-    DEFAULT_SERIES_NAME,
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
@@ -125,23 +124,17 @@ def align_diff_index_ops(func, this_index_ops: "IndexOpsMixin", *args) -> "Index
 
         with option_context("compute.default_index_type", "distributed-sequence"):
             if isinstance(this_index_ops, Index) and all(isinstance(col, Index) for col in cols):
-                return (
-                    cast(
-                        Series,
-                        column_op(func)(
-                            this_index_ops.to_series().reset_index(drop=True),
-                            *[
-                                arg.to_series().reset_index(drop=True)
-                                if isinstance(arg, Index)
-                                else arg
-                                for arg in args
-                            ]
-                        ),
-                    )
-                    .sort_index()
-                    .to_frame(DEFAULT_SERIES_NAME)
-                    .set_index(DEFAULT_SERIES_NAME)
-                    .index.rename(this_index_ops.name)
+                return Index(
+                    column_op(func)(
+                        this_index_ops.to_series().reset_index(drop=True),
+                        *[
+                            arg.to_series().reset_index(drop=True)
+                            if isinstance(arg, Index)
+                            else arg
+                            for arg in args
+                        ]
+                    ).sort_index(),
+                    name=this_index_ops.name,
                 )
             elif isinstance(this_index_ops, Series):
                 this = this_index_ops.reset_index()
@@ -468,7 +461,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         if isinstance(self.spark.data_type, StringType):
             if isinstance(other, str):
-                return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
+                return self._with_new_scol(
+                    F.concat(F.lit(other), self.spark.column)
+                )  # TODO: dtype?
             else:
                 raise TypeError("string addition can only be applied to string series or literals.")
         else:
@@ -1434,7 +1429,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
-        return self._with_new_scol(col)
+        return self._with_new_scol(col)  # TODO: dtype?
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(

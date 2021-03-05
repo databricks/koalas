@@ -1992,7 +1992,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column))
+        kser = self._data._with_new_scol(pudf(self._data.spark.column), dtype=self._data.dtype)
 
         if expand:
             kdf = kser.to_frame()
@@ -2000,7 +2000,9 @@ class StringMethods(object):
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(
-                spark_columns, column_labels=cast(Optional[List], column_labels)
+                spark_columns,
+                column_labels=cast(Optional[List], column_labels),
+                data_dtypes=([self._data.dtype] * len(column_labels)),
             )
             return DataFrame(internal)
         else:
@@ -2128,7 +2130,7 @@ class StringMethods(object):
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
-        kser = self._data._with_new_scol(scol=pudf(self._data.spark.column))
+        kser = self._data._with_new_scol(pudf(self._data.spark.column), dtype=self._data.dtype)
 
         if expand:
             kdf = kser.to_frame()
@@ -2136,7 +2138,9 @@ class StringMethods(object):
             spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
             column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(
-                spark_columns, column_labels=cast(Optional[List], column_labels)
+                spark_columns,
+                column_labels=cast(Optional[List], column_labels),
+                data_dtypes=([self._data.dtype] * len(column_labels)),
             )
             return DataFrame(internal)
         else:

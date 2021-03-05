@@ -56,13 +56,29 @@ class MultiIndex(Index):
     Koalas MultiIndex that corresponds to pandas MultiIndex logically. This might hold Spark Column
     internally.
 
-    :ivar _kdf: The parent dataframe
-    :type _kdf: DataFrame
-    :ivar _scol: Spark Column instance
-    :type _scol: pyspark.Column
+    Parameters
+    ----------
+    levels : sequence of arrays
+        The unique labels for each level.
+    codes : sequence of arrays
+        Integers for each level designating which label at each location.
+    sortorder : optional int
+        Level of sortedness (must be lexicographically sorted by that
+        level).
+    names : optional sequence of objects
+        Names for each of the index levels. (name is accepted for compat).
+    copy : bool, default False
+        Copy the meta-data.
+    verify_integrity : bool, default True
+        Check that the levels/codes are consistent and valid.
 
     See Also
     --------
+    MultiIndex.from_arrays  : Convert list of arrays to MultiIndex.
+    MultiIndex.from_product : Create a MultiIndex from the cartesian product
+                              of iterables.
+    MultiIndex.from_tuples  : Convert list of tuples to a MultiIndex.
+    MultiIndex.from_frame   : Make a MultiIndex from a DataFrame.
     Index : A single-level Index.
 
     Examples
@@ -80,17 +96,53 @@ class MultiIndex(Index):
                )
     """
 
-    def __new__(cls, kdf: DataFrame):
-        assert kdf._internal.index_level > 1
+    def __new__(
+        cls,
+        levels=None,
+        codes=None,
+        sortorder=None,
+        names=None,
+        dtype=None,
+        copy=False,
+        name=None,
+        verify_integrity: bool = True,
+    ):
+        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+            if levels is None or codes is None:
+                raise TypeError("Must pass both levels and codes")
 
-        return super().__new__(cls, data=kdf)
+            pidx = pd.MultiIndex(
+                levels=levels,
+                labels=codes,
+                sortorder=sortorder,
+                names=names,
+                dtype=dtype,
+                copy=copy,
+                name=name,
+                verify_integrity=verify_integrity,
+            )
+        else:
+            pidx = pd.MultiIndex(
+                levels=levels,
+                codes=codes,
+                sortorder=sortorder,
+                names=names,
+                dtype=dtype,
+                copy=copy,
+                name=name,
+                verify_integrity=verify_integrity,
+            )
+        return ks.from_pandas(pidx)
 
     @property
     def _internal(self):
         internal = self._kdf._internal
         scol = F.struct(internal.index_spark_columns)
         return internal.copy(
-            column_labels=[None], data_spark_columns=[scol], column_label_names=None
+            column_labels=[None],
+            data_spark_columns=[scol],
+            data_dtypes=[None],
+            column_label_names=None,
         )
 
     @property
@@ -144,9 +196,9 @@ class MultiIndex(Index):
         """
         return cast(
             MultiIndex,
-            DataFrame(
-                index=pd.MultiIndex.from_tuples(tuples=tuples, sortorder=sortorder, names=names)
-            ).index,
+            ks.from_pandas(
+                pd.MultiIndex.from_tuples(tuples=tuples, sortorder=sortorder, names=names)
+            ),
         )
 
     @staticmethod
@@ -181,9 +233,9 @@ class MultiIndex(Index):
         """
         return cast(
             MultiIndex,
-            DataFrame(
-                index=pd.MultiIndex.from_arrays(arrays=arrays, sortorder=sortorder, names=names)
-            ).index,
+            ks.from_pandas(
+                pd.MultiIndex.from_arrays(arrays=arrays, sortorder=sortorder, names=names)
+            ),
         )
 
     @staticmethod
@@ -226,11 +278,9 @@ class MultiIndex(Index):
         """
         return cast(
             MultiIndex,
-            DataFrame(
-                index=pd.MultiIndex.from_product(
-                    iterables=iterables, sortorder=sortorder, names=names
-                )
-            ).index,
+            ks.from_pandas(
+                pd.MultiIndex.from_product(iterables=iterables, sortorder=sortorder, names=names)
+            ),
         )
 
     @staticmethod
@@ -378,14 +428,22 @@ class MultiIndex(Index):
                     "%s is not a valid level number" % (len(self.names), index)
                 )
 
-        index_map = list(zip(self._internal.index_spark_columns, self._internal.index_names))
+        index_map = list(
+            zip(
+                self._internal.index_spark_columns,
+                self._internal.index_names,
+                self._internal.index_dtypes,
+            )
+        )
         index_map[i], index_map[j], = index_map[j], index_map[i]
-        index_spark_columns, index_names = zip(*index_map)
+        index_spark_columns, index_names, index_dtypes = zip(*index_map)
         internal = self._internal.copy(
             index_spark_columns=list(index_spark_columns),
             index_names=list(index_names),
+            index_dtypes=list(index_dtypes),
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return cast(MultiIndex, DataFrame(internal).index)
 
@@ -456,6 +514,7 @@ class MultiIndex(Index):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
 
         return first_series(DataFrame(internal))
@@ -499,6 +558,7 @@ class MultiIndex(Index):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
 
         return first_series(DataFrame(internal))
@@ -724,14 +784,14 @@ class MultiIndex(Index):
         if sort:
             sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
 
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf_symdiff,
             index_spark_columns=[
                 scol_for(sdf_symdiff, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
         )
-        result = MultiIndex(DataFrame(internal))
+        result = cast(MultiIndex, DataFrame(internal).index)
 
         if result_name:
             result.names = result_name
@@ -797,19 +857,16 @@ class MultiIndex(Index):
                 raise KeyError("Level {} not found".format(name_like_string(level)))
         sdf = sdf[~scol.isin(codes)]
 
-        return MultiIndex(
-            DataFrame(
-                InternalFrame(
-                    spark_frame=sdf,
-                    index_spark_columns=[
-                        scol_for(sdf, col) for col in internal.index_spark_column_names
-                    ],
-                    index_names=internal.index_names,
-                    column_labels=[],
-                    data_spark_columns=[],
-                )
-            )
+        internal = InternalFrame(
+            spark_frame=sdf,
+            index_spark_columns=[scol_for(sdf, col) for col in internal.index_spark_column_names],
+            index_names=internal.index_names,
+            index_dtypes=internal.index_dtypes,
+            column_labels=[],
+            data_spark_columns=[],
+            data_dtypes=[],
         )
+        return cast(MultiIndex, DataFrame(internal).index)
 
     def value_counts(
         self, normalize=False, sort=True, ascending=False, bins=None, dropna=True
@@ -937,11 +994,14 @@ class MultiIndex(Index):
         level = self._get_level_number(level)
         index_scol = self._internal.index_spark_columns[level]
         index_name = self._internal.index_names[level]
+        index_dtype = self._internal.index_dtypes[level]
         internal = self._internal.copy(
             index_spark_columns=[index_scol],
             index_names=[index_name],
+            index_dtypes=[index_dtype],
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return DataFrame(internal).index
 
@@ -1000,7 +1060,7 @@ class MultiIndex(Index):
         sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
         sdf = sdf_before.union(sdf_middle).union(sdf_after)
 
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf,
             index_spark_columns=[
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
@@ -1077,7 +1137,7 @@ class MultiIndex(Index):
             index_names = self._internal.index_names
         else:
             index_names = None
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=spark_frame_intersected,
             index_spark_columns=[scol_for(spark_frame_intersected, col) for col in default_name],
             index_names=index_names,

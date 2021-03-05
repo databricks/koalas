@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pandas as pd
+from pandas.api.types import is_hashable
 
+from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.series import Series
 
 
 class NumericIndex(Index):
@@ -40,16 +44,52 @@ class Int64Index(IntegerIndex):
     storing axis labels for all pandas objects. Int64Index is a special case
     of `Index` with purely integer labels.
 
+    Parameters
+    ----------
+    data : array-like (1-dimensional)
+    dtype : NumPy dtype (default: int64)
+    copy : bool
+        Make a copy of input ndarray.
+    name : object
+        Name to be stored in the index.
+
     See Also
     --------
-    Index : The base pandas Index type.
+    Index : The base Koalas Index type.
+    Float64Index : A special case of :class:`Index` with purely float labels.
 
     Notes
     -----
     An Index instance can **only** contain hashable objects.
+
+    Examples
+    --------
+    >>> ks.Int64Index([1, 2, 3])
+    Int64Index([1, 2, 3], dtype='int64')
+
+    From a Series:
+
+    >>> s = ks.Series([1, 2, 3], index=[10, 20, 30])
+    >>> ks.Int64Index(s)
+    Int64Index([1, 2, 3], dtype='int64')
+
+    From an Index:
+
+    >>> idx = ks.Index([1, 2, 3])
+    >>> ks.Int64Index(idx)
+    Int64Index([1, 2, 3], dtype='int64')
     """
 
-    pass
+    def __new__(cls, data=None, dtype=None, copy=False, name=None):
+        if not is_hashable(name):
+            raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "int64"
+            return Index(data, dtype=dtype, copy=copy, name=name)
+
+        return ks.from_pandas(pd.Int64Index(data=data, dtype=dtype, copy=copy, name=name))
 
 
 class Float64Index(NumericIndex):
@@ -58,13 +98,49 @@ class Float64Index(NumericIndex):
     storing axis labels for all pandas objects. Float64Index is a special case
     of `Index` with purely float labels.
 
+    Parameters
+    ----------
+    data : array-like (1-dimensional)
+    dtype : NumPy dtype (default: float64)
+    copy : bool
+        Make a copy of input ndarray.
+    name : object
+        Name to be stored in the index.
+
     See Also
     --------
-    Index : The base pandas Index type.
+    Index : The base Koalas Index type.
+    Int64Index : A special case of :class:`Index` with purely integer labels.
 
     Notes
     -----
     An Index instance can **only** contain hashable objects.
+
+    Examples
+    --------
+    >>> ks.Float64Index([1.0, 2.0, 3.0])
+    Float64Index([1.0, 2.0, 3.0], dtype='float64')
+
+    From a Series:
+
+    >>> s = ks.Series([1, 2, 3], index=[10, 20, 30])
+    >>> ks.Float64Index(s)
+    Float64Index([1.0, 2.0, 3.0], dtype='float64')
+
+    From an Index:
+
+    >>> idx = ks.Index([1, 2, 3])
+    >>> ks.Float64Index(idx)
+    Float64Index([1.0, 2.0, 3.0], dtype='float64')
     """
 
-    pass
+    def __new__(cls, data=None, dtype=None, copy=False, name=None):
+        if not is_hashable(name):
+            raise TypeError("Index.name must be a hashable type")
+
+        if isinstance(data, (Series, Index)):
+            if dtype is None:
+                dtype = "float64"
+            return Index(data, dtype=dtype, copy=copy, name=name)
+
+        return ks.from_pandas(pd.Float64Index(data=data, dtype=dtype, copy=copy, name=name))

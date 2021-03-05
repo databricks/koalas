@@ -95,7 +95,7 @@ class PythonModelWrapper(object):
                 (col,) for col in data._internal.spark_frame.select(return_col).columns
             ]
             internal = data._internal.copy(
-                column_labels=column_labels, data_spark_columns=[return_col]
+                column_labels=column_labels, data_spark_columns=[return_col], data_dtypes=None
             )
             return first_series(DataFrame(internal))
 

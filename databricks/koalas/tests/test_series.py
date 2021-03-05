@@ -14,19 +14,13 @@
 # limitations under the License.
 #
 
-import base64
 import unittest
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
-from io import BytesIO
 from itertools import product
 from datetime import datetime, timedelta
 
-import matplotlib
-
-matplotlib.use("agg")
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import pyspark
@@ -1243,28 +1237,6 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         )
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.add_suffix("_item"), kser.add_suffix("_item"))
-
-    def test_hist(self):
-        pdf = pd.DataFrame(
-            {"a": [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 50],}, index=[0, 1, 3, 5, 6, 8, 9, 9, 9, 10, 10]
-        )
-
-        kdf = ks.from_pandas(pdf)
-
-        def plot_to_base64(ax):
-            bytes_data = BytesIO()
-            ax.figure.savefig(bytes_data, format="png")
-            bytes_data.seek(0)
-            b64_data = base64.b64encode(bytes_data.read())
-            plt.close(ax.figure)
-            return b64_data
-
-        _, ax1 = plt.subplots(1, 1)
-        # Using plot.hist() because pandas changes ticks props when called hist()
-        ax1 = pdf["a"].plot.hist()
-        _, ax2 = plt.subplots(1, 1)
-        ax2 = kdf["a"].hist()
-        self.assert_eq(plot_to_base64(ax1), plot_to_base64(ax2))
 
     def test_cummin(self):
         pser = pd.Series([1.0, None, 0.0, 4.0, 9.0])
