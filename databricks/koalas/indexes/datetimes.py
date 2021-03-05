@@ -435,7 +435,7 @@ class DatetimeIndex(Index):
     # Methods
     def ceil(self, freq, *args, **kwargs) -> "DatetimeIndex":
         """
-        Perform floor operation on the data to the specified freq.
+        Perform ceil operation on the data to the specified freq.
 
         Parameters
         ----------
