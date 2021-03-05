@@ -118,8 +118,6 @@ class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
     to_period = _unsupported_function("to_period", cls="DatetimeIndex")
     to_perioddelta = _unsupported_function("to_perioddelta", cls="DatetimeIndex")
     to_pydatetime = _unsupported_function("to_pydatetime", cls="DatetimeIndex")
-    month_name = _unsupported_function("month_name", cls="DatetimeIndex")
-    day_name = _unsupported_function("day_name", cls="DatetimeIndex")
     mean = _unsupported_function("mean", cls="DatetimeIndex")
     std = _unsupported_function("std", cls="DatetimeIndex")
 

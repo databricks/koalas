@@ -334,3 +334,5 @@ Time-specific operations
    DatetimeIndex.round
    DatetimeIndex.floor
    DatetimeIndex.ceil
+   DatetimeIndex.month_name
+   DatetimeIndex.day_name
