@@ -523,6 +523,71 @@ class DatetimeIndex(Index):
 
         return DatetimeIndex(self.to_series().dt.round(freq, *args, **kwargs))
 
+    def normalize(self) -> "DatetimeIndex":
+        """
+        Convert times to midnight.
+
+        The time component of the date-time is converted to midnight i.e.
+        00:00:00. This is useful in cases, when the time does not matter.
+        Length is unaltered. The timezones are unaffected.
+
+        This method is available on Series with datetime values under
+        the ``.dt`` accessor.
+
+        Returns
+        -------
+        DatetimeIndex
+            The same type as the original data.
+
+        See Also
+        --------
+        floor : Floor the series to the specified freq.
+        ceil : Ceil the series to the specified freq.
+        round : Round the series to the specified freq.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(start='2014-08-01 10:00', freq='H', periods=3)
+        >>> idx.normalize()
+        DatetimeIndex(['2014-08-01', '2014-08-01', '2014-08-01'], dtype='datetime64[ns]', freq=None)
+        """
+        return DatetimeIndex(self.to_series().dt.normalize())
+
+    def strftime(self, date_format: str) -> Index:
+        """
+        Convert to a string Index using specified date_format.
+
+        Return an Index of formatted strings specified by date_format, which
+        supports the same string format as the python standard library. Details
+        of the string format can be found in python string format
+        doc.
+
+        Parameters
+        ----------
+        date_format : str
+            Date format string (e.g. "%%Y-%%m-%%d").
+
+        Returns
+        -------
+        Index
+            Index of formatted strings.
+
+        See Also
+        --------
+        normalize : Return series with times to midnight.
+        round : Round the series to the specified freq.
+        floor : Floor the series to the specified freq.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(pd.Timestamp("2018-03-10 09:00"), periods=3, freq='s')
+        >>> idx.strftime('%B %d, %Y, %r')  # doctest: +NORMALIZE_WHITESPACE
+        Index(['March 10, 2018, 09:00:00 AM', 'March 10, 2018, 09:00:01 AM',
+               'March 10, 2018, 09:00:02 AM'],
+              dtype='object')
+        """
+        return Index(self.to_series().dt.strftime(date_format))
+
 
 def disallow_nanoseconds(freq):
     if freq in ["N", "ns"]:
