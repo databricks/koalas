@@ -151,6 +151,8 @@ jobs:
         fi
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
+        # Disable mypy check for PySpark 3.1
+        if [[ "SPARK_VERSION" > "3.1" ]]; then sed -i '/black/d' requirements-dev.txt; fi
         # sphinx-plotly-directive is not available on Conda.
         sed -i '/sphinx-plotly-directive/d' requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
@@ -161,8 +163,6 @@ jobs:
         # See also https://github.com/conda/conda/issues/7980
         source "$CONDA_PREFIX/etc/profile.d/conda.sh"
         conda activate test-environment
-        if [[ "$SPARK_VERSION" < "3.1" ]]; then
-          ./dev/lint-python
-        fi
+        ./dev/lint-python
         ./dev/pytest
     - uses: codecov/codecov-action@v1
