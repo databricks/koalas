@@ -19,7 +19,7 @@ An internal immutable DataFrame with some metadata to manage indexes.
 """
 from distutils.version import LooseVersion
 import re
-from typing import List, Optional, Tuple, Union, TYPE_CHECKING, cast
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
 import py4j
 
@@ -32,6 +32,11 @@ from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
 from pyspark.sql.functions import PandasUDFType, pandas_udf
 from pyspark.sql.types import BooleanType, DataType, IntegralType, StructField, StructType, LongType
+
+try:
+    from pyspark.sql.types import to_arrow_type
+except ImportError:
+    from pyspark.sql.pandas.types import to_arrow_type  # noqa: F401
 
 # For running doctests and reference resolution in PyCharm.
 from databricks import koalas as ks  # noqa: F401
@@ -55,7 +60,6 @@ from databricks.koalas.utils import (
     lazy_property,
     name_like_string,
     scol_for,
-    spark_column_equals,
     verify_temp_column_name,
 )
 
@@ -547,7 +551,7 @@ class InternalFrame(object):
                 scol_for(spark_frame, col)
                 for col in spark_frame.columns
                 if all(
-                    not spark_column_equals(scol_for(spark_frame, col), index_scol)
+                    not scol_for(spark_frame, col)._jc.equals(index_scol._jc)
                     for index_scol in index_spark_columns
                 )
                 and col not in HIDDEN_COLUMNS
@@ -867,7 +871,7 @@ class InternalFrame(object):
         return index_spark_columns + [
             spark_column
             for spark_column in self.data_spark_columns
-            if all(not spark_column_equals(spark_column, scol) for scol in index_spark_columns)
+            if all(not spark_column._jc.equals(scol._jc) for scol in index_spark_columns)
         ]
 
     @property
@@ -916,7 +920,7 @@ class InternalFrame(object):
         for i, (label, spark_column, column_name) in enumerate(
             zip(self.column_labels, self.data_spark_columns, self.data_spark_column_names)
         ):
-            if all(not spark_column_equals(spark_column, scol) for scol in index_spark_columns):
+            if all(not spark_column._jc.equals(scol._jc) for scol in index_spark_columns):
                 name = str(i) if label is None else name_like_string(label)
                 if column_name != name:
                     spark_column = spark_column.alias(name)
@@ -932,7 +936,7 @@ class InternalFrame(object):
             pdf = pdf.astype(
                 {field.name: spark_type_to_pandas_dtype(field.dataType) for field in sdf.schema}
             )
-        elif LooseVersion(pyspark.__version__) < LooseVersion("3.0"):  # type: ignore
+        elif LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
             for field in sdf.schema:
                 if field.nullable and pdf[field.name].isnull().all():
                     if isinstance(field.dataType, BooleanType):
@@ -961,7 +965,7 @@ class InternalFrame(object):
             for index_spark_column_name, index_spark_column in zip(
                 self.index_spark_column_names, self.index_spark_columns
             ):
-                if spark_column_equals(spark_column, index_spark_column):
+                if spark_column._jc.equals(index_spark_column._jc):
                     column_names.append(index_spark_column_name)
                     break
             else:
@@ -1084,7 +1088,7 @@ class InternalFrame(object):
 
         if column_labels is None:
             if all(isinstance(scol_or_kser, Series) for scol_or_kser in scols_or_ksers):
-                column_labels = [cast(Series, kser)._column_label for kser in scols_or_ksers]
+                column_labels = [kser._column_label for kser in scols_or_ksers]
             else:
                 assert len(scols_or_ksers) == len(self.column_labels), (
                     len(scols_or_ksers),
@@ -1155,13 +1159,12 @@ class InternalFrame(object):
 
         if isinstance(pred, Series):
             assert isinstance(pred.spark.data_type, BooleanType), pred.spark.data_type
-            pred_scol = pred.spark.column
+            pred = pred.spark.column
         else:
-            pred_scol = pred
-            spark_type = self.spark_frame.select(pred_scol).schema[0].dataType
+            spark_type = self.spark_frame.select(pred).schema[0].dataType
             assert isinstance(spark_type, BooleanType), spark_type
 
-        return self.with_new_sdf(self.spark_frame.filter(pred_scol).select(self.spark_columns))
+        return self.with_new_sdf(self.spark_frame.filter(pred).select(self.spark_columns))
 
     def with_new_spark_column(
         self,
@@ -1188,7 +1191,7 @@ class InternalFrame(object):
         data_dtypes = self.data_dtypes.copy()
         data_dtypes[idx] = dtype
         return self.with_new_columns(
-            data_spark_columns, data_dtypes=data_dtypes, keep_order=keep_order  # type: ignore
+            data_spark_columns, data_dtypes=data_dtypes, keep_order=keep_order
         )
 
     def select_column(self, column_label: Tuple) -> "InternalFrame":
@@ -1251,14 +1254,14 @@ class InternalFrame(object):
         if column_label_names is _NoValue:
             column_label_names = self.column_label_names
         return InternalFrame(
-            spark_frame=spark_frame,  # type: ignore
-            index_spark_columns=index_spark_columns,  # type: ignore
-            index_names=index_names,  # type: ignore
-            index_dtypes=index_dtypes,  # type: ignore
-            column_labels=column_labels,  # type: ignore
-            data_spark_columns=data_spark_columns,  # type: ignore
-            data_dtypes=data_dtypes,  # type: ignore
-            column_label_names=column_label_names,  # type: ignore
+            spark_frame=spark_frame,
+            index_spark_columns=index_spark_columns,
+            index_names=index_names,
+            index_dtypes=index_dtypes,
+            column_labels=column_labels,
+            data_spark_columns=data_spark_columns,
+            data_dtypes=data_dtypes,
+            column_label_names=column_label_names,
         )
 
     @staticmethod

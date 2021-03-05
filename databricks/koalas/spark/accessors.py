@@ -831,7 +831,7 @@ class SparkFrameMethods(object):
         == Physical Plan ==
         ...
         """
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):  # type: ignore
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
             if mode is not None and extended is not None:
                 raise Exception("extended and mode should not be set together.")
 
@@ -914,7 +914,7 @@ class SparkFrameMethods(object):
                 "The output of the function [%s] should be of a "
                 "pyspark.sql.DataFrame; however, got [%s]." % (func, type(output))
             )
-        return output.to_koalas(index_col)  # type: ignore
+        return output.to_koalas(index_col)
 
     def repartition(self, num_partitions: int) -> "ks.DataFrame":
         """

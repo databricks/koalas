@@ -17,11 +17,10 @@
 """
 String functions on Koalas Series
 """
-from typing import List, Tuple, Union, TYPE_CHECKING, cast
+from typing import Union, TYPE_CHECKING, cast, Optional, List
 
 import numpy as np
-import pandas as pd
-from pyspark import sql as spark
+
 from pyspark.sql.types import StringType, BinaryType, ArrayType, LongType, MapType
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
@@ -1144,7 +1143,7 @@ class StringMethods(object):
         """
         # type hint does not support to specify array type yet.
         pudf = pandas_udf(
-            lambda s: cast(pd.Series, s).str.findall(pat, flags),
+            lambda s: s.str.findall(pat, flags),
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
@@ -1989,7 +1988,7 @@ class StringMethods(object):
 
         # type hint does not support to specify array type yet.
         pudf = pandas_udf(
-            lambda s: cast(pd.Series, s).str.split(pat, n),
+            lambda s: s.str.split(pat, n),
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
@@ -1998,13 +1997,11 @@ class StringMethods(object):
         if expand:
             kdf = kser.to_frame()
             scol = kdf._internal.data_spark_columns[0]
-            spark_columns = [
-                scol[i].alias(str(i)) for i in range(n + 1)
-            ]  # type: List[Union[spark.Column, ks.Series]]
-            column_labels = [(i,) for i in range(n + 1)]  # type: List[Tuple]
+            spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
+            column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(
                 spark_columns,
-                column_labels=column_labels,
+                column_labels=cast(Optional[List], column_labels),
                 data_dtypes=([self._data.dtype] * len(column_labels)),
             )
             return DataFrame(internal)
@@ -2129,7 +2126,7 @@ class StringMethods(object):
 
         # type hint does not support to specify array type yet.
         pudf = pandas_udf(
-            lambda s: cast(pd.Series, s).str.rsplit(pat, n),
+            lambda s: s.str.rsplit(pat, n),
             returnType=ArrayType(StringType(), containsNull=True),
             functionType=PandasUDFType.SCALAR,
         )
@@ -2138,13 +2135,11 @@ class StringMethods(object):
         if expand:
             kdf = kser.to_frame()
             scol = kdf._internal.data_spark_columns[0]
-            spark_columns = [
-                scol[i].alias(str(i)) for i in range(n + 1)
-            ]  # type: List[Union[spark.Column, ks.Series]]
-            column_labels = [(i,) for i in range(n + 1)]  # type: List[Tuple]
+            spark_columns = [scol[i].alias(str(i)) for i in range(n + 1)]
+            column_labels = [(i,) for i in range(n + 1)]
             internal = kdf._internal.with_new_columns(
                 spark_columns,
-                column_labels=column_labels,
+                column_labels=cast(Optional[List], column_labels),
                 data_dtypes=([self._data.dtype] * len(column_labels)),
             )
             return DataFrame(internal)

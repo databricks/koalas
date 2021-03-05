@@ -15,7 +15,7 @@
 #
 
 from functools import partial
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, List, Optional, Tuple, Union
 import warnings
 
 import pandas as pd
@@ -1403,7 +1403,7 @@ class Index(IndexOpsMixin):
         sdf_symdiff = sdf_self.union(sdf_other).subtract(sdf_self.intersect(sdf_other))
 
         if sort:
-            sdf_symdiff = sdf_symdiff.sort(*self._internal.index_spark_column_names)
+            sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_column_names)
 
         internal = InternalFrame(
             spark_frame=sdf_symdiff,
@@ -1482,7 +1482,7 @@ class Index(IndexOpsMixin):
                    )
         """
         sdf = self._internal.spark_frame
-        sdf = sdf.orderBy(*self._internal.index_spark_columns, ascending=ascending).select(
+        sdf = sdf.orderBy(self._internal.index_spark_columns, ascending=ascending).select(
             self._internal.index_spark_columns
         )
 
@@ -1534,7 +1534,7 @@ class Index(IndexOpsMixin):
         ('a', 'x', 1)
         """
         sdf = self._internal.spark_frame
-        min_row = sdf.select(F.min(F.struct(*self._internal.index_spark_columns))).head()
+        min_row = sdf.select(F.min(F.struct(self._internal.index_spark_columns))).head()
         result = tuple(min_row[0])
 
         return result if len(result) > 1 else result[0]
@@ -1571,7 +1571,7 @@ class Index(IndexOpsMixin):
         ('b', 'y', 2)
         """
         sdf = self._internal.spark_frame
-        max_row = sdf.select(F.max(F.struct(*self._internal.index_spark_columns))).head()
+        max_row = sdf.select(F.max(F.struct(self._internal.index_spark_columns))).head()
         result = tuple(max_row[0])
 
         return result if len(result) > 1 else result[0]
@@ -1641,7 +1641,7 @@ class Index(IndexOpsMixin):
 
         sdf = self._internal._sdf
         index_value_column_names = [
-            cast(str, verify_temp_column_name(sdf, index_value_column_format.format(i)))
+            verify_temp_column_name(sdf, index_value_column_format.format(i))
             for i in range(self._internal.index_level)
         ]
         index_value_columns = [
@@ -1775,7 +1775,7 @@ class Index(IndexOpsMixin):
         4
         """
         sdf = self._internal.spark_frame.select(self.spark.column)
-        sequence_col = cast(str, verify_temp_column_name(sdf, "__distributed_sequence_column__"))
+        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
         # spark_frame here looks like below
         # +-----------------+---------------+
@@ -1823,7 +1823,7 @@ class Index(IndexOpsMixin):
         7
         """
         sdf = self._internal.spark_frame.select(self.spark.column)
-        sequence_col = cast(str, verify_temp_column_name(sdf, "__distributed_sequence_column__"))
+        sequence_col = verify_temp_column_name(sdf, "__distributed_sequence_column__")
         sdf = InternalFrame.attach_distributed_sequence_column(sdf, column_name=sequence_col)
 
         return (
@@ -2191,7 +2191,7 @@ class Index(IndexOpsMixin):
         if isinstance(self, MultiIndex):
             sdf = sdf.drop_duplicates()
         if sort:
-            sdf = sdf.sort(*self._internal.index_spark_column_names)
+            sdf = sdf.sort(self._internal.index_spark_column_names)
         internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf,
             index_spark_columns=[

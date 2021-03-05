@@ -50,7 +50,6 @@ from databricks.koalas.utils import (
     name_like_string,
     same_anchor,
     scol_for,
-    spark_column_equals,
     verify_temp_column_name,
 )
 
@@ -336,7 +335,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
 
     @abstractmethod
     def _select_rows_by_spark_column(
-        self, rows_sel: spark.Column
+        self, rows_sel: spark.column
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
         """ Select rows by Spark `Column` type key. """
         pass
@@ -707,7 +706,7 @@ class LocIndexerLike(IndexerLike, metaclass=ABCMeta):
                 self._internal.data_dtypes,
             ):
                 for scol in data_spark_columns:
-                    if spark_column_equals(new_scol, scol):
+                    if new_scol._jc.equals(scol._jc):
                         new_scol = F.when(cond, value).otherwise(scol).alias(spark_column_name)
                         new_dtype = spark_type_to_pandas_dtype(
                             self._internal.spark_frame.select(new_scol).schema[0].dataType,
@@ -1000,11 +999,11 @@ class LocIndexer(LocIndexerLike):
             stop = [row[1] for row in start_and_stop if row[0] == stop]
             stop = stop[-1] if len(stop) > 0 else None
 
-            conds = []
+            cond = []
             if start is not None:
-                conds.append(F.col(NATURAL_ORDER_COLUMN_NAME) >= F.lit(start).cast(LongType()))
+                cond.append(F.col(NATURAL_ORDER_COLUMN_NAME) >= F.lit(start).cast(LongType()))
             if stop is not None:
-                conds.append(F.col(NATURAL_ORDER_COLUMN_NAME) <= F.lit(stop).cast(LongType()))
+                cond.append(F.col(NATURAL_ORDER_COLUMN_NAME) <= F.lit(stop).cast(LongType()))
 
             # if index order is not monotonic increasing or decreasing
             # and specified values don't exist in index, raise KeyError
@@ -1019,25 +1018,21 @@ class LocIndexer(LocIndexerLike):
                 if start is None and rows_sel.start is not None:
                     start = rows_sel.start
                     if inc is not False:
-                        conds.append(
-                            index_column.spark.column >= F.lit(start).cast(index_data_type)
-                        )
+                        cond.append(index_column.spark.column >= F.lit(start).cast(index_data_type))
                     elif dec is not False:
-                        conds.append(
-                            index_column.spark.column <= F.lit(start).cast(index_data_type)
-                        )
+                        cond.append(index_column.spark.column <= F.lit(start).cast(index_data_type))
                     else:
                         raise KeyError(rows_sel.start)
                 if stop is None and rows_sel.stop is not None:
                     stop = rows_sel.stop
                     if inc is not False:
-                        conds.append(index_column.spark.column <= F.lit(stop).cast(index_data_type))
+                        cond.append(index_column.spark.column <= F.lit(stop).cast(index_data_type))
                     elif dec is not False:
-                        conds.append(index_column.spark.column >= F.lit(stop).cast(index_data_type))
+                        cond.append(index_column.spark.column >= F.lit(stop).cast(index_data_type))
                     else:
                         raise KeyError(rows_sel.stop)
 
-            return reduce(lambda x, y: x & y, conds), None, None
+            return reduce(lambda x, y: x & y, cond), None, None
         else:
             index = self._kdf_or_kser.index
             index_data_type = [f.dataType for f in index.to_series().spark.data_type]
@@ -1068,7 +1063,7 @@ class LocIndexer(LocIndexerLike):
                     "Key length ({}) was greater than MultiIndex sort depth".format(depth)
                 )
 
-            conds = []
+            conds = []  # type: List[spark.Column]
             if start is not None:
                 cond = F.lit(True)
                 for scol, value, dt in list(
@@ -1497,7 +1492,7 @@ class iLocIndexer(LocIndexerLike):
         )
 
     def _select_rows_by_spark_column(
-        self, rows_sel: spark.Column
+        self, rows_sel: spark.column
     ) -> Tuple[Optional[spark.Column], Optional[int], Optional[int]]:
         raise iLocIndexer._NotImplemented(
             ".iloc requires numeric slice, conditional "

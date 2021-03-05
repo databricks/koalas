@@ -26,7 +26,6 @@ import pandas as pd
 import pyspark
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import StructType
 
 from databricks.koalas.internal import (
     InternalFrame,
@@ -327,7 +326,7 @@ class KoalasFrameMethods(object):
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
-        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"  # type: ignore
+        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"
 
         original_func = func
         func = lambda o: original_func(o, *args, **kwds)
@@ -537,7 +536,7 @@ class KoalasFrameMethods(object):
         func = lambda o: original_func(o, *args, **kwargs)
 
         names = self._kdf._internal.to_internal_spark_frame.schema.names
-        should_by_pass = LooseVersion(pyspark.__version__) >= "3.0"  # type: ignore
+        should_by_pass = LooseVersion(pyspark.__version__) >= "3.0"
 
         def pandas_concat(series):
             # The input can only be a DataFrame for struct from Spark 3.0.
@@ -580,7 +579,7 @@ class KoalasFrameMethods(object):
                     func if should_by_pass else pandas_series_func(func),
                     returnType=force_decimal_precision_scale(
                         as_nullable_spark_type(kser.spark.data_type)
-                    ),  # type: ignore
+                    ),
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -616,9 +615,7 @@ class KoalasFrameMethods(object):
                 columns = self_applied._internal.spark_columns
                 if should_by_pass:
                     pudf = pandas_udf(
-                        output_func,
-                        returnType=return_schema,  # type: ignore
-                        functionType=PandasUDFType.SCALAR,
+                        output_func, returnType=return_schema, functionType=PandasUDFType.SCALAR
                     )
                     temp_struct_column = verify_temp_column_name(
                         self_applied._internal.spark_frame, "__temp_struct__"
@@ -628,11 +625,11 @@ class KoalasFrameMethods(object):
                     sdf = sdf.selectExpr("%s.*" % temp_struct_column)
                 else:
                     applied = []
-                    for field in cast(StructType, return_schema).fields:
+                    for field in return_schema.fields:
                         applied.append(
                             pandas_udf(
                                 pandas_frame_func(output_func),
-                                returnType=field.dataType,  # type: ignore
+                                returnType=field.dataType,
                                 functionType=PandasUDFType.SCALAR,
                             )(*columns).alias(field.name)
                         )
@@ -651,7 +648,7 @@ class KoalasFrameMethods(object):
             if is_return_series:
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
-                    returnType=return_schema,  # type: ignore
+                    returnType=return_schema,
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -676,9 +673,7 @@ class KoalasFrameMethods(object):
 
                 if should_by_pass:
                     pudf = pandas_udf(
-                        output_func,
-                        returnType=return_schema,  # type: ignore
-                        functionType=PandasUDFType.SCALAR,
+                        output_func, returnType=return_schema, functionType=PandasUDFType.SCALAR
                     )
                     temp_struct_column = verify_temp_column_name(
                         self_applied._internal.spark_frame, "__temp_struct__"
@@ -688,11 +683,11 @@ class KoalasFrameMethods(object):
                     sdf = sdf.selectExpr("%s.*" % temp_struct_column)
                 else:
                     applied = []
-                    for field in cast(StructType, return_schema).fields:
+                    for field in return_schema.fields:
                         applied.append(
                             pandas_udf(
                                 pandas_frame_func(output_func),
-                                returnType=field.dataType,  # type: ignore
+                                returnType=field.dataType,
                                 functionType=PandasUDFType.SCALAR,
                             )(*columns).alias(field.name)
                         )

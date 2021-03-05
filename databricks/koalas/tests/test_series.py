@@ -2356,7 +2356,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq((kdf["b"] * 10).dot(kdf + 1), (pdf["b"] * 10).dot(pdf + 1))
 
     @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),  # type: ignore
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
         "tail won't work properly with PySpark<3.0",
     )
     def test_tail(self):
@@ -2457,7 +2457,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser.hasnans, kser.hasnans)
 
     @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),  # type: ignore
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
         "last_valid_index won't work properly with PySpark<3.0",
     )
     def test_last_valid_index(self):

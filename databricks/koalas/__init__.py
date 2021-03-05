@@ -68,7 +68,7 @@ assert_pyspark_version()
 import pyspark
 import pyarrow
 
-if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):  # type: ignore
+if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
     if (
         LooseVersion(pyarrow.__version__) >= LooseVersion("0.15")
         and "ARROW_PRE_0_15_IPC_FORMAT" not in os.environ

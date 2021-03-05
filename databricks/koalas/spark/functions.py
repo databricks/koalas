@@ -16,13 +16,9 @@
 """
 Additional Spark functions used in Koalas.
 """
+
 from pyspark import SparkContext
-from pyspark.sql.column import (  # type: ignore
-    Column,
-    _to_java_column,
-    _to_seq,
-    _create_column_from_literal,
-)
+from pyspark.sql.column import Column, _to_java_column, _to_seq, _create_column_from_literal
 
 
 __all__ = ["percentile_approx"]

@@ -728,7 +728,7 @@ def read_parquet(path, columns=None, index_col=None, pandas_metadata=False, **op
     index_names = None
 
     if index_col is None and pandas_metadata:
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):  # type: ignore
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
             raise ValueError("pandas_metadata is not supported with Spark < 3.0.")
 
         # Try to read pandas metadata
@@ -1065,7 +1065,7 @@ def read_excel(
         )
 
     if isinstance(io, str):
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):  # type: ignore
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"):
             raise ValueError(
                 "The `io` parameter as a string is not supported if the underlying Spark is "
                 "below 3.0. You can use `ks.from_pandas(pd.read_excel(...))` as a workaround"
@@ -1940,7 +1940,7 @@ def get_dummies(
     ):
         raise NotImplementedError(
             "get_dummies currently only accept {} values".format(
-                ", ".join([t.typeName() for t in _get_dummies_acceptable_types])  # type: ignore
+                ", ".join([t.typeName() for t in _get_dummies_acceptable_types])
             )
         )
 

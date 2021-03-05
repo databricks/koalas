@@ -872,7 +872,7 @@ class MultiIndex(Index):
         self, normalize=False, sort=True, ascending=False, bins=None, dropna=True
     ) -> Series:
         if (
-            LooseVersion(pyspark.__version__) < LooseVersion("2.4")  # type: ignore
+            LooseVersion(pyspark.__version__) < LooseVersion("2.4")
             and default_session().conf.get("spark.sql.execution.arrow.enabled") == "true"
             and isinstance(self, MultiIndex)
         ):
