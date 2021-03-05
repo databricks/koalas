@@ -18,6 +18,7 @@
 Spark related features. Usually, the features here are missing in pandas
 but Spark has it.
 """
+from abc import ABCMeta, abstractmethod
 from distutils.version import LooseVersion
 from typing import TYPE_CHECKING, Optional, Union, List, cast
 
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
     from databricks.koalas.frame import CachedDataFrame
 
 
-class SparkIndexOpsMethods(object):
+class SparkIndexOpsMethods(object, metaclass=ABCMeta):
     """Spark related features. Usually, the features here are missing in pandas
     but Spark has it."""
 
@@ -122,6 +123,11 @@ class SparkIndexOpsMethods(object):
         # `df1.a.spark.transform(lambda _: F.col("non-existent"))`.
         new_ser._internal.to_internal_spark_frame
         return new_ser
+
+    @property
+    @abstractmethod
+    def analyzed(self) -> Union["ks.Series", "ks.Index"]:
+        pass
 
 
 class SparkSeriesMethods(SparkIndexOpsMethods):
@@ -255,6 +261,49 @@ class SparkIndexMethods(SparkIndexOpsMethods):
         return cast("ks.Index", super().transform(func))
 
     transform.__doc__ = SparkIndexOpsMethods.transform.__doc__
+
+    @property
+    def analyzed(self) -> "ks.Index":
+        """
+        Returns a new Index with the analyzed Spark DataFrame.
+
+        After multiple operations, the underlying Spark plan could grow huge
+        and make the Spark planner take a long time to finish the planning.
+
+        This function is for the workaround to avoid it.
+
+        .. note:: After analyzed, operations between the analyzed Series and the original one
+            will **NOT** work without setting a config `compute.ops_on_diff_frames` to `True`.
+
+        Returns
+        -------
+        Index
+
+        Examples
+        --------
+        >>> idx = ks.Index([1, 2, 3])
+        >>> idx
+        Int64Index([1, 2, 3], dtype='int64')
+
+        The analyzed one should return the same value.
+
+        >>> idx.spark.analyzed
+        Int64Index([1, 2, 3], dtype='int64')
+
+        However, it won't work with the same anchor Index.
+
+        >>> idx + idx.spark.analyzed
+        Traceback (most recent call last):
+        ...
+        ValueError: ... enable 'compute.ops_on_diff_frames' option.
+
+        >>> with ks.option_context('compute.ops_on_diff_frames', True):
+        ...     (idx + idx.spark.analyzed).sort_values()
+        Int64Index([2, 4, 6], dtype='int64')
+        """
+        from databricks.koalas.frame import DataFrame
+
+        return DataFrame(self._data._internal.resolved_copy).index
 
 
 class SparkFrameMethods(object):
