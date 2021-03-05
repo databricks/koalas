@@ -445,8 +445,8 @@ class InternalFrame(object):
         |              zoo|              bar|     7|     8|     9|...
         +-----------------+-----------------+------+------+------+...
 
-        >>> internal.index_spark_columns
-        [Column<b'__index_level_0__'>, Column<b'__index_level_1__'>, Column<b'(a, x)'>]
+        >>> internal.index_spark_columns  # doctest: +SKIP
+        [Column<'__index_level_0__'>, Column<'__index_level_1__'>, Column<'(a, x)'>]
 
         >>> internal.index_names
         [('row_index_a',), ('row_index_b',), ('a', 'x')]
@@ -457,8 +457,8 @@ class InternalFrame(object):
         >>> internal.column_labels
         [('a', 'y'), ('b', 'z')]
 
-        >>> internal.data_spark_columns
-        [Column<b'(a, y)'>, Column<b'(b, z)'>]
+        >>> internal.data_spark_columns  # doctest: +SKIP
+        [Column<'(a, y)'>, Column<'(b, z)'>]
 
         >>> internal.data_dtypes
         [dtype('int64'), dtype('int64')]
