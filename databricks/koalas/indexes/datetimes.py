@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from functools import partial
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from pandas.api.types import is_hashable
@@ -523,7 +523,7 @@ class DatetimeIndex(Index):
 
         return DatetimeIndex(self.to_series().dt.round(freq, *args, **kwargs))
 
-    def month_name(self, locale=None) -> Index:
+    def month_name(self, locale: Optional[str] = None) -> Index:
         """
         Return the month names of the DateTimeIndex with specified locale.
 
@@ -546,7 +546,7 @@ class DatetimeIndex(Index):
         """
         return Index(self.to_series().dt.month_name(locale))
 
-    def day_name(self, locale=None) -> Index:
+    def day_name(self, locale: Optional[str] = None) -> Index:
         """
         Return the day names of the series with specified locale.
 

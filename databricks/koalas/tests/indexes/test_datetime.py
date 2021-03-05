@@ -115,7 +115,6 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
         for kidx, pidx in self.idx_pairs:
             self.assert_eq(kidx.day_name(), pidx.day_name())
 
-
     def test_month_name(self):
         for kidx, pidx in self.idx_pairs:
             self.assert_eq(kidx.day_name(), pidx.day_name())
