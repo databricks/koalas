@@ -154,7 +154,6 @@ def combine_frames(this, *args, how="full", preserve_order_column=False):
                 data_spark_columns=[
                     scol_for(sdf, rename(col)) for col in internal.data_spark_column_names
                 ],
-                preserve_dtypes=True,
             )
 
         this_internal = resolve(this._internal, "this")

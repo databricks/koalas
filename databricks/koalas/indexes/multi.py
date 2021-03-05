@@ -139,7 +139,10 @@ class MultiIndex(Index):
         internal = self._kdf._internal
         scol = F.struct(internal.index_spark_columns)
         return internal.copy(
-            column_labels=[None], data_spark_columns=[scol], column_label_names=None
+            column_labels=[None],
+            data_spark_columns=[scol],
+            data_dtypes=[None],
+            column_label_names=None,
         )
 
     @property
@@ -425,14 +428,22 @@ class MultiIndex(Index):
                     "%s is not a valid level number" % (len(self.names), index)
                 )
 
-        index_map = list(zip(self._internal.index_spark_columns, self._internal.index_names))
+        index_map = list(
+            zip(
+                self._internal.index_spark_columns,
+                self._internal.index_names,
+                self._internal.index_dtypes,
+            )
+        )
         index_map[i], index_map[j], = index_map[j], index_map[i]
-        index_spark_columns, index_names = zip(*index_map)
+        index_spark_columns, index_names, index_dtypes = zip(*index_map)
         internal = self._internal.copy(
             index_spark_columns=list(index_spark_columns),
             index_names=list(index_names),
+            index_dtypes=list(index_dtypes),
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return cast(MultiIndex, DataFrame(internal).index)
 
@@ -503,6 +514,7 @@ class MultiIndex(Index):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
 
         return first_series(DataFrame(internal))
@@ -546,6 +558,7 @@ class MultiIndex(Index):
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
             ],
             index_names=self._internal.index_names,
+            index_dtypes=self._internal.index_dtypes,
         )
 
         return first_series(DataFrame(internal))
@@ -771,7 +784,7 @@ class MultiIndex(Index):
         if sort:
             sdf_symdiff = sdf_symdiff.sort(self._internal.index_spark_columns)
 
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf_symdiff,
             index_spark_columns=[
                 scol_for(sdf_symdiff, col) for col in self._internal.index_spark_column_names
@@ -848,8 +861,10 @@ class MultiIndex(Index):
             spark_frame=sdf,
             index_spark_columns=[scol_for(sdf, col) for col in internal.index_spark_column_names],
             index_names=internal.index_names,
+            index_dtypes=internal.index_dtypes,
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return cast(MultiIndex, DataFrame(internal).index)
 
@@ -979,11 +994,14 @@ class MultiIndex(Index):
         level = self._get_level_number(level)
         index_scol = self._internal.index_spark_columns[level]
         index_name = self._internal.index_names[level]
+        index_dtype = self._internal.index_dtypes[level]
         internal = self._internal.copy(
             index_spark_columns=[index_scol],
             index_names=[index_name],
+            index_dtypes=[index_dtype],
             column_labels=[],
             data_spark_columns=[],
+            data_dtypes=[],
         )
         return DataFrame(internal).index
 
@@ -1042,7 +1060,7 @@ class MultiIndex(Index):
         sdf_after = self.to_frame(name=index_name)[loc:].to_spark()
         sdf = sdf_before.union(sdf_middle).union(sdf_after)
 
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=sdf,
             index_spark_columns=[
                 scol_for(sdf, col) for col in self._internal.index_spark_column_names
@@ -1119,7 +1137,7 @@ class MultiIndex(Index):
             index_names = self._internal.index_names
         else:
             index_names = None
-        internal = InternalFrame(
+        internal = InternalFrame(  # TODO: dtypes?
             spark_frame=spark_frame_intersected,
             index_spark_columns=[scol_for(spark_frame_intersected, col) for col in default_name],
             index_names=index_names,

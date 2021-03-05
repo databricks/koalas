@@ -175,11 +175,13 @@ class KoalasFrameMethods(object):
                     scol_for(sdf, SPARK_INDEX_NAME_FORMAT(i)) for i in range(internal.index_level)
                 ],
                 index_names=internal.index_names,
+                index_dtypes=internal.index_dtypes,
                 column_labels=internal.column_labels + [column],
                 data_spark_columns=(
                     [scol_for(sdf, name_like_string(label)) for label in internal.column_labels]
                     + [scol_for(sdf, name_like_string(column))]
                 ),
+                data_dtypes=(internal.data_dtypes + [None]),
                 column_label_names=internal.column_label_names,
             ).resolved_copy
         )
@@ -589,6 +591,7 @@ class KoalasFrameMethods(object):
                             kser._internal.data_spark_column_names[0]
                         )
                     ],
+                    data_dtypes=kser._internal.data_dtypes,
                     column_label_names=kser._internal.column_label_names,
                 )
                 return first_series(DataFrame(internal))
@@ -656,6 +659,7 @@ class KoalasFrameMethods(object):
                             SPARK_DEFAULT_SERIES_NAME
                         )
                     ],
+                    data_dtypes=[None],
                     column_label_names=None,
                 )
                 return first_series(DataFrame(internal))
@@ -847,4 +851,4 @@ class KoalasSeriesMethods(object):
             spark_return_type = return_schema
 
         pudf = pandas_udf(func, returnType=spark_return_type, functionType=PandasUDFType.SCALAR)
-        return self._kser._with_new_scol(scol=pudf(self._kser.spark.column))
+        return self._kser._with_new_scol(scol=pudf(self._kser.spark.column))  # TODO: dtype?

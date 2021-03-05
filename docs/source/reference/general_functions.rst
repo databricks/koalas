@@ -46,4 +46,4 @@ Top-level dealing with datetimelike
    :toctree: api/
 
    to_datetime
-
+   date_range

@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from collections import OrderedDict
 from functools import partial
 from typing import Any, Union, TYPE_CHECKING
 
@@ -154,7 +153,8 @@ class Rolling(RollingAndExpanding):
 
     def _apply_as_series_or_frame(self, func):
         return self._kdf_or_kser._apply_series_op(
-            lambda kser: kser._with_new_scol(func(kser.spark.column)), should_resolve=True
+            lambda kser: kser._with_new_scol(func(kser.spark.column)),  # TODO: dtype?
+            should_resolve=True,
         )
 
     def count(self) -> Union["Series", "DataFrame"]:
@@ -666,18 +666,24 @@ class RollingGroupby(Rolling):
         # Here we need to include grouped key as an index, and shift previous index.
         #   [index_column0, index_column1] -> [grouped key, index_column0, index_column1]
         new_index_scols = []
-        new_index_map = OrderedDict()
+        new_index_spark_column_names = []
+        new_index_names = []
+        new_index_dtypes = []
         for groupkey in groupby._groupkeys:
             index_column_name = SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
             new_index_scols.append(groupkey.spark.column.alias(index_column_name))
-            new_index_map[index_column_name] = groupkey._column_label
+            new_index_spark_column_names.append(index_column_name)
+            new_index_names.append(groupkey._column_label)
+            new_index_dtypes.append(groupkey.dtype)
 
-        for new_index_scol, index_name in zip(
-            kdf._internal.index_spark_columns, kdf._internal.index_names
+        for new_index_scol, index_name, index_dtype in zip(
+            kdf._internal.index_spark_columns, kdf._internal.index_names, kdf._internal.index_dtypes
         ):
             index_column_name = SPARK_INDEX_NAME_FORMAT(len(new_index_scols))
             new_index_scols.append(new_index_scol.alias(index_column_name))
-            new_index_map[index_column_name] = index_name
+            new_index_spark_column_names.append(index_column_name)
+            new_index_names.append(index_name)
+            new_index_dtypes.append(index_dtype)
 
         if groupby._agg_columns_selected:
             agg_columns = groupby._agg_columns
@@ -690,7 +696,7 @@ class RollingGroupby(Rolling):
 
         applied = []
         for agg_column in agg_columns:
-            applied.append(agg_column._with_new_scol(func(agg_column.spark.column)))
+            applied.append(agg_column._with_new_scol(func(agg_column.spark.column)))  # TODO: dtype?
 
         # Seems like pandas filters out when grouped key is NA.
         cond = groupby._groupkeys[0].spark.column.isNotNull()
@@ -703,12 +709,14 @@ class RollingGroupby(Rolling):
 
         internal = kdf._internal.copy(
             spark_frame=sdf,
-            index_spark_columns=[scol_for(sdf, col) for col in new_index_map.keys()],
-            index_names=list(new_index_map.values()),
+            index_spark_columns=[scol_for(sdf, col) for col in new_index_spark_column_names],
+            index_names=new_index_names,
+            index_dtypes=new_index_dtypes,
             column_labels=[c._column_label for c in applied],
             data_spark_columns=[
                 scol_for(sdf, c._internal.data_spark_column_names[0]) for c in applied
             ],
+            data_dtypes=[c.dtype for c in applied],
         )
 
         ret = DataFrame(internal)

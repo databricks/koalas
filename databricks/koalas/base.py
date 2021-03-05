@@ -461,7 +461,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         if isinstance(self.spark.data_type, StringType):
             if isinstance(other, str):
-                return self._with_new_scol(F.concat(F.lit(other), self.spark.column))
+                return self._with_new_scol(
+                    F.concat(F.lit(other), self.spark.column)
+                )  # TODO: dtype?
             else:
                 raise TypeError("string addition can only be applied to string series or literals.")
         else:
@@ -1415,7 +1417,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
-        return self._with_new_scol(col)
+        return self._with_new_scol(col)  # TODO: dtype?
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(
