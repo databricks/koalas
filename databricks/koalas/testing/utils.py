@@ -34,7 +34,7 @@ from databricks.koalas.series import Series
 from databricks.koalas.utils import default_session
 
 
-if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):  # type: ignore
     SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.enabled"
 else:
     SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.pyspark.enabled"

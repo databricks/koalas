@@ -52,7 +52,7 @@ def corr(kdf: "ks.DataFrame", method: str = "pearson") -> pd.DataFrame:
     assert method in ("pearson", "spearman")
     ndf, column_labels = to_numeric_df(kdf)
     corr = Correlation.corr(ndf, CORRELATION_OUTPUT_COLUMN, method)
-    pcorr = corr.toPandas()
+    pcorr = corr.toPandas()  # type: pd.DataFrame
     arr = pcorr.iloc[0, 0].toArray()
     if column_labels_level(column_labels) > 1:
         idx = pd.MultiIndex.from_tuples(column_labels)

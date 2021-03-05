@@ -19,6 +19,7 @@ import pandas as pd
 
 from databricks import koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, SQLTestUtils
+from databricks.koalas.utils import spark_column_equals
 from databricks.koalas.namespace import _get_index_map
 
 
@@ -314,7 +315,7 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertEqual(len(actual_scols), len(expected_column_names))
             for actual_scol, expected_column_name in zip(actual_scols, expected_column_names):
                 expected_scol = sdf[expected_column_name]
-                self.assertTrue(actual_scol._jc.equals(expected_scol._jc))
+                self.assertTrue(spark_column_equals(actual_scol, expected_scol))
             self.assertEqual(actual_labels, expected_labels)
 
         check(_get_index_map(sdf, "year"), (["year"], [("year",)]))

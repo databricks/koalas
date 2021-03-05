@@ -2432,7 +2432,7 @@ class Frame(object, metaclass=ABCMeta):
         >>> s.last_valid_index()  # doctest: +SKIP
         ('cow', 'weight')
         """
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):  # type: ignore
             raise RuntimeError("last_valid_index can be used in PySpark >= 3.0")
 
         data_spark_columns = self._internal.data_spark_columns

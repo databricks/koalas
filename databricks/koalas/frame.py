@@ -1294,7 +1294,7 @@ class DataFrame(Frame, Generic[T]):
             #
             # Aggregated output is usually pretty much small.
 
-            if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):  # type: ignore
                 return kdf.stack().droplevel(0)[list(func.keys())]
             else:
                 pdf = kdf._to_internal_pandas().stack()
@@ -2232,11 +2232,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             F.array(
                 *[
                     F.struct(
-                        [
-                            F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i))
-                            for i, col in enumerate(label)
-                        ]
-                        + [self._internal.spark_column_for(label).alias("value")]
+                        *(
+                            [
+                                F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i))
+                                for i, col in enumerate(label)
+                            ]
+                            + [self._internal.spark_column_for(label).alias("value")]
+                        )
                     )
                     for label in self._internal.column_labels
                 ]
@@ -2244,14 +2246,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         )
 
         exploded_df = self._internal.spark_frame.withColumn("pairs", pairs).select(
-            [
-                F.to_json(
-                    F.struct(
-                        F.array([scol for scol in self._internal.index_spark_columns]).alias("a")
-                    )
-                ).alias("index"),
-                F.col("pairs.*"),
-            ]
+            F.to_json(F.struct(F.array(*self._internal.index_spark_columns).alias("a"))).alias(
+                "index"
+            ),
+            F.col("pairs.*"),
         )
 
         # After that, executes pivot with key and its index column.
@@ -2500,7 +2498,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         spec = inspect.getfullargspec(func)
         return_sig = spec.annotations.get("return", None)
         should_infer_schema = return_sig is None
-        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"
+        should_use_map_in_pandas = LooseVersion(pyspark.__version__) >= "3.0"  # type: ignore
 
         def apply_func(pdf):
             pdf_or_pser = pdf.apply(func, axis=axis, args=args, **kwds)
@@ -2745,7 +2743,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     lambda c: func(c, *args, **kwargs),
                     returnType=force_decimal_precision_scale(
                         as_nullable_spark_type(kdf._internal.spark_type_for(output_label))
-                    ),
+                    ),  # type: ignore
                     functionType=PandasUDFType.SCALAR,
                 )
                 kser = self._kser_for(input_label)
@@ -3151,7 +3149,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # |                4|  4|500|             false|                 -4|             false|  ...
         # +-----------------+---+---+------------------+-------------------+------------------+--...
 
-        data_spark_columns = []
+        data_spark_columns = []  # type: List[Union[spark.Column, Series]]
         for label in self._internal.column_labels:
             data_spark_columns.append(
                 F.when(
@@ -4571,7 +4569,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         builder = self.to_spark(index_col=index_col).write.mode(mode)
         if partition_cols is not None:
             builder.partitionBy(partition_cols)
-        builder._set_opts(compression=compression)
+        builder._set_opts(compression=compression)  # type: ignore
         builder.options(**options).format("parquet").save(path)
 
     def to_orc(
@@ -6155,7 +6153,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4  1   True  1.0
         5  2  False  2.0
         """
-        from pyspark.sql.types import _parse_datatype_string
+        from pyspark.sql.types import _parse_datatype_string  # type: ignore
 
         if not is_list_like(include):
             include = (include,) if include is not None else ()
@@ -6464,7 +6462,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             (False, "last"): lambda x: Column(getattr(x._jc, "desc_nulls_last")()),
         }
         by = [mapper[(asc, na_position)](scol) for scol, asc in zip(by, ascending)]
-        sdf = self._internal.resolved_copy.spark_frame.sort(*(by + [NATURAL_ORDER_COLUMN_NAME]))
+        sdf = self._internal.resolved_copy.spark_frame.sort(
+            *(by + [F.col(NATURAL_ORDER_COLUMN_NAME)])
+        )
         kdf = DataFrame(self._internal.with_new_sdf(sdf))  # type: DataFrame
         if inplace:
             self._update_internal_frame(kdf._internal)
@@ -7081,7 +7081,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 % (set(values.keys()).difference(self.columns))
             )
 
-        data_spark_columns = []
+        data_spark_columns = []  # type: List[Union[spark.Column, Series]]
         if isinstance(values, dict):
             for i, col in enumerate(self.columns):
                 if col in values:
@@ -7318,7 +7318,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     for col in sdf.columns
                     if col not in HIDDEN_COLUMNS
                 ]
-                + list(HIDDEN_COLUMNS)
+                + [F.col(col) for col in HIDDEN_COLUMNS]
             )
             return internal.copy(
                 spark_frame=sdf,
@@ -7759,7 +7759,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             data_dtypes[self._internal.column_labels.index(column_labels)] = None  # TODO: dtype?
         sdf = update_sdf.select(
             [scol_for(update_sdf, col) for col in self._internal.spark_column_names]
-            + list(HIDDEN_COLUMNS)
+            + [F.col(col) for col in HIDDEN_COLUMNS]
         )
         internal = self._internal.with_new_sdf(sdf, data_dtypes=data_dtypes)
         self._update_internal_frame(internal, requires_same_anchor=False)
@@ -8185,8 +8185,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         formatted_perc = ["{:.0%}".format(p) for p in sorted(percentiles)]
         stats = ["count", "mean", "stddev", "min", *formatted_perc, "max"]
 
-        sdf = self._internal.spark_frame.select(*exprs).summary(stats)
-        sdf = sdf.replace("stddev", "std", subset="summary")
+        sdf = self._internal.spark_frame.select(*exprs).summary(*stats)
+        sdf = sdf.replace("stddev", "std", subset=["summary"])
 
         internal = InternalFrame(
             spark_frame=sdf,
@@ -9014,20 +9014,22 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         structs = [
             F.struct(
-                [F.lit(value).alias(index_column)]
-                + [
-                    (
-                        column_labels[label][value]
-                        if value in column_labels[label]
-                        else F.lit(None)
-                    ).alias(name)
-                    for label, name in zip(column_labels, data_columns)
-                ]
+                *(
+                    [F.lit(value).alias(index_column)]
+                    + [
+                        (
+                            column_labels[label][value]
+                            if value in column_labels[label]
+                            else F.lit(None)
+                        ).alias(name)
+                        for label, name in zip(column_labels, data_columns)
+                    ]
+                )
             ).alias(value)
             for value in index_values
         ]
 
-        pairs = F.explode(F.array(structs))
+        pairs = F.explode(F.array(*structs))
 
         sdf = self._internal.spark_frame.withColumn("pairs", pairs)
         sdf = sdf.select(
@@ -9278,8 +9280,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label, applied_col in zip(column_labels, applied):
             cols.append(
                 F.struct(
-                    [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(label)]
-                    + [applied_col.alias(value_column)]
+                    *(
+                        [
+                            F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i))
+                            for i, col in enumerate(label)
+                        ]
+                        + [applied_col.alias(value_column)]
+                    )
                 )
             )
 
@@ -9365,8 +9372,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         for label, applied_col in zip(column_labels, applied):
             cols.append(
                 F.struct(
-                    [F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i)) for i, col in enumerate(label)]
-                    + [applied_col.alias(value_column)]
+                    *(
+                        [
+                            F.lit(col).alias(SPARK_INDEX_NAME_FORMAT(i))
+                            for i, col in enumerate(label)
+                        ]
+                        + [applied_col.alias(value_column)]
+                    )
                 )
             )
 
@@ -9586,9 +9598,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 col = None
                 for index_scol in index_scols:
                     if col is None:
-                        col = index_scol.contains(like)
+                        col = index_scol.contains(like)  # type: ignore
                     else:
-                        col = col | index_scol.contains(like)
+                        col = col | index_scol.contains(like)  # type: ignore
                 return DataFrame(self._internal.with_filter(col))
             else:
                 column_labels = self._internal.column_labels
@@ -10968,7 +10980,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         else:
 
-            @pandas_udf(returnType=DoubleType())
+            @pandas_udf(returnType=DoubleType())  # type: ignore
             def calculate_columns_axis(*cols):
                 return pd.concat(cols, axis=1).mad(axis=1)
 
@@ -11054,7 +11066,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         7   whale
         8   zebra
         """
-        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
+        if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):  # type: ignore
             raise RuntimeError("tail can be used in PySpark >= 3.0")
         if not isinstance(n, int):
             raise TypeError("bad operand type for unary -: '{}'".format(type(n).__name__))

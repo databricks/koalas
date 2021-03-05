@@ -53,6 +53,11 @@ ERROR_MESSAGE_CANNOT_COMBINE = (
 )
 
 
+def spark_column_equals(scol_left: spark.Column, scol_right: spark.Column) -> bool:
+    """ Check if the given Spark Columns equal or not. """
+    return scol_left._jc.equals(scol_right._jc)  # type: ignore
+
+
 def same_anchor(
     this: Union["DataFrame", "IndexOpsMixin", "InternalFrame"],
     that: Union["DataFrame", "IndexOpsMixin", "InternalFrame"],
@@ -80,7 +85,7 @@ def same_anchor(
         this_internal.spark_frame is that_internal.spark_frame
         and this_internal.index_level == that_internal.index_level
         and all(
-            this_scol._jc.equals(that_scol._jc)
+            spark_column_equals(this_scol, that_scol._jc)
             for this_scol, that_scol in zip(
                 this_internal.index_spark_columns, that_internal.index_spark_columns
             )

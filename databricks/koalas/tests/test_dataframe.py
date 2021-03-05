@@ -2973,7 +2973,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(repr(ktable.index), repr(ptable.index))
 
     @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),
+        LooseVersion(pyspark.__version__) < LooseVersion("2.4"),  # type: ignore
         "stack won't work properly with PySpark<2.4",
     )
     def test_stack(self):
@@ -5136,7 +5136,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(p_items, k_items)
 
     @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),  # type: ignore
         "tail won't work properly with PySpark<3.0",
     )
     def test_tail(self):
@@ -5159,7 +5159,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.tail("10")
 
     @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0"),  # type: ignore
         "last_valid_index won't work properly with PySpark<3.0",
     )
     def test_last_valid_index(self):

@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable, is_list_like
 
-from pyspark.sql import Window, functions as F
+from pyspark.sql import Column, Window, functions as F
 from pyspark.sql.types import (
     FloatType,
     DoubleType,
@@ -41,7 +41,7 @@ from pyspark.sql.types import (
     StructType,
     StringType,
 )
-from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
+from pyspark.sql.functions import PandasUDFType, pandas_udf
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef import infer_return_type, SeriesType
@@ -1545,7 +1545,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 order_column = Column(c._jc.desc_nulls_last())
             else:
                 order_column = Column(c._jc.desc_nulls_first())
-            window = Window.partitionBy(groupkey_names).orderBy(
+            window = Window.partitionBy(*groupkey_names).orderBy(
                 order_column, NATURAL_ORDER_COLUMN_NAME
             )
             sdf = sdf.withColumn(
@@ -1624,7 +1624,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 order_column = Column(c._jc.asc_nulls_last())
             else:
                 order_column = Column(c._jc.asc_nulls_first())
-            window = Window.partitionBy(groupkey_names).orderBy(
+            window = Window.partitionBy(*groupkey_names).orderBy(
                 order_column, NATURAL_ORDER_COLUMN_NAME
             )
             sdf = sdf.withColumn(
@@ -1840,13 +1840,15 @@ class GroupBy(object, metaclass=ABCMeta):
         groupkey_scols = [kdf._internal.spark_column_for(label) for label in groupkey_labels]
 
         sdf = kdf._internal.spark_frame
-        tmp_col = verify_temp_column_name(sdf, "__row_number__")
+        tmp_col = cast(str, verify_temp_column_name(sdf, "__row_number__"))
 
         # This part is handled differently depending on whether it is a tail or a head.
         window = (
-            Window.partitionBy(groupkey_scols).orderBy(F.col(NATURAL_ORDER_COLUMN_NAME).asc())
+            Window.partitionBy(*groupkey_scols).orderBy(F.col(NATURAL_ORDER_COLUMN_NAME).asc())
             if asc
-            else Window.partitionBy(groupkey_scols).orderBy(F.col(NATURAL_ORDER_COLUMN_NAME).desc())
+            else Window.partitionBy(*groupkey_scols).orderBy(
+                F.col(NATURAL_ORDER_COLUMN_NAME).desc()
+            )
         )
 
         sdf = (
@@ -2922,12 +2924,12 @@ class SeriesGroupBy(GroupBy):
             + [NATURAL_ORDER_COLUMN_NAME]
         )
 
-        window = Window.partitionBy(groupkey_col_names).orderBy(
+        window = Window.partitionBy(*groupkey_col_names).orderBy(
             scol_for(sdf, self._kser._internal.data_spark_column_names[0]).asc(),
             NATURAL_ORDER_COLUMN_NAME,
         )
 
-        temp_rank_column = verify_temp_column_name(sdf, "__rank__")
+        temp_rank_column = cast(str, verify_temp_column_name(sdf, "__rank__"))
         sdf = (
             sdf.withColumn(temp_rank_column, F.row_number().over(window))
             .filter(F.col(temp_rank_column) <= n)
@@ -2999,12 +3001,12 @@ class SeriesGroupBy(GroupBy):
             + [NATURAL_ORDER_COLUMN_NAME]
         )
 
-        window = Window.partitionBy(groupkey_col_names).orderBy(
+        window = Window.partitionBy(*groupkey_col_names).orderBy(
             scol_for(sdf, self._kser._internal.data_spark_column_names[0]).desc(),
             NATURAL_ORDER_COLUMN_NAME,
         )
 
-        temp_rank_column = verify_temp_column_name(sdf, "__rank__")
+        temp_rank_column = cast(str, verify_temp_column_name(sdf, "__rank__"))
         sdf = (
             sdf.withColumn(temp_rank_column, F.row_number().over(window))
             .filter(F.col(temp_rank_column) <= n)

@@ -58,7 +58,7 @@ import pyarrow as pa
 import pyspark.sql.types as types
 
 try:
-    from pyspark.sql.types import to_arrow_type, from_arrow_type
+    from pyspark.sql.types import to_arrow_type, from_arrow_type  # type: ignore
 except ImportError:
     from pyspark.sql.pandas.types import to_arrow_type, from_arrow_type
 

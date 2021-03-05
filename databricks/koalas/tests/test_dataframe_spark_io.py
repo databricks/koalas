@@ -96,7 +96,7 @@ class DataFrameSparkIOTest(ReusedSQLTestCase, TestUtils):
             )
 
     @unittest.skipIf(
-        LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"),
+        LooseVersion(pyspark.__version__) < LooseVersion("3.0.0"),  # type: ignore
         "The test only works with Spark>=3.0",
     )
     def test_parquet_read_with_pandas_metadata(self):

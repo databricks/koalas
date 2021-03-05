@@ -2015,7 +2015,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                 cond = scol.isNull() | F.isnan(scol)
             else:
                 cond = scol.isNull()
-            map_scol = F.create_map(kvs)
+            map_scol = F.create_map(*kvs)
 
             null_scol = F.when(cond, F.lit(na_sentinel_code))
             new_scol = null_scol.otherwise(map_scol.getItem(scol))
@@ -3307,7 +3307,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
         if isinstance(func, list):
-            applied = []
+            applied = []  # type: List[Union[spark.Column, Series]]
             for f in func:
                 applied.append(self.apply(f, args=args, **kwargs).rename(f.__name__))
 
@@ -4996,7 +4996,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             )
 
         if isinstance(repeats, Series):
-            if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):
+            if LooseVersion(pyspark.__version__) < LooseVersion("2.4"):  # type: ignore
                 raise ValueError(
                     "`repeats` argument must be integer with Spark<2.4, but got {}".format(
                         type(repeats)
@@ -5510,7 +5510,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             scol_for(sdf_for_data, "values"), NATURAL_ORDER_COLUMN_NAME
         ).drop("values", NATURAL_ORDER_COLUMN_NAME)
 
-        tmp_join_key = verify_temp_column_name(sdf_for_data, "__tmp_join_key__")
+        tmp_join_key = cast(str, verify_temp_column_name(sdf_for_data, "__tmp_join_key__"))
         sdf_for_data = InternalFrame.attach_distributed_sequence_column(sdf_for_data, tmp_join_key)
         # sdf_for_index:                         sdf_for_data:
         # +----------------+-----------------+   +----------------+---+
@@ -5730,7 +5730,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             this_scol = this_data_scol.alias(this_column_label)
             that_scol = that_data_scol.alias(that_column_label)
 
-        sdf = sdf.select(index_scols + [this_scol, that_scol, NATURAL_ORDER_COLUMN_NAME])
+        sdf = sdf.select(index_scols + [this_scol, that_scol, F.col(NATURAL_ORDER_COLUMN_NAME)])
         internal = InternalFrame(
             spark_frame=sdf,
             index_spark_columns=[
