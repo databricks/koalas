@@ -161,6 +161,8 @@ jobs:
         # See also https://github.com/conda/conda/issues/7980
         source "$CONDA_PREFIX/etc/profile.d/conda.sh"
         conda activate test-environment
-        ./dev/lint-python
+        if [[ "$SPARK_VERSION" < "3.1" ]]; then
+          ./dev/lint-python
+        fi
         ./dev/pytest
     - uses: codecov/codecov-action@v1
