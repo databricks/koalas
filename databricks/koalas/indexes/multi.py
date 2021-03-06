@@ -480,21 +480,19 @@ class MultiIndex(Index):
             return self._is_monotonic_decreasing().all()
 
     def _is_monotonic_increasing(self):
-        scol = self.spark.column
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
         has_not_null = F.lit(True)
-        for field in self.spark.data_type[::-1]:
-            left = scol.getField(field.name)
-            right = prev.getField(field.name)
-            compare = MultiIndex._comparator_for_monotonic_increasing(field.dataType)
+        for scol in self._internal.index_spark_columns[::-1]:
+            data_type = self._internal.spark_type_for(scol)
+            prev = F.lag(scol, 1).over(window)
+            compare = MultiIndex._comparator_for_monotonic_increasing(data_type)
             # Since pandas 1.1.4, null value is not allowed at any levels of MultiIndex.
             # Therefore, we should check `has_not_null` over the all levels.
-            has_not_null = has_not_null & left.isNotNull()
-            cond = F.when(left.eqNullSafe(right), cond).otherwise(
-                compare(left, right, spark.Column.__gt__)
+            has_not_null = has_not_null & scol.isNotNull()
+            cond = F.when(scol.eqNullSafe(prev), cond).otherwise(
+                compare(scol, prev, spark.Column.__gt__)
             )
 
         cond = has_not_null & (prev.isNull() | cond)
@@ -524,21 +522,19 @@ class MultiIndex(Index):
         return compare_disallow_null
 
     def _is_monotonic_decreasing(self):
-        scol = self.spark.column
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-1, -1)
-        prev = F.lag(scol, 1).over(window)
 
         cond = F.lit(True)
         has_not_null = F.lit(True)
-        for field in self.spark.data_type[::-1]:
-            left = scol.getField(field.name)
-            right = prev.getField(field.name)
-            compare = MultiIndex._comparator_for_monotonic_decreasing(field.dataType)
+        for scol in self._internal.index_spark_columns[::-1]:
+            data_type = self._internal.spark_type_for(scol)
+            prev = F.lag(scol, 1).over(window)
+            compare = MultiIndex._comparator_for_monotonic_increasing(data_type)
             # Since pandas 1.1.4, null value is not allowed at any levels of MultiIndex.
             # Therefore, we should check `has_not_null` over the all levels.
-            has_not_null = has_not_null & left.isNotNull()
-            cond = F.when(left.eqNullSafe(right), cond).otherwise(
-                compare(left, right, spark.Column.__lt__)
+            has_not_null = has_not_null & scol.isNotNull()
+            cond = F.when(scol.eqNullSafe(prev), cond).otherwise(
+                compare(scol, prev, spark.Column.__lt__)
             )
 
         cond = has_not_null & (prev.isNull() | cond)
