@@ -110,3 +110,13 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
                 self.assert_eq(kidx.round(freq), pidx.round(freq))
 
         self._disallow_nanoseconds(self.kidxs[0].round)
+
+    def test_normalize(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(kidx.normalize(), pidx.normalize())
+
+    def test_strftime(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(
+                kidx.strftime(date_format="%B %d, %Y"), pidx.strftime(date_format="%B %d, %Y")
+            )

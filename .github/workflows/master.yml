@@ -89,26 +89,26 @@ jobs:
             pandas-version: 0.24.2
             pyarrow-version: 0.14.1
             logger: databricks.koalas.usage_logging.usage_logger
-          - python-version: 3.6
-            spark-version: 2.4.7
-            pandas-version: 0.25.3
-            pyarrow-version: 0.15.1
-            default-index-type: 'distributed-sequence'
           - python-version: 3.7
             spark-version: 2.4.7
             pandas-version: 0.25.3
-            pyarrow-version: 0.14.1
-          - python-version: 3.7
-            spark-version: 2.4.7
-            pandas-version: 1.0.5
             pyarrow-version: 0.15.1
             default-index-type: 'distributed-sequence'
           - python-version: 3.7
             spark-version: 3.0.2
-            pandas-version: 0.25.3
+            pandas-version: 1.0.5
             pyarrow-version: 1.0.1
+          - python-version: 3.7
+            spark-version: 3.1.1
+            pandas-version: 1.1.5
+            pyarrow-version: 2.0.0
+            default-index-type: 'distributed-sequence'
           - python-version: 3.8
             spark-version: 3.0.2
+            pandas-version: 1.1.5
+            pyarrow-version: 2.0.0
+          - python-version: 3.8
+            spark-version: 3.1.1
             pandas-version: 1.2.3
             pyarrow-version: 3.0.0
             default-index-type: 'distributed-sequence'
@@ -151,6 +151,8 @@ jobs:
         fi
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
+        # Disable mypy check for PySpark 3.1
+        if [[ "SPARK_VERSION" > "3.1" ]]; then sed -i '/mypy/d' requirements-dev.txt; fi
         # sphinx-plotly-directive is not available on Conda.
         sed -i '/sphinx-plotly-directive/d' requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
