@@ -152,7 +152,7 @@ jobs:
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
         sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
         # Disable mypy check for PySpark 3.1
-        if [[ "SPARK_VERSION" > "3.1" ]]; then sed -i '/mypy/d' requirements-dev.txt; fi
+        if [[ "$SPARK_VERSION" > "3.1" ]]; then sed -i '/mypy/d' requirements-dev.txt; fi
         # sphinx-plotly-directive is not available on Conda.
         sed -i '/sphinx-plotly-directive/d' requirements-dev.txt
         conda install -c conda-forge --yes --file requirements-dev.txt
