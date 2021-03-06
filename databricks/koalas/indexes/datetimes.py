@@ -525,7 +525,7 @@ class DatetimeIndex(Index):
 
     def month_name(self, locale: Optional[str] = None) -> Index:
         """
-        Return the month names of the DateTimeIndex with specified locale.
+        Return the month names of the DatetimeIndex with specified locale.
 
         Parameters
         ----------
