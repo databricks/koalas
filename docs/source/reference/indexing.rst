@@ -329,6 +329,8 @@ Time-specific operations
 .. autosummary::
    :toctree: api/
 
+   DatetimeIndex.normalize
+   DatetimeIndex.strftime
    DatetimeIndex.round
    DatetimeIndex.floor
    DatetimeIndex.ceil
