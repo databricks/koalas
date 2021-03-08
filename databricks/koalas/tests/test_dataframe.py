@@ -3808,6 +3808,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.rank().sort_index(), kdf.rank().sort_index())
+        self.assert_eq(pdf.rank().sum(), kdf.rank().sum())
         self.assert_eq(
             pdf.rank(ascending=False).sort_index(), kdf.rank(ascending=False).sort_index()
         )
@@ -3886,6 +3887,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.shift(3), kdf.shift(3))
+        self.assert_eq(pdf.shift().shift(-1), kdf.shift().shift(-1))
+        self.assert_eq(pdf.shift().sum().astype(int), kdf.shift().sum())
 
         # Need the expected result since pandas 0.23 does not support `fill_value` argument.
         pdf1 = pd.DataFrame(
@@ -3902,6 +3905,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.columns = columns
         kdf.columns = columns
         self.assert_eq(pdf.shift(3), kdf.shift(3))
+        self.assert_eq(pdf.shift().shift(-1), kdf.shift().shift(-1))
 
     def test_diff(self):
         pdf = pd.DataFrame(
@@ -3911,6 +3915,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(pdf.diff(), kdf.diff())
+        self.assert_eq(pdf.diff().diff(-1), kdf.diff().diff(-1))
+        self.assert_eq(pdf.diff().sum().astype(int), kdf.diff().sum())
 
         msg = "should be an int"
         with self.assertRaisesRegex(ValueError, msg):
@@ -4533,6 +4539,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.pct_change(2), pdf.pct_change(2), check_exact=False)
+        self.assert_eq(kdf.pct_change().sum(), pdf.pct_change().sum(), check_exact=False)
 
     def test_where(self):
         kdf = ks.from_pandas(self.pdf)
