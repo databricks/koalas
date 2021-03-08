@@ -767,7 +767,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             which is potentially expensive. In case of multi-index, all data are
             transferred to single node which can easily cause out-of-memory error currently.
 
-        .. note:: Disable the `spark.sql.optimizer.nestedSchemaPruning.enabled`
+        .. note:: Disable the Spark config `spark.sql.optimizer.nestedSchemaPruning.enabled`
             for multi-index if you're using Koalas < 1.7.0 with PySpark 3.1.1.
 
         Returns
@@ -845,7 +845,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             which is potentially expensive. In case of multi-index, all data are transferred
             to single node which can easily cause out-of-memory error currently.
 
-        .. note:: Disable the `spark.sql.optimizer.nestedSchemaPruning.enabled`
+        .. note:: Disable the Spark config `spark.sql.optimizer.nestedSchemaPruning.enabled`
             for multi-index if you're using Koalas < 1.7.0 with PySpark 3.1.1.
 
         Returns
