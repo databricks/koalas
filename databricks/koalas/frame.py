@@ -5404,12 +5404,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("replace currently doesn't supports regex")
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        if value is not None and not isinstance(value, (int, float, str, list, dict)):
+        if value is not None and not isinstance(value, (int, float, str, list, tuple, dict)):
             raise TypeError("Unsupported type {}".format(type(value).__name__))
-        if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
+        if to_replace is not None and not isinstance(
+            to_replace, (int, float, str, list, tuple, dict)
+        ):
             raise TypeError("Unsupported type {}".format(type(to_replace).__name__))
 
-        if isinstance(value, list) and isinstance(to_replace, list):
+        if isinstance(value, (list, tuple)) and isinstance(to_replace, (list, tuple)):
             if len(value) != len(to_replace):
                 raise ValueError("Length of to_replace and value must be same")
 

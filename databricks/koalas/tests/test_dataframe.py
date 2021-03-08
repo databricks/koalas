@@ -2598,11 +2598,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         ):
             kdf.replace(regex="")
 
-        with self.assertRaisesRegex(TypeError, "Unsupported type tuple"):
-            kdf.replace(value=(1, 2, 3))
-        with self.assertRaisesRegex(TypeError, "Unsupported type tuple"):
-            kdf.replace(to_replace=(1, 2, 3))
-
         with self.assertRaisesRegex(ValueError, "Length of to_replace and value must be same"):
             kdf.replace(to_replace=["Ironman"], value=["Spiderman", "Doctor Strange"])
 
@@ -2610,6 +2605,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             kdf.replace(["Ironman", "Captain America"], ["Rescue", "Hawkeye"]),
             pdf.replace(["Ironman", "Captain America"], ["Rescue", "Hawkeye"]),
+        )
+        self.assert_eq(
+            kdf.replace(("Ironman", "Captain America"), ("Rescue", "Hawkeye")),
+            pdf.replace(("Ironman", "Captain America"), ("Rescue", "Hawkeye")),
         )
 
         # inplace

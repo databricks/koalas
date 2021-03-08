@@ -4343,10 +4343,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if to_replace is None:
             return self.fillna(method="ffill")
-        if not isinstance(to_replace, (str, list, dict, int, float)):
-            raise ValueError("'to_replace' should be one of str, list, dict, int, float")
+        if not isinstance(to_replace, (str, list, tuple, dict, int, float)):
+            raise ValueError("'to_replace' should be one of str, list, tuple, dict, int, float")
         if regex:
             raise NotImplementedError("replace currently not support for regex")
+        to_replace = list(to_replace) if isinstance(to_replace, tuple) else to_replace
+        value = list(value) if isinstance(value, tuple) else value
         if isinstance(to_replace, list) and isinstance(value, list):
             if not len(to_replace) == len(value):
                 raise ValueError(
