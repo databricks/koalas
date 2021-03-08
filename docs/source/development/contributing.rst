@@ -146,14 +146,7 @@ Release Cadence
 ---------------
 
 In general, minor releases occur about every month. Therefore, Koalas 1.4.0 would generally be released about a month after 1.3.0.
-Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule
-The chart below is the expected release dates of minor releases.
-
-+------------+---------+
-| Date       | Version |
-+============+=========+
-| 03/08 2021 | 1.7.0   |
-+------------+---------+
+Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule.
 
 Release Instructions
 --------------------
