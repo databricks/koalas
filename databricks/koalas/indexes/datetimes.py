@@ -536,7 +536,7 @@ class DatetimeIndex(Index):
         Returns
         -------
         Index
-            Series of month names.
+            Index of month names.
 
         Examples
         --------
