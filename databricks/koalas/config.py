@@ -134,9 +134,9 @@ _options = [
     Option(
         key="compute.max_rows",
         doc=(
-            "'compute.max_rows' sets the limit of the current DataFrame. Set `None` to unlimit "
-            "the input length. When the limit is set, it is executed by the shortcut by "
-            "collecting the data into driver side, and then using pandas API. If the limit is "
+            "'compute.max_rows' sets the limit of the current Koalas DataFrame. Set `None` to "
+            "unlimit the input length. When the limit is set, it is executed by the shortcut by "
+            "collecting the data into the driver, and then using the pandas API. If the limit is "
             "unset, the operation is executed by PySpark. Default is 1000."
         ),
         default=1000,
