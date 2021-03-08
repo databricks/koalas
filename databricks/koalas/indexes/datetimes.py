@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from functools import partial
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from pandas.api.types import is_hashable
@@ -522,6 +522,52 @@ class DatetimeIndex(Index):
         disallow_nanoseconds(freq)
 
         return DatetimeIndex(self.to_series().dt.round(freq, *args, **kwargs))
+
+    def month_name(self, locale: Optional[str] = None) -> Index:
+        """
+        Return the month names of the DatetimeIndex with specified locale.
+
+        Parameters
+        ----------
+        locale : str, optional
+            Locale determining the language in which to return the month name.
+            Default is English locale.
+
+        Returns
+        -------
+        Index
+            Series of month names.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(start='2018-01', freq='M', periods=3)
+        >>> idx.month_name()
+        Index(['January', 'February', 'March'], dtype='object')
+        """
+        return Index(self.to_series().dt.month_name(locale))
+
+    def day_name(self, locale: Optional[str] = None) -> Index:
+        """
+        Return the day names of the series with specified locale.
+
+        Parameters
+        ----------
+        locale : str, optional
+            Locale determining the language in which to return the day name.
+            Default is English locale.
+
+        Returns
+        -------
+        Index
+            Index of day names.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(start='2018-01-01', freq='D', periods=3)
+        >>> idx.day_name()
+        Index(['Monday', 'Tuesday', 'Wednesday'], dtype='object')
+        """
+        return Index(self.to_series().dt.day_name(locale))
 
     def normalize(self) -> "DatetimeIndex":
         """
