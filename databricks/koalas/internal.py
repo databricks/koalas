@@ -395,7 +395,7 @@ class InternalFrame(object):
         data_spark_columns: Optional[List[spark.Column]] = None,
         data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[List[Optional[Tuple]]] = None,
-        freq: str = None,
+        freq: str = None
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -1024,7 +1024,7 @@ class InternalFrame(object):
         *,
         index_dtypes: Optional[List[Dtype]] = None,
         data_columns: Optional[List[str]] = None,
-        data_dtypes: Optional[List[Dtype]] = None,
+        data_dtypes: Optional[List[Dtype]] = None
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates by the specified Spark DataFrame.
 
@@ -1074,7 +1074,7 @@ class InternalFrame(object):
         column_labels: Optional[List[Tuple]] = None,
         data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
-        keep_order: bool = True,
+        keep_order: bool = True
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Columns or Series.
@@ -1177,7 +1177,7 @@ class InternalFrame(object):
         scol: spark.Column,
         *,
         dtype: Optional[Dtype] = None,
-        keep_order: bool = True,
+        keep_order: bool = True
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Column.
@@ -1226,7 +1226,7 @@ class InternalFrame(object):
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
         data_dtypes: Optional[Union[List[Dtype], _NoValueType]] = _NoValue,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
-        freq=_NoValue,
+        freq=_NoValue
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
@@ -1271,7 +1271,7 @@ class InternalFrame(object):
             data_spark_columns=data_spark_columns,
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
-            freq=freq,
+            freq=freq
         )
 
     @staticmethod
@@ -1331,5 +1331,5 @@ class InternalFrame(object):
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
-            freq=freq,
+            freq=freq
         )
