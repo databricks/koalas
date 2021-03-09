@@ -85,6 +85,7 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx.is_year_start, pd.Index(pidx.is_year_start))
             self.assert_eq(kidx.is_year_end, pd.Index(pidx.is_year_end))
             self.assert_eq(kidx.is_leap_year, pd.Index(pidx.is_leap_year))
+            self.assertEqual(kidx.freqstr, pidx.freqstr)
 
             if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
                 self.assert_eq(kidx.day_of_year, pidx.day_of_year)

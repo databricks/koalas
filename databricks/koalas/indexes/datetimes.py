@@ -432,6 +432,10 @@ class DatetimeIndex(Index):
 
     days_in_month.__doc__ = daysinmonth.__doc__
 
+    @property
+    def freqstr(self) -> Optional[str]:
+        return self._internal.freq
+
     # Methods
     def ceil(self, freq, *args, **kwargs) -> "DatetimeIndex":
         """
