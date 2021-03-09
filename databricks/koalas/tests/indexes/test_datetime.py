@@ -128,3 +128,7 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(
                 kidx.strftime(date_format="%B %d, %Y"), pidx.strftime(date_format="%B %d, %Y")
             )
+
+    def test_repr(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assertEqual(pidx.__repr__(), kidx.__repr__())
