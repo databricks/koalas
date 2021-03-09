@@ -1722,7 +1722,7 @@ def date_range(
     ...     start='2017-01-01', end='2017-01-04', closed=None
     ... )  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'],
-                   dtype='datetime64[ns]', freq='D')
+                   dtype='datetime64[ns]', freq=None)
 
     Use ``closed='left'`` to exclude `end` if it falls on the boundary.
 
