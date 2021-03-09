@@ -236,10 +236,10 @@ display.max_rows                1000           This sets the maximum number of r
                                                at the repr() in a dataframe. Set `None` to unlimit
                                                the input length. Default is 1000.
 compute.max_rows                1000           'compute.max_rows' sets the limit of the current
-                                               DataFrame. Set `None` to unlimit the input length.
-                                               When the limit is set, it is executed by the shortcut
-                                               by collecting the data into driver side, and then
-                                               using pandas API. If the limit is unset, the
+                                               Koalas DataFrame. Set `None` to unlimit the input
+                                               length. When the limit is set, it is executed by the
+                                               shortcut by collecting the data into the driver, and
+                                               then using the pandas API. If the limit is unset, the
                                                operation is executed by PySpark. Default is 1000.
 compute.shortcut_limit          1000           'compute.shortcut_limit' sets the limit for a
                                                shortcut. It computes specified number of rows and
@@ -270,6 +270,5 @@ plotting.sample_ratio           None           'plotting.sample_ratio' sets the 
                                                'plotting.max_rows' option.
 plotting.backend                'plotly'       Backend to use for plotting. Default is plotly.
                                                Supports any package that has a top-level `.plot`
-                                               method. Some options are: [matplotlib, plotly,
-                                               pandas_bokeh, pandas_altair].
+                                               method. Known options are: [matplotlib, plotly].
 =============================== ============== =====================================================
