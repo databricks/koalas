@@ -416,6 +416,7 @@ class InternalFrame(object):
         :param data_dtypes: list of dtypes.
                             the data dtypes.
         :param column_label_names: Names for each of the column index levels.
+        :param freq: pandas date offset strings for DatetimeIndex, otherwise None.
 
         See the examples below to refer what each parameter means.
 
@@ -1240,6 +1241,7 @@ class InternalFrame(object):
         :param data_dtypes: the data dtypes. If not specified, the original dtyeps are used.
         :param column_label_names: the new names of the column index levels.
                                    If not specified, the original ones are used.
+        :param freq: pandas date offset strings for DatetimeIndex, otherwise None.
         :return: the copied immutable InternalFrame.
         """
         if spark_frame is _NoValue:
