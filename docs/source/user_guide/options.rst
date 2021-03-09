@@ -272,5 +272,3 @@ plotting.backend                'plotly'       Backend to use for plotting. Defa
                                                Supports any package that has a top-level `.plot`
                                                method. Known options are: [matplotlib, plotly].
 =============================== ============== =====================================================
-
-
