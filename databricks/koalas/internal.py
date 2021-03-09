@@ -395,6 +395,7 @@ class InternalFrame(object):
         data_spark_columns: Optional[List[spark.Column]] = None,
         data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[List[Optional[Tuple]]] = None,
+        freq: str = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -622,6 +623,7 @@ class InternalFrame(object):
                 for column_label_name in column_label_names
             ), column_label_names
             self._column_label_names = column_label_names
+        self.freq = freq
 
     @staticmethod
     def attach_default_index(sdf, default_index_type=None):
@@ -1001,6 +1003,8 @@ class InternalFrame(object):
             name if name is None or len(name) > 1 else name[0] for name in self.index_names
         ]
 
+        pdf.index.freq = self.freq
+
         return pdf
 
     @lazy_property
@@ -1019,7 +1023,7 @@ class InternalFrame(object):
         *,
         index_dtypes: Optional[List[Dtype]] = None,
         data_columns: Optional[List[str]] = None,
-        data_dtypes: Optional[List[Dtype]] = None
+        data_dtypes: Optional[List[Dtype]] = None,
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame with the updates by the specified Spark DataFrame.
 
@@ -1069,7 +1073,7 @@ class InternalFrame(object):
         column_labels: Optional[List[Tuple]] = None,
         data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
-        keep_order: bool = True
+        keep_order: bool = True,
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Columns or Series.
@@ -1172,7 +1176,7 @@ class InternalFrame(object):
         scol: spark.Column,
         *,
         dtype: Optional[Dtype] = None,
-        keep_order: bool = True
+        keep_order: bool = True,
     ) -> "InternalFrame":
         """
         Copy the immutable InternalFrame with the updates by the specified Spark Column.
@@ -1220,7 +1224,8 @@ class InternalFrame(object):
         column_labels: Optional[Union[List[Tuple], _NoValueType]] = _NoValue,
         data_spark_columns: Optional[Union[List[spark.Column], _NoValueType]] = _NoValue,
         data_dtypes: Optional[Union[List[Dtype], _NoValueType]] = _NoValue,
-        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue
+        column_label_names: Optional[Union[List[Optional[Tuple]], _NoValueType]] = _NoValue,
+        freq=_NoValue,
     ) -> "InternalFrame":
         """ Copy the immutable InternalFrame.
 
@@ -1253,6 +1258,8 @@ class InternalFrame(object):
             data_dtypes = self.data_dtypes
         if column_label_names is _NoValue:
             column_label_names = self.column_label_names
+        if freq is _NoValue:
+            freq = self.freq
         return InternalFrame(
             spark_frame=spark_frame,
             index_spark_columns=index_spark_columns,
@@ -1262,6 +1269,7 @@ class InternalFrame(object):
             data_spark_columns=data_spark_columns,
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
+            freq=freq,
         )
 
     @staticmethod
@@ -1272,6 +1280,8 @@ class InternalFrame(object):
         :return: the created immutable DataFrame
         """
         pdf = pdf.copy()
+
+        freq = pdf.index.freq if isinstance(pdf.index, pd.DatetimeIndex) else None
 
         columns = pdf.columns
         data_columns = [name_like_string(col) for col in columns]
@@ -1319,4 +1329,5 @@ class InternalFrame(object):
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
+            freq=freq,
         )
