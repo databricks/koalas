@@ -1671,14 +1671,14 @@ def date_range(
     >>> ks.date_range(start='1/1/2018', periods=8)  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-01', '2018-01-02', '2018-01-03', '2018-01-04',
                    '2018-01-05', '2018-01-06', '2018-01-07', '2018-01-08'],
-                  dtype='datetime64[ns]', freq=None)
+                  dtype='datetime64[ns]', freq='D')
 
     Specify `end` and `periods`, the number of periods (days).
 
     >>> ks.date_range(end='1/1/2018', periods=8)  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-12-25', '2017-12-26', '2017-12-27', '2017-12-28',
                    '2017-12-29', '2017-12-30', '2017-12-31', '2018-01-01'],
-                  dtype='datetime64[ns]', freq=None)
+                  dtype='datetime64[ns]', freq='D')
 
     Specify `start`, `end`, and `periods`; the frequency is generated
     automatically (linearly spaced).
@@ -1697,14 +1697,14 @@ def date_range(
     >>> ks.date_range(start='1/1/2018', periods=5, freq='M')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-31', '2018-02-28', '2018-03-31', '2018-04-30',
                    '2018-05-31'],
-                  dtype='datetime64[ns]', freq=None)
+                  dtype='datetime64[ns]', freq='M')
 
     Multiples are allowed
 
     >>> ks.date_range(start='1/1/2018', periods=5, freq='3M')  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-31', '2018-04-30', '2018-07-31', '2018-10-31',
                    '2019-01-31'],
-                  dtype='datetime64[ns]', freq=None)
+                  dtype='datetime64[ns]', freq='3M')
 
     `freq` can also be specified as an Offset object.
 
@@ -1713,7 +1713,7 @@ def date_range(
     ... )  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2018-01-31', '2018-04-30', '2018-07-31', '2018-10-31',
                    '2019-01-31'],
-                  dtype='datetime64[ns]', freq=None)
+                  dtype='datetime64[ns]', freq='3M')
 
     `closed` controls whether to include `start` and `end` that are on the
     boundary. The default includes boundary points on either end.
@@ -1722,7 +1722,7 @@ def date_range(
     ...     start='2017-01-01', end='2017-01-04', closed=None
     ... )  # doctest: +NORMALIZE_WHITESPACE
     DatetimeIndex(['2017-01-01', '2017-01-02', '2017-01-03', '2017-01-04'],
-                   dtype='datetime64[ns]', freq=None)
+                   dtype='datetime64[ns]', freq='D')
 
     Use ``closed='left'`` to exclude `end` if it falls on the boundary.
 
@@ -1736,7 +1736,7 @@ def date_range(
     >>> ks.date_range(
     ...     start='2017-01-01', end='2017-01-04', closed='right'
     ... )  # doctest: +NORMALIZE_WHITESPACE
-    DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'], dtype='datetime64[ns]', freq=None)
+    DatetimeIndex(['2017-01-02', '2017-01-03', '2017-01-04'], dtype='datetime64[ns]', freq='D')
     """
     assert freq not in ["N", "ns"], "nanoseconds is not supported"
     assert tz is None, "Localized DatetimeIndex is not supported"
