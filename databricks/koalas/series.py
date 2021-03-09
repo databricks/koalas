@@ -1734,7 +1734,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         2014-02-13    31.0
         2014-02-14    22.0
         2014-02-15    35.0
-        Name: temp_celsius, dtype: float64
+        Freq: D, Name: temp_celsius, dtype: float64
 
         >>> s2 = ks.Series(["low", "low", "medium"],
         ...                index=pd.DatetimeIndex(['2014-02-12', '2014-02-13',

@@ -161,7 +161,7 @@ class DatetimeMethods(object):
         2017-01-06    4
         2017-01-07    5
         2017-01-08    6
-        dtype: int64
+        Freq: D, dtype: int64
         """
 
         def pandas_dayofweek(s) -> "ks.Series[np.int64]":
