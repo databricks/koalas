@@ -395,7 +395,7 @@ class InternalFrame(object):
         data_spark_columns: Optional[List[spark.Column]] = None,
         data_dtypes: Optional[List[Dtype]] = None,
         column_label_names: Optional[List[Optional[Tuple]]] = None,
-        freq: str = None
+        freq: str = None,
     ) -> None:
         """
         Create a new internal immutable DataFrame to manage Spark DataFrame, column fields and
@@ -1271,7 +1271,7 @@ class InternalFrame(object):
             data_spark_columns=data_spark_columns,
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
-            freq=freq
+            freq=freq,
         )
 
     @staticmethod
@@ -1331,5 +1331,5 @@ class InternalFrame(object):
             data_spark_columns=[scol_for(sdf, col) for col in data_columns],
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
-            freq=freq
+            freq=freq,
         )
