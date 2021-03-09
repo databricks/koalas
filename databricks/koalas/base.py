@@ -767,6 +767,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             which is potentially expensive. In case of multi-index, all data are
             transferred to single node which can easily cause out-of-memory error currently.
 
+        .. note:: Disable the Spark config `spark.sql.optimizer.nestedSchemaPruning.enabled`
+            for multi-index if you're using Koalas < 1.7.0 with PySpark 3.1.1.
+
         Returns
         -------
         is_monotonic : bool
@@ -841,6 +844,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             and aggregate multiple times to check the order locally and globally,
             which is potentially expensive. In case of multi-index, all data are transferred
             to single node which can easily cause out-of-memory error currently.
+
+        .. note:: Disable the Spark config `spark.sql.optimizer.nestedSchemaPruning.enabled`
+            for multi-index if you're using Koalas < 1.7.0 with PySpark 3.1.1.
 
         Returns
         -------
@@ -1403,9 +1409,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> df.index.shift(periods=3, fill_value=0)
         Int64Index([0, 0, 0, 0, 1], dtype='int64')
         """
-        return self._shift(periods, fill_value)
+        return self._shift(periods, fill_value).spark.analyzed
 
-    def _shift(self, periods, fill_value, part_cols=()):
+    def _shift(self, periods, fill_value, *, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError("periods should be an int; however, got [%s]" % type(periods).__name__)
 
@@ -1417,7 +1423,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
-        return self._with_new_scol(col)  # TODO: dtype?
+        return self._with_new_scol(col, dtype=self.dtype)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(

@@ -94,7 +94,7 @@ def gen_release_notes(path):
     shutil.rmtree(whatsnew_dir, ignore_errors=True)
     os.mkdir(whatsnew_dir)
 
-    with open("%s/index.rst" % whatsnew_dir, "a") as index_file:
+    with open("%s/index.rst" % whatsnew_dir, "a", encoding="utf-8") as index_file:
         title = "Release Notes"
 
         index_file.write("=" * len(title))
@@ -126,7 +126,8 @@ def gen_release_notes(path):
             index_file.write("\n")
             index_file.write("\n")
 
-            with open("%s/%s.rst" % (whatsnew_dir, tag_name), "a") as release_file:
+            with open("%s/%s.rst" % (whatsnew_dir, tag_name), "a", encoding="utf-8") \
+                    as release_file:
                 release_file.write("=" * len(name))
                 release_file.write("\n")
                 release_file.write(name)

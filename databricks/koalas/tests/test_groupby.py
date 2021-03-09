@@ -1083,6 +1083,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby(pdf.b // 5)["a"].diff().sort_index(),
         )
 
+        self.assert_eq(kdf.groupby("b").diff().sum(), pdf.groupby("b").diff().sum().astype(int))
+        self.assert_eq(kdf.groupby(["b"])["a"].diff().sum(), pdf.groupby(["b"])["a"].diff().sum())
+
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
         pdf.columns = columns
@@ -1125,6 +1128,9 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
             kdf.groupby(kdf.b // 5)["a"].rank().sort_index(),
             pdf.groupby(pdf.b // 5)["a"].rank().sort_index(),
         )
+
+        self.assert_eq(kdf.groupby("b").rank().sum(), pdf.groupby("b").rank().sum())
+        self.assert_eq(kdf.groupby(["b"])["a"].rank().sum(), pdf.groupby(["b"])["a"].rank().sum())
 
         # multi-index columns
         columns = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
@@ -1831,6 +1837,12 @@ class GroupByTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kdf.a.rename().groupby(kdf.b.rename()).shift().sort_index(),
             pdf.a.rename().groupby(pdf.b.rename()).shift().sort_index(),
+        )
+
+        self.assert_eq(kdf.groupby("a").shift().sum(), pdf.groupby("a").shift().sum().astype(int))
+        self.assert_eq(
+            kdf.a.rename().groupby(kdf.b).shift().sum(),
+            pdf.a.rename().groupby(pdf.b).shift().sum(),
         )
 
         # multi-index columns

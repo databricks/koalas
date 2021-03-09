@@ -1727,6 +1727,60 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser ** pser_other, (kser ** kser_other).sort_index())
         self.assert_eq(pser.rpow(pser_other), kser.rpow(kser_other).sort_index())
 
+    def test_shift(self):
+        pdf = pd.DataFrame(
+            {
+                "Col1": [10, 20, 15, 30, 45],
+                "Col2": [13, 23, 18, 33, 48],
+                "Col3": [17, 27, 22, 37, 52],
+            },
+            index=np.random.rand(5),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pdf.shift().loc[pdf["Col1"] == 20].astype(int), kdf.shift().loc[kdf["Col1"] == 20]
+        )
+        self.assert_eq(
+            pdf["Col2"].shift().loc[pdf["Col1"] == 20].astype(int),
+            kdf["Col2"].shift().loc[kdf["Col1"] == 20],
+        )
+
+    def test_diff(self):
+        pdf = pd.DataFrame(
+            {
+                "Col1": [10, 20, 15, 30, 45],
+                "Col2": [13, 23, 18, 33, 48],
+                "Col3": [17, 27, 22, 37, 52],
+            },
+            index=np.random.rand(5),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            pdf.diff().loc[pdf["Col1"] == 20].astype(int), kdf.diff().loc[kdf["Col1"] == 20]
+        )
+        self.assert_eq(
+            pdf["Col2"].diff().loc[pdf["Col1"] == 20].astype(int),
+            kdf["Col2"].diff().loc[kdf["Col1"] == 20],
+        )
+
+    def test_rank(self):
+        pdf = pd.DataFrame(
+            {
+                "Col1": [10, 20, 15, 30, 45],
+                "Col2": [13, 23, 18, 33, 48],
+                "Col3": [17, 27, 22, 37, 52],
+            },
+            index=np.random.rand(5),
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.rank().loc[pdf["Col1"] == 20], kdf.rank().loc[kdf["Col1"] == 20])
+        self.assert_eq(
+            pdf["Col2"].rank().loc[pdf["Col1"] == 20], kdf["Col2"].rank().loc[kdf["Col1"] == 20]
+        )
+
 
 class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
     @classmethod

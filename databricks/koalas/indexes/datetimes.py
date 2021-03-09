@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from functools import partial
-from typing import Any
+from typing import Any, Optional
 
 import pandas as pd
 from pandas.api.types import is_hashable
@@ -222,7 +222,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range('2016-12-31', '2017-01-08', freq='D'))
+        >>> idx = ks.date_range('2016-12-31', '2017-01-08', freq='D')
         >>> idx.dayofweek
         Int64Index([5, 6, 0, 1, 2, 3, 4, 5, 6], dtype='int64')
         """
@@ -277,7 +277,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range("2018-02-27", periods=3))
+        >>> idx = ks.date_range("2018-02-27", periods=3)
         >>> idx.is_month_start
         Index([False, False, True], dtype='object')
         """
@@ -300,7 +300,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range("2018-02-27", periods=3))
+        >>> idx = ks.date_range("2018-02-27", periods=3)
         >>> idx.is_month_end
         Index([False, True, False], dtype='object')
         """
@@ -323,7 +323,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range('2017-03-30', periods=4))
+        >>> idx = ks.date_range('2017-03-30', periods=4)
         >>> idx.is_quarter_start
         Index([False, False, True, False], dtype='object')
         """
@@ -346,7 +346,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range('2017-03-30', periods=4))
+        >>> idx = ks.date_range('2017-03-30', periods=4)
         >>> idx.is_quarter_end
         Index([False, True, False, False], dtype='object')
         """
@@ -368,7 +368,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range("2017-12-30", periods=3))
+        >>> idx = ks.date_range("2017-12-30", periods=3)
         >>> idx.is_year_start
         Index([False, False, True], dtype='object')
         """
@@ -390,7 +390,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range("2017-12-30", periods=3))
+        >>> idx = ks.date_range("2017-12-30", periods=3)
         >>> idx.is_year_end
         Index([False, True, False], dtype='object')
         """
@@ -413,7 +413,7 @@ class DatetimeIndex(Index):
 
         Examples
         --------
-        >>> idx = ks.from_pandas(pd.date_range("2012-01-01", "2015-01-01", freq="Y"))
+        >>> idx = ks.date_range("2012-01-01", "2015-01-01", freq="Y")
         >>> idx.is_leap_year
         Index([True, False, False], dtype='object')
         """
@@ -431,3 +431,210 @@ class DatetimeIndex(Index):
         return Index(self.to_series().dt.days_in_month)
 
     days_in_month.__doc__ = daysinmonth.__doc__
+
+    # Methods
+    def ceil(self, freq, *args, **kwargs) -> "DatetimeIndex":
+        """
+        Perform ceil operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to ceil the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        Returns
+        -------
+        DatetimeIndex
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.date_range('1/1/2018 11:59:00', periods=3, freq='min')
+        >>> rng.ceil('H')  # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2018-01-01 12:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 13:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        disallow_nanoseconds(freq)
+
+        return DatetimeIndex(self.to_series().dt.ceil(freq, *args, **kwargs))
+
+    def floor(self, freq, *args, **kwargs) -> "DatetimeIndex":
+        """
+        Perform floor operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to floor the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        Returns
+        -------
+        DatetimeIndex
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.date_range('1/1/2018 11:59:00', periods=3, freq='min')
+        >>> rng.floor("H")  # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2018-01-01 11:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 12:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        disallow_nanoseconds(freq)
+
+        return DatetimeIndex(self.to_series().dt.floor(freq, *args, **kwargs))
+
+    def round(self, freq, *args, **kwargs) -> "DatetimeIndex":
+        """
+        Perform round operation on the data to the specified freq.
+
+        Parameters
+        ----------
+        freq : str or Offset
+            The frequency level to round the index to. Must be a fixed
+            frequency like 'S' (second) not 'ME' (month end).
+
+        Returns
+        -------
+        DatetimeIndex
+
+        Raises
+        ------
+        ValueError if the `freq` cannot be converted.
+
+        Examples
+        --------
+        >>> rng = ks.date_range('1/1/2018 11:59:00', periods=3, freq='min')
+        >>> rng.round("H")  # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2018-01-01 12:00:00', '2018-01-01 12:00:00',
+                       '2018-01-01 12:00:00'],
+                      dtype='datetime64[ns]', freq=None)
+        """
+        disallow_nanoseconds(freq)
+
+        return DatetimeIndex(self.to_series().dt.round(freq, *args, **kwargs))
+
+    def month_name(self, locale: Optional[str] = None) -> Index:
+        """
+        Return the month names of the DatetimeIndex with specified locale.
+
+        Parameters
+        ----------
+        locale : str, optional
+            Locale determining the language in which to return the month name.
+            Default is English locale.
+
+        Returns
+        -------
+        Index
+            Index of month names.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(start='2018-01', freq='M', periods=3)
+        >>> idx.month_name()
+        Index(['January', 'February', 'March'], dtype='object')
+        """
+        return Index(self.to_series().dt.month_name(locale))
+
+    def day_name(self, locale: Optional[str] = None) -> Index:
+        """
+        Return the day names of the series with specified locale.
+
+        Parameters
+        ----------
+        locale : str, optional
+            Locale determining the language in which to return the day name.
+            Default is English locale.
+
+        Returns
+        -------
+        Index
+            Index of day names.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(start='2018-01-01', freq='D', periods=3)
+        >>> idx.day_name()
+        Index(['Monday', 'Tuesday', 'Wednesday'], dtype='object')
+        """
+        return Index(self.to_series().dt.day_name(locale))
+
+    def normalize(self) -> "DatetimeIndex":
+        """
+        Convert times to midnight.
+
+        The time component of the date-time is converted to midnight i.e.
+        00:00:00. This is useful in cases, when the time does not matter.
+        Length is unaltered. The timezones are unaffected.
+
+        This method is available on Series with datetime values under
+        the ``.dt`` accessor.
+
+        Returns
+        -------
+        DatetimeIndex
+            The same type as the original data.
+
+        See Also
+        --------
+        floor : Floor the series to the specified freq.
+        ceil : Ceil the series to the specified freq.
+        round : Round the series to the specified freq.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(start='2014-08-01 10:00', freq='H', periods=3)
+        >>> idx.normalize()
+        DatetimeIndex(['2014-08-01', '2014-08-01', '2014-08-01'], dtype='datetime64[ns]', freq=None)
+        """
+        return DatetimeIndex(self.to_series().dt.normalize())
+
+    def strftime(self, date_format: str) -> Index:
+        """
+        Convert to a string Index using specified date_format.
+
+        Return an Index of formatted strings specified by date_format, which
+        supports the same string format as the python standard library. Details
+        of the string format can be found in python string format
+        doc.
+
+        Parameters
+        ----------
+        date_format : str
+            Date format string (e.g. "%%Y-%%m-%%d").
+
+        Returns
+        -------
+        Index
+            Index of formatted strings.
+
+        See Also
+        --------
+        normalize : Return series with times to midnight.
+        round : Round the series to the specified freq.
+        floor : Floor the series to the specified freq.
+
+        Examples
+        --------
+        >>> idx = ks.date_range(pd.Timestamp("2018-03-10 09:00"), periods=3, freq='s')
+        >>> idx.strftime('%B %d, %Y, %r')  # doctest: +NORMALIZE_WHITESPACE
+        Index(['March 10, 2018, 09:00:00 AM', 'March 10, 2018, 09:00:01 AM',
+               'March 10, 2018, 09:00:02 AM'],
+              dtype='object')
+        """
+        return Index(self.to_series().dt.strftime(date_format))
+
+
+def disallow_nanoseconds(freq):
+    if freq in ["N", "ns"]:
+        raise ValueError("nanoseconds is not supported")

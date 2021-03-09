@@ -701,7 +701,7 @@ class GroupBy(object, metaclass=ABCMeta):
         Name: a, dtype: float64
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._diff(periods, part_cols=sg._groupkeys_scols), should_resolve=True
         )
 
     def cumcount(self, ascending=True) -> Series:
@@ -1486,7 +1486,8 @@ class GroupBy(object, metaclass=ABCMeta):
 
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._rank(method, ascending, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._rank(method, ascending, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
         )
 
     # TODO: add axis parameter
@@ -2017,7 +2018,8 @@ class GroupBy(object, metaclass=ABCMeta):
         8  0
         """
         return self._apply_series_op(
-            lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols)
+            lambda sg: sg._kser._shift(periods, fill_value, part_cols=sg._groupkeys_scols),
+            should_resolve=True,
         )
 
     def transform(self, func, *args, **kwargs) -> Union[DataFrame, Series]:

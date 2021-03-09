@@ -3521,9 +3521,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3    3.0
         Name: A, dtype: float64
         """
-        return self._rank(method, ascending)
+        return self._rank(method, ascending).spark.analyzed
 
-    def _rank(self, method="average", ascending=True, part_cols=()):
+    def _rank(self, method="average", ascending=True, *, part_cols=()):
         if method not in ["average", "min", "max", "first", "dense"]:
             msg = "method must be one of 'average', 'min', 'max', 'first', 'dense'"
             raise ValueError(msg)
@@ -3652,9 +3652,9 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         5     NaN
         Name: c, dtype: float64
         """
-        return self._diff(periods)
+        return self._diff(periods).spark.analyzed
 
-    def _diff(self, periods, part_cols=()):
+    def _diff(self, periods, *, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError("periods should be an int; however, got [%s]" % type(periods).__name__)
         window = (
@@ -4792,7 +4792,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         window = Window.orderBy(NATURAL_ORDER_COLUMN_NAME).rowsBetween(-periods, -periods)
         prev_row = F.lag(scol, periods).over(window)
 
-        return self._with_new_scol((scol - prev_row) / prev_row)
+        return self._with_new_scol((scol - prev_row) / prev_row).spark.analyzed
 
     def combine_first(self, other) -> "Series":
         """

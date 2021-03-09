@@ -17,8 +17,8 @@
 from distutils.version import LooseVersion
 
 import pandas as pd
-import databricks.koalas as ks
 
+import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
@@ -57,6 +57,10 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
     def idx_pairs(self):
         return list(zip(self.kidxs, self.pidxs))
 
+    def _disallow_nanoseconds(self, f):
+        self.assertRaises(ValueError, lambda: f(freq="ns"))
+        self.assertRaises(ValueError, lambda: f(freq="N"))
+
     def test_properties(self):
         for kidx, pidx in self.idx_pairs:
             self.assert_eq(kidx.year, pidx.year)
@@ -85,3 +89,42 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
             if LooseVersion(pd.__version__) >= LooseVersion("1.2.0"):
                 self.assert_eq(kidx.day_of_year, pidx.day_of_year)
                 self.assert_eq(kidx.day_of_week, pidx.day_of_week)
+
+    def test_ceil(self):
+        for kidx, pidx in self.idx_pairs:
+            for freq in self.fixed_freqs:
+                self.assert_eq(kidx.ceil(freq), pidx.ceil(freq))
+
+        self._disallow_nanoseconds(self.kidxs[0].ceil)
+
+    def test_floor(self):
+        for kidx, pidx in self.idx_pairs:
+            for freq in self.fixed_freqs:
+                self.assert_eq(kidx.floor(freq), pidx.floor(freq))
+
+        self._disallow_nanoseconds(self.kidxs[0].floor)
+
+    def test_round(self):
+        for kidx, pidx in self.idx_pairs:
+            for freq in self.fixed_freqs:
+                self.assert_eq(kidx.round(freq), pidx.round(freq))
+
+        self._disallow_nanoseconds(self.kidxs[0].round)
+
+    def test_day_name(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(kidx.day_name(), pidx.day_name())
+
+    def test_month_name(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(kidx.day_name(), pidx.day_name())
+
+    def test_normalize(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(kidx.normalize(), pidx.normalize())
+
+    def test_strftime(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(
+                kidx.strftime(date_format="%B %d, %Y"), pidx.strftime(date_format="%B %d, %Y")
+            )

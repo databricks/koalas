@@ -67,6 +67,57 @@ class NamespaceTest(ReusedSQLTestCase, SQLTestUtils):
             ks.to_datetime([1, 2, 3], unit="D", origin=pd.Timestamp("1960-01-01")),
         )
 
+    def test_date_range(self):
+        self.assert_eq(
+            ks.date_range(start="1/1/2018", end="1/08/2018"),
+            pd.date_range(start="1/1/2018", end="1/08/2018"),
+        )
+        self.assert_eq(
+            ks.date_range(start="1/1/2018", periods=8), pd.date_range(start="1/1/2018", periods=8)
+        )
+        self.assert_eq(
+            ks.date_range(end="1/1/2018", periods=8), pd.date_range(end="1/1/2018", periods=8)
+        )
+        self.assert_eq(
+            ks.date_range(start="2018-04-24", end="2018-04-27", periods=3),
+            pd.date_range(start="2018-04-24", end="2018-04-27", periods=3),
+        )
+
+        self.assert_eq(
+            ks.date_range(start="1/1/2018", periods=5, freq="M"),
+            pd.date_range(start="1/1/2018", periods=5, freq="M"),
+        )
+
+        self.assert_eq(
+            ks.date_range(start="1/1/2018", periods=5, freq="3M"),
+            pd.date_range(start="1/1/2018", periods=5, freq="3M"),
+        )
+
+        self.assert_eq(
+            ks.date_range(start="1/1/2018", periods=5, freq=pd.offsets.MonthEnd(3)),
+            pd.date_range(start="1/1/2018", periods=5, freq=pd.offsets.MonthEnd(3)),
+        )
+
+        self.assert_eq(
+            ks.date_range(start="2017-01-01", end="2017-01-04", closed="left"),
+            pd.date_range(start="2017-01-01", end="2017-01-04", closed="left"),
+        )
+
+        self.assert_eq(
+            ks.date_range(start="2017-01-01", end="2017-01-04", closed="right"),
+            pd.date_range(start="2017-01-01", end="2017-01-04", closed="right"),
+        )
+
+        self.assertRaises(
+            AssertionError, lambda: ks.date_range(start="1/1/2018", periods=5, tz="Asia/Tokyo")
+        )
+        self.assertRaises(
+            AssertionError, lambda: ks.date_range(start="1/1/2018", periods=5, freq="ns")
+        )
+        self.assertRaises(
+            AssertionError, lambda: ks.date_range(start="1/1/2018", periods=5, freq="N")
+        )
+
     def test_concat_index_axis(self):
         pdf = pd.DataFrame({"A": [0, 2, 4], "B": [1, 3, 5], "C": [6, 7, 8]})
         # TODO: pdf.columns.names = ["ABC"]
