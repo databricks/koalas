@@ -46,7 +46,6 @@ class MissingPandasLikeIndex(object):
     # Functions
     argsort = _unsupported_function("argsort")
     asof_locs = _unsupported_function("asof_locs")
-    factorize = _unsupported_function("factorize")
     format = _unsupported_function("format")
     get_indexer = _unsupported_function("get_indexer")
     get_indexer_for = _unsupported_function("get_indexer_for")
