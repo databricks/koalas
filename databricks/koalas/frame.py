@@ -5322,11 +5322,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        to_replace : int, float, string, list or dict
+        to_replace : int, float, string, list, tuple or dict
             Value to be replaced.
-        value : int, float, string, or list
+        value : int, float, string, list or tuple
             Value to use to replace holes. The replacement value must be an int, float,
-            or string. If value is a list, value should be of the same length with to_replace.
+            or string.
+            If value is a list or tuple, value should be of the same length with to_replace.
         inplace : boolean, default False
             Fill in place (do not create a new object)
 
@@ -5404,12 +5405,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("replace currently doesn't supports regex")
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        if value is not None and not isinstance(value, (int, float, str, list, dict)):
+        if value is not None and not isinstance(value, (int, float, str, list, tuple, dict)):
             raise TypeError("Unsupported type {}".format(type(value).__name__))
-        if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
+        if to_replace is not None and not isinstance(
+            to_replace, (int, float, str, list, tuple, dict)
+        ):
             raise TypeError("Unsupported type {}".format(type(to_replace).__name__))
 
-        if isinstance(value, list) and isinstance(to_replace, list):
+        if isinstance(value, (list, tuple)) and isinstance(to_replace, (list, tuple)):
             if len(value) != len(to_replace):
                 raise ValueError("Length of to_replace and value must be same")
 

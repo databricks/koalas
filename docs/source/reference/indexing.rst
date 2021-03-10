@@ -50,6 +50,7 @@ Modifying and computations
    Index.copy
    Index.delete
    Index.equals
+   Index.factorize
    Index.identical
    Index.insert
    Index.is_boolean
