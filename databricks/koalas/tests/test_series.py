@@ -1682,8 +1682,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.replace({}), pser.replace({}))
 
         self.assert_eq(kser.replace(np.nan, 45), pser.replace(np.nan, 45))
+        self.assert_eq(kser.replace([10, 15], 45), pser.replace([10, 15], 45))
+        self.assert_eq(kser.replace((10, 15), 45), pser.replace((10, 15), 45))
+        self.assert_eq(kser.replace([10, 15], [45, 50]), pser.replace([10, 15], [45, 50]))
+        self.assert_eq(kser.replace((10, 15), (45, 50)), pser.replace((10, 15), (45, 50)))
 
-        msg = "'to_replace' should be one of str, list, dict, int, float"
+        msg = "'to_replace' should be one of str, list, tuple, dict, int, float"
         with self.assertRaisesRegex(ValueError, msg):
             kser.replace(ks.range(5))
         msg = "Replacement lists must match in length. Expecting 3 got 2"

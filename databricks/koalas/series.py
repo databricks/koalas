@@ -4196,7 +4196,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        to_replace : str, list, dict, Series, int, float, or None
+        to_replace : str, list, tuple, dict, Series, int, float, or None
             How to find the values that will be replaced.
             * numeric, str:
 
@@ -4205,7 +4205,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             * list of str or numeric:
 
-                - if to_replace and value are both lists, they must be the same length.
+                - if to_replace and value are both lists or tuples, they must be the same length.
                 - str and numeric rules apply as above.
 
             * dict:
@@ -4224,7 +4224,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
             See the examples section for examples of each of these.
 
-        value : scalar, dict, list, str default None
+        value : scalar, dict, list, tuple, str default None
             Value to replace any values matching to_replace with.
             For a DataFrame a dict of values can be used to specify which value to use
             for each column (columns not in the dict will not be filled).
@@ -4343,10 +4343,12 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         if to_replace is None:
             return self.fillna(method="ffill")
-        if not isinstance(to_replace, (str, list, dict, int, float)):
-            raise ValueError("'to_replace' should be one of str, list, dict, int, float")
+        if not isinstance(to_replace, (str, list, tuple, dict, int, float)):
+            raise ValueError("'to_replace' should be one of str, list, tuple, dict, int, float")
         if regex:
             raise NotImplementedError("replace currently not support for regex")
+        to_replace = list(to_replace) if isinstance(to_replace, tuple) else to_replace
+        value = list(value) if isinstance(value, tuple) else value
         if isinstance(to_replace, list) and isinstance(value, list):
             if not len(to_replace) == len(value):
                 raise ValueError(
