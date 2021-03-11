@@ -75,6 +75,37 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, expected_error_message):
             1 - kdf["a"]
 
+    def test_arithmetic_op_exceptions(self):
+        kser = self.ks_start_date
+        py_datetime = self.pd_start_date.dt.to_pydatetime()
+        datetime_index = ks.Index(self.pd_start_date)
+
+        for other in [1, 0.1, kser, datetime_index, py_datetime]:
+            expected_err_msg = "addition can not be applied to date times."
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser + other)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other + kser)
+
+            expected_err_msg = "multiplication can not be applied to date times."
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser * other)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other * kser)
+
+            expected_err_msg = "division can not be applied to date times."
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser / other)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other / kser)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser // other)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other // kser)
+
+            expected_err_msg = "modulo can not be applied to date times."
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser % other)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other % kser)
+
+        ks.set_option("compute.ops_on_diff_frames", True)
+        for other in [1, 0.1, py_datetime]:
+            expected_err_msg = "datetime subtraction can only be applied to datetime series."
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser - other)
+
+        self.assertRaises(NotImplementedError, lambda: py_datetime - kser)
+
     def test_date_subtraction(self):
         pdf = self.pdf1
         kdf = ks.from_pandas(pdf)
