@@ -2231,3 +2231,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kidx1 * 10 + kidx2, pidx1 * 10 + pidx2)
         else:
             self.assert_eq(kidx1 * 10 + kidx2, (pidx1 * 10 + pidx2).rename(None))
+
+    def test_factorize(self):
+        pidx = pd.Index(["a", "b", "a", "b"])
+        kidx = ks.from_pandas(pidx)
+        pcodes, puniques = pidx.factorize(sort=True)
+        kcodes, kuniques = kidx.factorize()
+        self.assert_eq(pcodes.tolist(), kcodes.to_list())
+        self.assert_eq(puniques, kuniques)
+
+        pmidx = pd.MultiIndex.from_tuples([("x", "a"), ("x", "b"), ("y", "c")])
+        kmidx = ks.from_pandas(pmidx)
+
+        self.assertRaises(PandasNotImplementedError, lambda: kmidx.factorize())

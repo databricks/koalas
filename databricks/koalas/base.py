@@ -20,7 +20,8 @@ Base and utility classes for Koalas objects.
 from abc import ABCMeta, abstractmethod
 import datetime
 from functools import wraps, partial
-from typing import Any, Callable, Tuple, Union, cast, TYPE_CHECKING
+from itertools import chain
+from typing import Any, Callable, Optional, Tuple, Union, cast, TYPE_CHECKING
 import warnings
 
 import numpy as np
@@ -767,6 +768,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             which is potentially expensive. In case of multi-index, all data are
             transferred to single node which can easily cause out-of-memory error currently.
 
+        .. note:: Disable the Spark config `spark.sql.optimizer.nestedSchemaPruning.enabled`
+            for multi-index if you're using Koalas < 1.7.0 with PySpark 3.1.1.
+
         Returns
         -------
         is_monotonic : bool
@@ -841,6 +845,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             and aggregate multiple times to check the order locally and globally,
             which is potentially expensive. In case of multi-index, all data are transferred
             to single node which can easily cause out-of-memory error currently.
+
+        .. note:: Disable the Spark config `spark.sql.optimizer.nestedSchemaPruning.enabled`
+            for multi-index if you're using Koalas < 1.7.0 with PySpark 3.1.1.
 
         Returns
         -------
@@ -1403,9 +1410,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> df.index.shift(periods=3, fill_value=0)
         Int64Index([0, 0, 0, 0, 1], dtype='int64')
         """
-        return self._shift(periods, fill_value)
+        return self._shift(periods, fill_value).spark.analyzed
 
-    def _shift(self, periods, fill_value, part_cols=()):
+    def _shift(self, periods, fill_value, *, part_cols=()):
         if not isinstance(periods, int):
             raise ValueError("periods should be an int; however, got [%s]" % type(periods).__name__)
 
@@ -1417,7 +1424,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         )
         lag_col = F.lag(col, periods).over(window)
         col = F.when(lag_col.isNull() | F.isnan(lag_col), fill_value).otherwise(lag_col)
-        return self._with_new_scol(col)  # TODO: dtype?
+        return self._with_new_scol(col, dtype=self.dtype)
 
     # TODO: Update Documentation for Bins Parameter when its supported
     def value_counts(
@@ -1742,3 +1749,143 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             return cast(ks.Series, self.iloc[indices])
         else:
             return self._kdf.iloc[indices].index
+
+    def factorize(
+        self, sort: bool = True, na_sentinel: Optional[int] = -1
+    ) -> Tuple[Union["Series", "Index"], pd.Index]:
+        """
+        Encode the object as an enumerated type or categorical variable.
+
+        This method is useful for obtaining a numeric representation of an
+        array when all that matters is identifying distinct values.
+
+        Parameters
+        ----------
+        sort : bool, default True
+        na_sentinel : int or None, default -1
+            Value to mark "not found". If None, will not drop the NaN
+            from the uniques of the values.
+
+        Returns
+        -------
+        codes : Series or Index
+            A Series or Index that's an indexer into `uniques`.
+            ``uniques.take(codes)`` will have the same values as `values`.
+        uniques : pd.Index
+            The unique valid values.
+
+            .. note ::
+
+               Even if there's a missing value in `values`, `uniques` will
+               *not* contain an entry for it.
+
+        Examples
+        --------
+        >>> kser = ks.Series(['b', None, 'a', 'c', 'b'])
+        >>> codes, uniques = kser.factorize()
+        >>> codes
+        0    1
+        1   -1
+        2    0
+        3    2
+        4    1
+        dtype: int32
+        >>> uniques
+        Index(['a', 'b', 'c'], dtype='object')
+
+        >>> codes, uniques = kser.factorize(na_sentinel=None)
+        >>> codes
+        0    1
+        1    3
+        2    0
+        3    2
+        4    1
+        dtype: int32
+        >>> uniques
+        Index(['a', 'b', 'c', None], dtype='object')
+
+        >>> codes, uniques = kser.factorize(na_sentinel=-2)
+        >>> codes
+        0    1
+        1   -2
+        2    0
+        3    2
+        4    1
+        dtype: int32
+        >>> uniques
+        Index(['a', 'b', 'c'], dtype='object')
+
+        For Index:
+
+        >>> kidx = ks.Index(['b', None, 'a', 'c', 'b'])
+        >>> codes, uniques = kidx.factorize()
+        >>> codes
+        Int64Index([1, -1, 0, 2, 1], dtype='int64')
+        >>> uniques
+        Index(['a', 'b', 'c'], dtype='object')
+        """
+        from databricks.koalas.series import first_series
+
+        assert (na_sentinel is None) or isinstance(na_sentinel, int)
+        assert sort is True
+        uniq_sdf = self._internal.spark_frame.select(self.spark.column).distinct()
+
+        # Check number of uniques and constructs sorted `uniques_list`
+        max_compute_count = get_option("compute.max_rows")
+        if max_compute_count is not None:
+            uniq_pdf = uniq_sdf.limit(max_compute_count + 1).toPandas()
+            if len(uniq_pdf) > max_compute_count:
+                raise ValueError(
+                    "Current Series has more then {0} unique values. "
+                    "Please set 'compute.max_rows' by using 'databricks.koalas.config.set_option' "
+                    "to more than {0} rows. Note that, before changing the "
+                    "'compute.max_rows', this operation is considerably expensive.".format(
+                        max_compute_count
+                    )
+                )
+        else:
+            uniq_pdf = uniq_sdf.toPandas()
+        # pandas takes both NaN and null in Spark to np.nan, so de-duplication is required
+        uniq_series = first_series(uniq_pdf).drop_duplicates()
+        uniques_list = uniq_series.tolist()
+        uniques_list = sorted(uniques_list, key=lambda x: (pd.isna(x), x))
+
+        # Constructs `unique_to_code` mapping non-na unique to code
+        unique_to_code = {}
+        if na_sentinel is not None:
+            na_sentinel_code = na_sentinel
+        code = 0
+        for unique in uniques_list:
+            if pd.isna(unique):
+                if na_sentinel is None:
+                    na_sentinel_code = code
+            else:
+                unique_to_code[unique] = code
+            code += 1
+
+        kvs = list(
+            chain(*([(F.lit(unique), F.lit(code)) for unique, code in unique_to_code.items()]))
+        )
+
+        if len(kvs) == 0:  # uniques are all missing values
+            new_scol = F.lit(na_sentinel_code)
+        else:
+            scol = self.spark.column
+            if isinstance(self.spark.data_type, (FloatType, DoubleType)):
+                cond = scol.isNull() | F.isnan(scol)
+            else:
+                cond = scol.isNull()
+            map_scol = F.create_map(kvs)
+
+            null_scol = F.when(cond, F.lit(na_sentinel_code))
+            new_scol = null_scol.otherwise(map_scol.getItem(scol))
+
+        codes = self._with_new_scol(new_scol.alias(self._internal.data_spark_column_names[0]))
+
+        if na_sentinel is not None:
+            # Drops the NaN from the uniques of the values
+            uniques_list = [x for x in uniques_list if not pd.isna(x)]
+
+        uniques = pd.Index(uniques_list)
+
+        return codes, uniques

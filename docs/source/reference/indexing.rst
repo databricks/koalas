@@ -50,6 +50,7 @@ Modifying and computations
    Index.copy
    Index.delete
    Index.equals
+   Index.factorize
    Index.identical
    Index.insert
    Index.is_boolean
@@ -334,3 +335,5 @@ Time-specific operations
    DatetimeIndex.round
    DatetimeIndex.floor
    DatetimeIndex.ceil
+   DatetimeIndex.month_name
+   DatetimeIndex.day_name

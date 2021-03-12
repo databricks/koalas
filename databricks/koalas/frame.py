@@ -3875,7 +3875,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         4    20    23    27
 
         """
-        return self._apply_series_op(lambda kser: kser.shift(periods, fill_value))
+        return self._apply_series_op(
+            lambda kser: kser._shift(periods, fill_value), should_resolve=True
+        )
 
     # TODO: axis should support 1 or 'columns' either at this moment
     def diff(self, periods: int = 1, axis: Union[int, str] = 0) -> "DataFrame":
@@ -3950,7 +3952,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis != 0:
             raise NotImplementedError('axis should be either 0 or "index" currently.')
 
-        return self._apply_series_op(lambda kser: kser.diff(periods))
+        return self._apply_series_op(lambda kser: kser._diff(periods), should_resolve=True)
 
     # TODO: axis should support 1 or 'columns' either at this moment
     def nunique(
@@ -5322,11 +5324,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        to_replace : int, float, string, list or dict
+        to_replace : int, float, string, list, tuple or dict
             Value to be replaced.
-        value : int, float, string, or list
+        value : int, float, string, list or tuple
             Value to use to replace holes. The replacement value must be an int, float,
-            or string. If value is a list, value should be of the same length with to_replace.
+            or string.
+            If value is a list or tuple, value should be of the same length with to_replace.
         inplace : boolean, default False
             Fill in place (do not create a new object)
 
@@ -5404,12 +5407,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise NotImplementedError("replace currently doesn't supports regex")
         inplace = validate_bool_kwarg(inplace, "inplace")
 
-        if value is not None and not isinstance(value, (int, float, str, list, dict)):
+        if value is not None and not isinstance(value, (int, float, str, list, tuple, dict)):
             raise TypeError("Unsupported type {}".format(type(value).__name__))
-        if to_replace is not None and not isinstance(to_replace, (int, float, str, list, dict)):
+        if to_replace is not None and not isinstance(
+            to_replace, (int, float, str, list, tuple, dict)
+        ):
             raise TypeError("Unsupported type {}".format(type(to_replace).__name__))
 
-        if isinstance(value, list) and isinstance(to_replace, list):
+        if isinstance(value, (list, tuple)) and isinstance(to_replace, (list, tuple)):
             if len(value) != len(to_replace):
                 raise ValueError("Length of to_replace and value must be same")
 
@@ -9460,7 +9465,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2  2.0  2.0
         3  3.0  1.0
         """
-        return self._apply_series_op(lambda kser: kser.rank(method=method, ascending=ascending))
+        return self._apply_series_op(
+            lambda kser: kser._rank(method=method, ascending=ascending), should_resolve=True
+        )
 
     def filter(self, items=None, like=None, regex=None, axis=None) -> "DataFrame":
         """
@@ -10088,7 +10095,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 kser._internal.data_spark_column_names[0]
             )
 
-        return self._apply_series_op(op)
+        return self._apply_series_op(op, should_resolve=True)
 
     # TODO: axis = 1
     def idxmax(self, axis=0) -> "Series":

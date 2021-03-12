@@ -496,6 +496,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             pdf.groupby(pkey)[["a"]].diff().sort_index(),
         )
 
+        self.assert_eq(kdf.groupby(kkey).diff().sum(), pdf.groupby(pkey).diff().sum().astype(int))
+        self.assert_eq(kdf.groupby(kkey)["a"].diff().sum(), pdf.groupby(pkey)["a"].diff().sum())
+
     def test_rank(self):
         pdf = pd.DataFrame(
             {
@@ -516,6 +519,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.groupby(kkey)[["a"]].rank().sort_index(),
             pdf.groupby(pkey)[["a"]].rank().sort_index(),
         )
+
+        self.assert_eq(kdf.groupby(kkey).rank().sum(), pdf.groupby(pkey).rank().sum())
+        self.assert_eq(kdf.groupby(kkey)["a"].rank().sum(), pdf.groupby(pkey)["a"].rank().sum())
 
     @unittest.skipIf(pd.__version__ < "0.24.0", "not supported before pandas 0.24.0")
     def test_shift(self):
@@ -540,6 +546,9 @@ class OpsOnDiffFramesGroupByTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.groupby(kkey)[["a"]].shift().sort_index(),
             pdf.groupby(pkey)[["a"]].shift().sort_index(),
         )
+
+        self.assert_eq(kdf.groupby(kkey).shift().sum(), pdf.groupby(pkey).shift().sum().astype(int))
+        self.assert_eq(kdf.groupby(kkey)["a"].shift().sum(), pdf.groupby(pkey)["a"].shift().sum())
 
     def test_fillna(self):
         pdf = pd.DataFrame(

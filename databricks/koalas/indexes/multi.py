@@ -16,7 +16,7 @@
 
 from distutils.version import LooseVersion
 from functools import partial
-from typing import Any, Optional, Tuple, cast
+from typing import Any, Optional, Tuple, Union, cast
 import warnings
 
 import pandas as pd
@@ -1159,6 +1159,11 @@ class MultiIndex(Index):
         """
         # Always returns None for MultiIndex
         return None
+
+    def factorize(
+        self, sort: bool = True, na_sentinel: Optional[int] = -1
+    ) -> Tuple[Union["Series", "Index"], pd.Index]:
+        return MissingPandasLikeMultiIndex.factorize(self, sort=sort, na_sentinel=na_sentinel)
 
     def __iter__(self):
         return MissingPandasLikeMultiIndex.__iter__(self)

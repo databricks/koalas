@@ -46,7 +46,6 @@ class MissingPandasLikeIndex(object):
     # Functions
     argsort = _unsupported_function("argsort")
     asof_locs = _unsupported_function("asof_locs")
-    factorize = _unsupported_function("factorize")
     format = _unsupported_function("format")
     get_indexer = _unsupported_function("get_indexer")
     get_indexer_for = _unsupported_function("get_indexer_for")
@@ -118,8 +117,6 @@ class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
     to_period = _unsupported_function("to_period", cls="DatetimeIndex")
     to_perioddelta = _unsupported_function("to_perioddelta", cls="DatetimeIndex")
     to_pydatetime = _unsupported_function("to_pydatetime", cls="DatetimeIndex")
-    month_name = _unsupported_function("month_name", cls="DatetimeIndex")
-    day_name = _unsupported_function("day_name", cls="DatetimeIndex")
     mean = _unsupported_function("mean", cls="DatetimeIndex")
     std = _unsupported_function("std", cls="DatetimeIndex")
 

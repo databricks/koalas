@@ -1329,6 +1329,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         pser = pd.Series([1, 2, 3, 1], name="x")
         kser = ks.from_pandas(pser)
         self.assert_eq(pser.rank(), kser.rank().sort_index())
+        self.assert_eq(pser.rank().sum(), kser.rank().sum())
         self.assert_eq(pser.rank(ascending=False), kser.rank(ascending=False).sort_index())
         self.assert_eq(pser.rank(method="min"), kser.rank(method="min").sort_index())
         self.assert_eq(pser.rank(method="max"), kser.rank(method="max").sort_index())
@@ -1421,12 +1422,25 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
     def test_shift(self):
         pser = pd.Series([10, 20, 15, 30, 45], name="x")
         kser = ks.Series(pser)
+
+        self.assert_eq(kser.shift(2), pser.shift(2))
+        self.assert_eq(kser.shift().shift(-1), pser.shift().shift(-1))
+        self.assert_eq(kser.shift().sum(), pser.shift().sum())
+
         if LooseVersion(pd.__version__) < LooseVersion("0.24.2"):
             self.assert_eq(kser.shift(periods=2), pser.shift(periods=2))
         else:
             self.assert_eq(kser.shift(periods=2, fill_value=0), pser.shift(periods=2, fill_value=0))
         with self.assertRaisesRegex(ValueError, "periods should be an int; however"):
             kser.shift(periods=1.5)
+
+    def test_diff(self):
+        pser = pd.Series([10, 20, 15, 30, 45], name="x")
+        kser = ks.Series(pser)
+
+        self.assert_eq(kser.diff(2), pser.diff(2))
+        self.assert_eq(kser.diff().diff(-1), pser.diff().diff(-1))
+        self.assert_eq(kser.diff().sum(), pser.diff().sum())
 
     def _test_numeric_astype(self, pser):
         kser = ks.Series(pser)
@@ -1668,8 +1682,12 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.replace({}), pser.replace({}))
 
         self.assert_eq(kser.replace(np.nan, 45), pser.replace(np.nan, 45))
+        self.assert_eq(kser.replace([10, 15], 45), pser.replace([10, 15], 45))
+        self.assert_eq(kser.replace((10, 15), 45), pser.replace((10, 15), 45))
+        self.assert_eq(kser.replace([10, 15], [45, 50]), pser.replace([10, 15], [45, 50]))
+        self.assert_eq(kser.replace((10, 15), (45, 50)), pser.replace((10, 15), (45, 50)))
 
-        msg = "'to_replace' should be one of str, list, dict, int, float"
+        msg = "'to_replace' should be one of str, list, tuple, dict, int, float"
         with self.assertRaisesRegex(ValueError, msg):
             kser.replace(ks.range(5))
         msg = "Replacement lists must match in length. Expecting 3 got 2"
@@ -1811,6 +1829,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.pct_change(), pser.pct_change(), check_exact=False)
+        self.assert_eq(kser.pct_change().sum(), pser.pct_change().sum(), almost=True)
         self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), check_exact=False)
         self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), check_exact=False)
         self.assert_eq(kser.pct_change(periods=-100000000), pser.pct_change(periods=-100000000))
@@ -1825,6 +1844,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.pct_change(), pser.pct_change(), check_exact=False)
+        self.assert_eq(kser.pct_change().sum(), pser.pct_change().sum(), almost=True)
         self.assert_eq(kser.pct_change(periods=2), pser.pct_change(periods=2), check_exact=False)
         self.assert_eq(kser.pct_change(periods=-1), pser.pct_change(periods=-1), check_exact=False)
         self.assert_eq(kser.pct_change(periods=-100000000), pser.pct_change(periods=-100000000))
