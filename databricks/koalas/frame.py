@@ -90,13 +90,11 @@ from databricks.koalas.utils import (
     name_like_string,
     same_anchor,
     scol_for,
-    sql_conf,
     validate_arguments_and_invoke_function,
     validate_axis,
     validate_bool_kwarg,
     validate_how,
     verify_temp_column_name,
-    SPARK_CONF_ARROW_ENABLED,
 )
 from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.generic import Frame
@@ -11597,9 +11595,7 @@ def _reduce_spark_multi(sdf, aggs):
     """
     assert isinstance(sdf, spark.DataFrame)
     sdf0 = sdf.agg(*aggs)
-    with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-        # Disable Arrow to keep row ordering.
-        l = sdf0.limit(2).toPandas()
+    l = sdf0.limit(2).toPandas()
     assert len(l) == 1, (sdf, l)
     row = l.iloc[0]
     l2 = list(row)

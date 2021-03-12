@@ -5985,9 +5985,7 @@ def unpack_scalar(sdf):
     Takes a dataframe that is supposed to contain a single row with a single scalar value,
     and returns this value.
     """
-    with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-        # Disable Arrow to keep row ordering.
-        l = sdf.limit(2).toPandas()
+    l = sdf.limit(2).toPandas()
     assert len(l) == 1, (sdf, l)
     row = l.iloc[0]
     l2 = list(row)

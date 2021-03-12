@@ -52,11 +52,9 @@ from databricks.koalas.utils import (
     name_like_string,
     same_anchor,
     scol_for,
-    sql_conf,
     verify_temp_column_name,
     validate_bool_kwarg,
     ERROR_MESSAGE_CANNOT_COMBINE,
-    SPARK_CONF_ARROW_ENABLED,
 )
 from databricks.koalas.internal import (
     InternalFrame,
@@ -2140,9 +2138,7 @@ class Index(IndexOpsMixin):
         else:
             raise ValueError("index must be monotonic increasing or decreasing")
 
-        with sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
-            # Disable Arrow to keep row ordering.
-            result = sdf.limit(1).toPandas().iloc[0, 0]
+        result = sdf.toPandas().iloc[0, 0]
         return result if result is not None else np.nan
 
     def union(self, other, sort=None) -> "Index":
