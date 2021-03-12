@@ -80,8 +80,6 @@ class CategoricalIndex(Index):
     >>> ci  # doctest: +NORMALIZE_WHITESPACE
     CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
                      categories=['c', 'b', 'a'], ordered=True, dtype='category')
-    >>> ci.min()  # FIXME  # doctest: +SKIP
-    'c'
 
     From a Series:
 
