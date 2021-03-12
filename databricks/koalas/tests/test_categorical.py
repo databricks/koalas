@@ -47,36 +47,39 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kser.cat.codes, pser.cat.codes)
         self.assert_eq(kser.cat.ordered, pser.cat.ordered)
 
-    def test_categorical_index(self):
-        pidx = pd.Index([1, 2, 3], dtype="category")
-        kidx = ks.Index([1, 2, 3], dtype="category")
+    def test_astype(self):
+        pser = pd.Series(["a", "b", "c"])
+        kser = ks.from_pandas(pser)
 
-        self.assert_eq(kidx, pidx)
-        self.assert_eq(kidx.categories, pidx.categories)
-        self.assert_eq(kidx.codes, pd.Index(pidx.codes))
-        self.assert_eq(kidx.ordered, pidx.ordered)
-
-        pdf = pd.DataFrame(
-            {
-                "a": pd.Categorical([1, 2, 3, 1, 2, 3]),
-                "b": pd.Categorical(["a", "b", "c", "a", "b", "c"], categories=["c", "b", "a"]),
-            },
-            index=pd.Categorical([10, 20, 30, 20, 30, 10], categories=[30, 10, 20], ordered=True),
+        self.assert_eq(kser.astype("category"), pser.astype("category"))
+        self.assert_eq(
+            kser.astype(pd.CategoricalDtype(["c", "a", "b"])),
+            pser.astype(pd.CategoricalDtype(["c", "a", "b"])),
         )
-        kdf = ks.from_pandas(pdf)
 
-        pidx = pdf.set_index("b").index
-        kidx = kdf.set_index("b").index
+        pser = pser.astype(pd.CategoricalDtype(["c", "a", "b"]))
+        kser = kser.astype(pd.CategoricalDtype(["c", "a", "b"]))
 
-        self.assert_eq(kidx, pidx)
-        self.assert_eq(kidx.categories, pidx.categories)
-        self.assert_eq(kidx.codes, pd.Index(pidx.codes))
-        self.assert_eq(kidx.ordered, pidx.ordered)
+        self.assert_eq(kser.astype("category"), pser.astype("category"))
+        self.assert_eq(
+            kser.astype(pd.CategoricalDtype(["b", "c", "a"])),
+            pser.astype(pd.CategoricalDtype(["b", "c", "a"])),
+        )
 
-        pidx = pdf.set_index(["a", "b"]).index.get_level_values(0)
-        kidx = kdf.set_index(["a", "b"]).index.get_level_values(0)
+        self.assert_eq(kser.astype(str), pser.astype(str))
 
-        self.assert_eq(kidx, pidx)
-        self.assert_eq(kidx.categories, pidx.categories)
-        self.assert_eq(kidx.codes, pd.Index(pidx.codes))
-        self.assert_eq(kidx.ordered, pidx.ordered)
+    def test_factorize(self):
+        pser = pd.Series([1, 2, 3, None], dtype="category")
+        kser = ks.from_pandas(pser)
+
+        pcodes, puniques = pser.factorize()
+        kcodes, kuniques = kser.factorize()
+
+        self.assert_eq(kcodes.tolist(), pcodes.tolist())
+        self.assert_eq(kuniques, puniques)
+
+        pcodes, puniques = pser.factorize(na_sentinel=-2)
+        kcodes, kuniques = kser.factorize(na_sentinel=-2)
+
+        self.assert_eq(kcodes.tolist(), pcodes.tolist())
+        self.assert_eq(kuniques, puniques)

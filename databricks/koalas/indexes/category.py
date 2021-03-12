@@ -86,14 +86,14 @@ class CategoricalIndex(Index):
     From a Series:
 
     >>> s = ks.Series(["a", "b", "c", "a", "b", "c"], index=[10, 20, 30, 40, 50, 60])
-    >>> ks.CategoricalIndex(s)  # FIXME  # doctest: +SKIP, +NORMALIZE_WHITESPACE
+    >>> ks.CategoricalIndex(s)  # doctest: +NORMALIZE_WHITESPACE
     CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
                      categories=['a', 'b', 'c'], ordered=False, dtype='category')
 
     From an Index:
 
     >>> idx = ks.Index(["a", "b", "c", "a", "b", "c"])
-    >>> ks.CategoricalIndex(idx)  # FIXME  # doctest: +SKIP, +NORMALIZE_WHITESPACE
+    >>> ks.CategoricalIndex(idx)  # doctest: +NORMALIZE_WHITESPACE
     CategoricalIndex(['a', 'b', 'c', 'a', 'b', 'c'],
                      categories=['a', 'b', 'c'], ordered=False, dtype='category')
     """
