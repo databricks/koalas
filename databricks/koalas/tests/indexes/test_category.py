@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
@@ -73,14 +75,23 @@ class CategoricalIndexTest(ReusedSQLTestCase, TestUtils):
             pidx.astype(CategoricalDtype(["c", "a", "b"])),
         )
 
-        pidx = pidx.astype(CategoricalDtype(["c", "a", "b"]))
-        kidx = kidx.astype(CategoricalDtype(["c", "a", "b"]))
+        pcidx = pidx.astype(CategoricalDtype(["c", "a", "b"]))
+        kcidx = kidx.astype(CategoricalDtype(["c", "a", "b"]))
 
-        self.assert_eq(kidx.astype("category"), pidx.astype("category"))
-        self.assert_eq(
-            kidx.astype(CategoricalDtype(["b", "c", "a"])),
-            pidx.astype(CategoricalDtype(["b", "c", "a"])),
-        )
+        self.assert_eq(kcidx.astype("category"), pcidx.astype("category"))
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(
+                kcidx.astype(CategoricalDtype(["b", "c", "a"])),
+                pcidx.astype(CategoricalDtype(["b", "c", "a"])),
+            )
+        else:
+            self.assert_eq(
+                kcidx.astype(CategoricalDtype(["b", "c", "a"])),
+                pidx.astype(CategoricalDtype(["b", "c", "a"])),
+            )
+
+        self.assert_eq(kcidx.astype(str), pcidx.astype(str))
 
     def test_factorize(self):
         pidx = pd.CategoricalIndex([1, 2, 3, None])

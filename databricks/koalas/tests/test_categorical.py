@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+from distutils.version import LooseVersion
+
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
@@ -58,16 +60,23 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
             pser.astype(CategoricalDtype(["c", "a", "b"])),
         )
 
-        pser = pser.astype(CategoricalDtype(["c", "a", "b"]))
-        kser = kser.astype(CategoricalDtype(["c", "a", "b"]))
+        pcser = pser.astype(CategoricalDtype(["c", "a", "b"]))
+        kcser = kser.astype(CategoricalDtype(["c", "a", "b"]))
 
-        self.assert_eq(kser.astype("category"), pser.astype("category"))
-        self.assert_eq(
-            kser.astype(CategoricalDtype(["b", "c", "a"])),
-            pser.astype(CategoricalDtype(["b", "c", "a"])),
-        )
+        self.assert_eq(kcser.astype("category"), pcser.astype("category"))
 
-        self.assert_eq(kser.astype(str), pser.astype(str))
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(
+                kcser.astype(CategoricalDtype(["b", "c", "a"])),
+                pcser.astype(CategoricalDtype(["b", "c", "a"])),
+            )
+        else:
+            self.assert_eq(
+                kcser.astype(CategoricalDtype(["b", "c", "a"])),
+                pser.astype(CategoricalDtype(["b", "c", "a"])),
+            )
+
+        self.assert_eq(kcser.astype(str), pcser.astype(str))
 
     def test_factorize(self):
         pser = pd.Series(["a", "b", "c", None], dtype=CategoricalDtype(["c", "a", "d", "b"]))
