@@ -1059,7 +1059,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         if isinstance(self.dtype, CategoricalDtype):
             if isinstance(dtype, CategoricalDtype) and dtype.categories is None:
-                return cast(Union["Index", "Series"], self)
+                return cast(Union[ks.Index, ks.Series], self).copy()
 
             categories = self.dtype.categories
             if len(categories) == 0:
