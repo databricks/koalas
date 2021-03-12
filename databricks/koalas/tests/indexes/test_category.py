@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 
 import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -68,17 +69,17 @@ class CategoricalIndexTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kidx.astype("category"), pidx.astype("category"))
         self.assert_eq(
-            kidx.astype(pd.CategoricalDtype(["c", "a", "b"])),
-            pidx.astype(pd.CategoricalDtype(["c", "a", "b"])),
+            kidx.astype(CategoricalDtype(["c", "a", "b"])),
+            pidx.astype(CategoricalDtype(["c", "a", "b"])),
         )
 
-        pidx = pidx.astype(pd.CategoricalDtype(["c", "a", "b"]))
-        kidx = kidx.astype(pd.CategoricalDtype(["c", "a", "b"]))
+        pidx = pidx.astype(CategoricalDtype(["c", "a", "b"]))
+        kidx = kidx.astype(CategoricalDtype(["c", "a", "b"]))
 
         self.assert_eq(kidx.astype("category"), pidx.astype("category"))
         self.assert_eq(
-            kidx.astype(pd.CategoricalDtype(["b", "c", "a"])),
-            pidx.astype(pd.CategoricalDtype(["b", "c", "a"])),
+            kidx.astype(CategoricalDtype(["b", "c", "a"])),
+            pidx.astype(CategoricalDtype(["b", "c", "a"])),
         )
 
     def test_factorize(self):

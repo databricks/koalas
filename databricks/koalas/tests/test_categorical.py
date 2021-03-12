@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 
 import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -53,23 +54,23 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kser.astype("category"), pser.astype("category"))
         self.assert_eq(
-            kser.astype(pd.CategoricalDtype(["c", "a", "b"])),
-            pser.astype(pd.CategoricalDtype(["c", "a", "b"])),
+            kser.astype(CategoricalDtype(["c", "a", "b"])),
+            pser.astype(CategoricalDtype(["c", "a", "b"])),
         )
 
-        pser = pser.astype(pd.CategoricalDtype(["c", "a", "b"]))
-        kser = kser.astype(pd.CategoricalDtype(["c", "a", "b"]))
+        pser = pser.astype(CategoricalDtype(["c", "a", "b"]))
+        kser = kser.astype(CategoricalDtype(["c", "a", "b"]))
 
         self.assert_eq(kser.astype("category"), pser.astype("category"))
         self.assert_eq(
-            kser.astype(pd.CategoricalDtype(["b", "c", "a"])),
-            pser.astype(pd.CategoricalDtype(["b", "c", "a"])),
+            kser.astype(CategoricalDtype(["b", "c", "a"])),
+            pser.astype(CategoricalDtype(["b", "c", "a"])),
         )
 
         self.assert_eq(kser.astype(str), pser.astype(str))
 
     def test_factorize(self):
-        pser = pd.Series([1, 2, 3, None], dtype="category")
+        pser = pd.Series(["a", "b", "c", None], dtype=CategoricalDtype(["c", "a", "d", "b"]))
         kser = ks.from_pandas(pser)
 
         pcodes, puniques = pser.factorize()

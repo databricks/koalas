@@ -1880,16 +1880,24 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         assert sort is True
 
         if isinstance(self.dtype, CategoricalDtype):
-            scol = self.spark.column
-            if na_sentinel is not None:
-                scol = (
-                    F.when(scol == -1, F.lit(na_sentinel))
-                    .otherwise(scol)
-                    .alias(self._internal.data_spark_column_names[0])
+            categories = self.dtype.categories
+            if len(categories) == 0:
+                scol = F.lit(None)
+            else:
+                kvs = list(
+                    chain(
+                        *[
+                            (F.lit(code), F.lit(category))
+                            for code, category in enumerate(categories)
+                        ]
+                    )
                 )
-            codes = self._with_new_scol(scol)
-            uniques = pd.CategoricalIndex(self.dtype.categories, dtype=self.dtype)
-            return codes, uniques
+                map_scol = F.create_map(kvs)
+                scol = map_scol.getItem(self.spark.column)
+            codes, uniques = self._with_new_scol(
+                scol.alias(self._internal.data_spark_column_names[0])
+            ).factorize(na_sentinel=na_sentinel)
+            return codes, uniques.astype(self.dtype)
 
         uniq_sdf = self._internal.spark_frame.select(self.spark.column).distinct()
 
