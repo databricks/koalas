@@ -99,11 +99,13 @@ class SeriesDateTimeTest(ReusedSQLTestCase, SQLTestUtils):
             self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser % other)
             self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other % kser)
 
-        ks.set_option("compute.ops_on_diff_frames", True)
-        for other in [1, 0.1, py_datetime]:
-            expected_err_msg = "datetime subtraction can only be applied to datetime series."
-            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser - other)
+        expected_err_msg = "datetime subtraction can only be applied to datetime series."
 
+        for other in [1, 0.1]:
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser - other)
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other - kser)
+
+        self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kser - other)
         self.assertRaises(NotImplementedError, lambda: py_datetime - kser)
 
     def test_date_subtraction(self):

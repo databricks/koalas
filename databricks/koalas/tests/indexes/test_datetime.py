@@ -208,9 +208,11 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
                 self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx % other)
                 self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other % kidx)
 
-            for other in [1, 0.1, py_datetime]:
-                expected_err_msg = "datetime subtraction can only be applied to datetime series."
+            expected_err_msg = "datetime subtraction can only be applied to datetime series."
+
+            for other in [1, 0.1]:
                 self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx - other)
                 self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other - kidx)
 
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx - other)
             self.assertRaises(NotImplementedError, lambda: py_datetime - kidx)
