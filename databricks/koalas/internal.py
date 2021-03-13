@@ -25,7 +25,7 @@ import py4j
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import CategoricalDtype, is_datetime64_dtype, is_datetime64tz_dtype
 import pyspark
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
@@ -954,6 +954,11 @@ class InternalFrame(object):
             for col, dtype in zip(self.index_spark_column_names, self.index_dtypes)
             if isinstance(dtype, extension_dtypes)
         }
+        categorical_dtypes = {
+            col: dtype
+            for col, dtype in zip(self.index_spark_column_names, self.index_dtypes)
+            if isinstance(dtype, CategoricalDtype)
+        }
         for i, (label, spark_column, column_name, dtype) in enumerate(
             zip(
                 self.column_labels,
@@ -975,9 +980,16 @@ class InternalFrame(object):
                 column_names.append(column_name)
                 if isinstance(dtype, extension_dtypes):
                     ext_dtypes[column_name] = dtype
+                elif isinstance(dtype, CategoricalDtype):
+                    categorical_dtypes[column_name] = dtype
 
         if len(ext_dtypes) > 0:
             pdf = pdf.astype(ext_dtypes, copy=True)
+
+        for col, dtype in categorical_dtypes.items():
+            pdf[col] = pd.Categorical.from_codes(
+                pdf[col], categories=dtype.categories, ordered=dtype.ordered
+            )
 
         append = False
         for index_field in self.index_spark_column_names:
@@ -1308,6 +1320,8 @@ class InternalFrame(object):
             dt = col.dtype
             if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
                 continue
+            elif isinstance(dt, CategoricalDtype):
+                col = col.cat.codes
             reset_index[name] = col.replace({np.nan: None})
         sdf = default_session().createDataFrame(reset_index, schema=schema)
         return InternalFrame(

@@ -32,7 +32,7 @@ from pandas.api.types import (
 )
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
-from pandas.api.types import is_hashable
+from pandas.api.types import CategoricalDtype, is_hashable
 from pandas._libs import lib
 
 from pyspark import sql as spark
@@ -155,12 +155,15 @@ class Index(IndexOpsMixin):
 
     @staticmethod
     def _new_instance(anchor: DataFrame) -> "Index":
+        from databricks.koalas.indexes.category import CategoricalIndex
         from databricks.koalas.indexes.datetimes import DatetimeIndex
         from databricks.koalas.indexes.multi import MultiIndex
         from databricks.koalas.indexes.numeric import Float64Index, Int64Index
 
         if anchor._internal.index_level > 1:
             instance = object.__new__(MultiIndex)
+        elif isinstance(anchor._internal.index_dtypes[0], CategoricalDtype):
+            instance = object.__new__(CategoricalIndex)
         elif isinstance(
             anchor._internal.spark_type_for(anchor._internal.index_spark_columns[0]), IntegralType
         ):

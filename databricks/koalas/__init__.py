@@ -109,6 +109,7 @@ if (
 
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.indexes.category import CategoricalIndex
 from databricks.koalas.indexes.datetimes import DatetimeIndex
 from databricks.koalas.indexes.multi import MultiIndex
 from databricks.koalas.indexes.numeric import Float64Index, Int64Index
@@ -128,6 +129,7 @@ __all__ = [  # noqa: F405
     "MultiIndex",
     "Int64Index",
     "Float64Index",
+    "CategoricalIndex",
     "DatetimeIndex",
     "sql",
     "range",

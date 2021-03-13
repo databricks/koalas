@@ -258,12 +258,13 @@ Koalas provides dtype-specific methods under various accessors.
 These are separate namespaces within :class:`Series` that only apply
 to specific data types.
 
-========= ===========================
-Data Type                    Accessor
-========= ===========================
-Datetime  :ref:`dt <api.series.dt>`
-String    :ref:`str <api.series.str>`
-========= ===========================
+=========== ===========================
+Data Type                      Accessor
+=========== ===========================
+Datetime    :ref:`dt <api.series.dt>`
+String      :ref:`str <api.series.str>`
+Categorical :ref:`cat <api.series.cat>`
+=========== ===========================
 
 .. _api.series.dt:
 
@@ -382,6 +383,22 @@ like ``Series.str.<function/property>``.
    Series.str.upper
    Series.str.wrap
    Series.str.zfill
+
+.. _api.series.cat:
+
+Categorical accessor
+--------------------
+Categorical-dtype specific methods and attributes are available under
+the ``Series.cat`` accessor.
+
+.. autosummary::
+   :toctree: api/
+
+   Series.cat.categories
+   Series.cat.ordered
+   Series.cat.codes
+
+.. _api.series.plot:
 
 Plotting
 -------------------------------

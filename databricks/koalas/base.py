@@ -26,7 +26,7 @@ import warnings
 
 import numpy as np
 import pandas as pd  # noqa: F401
-from pandas.api.types import is_list_like, pandas_dtype
+from pandas.api.types import is_list_like, pandas_dtype, CategoricalDtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window, Column
 from pyspark.sql.types import (
@@ -1056,6 +1056,54 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         spark_type = as_spark_type(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
+
+        if isinstance(self.dtype, CategoricalDtype):
+            if isinstance(dtype, CategoricalDtype) and dtype.categories is None:
+                return cast(Union[ks.Index, ks.Series], self).copy()
+
+            categories = self.dtype.categories
+            if len(categories) == 0:
+                scol = F.lit(None)
+            else:
+                kvs = list(
+                    chain(
+                        *[
+                            (F.lit(code), F.lit(category))
+                            for code, category in enumerate(categories)
+                        ]
+                    )
+                )
+                map_scol = F.create_map(kvs)
+                scol = map_scol.getItem(self.spark.column)
+            return self._with_new_scol(
+                scol.alias(self._internal.data_spark_column_names[0])
+            ).astype(dtype)
+        elif isinstance(dtype, CategoricalDtype):
+            if dtype.categories is None:
+                codes, uniques = self.factorize()
+                return codes._with_new_scol(
+                    codes.spark.column, dtype=CategoricalDtype(categories=uniques)
+                )
+            else:
+                categories = dtype.categories
+                if len(categories) == 0:
+                    scol = F.lit(-1)
+                else:
+                    kvs = list(
+                        chain(
+                            *[
+                                (F.lit(category), F.lit(code))
+                                for code, category in enumerate(categories)
+                            ]
+                        )
+                    )
+                    map_scol = F.create_map(kvs)
+
+                    scol = F.coalesce(map_scol.getItem(self.spark.column), F.lit(-1))
+                return self._with_new_scol(
+                    scol.alias(self._internal.data_spark_column_names[0]), dtype=dtype
+                )
+
         if isinstance(spark_type, BooleanType):
             if isinstance(dtype, extension_dtypes):
                 scol = self.spark.column.cast(spark_type)
@@ -1100,7 +1148,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 scol = F.when(self.spark.column.isNull(), null_str).otherwise(casted)
         else:
             scol = self.spark.column.cast(spark_type)
-        return self._with_new_scol(scol, dtype=dtype)
+        return self._with_new_scol(
+            scol.alias(self._internal.data_spark_column_names[0]), dtype=dtype
+        )
 
     def isin(self, values) -> Union["Series", "Index"]:
         """
@@ -1828,6 +1878,27 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         assert (na_sentinel is None) or isinstance(na_sentinel, int)
         assert sort is True
+
+        if isinstance(self.dtype, CategoricalDtype):
+            categories = self.dtype.categories
+            if len(categories) == 0:
+                scol = F.lit(None)
+            else:
+                kvs = list(
+                    chain(
+                        *[
+                            (F.lit(code), F.lit(category))
+                            for code, category in enumerate(categories)
+                        ]
+                    )
+                )
+                map_scol = F.create_map(kvs)
+                scol = map_scol.getItem(self.spark.column)
+            codes, uniques = self._with_new_scol(
+                scol.alias(self._internal.data_spark_column_names[0])
+            ).factorize(na_sentinel=na_sentinel)
+            return codes, uniques.astype(self.dtype)
+
         uniq_sdf = self._internal.spark_frame.select(self.spark.column).distinct()
 
         # Check number of uniques and constructs sorted `uniques_list`

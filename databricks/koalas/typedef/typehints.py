@@ -24,6 +24,7 @@ from inspect import getfullargspec, isclass
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 from pandas.api.extensions import ExtensionDtype
 
 try:
@@ -175,6 +176,10 @@ def as_spark_type(
     elif tpe in (datetime.datetime, np.datetime64, "datetime64[ns]", "M"):
         return types.TimestampType()
 
+    # categorical types
+    elif isinstance(tpe, CategoricalDtype) or (isinstance(tpe, str) and type == "category"):
+        return types.LongType()
+
     # extension types
     elif extension_dtypes_available:
         # IntegralType
@@ -263,6 +268,8 @@ def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
             return s.iloc[0].__UDT__
         else:
             return from_arrow_type(pa.Array.from_pandas(s).type)
+    elif isinstance(dt, CategoricalDtype):
+        return as_spark_type(s.cat.codes.dtype)
     else:
         return as_spark_type(dt)
 

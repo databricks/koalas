@@ -30,6 +30,7 @@ from databricks.koalas.frame import DataFrame
 from databricks.koalas.datetimes import DatetimeMethods
 from databricks.koalas.groupby import DataFrameGroupBy, SeriesGroupBy
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.indexes.category import CategoricalIndex
 from databricks.koalas.indexes.datetimes import DatetimeIndex
 from databricks.koalas.indexes.multi import MultiIndex
 from databricks.koalas.indexes.numeric import Float64Index, Int64Index
@@ -39,6 +40,7 @@ from databricks.koalas.missing.groupby import (
     MissingPandasLikeSeriesGroupBy,
 )
 from databricks.koalas.missing.indexes import (
+    MissingPandasLikeCategoricalIndex,
     MissingPandasLikeDatetimeIndex,
     MissingPandasLikeIndex,
     MissingPandasLikeMultiIndex,
@@ -87,6 +89,7 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         MultiIndex,
         Int64Index,
         Float64Index,
+        CategoricalIndex,
         DatetimeIndex,
         DataFrameGroupBy,
         SeriesGroupBy,
@@ -153,6 +156,7 @@ def attach(logger_module: Union[str, ModuleType]) -> None:
         (pd.Series, MissingPandasLikeSeries),
         (pd.Index, MissingPandasLikeIndex),
         (pd.MultiIndex, MissingPandasLikeMultiIndex),
+        (pd.CategoricalIndex, MissingPandasLikeCategoricalIndex),
         (pd.DatetimeIndex, MissingPandasLikeDatetimeIndex),
         (pd.core.groupby.DataFrameGroupBy, MissingPandasLikeDataFrameGroupBy),
         (pd.core.groupby.SeriesGroupBy, MissingPandasLikeSeriesGroupBy),
