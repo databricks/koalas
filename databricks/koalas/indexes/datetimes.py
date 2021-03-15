@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import datetime
 from functools import partial
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import pandas as pd
 from pandas.api.types import is_hashable
@@ -23,7 +24,7 @@ from pyspark._globals import _NoValue
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
-from databricks.koalas.series import Series
+from databricks.koalas.series import Series, first_series
 
 
 class DatetimeIndex(Index):
@@ -633,6 +634,65 @@ class DatetimeIndex(Index):
               dtype='object')
         """
         return Index(self.to_series().dt.strftime(date_format))
+
+    def indexer_between_time(
+        self,
+        start_time: Union[datetime.time, str],
+        end_time: Union[datetime.time, str],
+        include_start: bool = True,
+        include_end: bool = True,
+    ) -> Series:
+        """
+        Return index locations of values between particular times of day
+        (e.g., 9:00-9:30AM).
+
+        Parameters
+        ----------
+        start_time, end_time : datetime.time, str
+            Time passed either as object (datetime.time) or as string in
+            appropriate format ("%H:%M", "%H%M", "%I:%M%p", "%I%M%p",
+            "%H:%M:%S", "%H%M%S", "%I:%M:%S%p","%I%M%S%p").
+        include_start : bool, default True
+        include_end : bool, default True
+
+        Returns
+        -------
+        values_between_time : Series of integers
+
+        Examples
+        --------
+        >>> kidx = ks.date_range("2000-01-01", periods=3, freq="T")
+        >>> kidx
+        DatetimeIndex(['2000-01-01 00:00:00', '2000-01-01 00:01:00',
+                       '2000-01-01 00:02:00'],
+                      dtype='datetime64[ns]', freq=None)
+
+        >>> kidx.indexer_between_time("00:01", "00:02")
+        0    1
+        1    2
+        dtype: int64
+
+        >>> kidx.indexer_between_time("00:01", "00:02", include_end=False)
+        0    1
+        dtype: int64
+
+        >>> kidx.indexer_between_time("00:01", "00:02", include_start=False)
+        0    2
+        dtype: int64
+        """
+
+        def pandas_indexer_between_time(pdf):
+            return pd.DataFrame(
+                pdf.index.indexer_between_time(
+                    start_time=start_time,
+                    end_time=end_time,
+                    include_start=include_start,
+                    include_end=include_end,
+                )
+            )
+
+        kdf = self.to_frame().koalas.apply_batch(pandas_indexer_between_time)
+        return first_series(kdf).rename(self.name)
 
 
 def disallow_nanoseconds(freq):
