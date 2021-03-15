@@ -1848,9 +1848,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(kdf.isin([4, "six"]), pdf.isin([4, "six"]))
+        # Seems like pandas has a bug when passing `np.array` as parameter
+        self.assert_eq(kdf.isin(np.array([4, "six"])), pdf.isin([4, "six"]))
         self.assert_eq(
             kdf.isin({"a": [2, 8], "c": ["three", "one"]}),
             pdf.isin({"a": [2, 8], "c": ["three", "one"]}),
+        )
+        self.assert_eq(
+            kdf.isin({"a": np.array([2, 8]), "c": ["three", "one"]}),
+            pdf.isin({"a": np.array([2, 8]), "c": ["three", "one"]}),
         )
 
         msg = "'DataFrame' object has no attribute {'e'}"
