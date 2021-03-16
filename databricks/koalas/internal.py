@@ -1023,7 +1023,7 @@ class InternalFrame(object):
         ...     column_labels=[("x",), ("y",), ("z",)],
         ...     column_label_names=[("lv1",)],
         ...     ext_dtypes=None,
-        ...     categorical_dtypes={"b": pd.CategoricalDtype(categories=["i", "j", "k"])}
+        ...     categorical_dtypes={"b": CategoricalDtype(categories=["i", "j", "k"])}
         ... )  # doctest: +NORMALIZE_WHITESPACE
         lv1  x  y   z
         idx

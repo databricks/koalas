@@ -102,7 +102,6 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
                     ["b", "a", "c", "b", "c", "a"], categories=["c", "b", "d", "a"]
                 ),
             },
-            index=pd.Categorical([10, 20, 30, 20, 30, 10], categories=[30, 10, 20], ordered=True),
         )
         kdf = ks.from_pandas(pdf)
 
@@ -115,8 +114,16 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
             pdf.groupby("b").apply(lambda x: x).sort_values(by=["a", "b"]),
         )
         self.assert_eq(
+            kdf.groupby(["a", "b"]).apply(lambda x: x).sort_values(by=["a", "b"]),
+            pdf.groupby(["a", "b"]).apply(lambda x: x).sort_values(by=["a", "b"]),
+        )
+        self.assert_eq(
             kdf.groupby("a").apply(lambda x: x.b.cat.codes).sort_index(),
             pdf.groupby("a").apply(lambda x: x.b.cat.codes).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby("a")["b"].apply(lambda b: b.cat.codes).sort_index(),
+            pdf.groupby("a")["b"].apply(lambda b: b.cat.codes).sort_index(),
         )
 
         # TODO: grouping by a categorical type sometimes preserves unused categories.
