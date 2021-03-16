@@ -99,27 +99,27 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
             {
                 "a": pd.Categorical([1, 2, 3, 1, 2, 3]),
                 "b": pd.Categorical(
-                    ["b", "a", "c", "b", "c", "a"], categories=["c", "b", "d", "a"]
+                    ["b", "a", "c", "c", "b", "a"], categories=["c", "b", "d", "a"]
                 ),
             },
         )
         kdf = ks.from_pandas(pdf)
 
         self.assert_eq(
-            kdf.groupby("a").apply(lambda x: x).sort_values(by=["a", "b"]),
-            pdf.groupby("a").apply(lambda x: x).sort_values(by=["a", "b"]),
+            kdf.groupby("a").apply(lambda df: df).sort_index(),
+            pdf.groupby("a").apply(lambda df: df).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby("b").apply(lambda x: x).sort_values(by=["a", "b"]),
-            pdf.groupby("b").apply(lambda x: x).sort_values(by=["a", "b"]),
+            kdf.groupby("b").apply(lambda df: df[["a"]]).sort_index(),
+            pdf.groupby("b").apply(lambda df: df[["a"]]).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby(["a", "b"]).apply(lambda x: x).sort_values(by=["a", "b"]),
-            pdf.groupby(["a", "b"]).apply(lambda x: x).sort_values(by=["a", "b"]),
+            kdf.groupby(["a", "b"]).apply(lambda df: df).sort_index(),
+            pdf.groupby(["a", "b"]).apply(lambda df: df).sort_index(),
         )
         self.assert_eq(
-            kdf.groupby("a").apply(lambda x: x.b.cat.codes).sort_index(),
-            pdf.groupby("a").apply(lambda x: x.b.cat.codes).sort_index(),
+            kdf.groupby("a").apply(lambda df: df.b.cat.codes).sort_index(),
+            pdf.groupby("a").apply(lambda df: df.b.cat.codes).sort_index(),
         )
         self.assert_eq(
             kdf.groupby("a")["b"].apply(lambda b: b.cat.codes).sort_index(),
