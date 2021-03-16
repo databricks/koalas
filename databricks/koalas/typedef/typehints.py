@@ -254,24 +254,25 @@ def spark_type_to_pandas_dtype(
         return np.dtype(to_arrow_type(spark_type).to_pandas_dtype())
 
 
-def infer_pd_series_spark_type(s: pd.Series) -> types.DataType:
+def infer_pd_series_spark_type(pser: pd.Series, dtype: Dtype) -> types.DataType:
     """Infer Spark DataType from pandas Series dtype.
 
-    :param s: :class:`pandas.Series` to be inferred
+    :param pser: :class:`pandas.Series` to be inferred
+    :param dtype: the Series' dtype
     :return: the inferred Spark data type
     """
-    dt = s.dtype
-    if dt == np.dtype("object"):
-        if len(s) == 0 or s.isnull().all():
+    if dtype == np.dtype("object"):
+        if len(pser) == 0 or pser.isnull().all():
             return types.NullType()
-        elif hasattr(s.iloc[0], "__UDT__"):
-            return s.iloc[0].__UDT__
+        elif hasattr(pser.iloc[0], "__UDT__"):
+            return pser.iloc[0].__UDT__
         else:
-            return from_arrow_type(pa.Array.from_pandas(s).type)
-    elif isinstance(dt, CategoricalDtype):
-        return as_spark_type(s.cat.codes.dtype)
+            return from_arrow_type(pa.Array.from_pandas(pser).type)
+    elif isinstance(dtype, CategoricalDtype):
+        # `pser` must already be converted to codes.
+        return as_spark_type(pser.dtype)
     else:
-        return as_spark_type(dt)
+        return as_spark_type(dtype)
 
 
 def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
