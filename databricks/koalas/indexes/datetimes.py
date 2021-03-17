@@ -681,18 +681,13 @@ class DatetimeIndex(Index):
         dtype: int64
         """
 
-        def pandas_indexer_between_time(pdf):
-            return pd.DataFrame(
-                pdf.index.indexer_between_time(
-                    start_time=start_time,
-                    end_time=end_time,
-                    include_start=include_start,
-                    include_end=include_end,
-                )
-            )
+        def pandas_between_time(pdf):
+            return pd.DataFrame(pdf.between_time(start_time, end_time, include_start, include_end))
 
-        kdf = self.to_frame().koalas.apply_batch(pandas_indexer_between_time)
-        return first_series(kdf).rename(self.name)
+        kdf = self.to_frame().reset_index(drop=True).reset_index().set_index(0)
+        kdf_2 = kdf.apply_batch(pandas_between_time)
+
+        return first_series(kdf_2).reset_index(drop=True).rename(self.name)
 
 
 def disallow_nanoseconds(freq):
