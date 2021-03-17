@@ -135,32 +135,32 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
             for kidx, pidx in self.idx_pairs:
                 self.assert_eq(
                     kidx.indexer_between_time("00:00:00", "00:01:00"),
-                    pd.Series(pidx.indexer_between_time("00:00:00", "00:01:00")),
+                    pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00")),
                 )
 
                 self.assert_eq(
                     kidx.indexer_between_time(datetime.time(0, 0, 0), datetime.time(0, 1, 0)),
-                    pd.Series(
+                    pd.Index(
                         pidx.indexer_between_time(datetime.time(0, 0, 0), datetime.time(0, 1, 0))
                     ),
                 )
 
                 self.assert_eq(
                     kidx.indexer_between_time("00:00:00", "00:01:00", True, False),
-                    pd.Series(pidx.indexer_between_time("00:00:00", "00:01:00", True, False)),
+                    pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", True, False)),
                 )
 
                 self.assert_eq(
                     kidx.indexer_between_time("00:00:00", "00:01:00", False, True),
-                    pd.Series(pidx.indexer_between_time("00:00:00", "00:01:00", False, True)),
+                    pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, True)),
                 )
 
                 self.assert_eq(
                     kidx.indexer_between_time("00:00:00", "00:01:00", False, False),
-                    pd.Series(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
+                    pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
                 )
 
                 self.assert_eq(
                     kidx.indexer_between_time("00:00:00", "00:01:00", False, False),
-                    pd.Series(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
+                    pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
                 )

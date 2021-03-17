@@ -23,6 +23,7 @@ from pyspark._globals import _NoValue
 
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.internal import DEFAULT_SERIES_NAME
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
 from databricks.koalas.series import Series, first_series
 
@@ -641,7 +642,7 @@ class DatetimeIndex(Index):
         end_time: Union[datetime.time, str],
         include_start: bool = True,
         include_end: bool = True,
-    ) -> Series:
+    ) -> Index:
         """
         Return index locations of values between particular times of day
         (e.g., 9:00-9:30AM).
@@ -657,7 +658,7 @@ class DatetimeIndex(Index):
 
         Returns
         -------
-        values_between_time : Series of integers
+        values_between_time : Index of integers
 
         Examples
         --------
@@ -668,26 +669,21 @@ class DatetimeIndex(Index):
                       dtype='datetime64[ns]', freq=None)
 
         >>> kidx.indexer_between_time("00:01", "00:02")
-        0    1
-        1    2
-        dtype: int64
+        Int64Index([1, 2], dtype='int64')
 
         >>> kidx.indexer_between_time("00:01", "00:02", include_end=False)
-        0    1
-        dtype: int64
+        Int64Index([1], dtype='int64')
 
         >>> kidx.indexer_between_time("00:01", "00:02", include_start=False)
-        0    2
-        dtype: int64
+        Int64Index([2], dtype='int64')
         """
 
         def pandas_between_time(pdf):
             return pd.DataFrame(pdf.between_time(start_time, end_time, include_start, include_end))
 
-        kdf = self.to_frame().reset_index(drop=True).reset_index().set_index(0)
-        kdf_2 = kdf.apply_batch(pandas_between_time)
-
-        return first_series(kdf_2).reset_index(drop=True).rename(self.name)
+        kdf = self.to_frame().reset_index(drop=True).reset_index().set_index(DEFAULT_SERIES_NAME)
+        res_kdf = kdf.apply_batch(pandas_between_time)
+        return ks.Index(first_series(res_kdf).reset_index(drop=True).rename(self.name))
 
 
 def disallow_nanoseconds(freq):
