@@ -349,6 +349,7 @@ Selecting
    :toctree: api/
 
    DatetimeIndex.indexer_between_time
+   DatetimeIndex.indexer_at_time
 
 Time-specific operations
 ~~~~~~~~~~~~~~~~~~~~~~~~
