@@ -76,7 +76,7 @@ Dtype = typing.Union[np.dtype, ExtensionDtype]
 
 
 # A column of data, with the data type.
-class SeriesType(object):
+class SeriesType(typing.Generic[T]):
     def __init__(self, tpe):
         self.tpe = tpe  # type: types.DataType
 
@@ -354,6 +354,8 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     # We should re-import to make sure the class 'SeriesType' is not treated as a class
     # within this module locally. See Series.__class_getitem__ which imports this class
     # canonically.
+    from databricks.koalas.typedef import SeriesType, NameTypeHolder
+
     spec = getfullargspec(f)
     tpe = spec.annotations.get("return", None)
     if isinstance(tpe, str):
@@ -363,20 +365,21 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     if hasattr(tpe, "__origin__") and (
         tpe.__origin__ == ks.DataFrame or tpe.__origin__ == ks.Series
     ):
-        # When Python version is lower then 3.7. Unwrap it to a Tuple/Type type hints.
+        # When Python version is lower then 3.7. Unwrap it to a DataFrameType/SeriesType type hints.
         tpe = tpe.__args__[0]
+
+    if hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, SeriesType):
+        tpe = tpe.__args__[0]
+        if issubclass(tpe, NameTypeHolder):
+            tpe = tpe.tpe
+        inner = as_spark_type(tpe)
+        return SeriesType(inner)
 
     # Note that, DataFrame/Series type hints will create a Tuple/Type.
     # Python 3.6 has `__name__`. Python 3.7 and 3.8 have `_name`.
     # Check if the name is Tuple.
     name = getattr(tpe, "_name", getattr(tpe, "__name__", None))
-    if name == "Type":
-        tpe = tpe.__args__[0]
-        if issubclass(tpe, NameTypeHolder):
-            return SeriesType(as_spark_type(tpe.tpe))
-        else:
-            return SeriesType(as_spark_type(tpe))
-    elif name == "Tuple":
+    if name == "Tuple":
         tuple_type = tpe
         if hasattr(tuple_type, "__tuple_params__"):
             # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.

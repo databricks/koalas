@@ -24,7 +24,7 @@ import warnings
 from collections.abc import Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
-from typing import Any, Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Generic, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 import numpy as np
 import pandas as pd
@@ -87,6 +87,7 @@ from databricks.koalas.typedef import (
     spark_type_to_pandas_dtype,
     ScalarType,
     Scalar,
+    SeriesType,
 )
 
 
@@ -327,7 +328,7 @@ def _create_type_for_series_type(param):
     else:
         new_class = param.type if isinstance(param, np.dtype) else param
 
-    return Type[new_class]
+    return SeriesType[new_class]
 
 
 if (3, 5) <= sys.version_info < (3, 7):
