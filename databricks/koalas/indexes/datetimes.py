@@ -671,10 +671,10 @@ class DatetimeIndex(Index):
         >>> kidx.indexer_between_time("00:01", "00:02").sort_values()
         Int64Index([1, 2], dtype='int64')
 
-        >>> kidx.indexer_between_time("00:01", "00:02", include_end=False).sort_values()
+        >>> kidx.indexer_between_time("00:01", "00:02", include_end=False)
         Int64Index([1], dtype='int64')
 
-        >>> kidx.indexer_between_time("00:01", "00:02", include_start=False).sort_values()
+        >>> kidx.indexer_between_time("00:01", "00:02", include_start=False)
         Int64Index([2], dtype='int64')
         """
 
