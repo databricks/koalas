@@ -375,7 +375,7 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
         inner = as_spark_type(tpe)
         return SeriesType(inner)
 
-    # Note that, DataFrame/Series type hints will create a Tuple/Type.
+    # Note that, DataFrame type hints will create a Tuple.
     # Python 3.6 has `__name__`. Python 3.7 and 3.8 have `_name`.
     # Check if the name is Tuple.
     name = getattr(tpe, "_name", getattr(tpe, "__name__", None))
