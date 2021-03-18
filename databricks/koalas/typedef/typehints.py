@@ -365,7 +365,7 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     if hasattr(tpe, "__origin__") and (
         tpe.__origin__ == ks.DataFrame or tpe.__origin__ == ks.Series
     ):
-        # When Python version is lower then 3.7. Unwrap it to a DataFrameType/SeriesType type hints.
+        # When Python version is lower then 3.7. Unwrap it to a Tuple/SeriesType type hints.
         tpe = tpe.__args__[0]
 
     if hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, SeriesType):
