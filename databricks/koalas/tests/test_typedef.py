@@ -179,7 +179,7 @@ class TypeHintTests(unittest.TestCase):
         self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
 
         def try_infer_return_type():
-            def f() -> pd.Series[pdf.a.dtypes]:  # type: ignore
+            def f() -> pd.Series[pdf.a.dtype]:  # type: ignore
                 pass
 
             infer_return_type(f)
