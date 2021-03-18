@@ -685,7 +685,7 @@ class DatetimeIndex(Index):
         id_column_name = verify_temp_column_name(kdf, "__id_column__")
         kdf = kdf.koalas.attach_id_column("distributed-sequence", id_column_name)
         with ks.option_context("compute.default_index_type", "distributed"):
-            # The attached index in the statement will be dropped soon,
+            # The attached index in the statement below will be dropped soon,
             # so we enforce “distributed” default index type
             kdf = kdf.koalas.apply_batch(pandas_between_time)
         return ks.Index(first_series(kdf).rename(self.name))
