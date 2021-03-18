@@ -26,6 +26,7 @@ from databricks.koalas.indexes.base import Index
 from databricks.koalas.internal import DEFAULT_SERIES_NAME
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
 from databricks.koalas.series import Series, first_series
+from databricks.koalas.utils import verify_temp_column_name
 
 
 class DatetimeIndex(Index):
@@ -668,22 +669,27 @@ class DatetimeIndex(Index):
                        '2000-01-01 00:02:00'],
                       dtype='datetime64[ns]', freq=None)
 
-        >>> kidx.indexer_between_time("00:01", "00:02")
+        >>> kidx.indexer_between_time("00:01", "00:02").sort_values()
         Int64Index([1, 2], dtype='int64')
 
-        >>> kidx.indexer_between_time("00:01", "00:02", include_end=False)
+        >>> kidx.indexer_between_time("00:01", "00:02", include_end=False).sort_values()
         Int64Index([1], dtype='int64')
 
-        >>> kidx.indexer_between_time("00:01", "00:02", include_start=False)
+        >>> kidx.indexer_between_time("00:01", "00:02", include_start=False).sort_values()
         Int64Index([2], dtype='int64')
         """
 
-        def pandas_between_time(pdf):
-            return pd.DataFrame(pdf.between_time(start_time, end_time, include_start, include_end))
+        def pandas_between_time(pdf) -> ks.DataFrame[int]:
+            return pdf.between_time(start_time, end_time, include_start, include_end)
 
-        kdf = self.to_frame().reset_index(drop=True).reset_index().set_index(DEFAULT_SERIES_NAME)
-        res_kdf = kdf.apply_batch(pandas_between_time)
-        return ks.Index(first_series(res_kdf).reset_index(drop=True).rename(self.name))
+        kdf = self.to_frame()[[]]
+        id_column_name = verify_temp_column_name(kdf, "__id_column__")
+        kdf = kdf.koalas.attach_id_column("distributed-sequence", id_column_name)
+        with ks.option_context("compute.default_index_type", "distributed"):
+            # The attached index in the statement will be dropped soon,
+            # so we enforce “distributed” default index type
+            kdf = kdf.koalas.apply_batch(pandas_between_time)
+        return ks.Index(first_series(kdf).rename(self.name))
 
 
 def disallow_nanoseconds(freq):
