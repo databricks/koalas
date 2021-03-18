@@ -141,9 +141,7 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
                 kidx.indexer_between_time(
                     datetime.time(0, 0, 0), datetime.time(0, 1, 0)
                 ).sort_values(),
-                pd.Index(
-                    pidx.indexer_between_time(datetime.time(0, 0, 0), datetime.time(0, 1, 0))
-                ),
+                pd.Index(pidx.indexer_between_time(datetime.time(0, 0, 0), datetime.time(0, 1, 0))),
             )
 
             self.assert_eq(
