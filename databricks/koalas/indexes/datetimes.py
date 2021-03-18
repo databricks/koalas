@@ -690,6 +690,49 @@ class DatetimeIndex(Index):
             kdf = kdf.koalas.apply_batch(pandas_between_time)
         return ks.Index(first_series(kdf).rename(self.name))
 
+    def indexer_at_time(self, time: Union[datetime.time, str], asof: bool = False) -> Index:
+        """
+        Return index locations of values at particular time of day
+        (e.g. 9:30AM).
+
+        Parameters
+        ----------
+        time : datetime.time or str
+            Time passed in either as object (datetime.time) or as string in
+            appropriate format ("%H:%M", "%H%M", "%I:%M%p", "%I%M%p",
+            "%H:%M:%S", "%H%M%S", "%I:%M:%S%p", "%I%M%S%p").
+
+        Returns
+        -------
+        values_at_time : Index of integers
+
+        Examples
+        --------
+        >>> kidx = ks.date_range("2000-01-01", periods=3, freq="T")
+        >>> kidx # doctest: +NORMALIZE_WHITESPACE
+        DatetimeIndex(['2000-01-01 00:00:00', '2000-01-01 00:01:00',
+                       '2000-01-01 00:02:00'],
+                      dtype='datetime64[ns]', freq=None)
+
+        >>> kidx.indexer_at_time("00:00")
+        Int64Index([0], dtype='int64')
+
+        >>> kidx.indexer_at_time("00:01")
+        Int64Index([1], dtype='int64')
+        """
+
+        def pandas_at_time(pdf) -> ks.DataFrame[int]:
+            return pdf.at_time(time, asof)
+
+        kdf = self.to_frame()[[]]
+        id_column_name = verify_temp_column_name(kdf, "__id_column__")
+        kdf = kdf.koalas.attach_id_column("distributed-sequence", id_column_name)
+        with ks.option_context("compute.default_index_type", "distributed"):
+            # The attached index in the statement below will be dropped soon,
+            # so we enforce “distributed” default index type
+            kdf = kdf.koalas.apply_batch(pandas_at_time)
+        return ks.Index(first_series(kdf).rename(self.name))
+
 
 def disallow_nanoseconds(freq):
     if freq in ["N", "ns"]:
