@@ -23,7 +23,6 @@ from pyspark._globals import _NoValue
 
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
-from databricks.koalas.internal import DEFAULT_SERIES_NAME
 from databricks.koalas.missing.indexes import MissingPandasLikeDatetimeIndex
 from databricks.koalas.series import Series, first_series
 from databricks.koalas.utils import verify_temp_column_name
