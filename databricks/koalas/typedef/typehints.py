@@ -20,7 +20,7 @@ Utilities to deal with types. This is mostly focused on python3.
 import typing
 import datetime
 import decimal
-from inspect import getfullargspec, isclass
+from inspect import getfullargspec
 
 import numpy as np
 import pandas as pd
@@ -76,7 +76,7 @@ Dtype = typing.Union[np.dtype, ExtensionDtype]
 
 
 # A column of data, with the data type.
-class SeriesType(typing.Generic[T]):
+class SeriesType(object):
     def __init__(self, tpe):
         self.tpe = tpe  # type: types.DataType
 
@@ -93,7 +93,10 @@ class DataFrameType(object):
             )  # type: types.StructType
         else:
             self.tpe = types.StructType(
-                [types.StructField(n, t) for n, t in zip(names, tpe)]
+                [
+                    types.StructField(n if n is not None else ("c%s" % i), t)
+                    for i, (n, t) in enumerate(zip(names, tpe))
+                ]
             )  # type: types.StructType
 
     def __repr__(self):
@@ -337,6 +340,22 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     ...     pass
     >>> infer_return_type(func).tpe
     StructType(List(StructField(a,LongType,true),StructField(b,LongType,true)))
+
+    >>> pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical([3, 4, 5])})
+    >>> def func() -> ks.DataFrame[pdf.dtypes]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(c0,LongType,true),StructField(c1,LongType,true)))
+
+    >>> def func() -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(a,LongType,true),StructField(b,LongType,true)))
+
+    >>> def func() -> ks.Series[pdf.b.dtype]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    LongType
     """
     # We should re-import to make sure the class 'SeriesType' is not treated as a class
     # within this module locally. See Series.__class_getitem__ which imports this class
@@ -348,23 +367,23 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     if isinstance(tpe, str):
         # This type hint can happen when given hints are string to avoid forward reference.
         tpe = resolve_string_type_hint(tpe)
-    if hasattr(tpe, "__origin__") and (
-        issubclass(tpe.__origin__, SeriesType) or tpe.__origin__ == ks.Series
-    ):
-        # TODO: remove "tpe.__origin__ == ks.Series" when we drop Python 3.5 and 3.6.
-        inner = as_spark_type(tpe.__args__[0])
-        return SeriesType(inner)
 
     if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
         # When Python version is lower then 3.7. Unwrap it to a Tuple type
         # hints.
         tpe = tpe.__args__[0]
 
-    # Note that, DataFrame type hints will create a Tuple.
+    # Note that, DataFrame/Series type hints will create a Tuple/Type.
     # Python 3.6 has `__name__`. Python 3.7 and 3.8 have `_name`.
     # Check if the name is Tuple.
     name = getattr(tpe, "_name", getattr(tpe, "__name__", None))
-    if name == "Tuple":
+    if name == "Type":
+        tpe = tpe.__args__[0]
+        if issubclass(tpe, NameTypeHolder):
+            return SeriesType(as_spark_type(tpe.tpe))
+        else:
+            return SeriesType(as_spark_type(tpe))
+    elif name == "Tuple":
         tuple_type = tpe
         if hasattr(tuple_type, "__tuple_params__"):
             # Python 3.5.0 to 3.5.2 has '__tuple_params__' instead.
@@ -372,13 +391,9 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
             parameters = getattr(tuple_type, "__tuple_params__")
         else:
             parameters = getattr(tuple_type, "__args__")
-        if len(parameters) > 0 and all(
-            isclass(p) and issubclass(p, NameTypeHolder) for p in parameters
-        ):
-            names = [p.name for p in parameters if issubclass(p, NameTypeHolder)]
-            types = [p.tpe for p in parameters if issubclass(p, NameTypeHolder)]
-            return DataFrameType([as_spark_type(t) for t in types], names)
-        return DataFrameType([as_spark_type(t) for t in parameters])
+        names = [p.name if issubclass(p, NameTypeHolder) else None for p in parameters]
+        types = [p.tpe if issubclass(p, NameTypeHolder) else p for p in parameters]
+        return DataFrameType([as_spark_type(t) for t in types], names)
     inner = as_spark_type(tpe)
     if inner is None:
         return UnknownType(tpe)

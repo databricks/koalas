@@ -178,6 +178,14 @@ class TypeHintTests(unittest.TestCase):
 
         self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
 
+        def try_infer_return_type():
+            def f() -> pd.Series[pdf.a.dtypes]:  # type: ignore
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
+
     def test_infer_schema_with_names_negative(self):
         def try_infer_return_type():
             def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':  # noqa: F821
@@ -211,6 +219,14 @@ class TypeHintTests(unittest.TestCase):
 
         def try_infer_return_type():
             def f() -> ks.DataFrame[pdf.dtypes]:  # type: ignore
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
+
+        def try_infer_return_type():
+            def f() -> ks.Series[pdf.a.dtype]:  # type: ignore
                 pass
 
             infer_return_type(f)

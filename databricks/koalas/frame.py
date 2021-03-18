@@ -47,6 +47,7 @@ from typing import (
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
+from pandas.api.extensions import ExtensionDtype
 
 if TYPE_CHECKING:
     from pandas.io.formats.style import Styler
@@ -364,8 +365,16 @@ def _create_tuple_for_frame_type(params):
 
     if not isinstance(params, Iterable):
         params = [params]
-    params = [param.type if isinstance(param, np.dtype) else param for param in params]
-    return Tuple[tuple(params)]
+
+    new_params = []
+    for param in params:
+        if isinstance(param, ExtensionDtype):
+            new_class = type("NameType", (NameTypeHolder,), {})
+            new_class.tpe = param
+            new_params.append(new_class)
+        else:
+            new_params.append(param.type if isinstance(param, np.dtype) else param)
+    return Tuple[tuple(new_params)]
 
 
 if (3, 5) <= sys.version_info < (3, 7):

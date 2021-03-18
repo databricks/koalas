@@ -24,13 +24,14 @@ import warnings
 from collections.abc import Mapping
 from distutils.version import LooseVersion
 from functools import partial, wraps, reduce
-from typing import Any, Generic, Iterable, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Generic, Iterable, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 import numpy as np
 import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like, is_hashable
+from pandas.api.extensions import ExtensionDtype
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -84,7 +85,6 @@ from databricks.koalas.strings import StringMethods
 from databricks.koalas.typedef import (
     infer_return_type,
     spark_type_to_pandas_dtype,
-    SeriesType,
     ScalarType,
     Scalar,
 )
@@ -316,6 +316,32 @@ T = TypeVar("T")
 
 # Needed to disambiguate Series.str and str type
 str_type = str
+
+
+def _create_type_for_series_type(param):
+    from databricks.koalas.typedef import NameTypeHolder
+
+    if isinstance(param, ExtensionDtype):
+        new_class = type("NameType", (NameTypeHolder,), {})
+        new_class.tpe = param
+    else:
+        new_class = param.type if isinstance(param, np.dtype) else param
+
+    return Type[new_class]
+
+
+if (3, 5) <= sys.version_info < (3, 7):
+    from typing import GenericMeta  # type: ignore
+
+    old_getitem = GenericMeta.__getitem__  # type: ignore
+
+    def new_getitem(self, params):
+        if hasattr(self, "is_series"):
+            return old_getitem(self, _create_type_for_series_type(params))
+        else:
+            return old_getitem(self, params)
+
+    GenericMeta.__getitem__ = new_getitem  # type: ignore
 
 
 class Series(Frame, IndexOpsMixin, Generic[T]):
@@ -5969,9 +5995,14 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return MissingPandasLikeSeries.__iter__(self)
 
     if sys.version_info >= (3, 7):
-        # In order to support the type hints such as Series[...]. See DataFrame.__class_getitem__.
-        def __class_getitem__(cls, tpe):
-            return SeriesType[tpe]
+
+        def __class_getitem__(cls, params):
+            return _create_type_for_series_type(params)
+
+    elif (3, 5) <= sys.version_info < (3, 7):
+        # The implementation is in its metaclass so this flag is needed to distinguish
+        # Koalas Series.
+        is_series = None
 
 
 def unpack_scalar(sdf):
