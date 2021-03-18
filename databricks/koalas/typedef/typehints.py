@@ -85,19 +85,13 @@ class SeriesType(object):
 
 
 class DataFrameType(object):
-    def __init__(self, tpe, names=None):
-        if names is None:
-            # Default names `c0, c1, ... cn`.
-            self.tpe = types.StructType(
-                [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
-            )  # type: types.StructType
-        else:
-            self.tpe = types.StructType(
-                [
-                    types.StructField(n if n is not None else ("c%s" % i), t)
-                    for i, (n, t) in enumerate(zip(names, tpe))
-                ]
-            )  # type: types.StructType
+    def __init__(self, tpe, names):
+        self.tpe = types.StructType(
+            [
+                types.StructField(n if n is not None else ("c%s" % i), t)
+                for i, (n, t) in enumerate(zip(names, tpe))
+            ]
+        )  # type: types.StructType
 
     def __repr__(self):
         return "DataFrameType[{}]".format(self.tpe)
@@ -360,17 +354,16 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     # We should re-import to make sure the class 'SeriesType' is not treated as a class
     # within this module locally. See Series.__class_getitem__ which imports this class
     # canonically.
-    from databricks.koalas.typedef import SeriesType, NameTypeHolder
-
     spec = getfullargspec(f)
     tpe = spec.annotations.get("return", None)
     if isinstance(tpe, str):
         # This type hint can happen when given hints are string to avoid forward reference.
         tpe = resolve_string_type_hint(tpe)
 
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
-        # When Python version is lower then 3.7. Unwrap it to a Tuple type
-        # hints.
+    if hasattr(tpe, "__origin__") and (
+        tpe.__origin__ == ks.DataFrame or tpe.__origin__ == ks.Series
+    ):
+        # When Python version is lower then 3.7. Unwrap it to a Tuple/Type type hints.
         tpe = tpe.__args__[0]
 
     # Note that, DataFrame/Series type hints will create a Tuple/Type.
