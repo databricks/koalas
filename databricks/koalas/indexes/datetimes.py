@@ -664,7 +664,7 @@ class DatetimeIndex(Index):
         Examples
         --------
         >>> kidx = ks.date_range("2000-01-01", periods=3, freq="T")
-        >>> kidx
+        >>> kidx  # doctest: +NORMALIZE_WHITESPACE
         DatetimeIndex(['2000-01-01 00:00:00', '2000-01-01 00:01:00',
                        '2000-01-01 00:02:00'],
                       dtype='datetime64[ns]', freq=None)
