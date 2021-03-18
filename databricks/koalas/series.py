@@ -5996,7 +5996,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         return MissingPandasLikeSeries.__iter__(self)
 
     if sys.version_info >= (3, 7):
-
+        # In order to support the type hints such as Series[...]. See DataFrame.__class_getitem__.
         def __class_getitem__(cls, params):
             return _create_type_for_series_type(params)
 
