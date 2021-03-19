@@ -163,3 +163,25 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
                 kidx.indexer_between_time("00:00:00", "00:01:00", False, False).sort_values(),
                 pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
             )
+
+    def test_indexer_at_time(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(
+                kidx.indexer_at_time("00:00:00").sort_values(),
+                pd.Index(pidx.indexer_at_time("00:00:00")),
+            )
+
+            self.assert_eq(
+                kidx.indexer_at_time(datetime.time(0, 1, 0)).sort_values(),
+                pd.Index(pidx.indexer_at_time(datetime.time(0, 1, 0))),
+            )
+
+            self.assert_eq(
+                kidx.indexer_at_time("00:00:01").sort_values(),
+                pd.Index(pidx.indexer_at_time("00:00:01")),
+            )
+
+        self.assertRaises(
+            NotImplementedError,
+            lambda: ks.DatetimeIndex([0]).indexer_at_time("00:00:00", asof=True),
+        )
