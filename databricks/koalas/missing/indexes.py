@@ -110,7 +110,6 @@ class MissingPandasLikeDatetimeIndex(MissingPandasLikeIndex):
 
     # Functions
     indexer_at_time = _unsupported_function("indexer_at_time", cls="DatetimeIndex")
-    indexer_between_time = _unsupported_function("indexer_between_time", cls="DatetimeIndex")
     snap = _unsupported_function("snap", cls="DatetimeIndex")
     tz_convert = _unsupported_function("tz_convert", cls="DatetimeIndex")
     tz_localize = _unsupported_function("tz_localize", cls="DatetimeIndex")

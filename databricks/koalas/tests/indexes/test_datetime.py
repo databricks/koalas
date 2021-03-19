@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import datetime
 
 from distutils.version import LooseVersion
 
@@ -127,4 +128,38 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
         for kidx, pidx in self.idx_pairs:
             self.assert_eq(
                 kidx.strftime(date_format="%B %d, %Y"), pidx.strftime(date_format="%B %d, %Y")
+            )
+
+    def test_indexer_between_time(self):
+        for kidx, pidx in self.idx_pairs:
+            self.assert_eq(
+                kidx.indexer_between_time("00:00:00", "00:01:00").sort_values(),
+                pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00")),
+            )
+
+            self.assert_eq(
+                kidx.indexer_between_time(
+                    datetime.time(0, 0, 0), datetime.time(0, 1, 0)
+                ).sort_values(),
+                pd.Index(pidx.indexer_between_time(datetime.time(0, 0, 0), datetime.time(0, 1, 0))),
+            )
+
+            self.assert_eq(
+                kidx.indexer_between_time("00:00:00", "00:01:00", True, False).sort_values(),
+                pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", True, False)),
+            )
+
+            self.assert_eq(
+                kidx.indexer_between_time("00:00:00", "00:01:00", False, True).sort_values(),
+                pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, True)),
+            )
+
+            self.assert_eq(
+                kidx.indexer_between_time("00:00:00", "00:01:00", False, False).sort_values(),
+                pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
+            )
+
+            self.assert_eq(
+                kidx.indexer_between_time("00:00:00", "00:01:00", False, False).sort_values(),
+                pd.Index(pidx.indexer_between_time("00:00:00", "00:01:00", False, False)),
             )
