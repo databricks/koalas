@@ -11595,9 +11595,9 @@ def _reduce_spark_multi(sdf, aggs):
     """
     assert isinstance(sdf, spark.DataFrame)
     sdf0 = sdf.agg(*aggs)
-    l = sdf0.head(2)
+    l = sdf0.limit(2).toPandas()
     assert len(l) == 1, (sdf, l)
-    row = l[0]
+    row = l.iloc[0]
     l2 = list(row)
     assert len(l2) == len(aggs), (row, l2)
     return l2

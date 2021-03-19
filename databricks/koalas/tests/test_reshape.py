@@ -20,9 +20,10 @@ from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
+import pyspark
 
 from databricks import koalas as ks
-from databricks.koalas.testing.utils import ReusedSQLTestCase
+from databricks.koalas.testing.utils import ReusedSQLTestCase, SPARK_CONF_ARROW_ENABLED
 from databricks.koalas.utils import name_like_string
 
 
@@ -109,23 +110,41 @@ class ReshapeTest(ReusedSQLTestCase):
         )
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
-        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8))
-        self.assert_eq(ks.get_dummies(kdf.dt), pd.get_dummies(pdf.dt, dtype=np.int8))
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+            self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8))
+            self.assert_eq(ks.get_dummies(kdf.dt), pd.get_dummies(pdf.dt, dtype=np.int8))
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+                self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8))
+                self.assert_eq(ks.get_dummies(kdf.dt), pd.get_dummies(pdf.dt, dtype=np.int8))
 
     def test_get_dummies_boolean(self):
         pdf = pd.DataFrame({"b": [True, False, True]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
-        self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b, dtype=np.int8))
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+            self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b, dtype=np.int8))
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+                self.assert_eq(ks.get_dummies(kdf.b), pd.get_dummies(pdf.b, dtype=np.int8))
 
     def test_get_dummies_decimal(self):
         pdf = pd.DataFrame({"d": [Decimal(1.0), Decimal(2.0), Decimal(1)]})
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
-        self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8), almost=True)
+        if LooseVersion(pyspark.__version__) >= LooseVersion("2.4"):
+            self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+            self.assert_eq(ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8), almost=True)
+        else:
+            with self.sql_conf({SPARK_CONF_ARROW_ENABLED: False}):
+                self.assert_eq(ks.get_dummies(kdf), pd.get_dummies(pdf, dtype=np.int8))
+                self.assert_eq(
+                    ks.get_dummies(kdf.d), pd.get_dummies(pdf.d, dtype=np.int8), almost=True
+                )
 
     def test_get_dummies_kwargs(self):
         # pser = pd.Series([1, 1, 1, 2, 2, 1, 3, 4], dtype='category')
