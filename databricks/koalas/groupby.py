@@ -998,6 +998,11 @@ class GroupBy(object, metaclass=ABCMeta):
             >>> def plus_one(x) -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
             ...     return x[['B', 'C']] / x[['B', 'C']]
 
+            When the given function has the return type annotated, the original index of the
+            GroupBy object will be lost and a default index will be attached to the result.
+            Please be careful about configuring the default index. See also `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
+
         .. note:: the dataframe within ``func`` is actually a pandas dataframe. Therefore,
             any pandas APIs within this function is allowed.
 
