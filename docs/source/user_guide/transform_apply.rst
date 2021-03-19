@@ -90,7 +90,7 @@ Koalas combines the pandas DataFrames as a Koalas DataFrame.
 
 Note that :func:`DataFrame.koalas.transform_batch` has the length restriction - the length of input and output should be
 the same whereas :func:`DataFrame.koalas.apply_batch` does not.  However, it is important to know that
-the output belongs to the same DataFrame when :func:`DataFrame.koalas.transform_batch` can a Series, and
+the output belongs to the same DataFrame when :func:`DataFrame.koalas.transform_batch` returns a Series, and
 you can avoid a shuffle by the operations between different DataFrames. In case of :func:`DataFrame.koalas.apply_batch`, its output is always
 treated that it belongs to a new different DataFrame. See also
 `Operations on different DataFrames <options.rst#operations-on-different-dataframes>`_ for more details.

@@ -236,6 +236,11 @@ class KoalasFrameMethods(object):
             >>> def plus_one(x) -> ks.DataFrame[zip(pdf.dtypes, pdf.columns)]:
             ...     return x + 1
 
+            When the given function has the return type annotated, the original index of the
+            DataFrame will be lost and a default index will be attached to the result DataFrame.
+            Please be careful about configuring the default index. See also `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
+
 
         Parameters
         ----------
@@ -441,6 +446,11 @@ class KoalasFrameMethods(object):
             >>> def plus_one(x) -> ks.DataFrame[zip(pdf.dtypes, pdf.columns)]:
             ...     return x + 1
 
+            When the given function returns DataFrame and has the return type annotated, the
+            original index of the DataFrame will be lost and then a default index will be attached
+            to the result. Please be careful about configuring the default index. See also
+            `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
 
         Parameters
         ----------
