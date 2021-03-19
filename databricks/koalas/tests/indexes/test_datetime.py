@@ -180,6 +180,7 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
                 kidx.indexer_at_time("00:00:01").sort_values(),
                 pd.Index(pidx.indexer_at_time("00:00:01")),
             )
+
         self.assertRaises(
             NotImplementedError,
             lambda: ks.DatetimeIndex([0]).indexer_at_time("00:00:00", asof=True),
