@@ -3042,17 +3042,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2018-04-09 00:00:00  1
         2018-04-12 01:00:00  4
         """
-        from databricks.koalas.indexes import DatetimeIndex    
+        from databricks.koalas.indexes import DatetimeIndex
+
         if axis == 0:
-            index = self.index 
+            index = self.index
         else:
             raise NotImplementedError("between_time currently only works for axis=0")
-        
+
         if not isinstance(index, DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
-        
+
         indexer = index.indexer_between_time(
-            start_time, end_time, include_start=include_start, include_end=include_end).to_numpy()
+            start_time, end_time, include_start=include_start, include_end=include_end
+        ).to_numpy()
         return self.copy().take(indexer)
 
     def where(self, cond, other=np.nan) -> "DataFrame":
