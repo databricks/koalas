@@ -412,7 +412,9 @@ def read_csv(
         return kdf
 
 
-def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **options) -> DataFrame:
+def read_json(
+    path: str, lines: bool = True, index_col: Optional[Union[str, List[str]]] = None, **options
+) -> DataFrame:
     """
     Convert a JSON string to DataFrame.
 
@@ -420,6 +422,8 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     ----------
     path : string
         File path
+    lines : bool, default True
+        Read the file as a json object per line. It should be always True for now.
     index_col : str or list of str, optional, default: None
         Index column of table in Spark.
     options : dict
@@ -459,6 +463,9 @@ def read_json(path: str, index_col: Optional[Union[str, List[str]]] = None, **op
     """
     if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
         options = options.get("options")  # type: ignore
+
+    if not lines:
+        raise NotImplementedError("lines=False is not implemented yet.")
 
     return read_spark_io(path, format="json", index_col=index_col, **options)
 
