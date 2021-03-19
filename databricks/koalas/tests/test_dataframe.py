@@ -5422,3 +5422,20 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf_l, pdf_r = pdf1.align(pdf2, join=join, axis=1)
             self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
             self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+    def test_between_time(self):
+        i = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        ts = pd.DataFrame({"A": [1, 2, 3, 4]}, index=i)
+        kts = ks.from_pandas(ts)
+        self.assert_eq(
+            ts.between_time("0:15", "0:45"), kts.between_time("0:15", "0:45"), almost=True
+        )
+
+        with self.assertRaisesRegex(
+            NotImplementedError, "between_time currently only works for axis=0"
+        ):
+            kts.between_time("0:15", "0:45", axis=1)
+
+        kts = ks.DataFrame({"A": [1, 2, 3, 4]})
+        with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
+            kts.between_time("0:15", "0:45")
