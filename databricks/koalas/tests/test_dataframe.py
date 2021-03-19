@@ -5439,3 +5439,14 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kts = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
             kts.between_time("0:15", "0:45")
+
+    def test_between_time_no_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            i = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+            ts = pd.DataFrame({"A": [1, 2, 3, 4]}, index=i)
+            kts = ks.DataFrame({"A": [1, 2, 3, 4]}, index=i)
+            self.assert_eq(
+                ts.between_time("0:15", "0:45"),
+                kts.between_time("0:15", "0:45").sort_index(),
+                almost=True,
+            )
