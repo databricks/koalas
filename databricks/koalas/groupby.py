@@ -2045,6 +2045,11 @@ class GroupBy(object, metaclass=ABCMeta):
              >>> def convert_to_string(x) -> ks.Series[str]:
              ...     return x.apply("a string {}".format)
 
+            When the given function has the return type annotated, the original index of the
+            GroupBy object will be lost and a default index will be attached to the result.
+            Please be careful about configuring the default index. See also `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
+
         .. note:: the series within ``func`` is actually a pandas series. Therefore,
             any pandas APIs within this function is allowed.
 
