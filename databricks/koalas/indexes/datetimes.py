@@ -709,7 +709,7 @@ class DatetimeIndex(Index):
         Examples
         --------
         >>> kidx = ks.date_range("2000-01-01", periods=3, freq="T")
-        >>> kidx # doctest: +NORMALIZE_WHITESPACE
+        >>> kidx  # doctest: +NORMALIZE_WHITESPACE
         DatetimeIndex(['2000-01-01 00:00:00', '2000-01-01 00:01:00',
                        '2000-01-01 00:02:00'],
                       dtype='datetime64[ns]', freq=None)
@@ -720,6 +720,8 @@ class DatetimeIndex(Index):
         >>> kidx.indexer_at_time("00:01")
         Int64Index([1], dtype='int64')
         """
+        if asof:
+            raise NotImplementedError("'asof' argument is not supported")
 
         def pandas_at_time(pdf) -> ks.DataFrame[int]:
             return pdf.at_time(time, asof)
