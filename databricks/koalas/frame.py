@@ -43,7 +43,7 @@ from typing import (
     cast,
     TYPE_CHECKING,
 )
-
+import datetime
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
@@ -2978,7 +2978,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             return DataFrame(internal)
 
     def between_time(
-        self, start_time, end_time, include_start=True, include_end=True, axis: Union[int, str] = 0,
+        self,
+        start_time: Union[datetime.time, str],
+        end_time: Union[datetime.time, str],
+        include_start: bool = True,
+        include_end: bool = True,
+        axis: Union[int, str] = 0,
     ) -> "DataFrame":
         """
         Select values between particular times of the day (e.g., 9:00-9:30 AM).
@@ -3020,8 +3025,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> i = pd.date_range('2018-04-09', periods=4, freq='1D20min')
-        >>> ts = pd.DataFrame({'A': [1, 2, 3, 4]}, index=i)
-        >>> kts = ks.from_pandas(ts)
+        >>> kts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=i)
         >>> kts
                              A
         2018-04-09 00:00:00  1
@@ -3055,7 +3059,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         indexer = index.indexer_between_time(
             start_time, end_time, include_start=include_start, include_end=include_end
         ).to_numpy()
-        return self.copy().take(indexer)
+        return self.iloc[indexer]
 
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
