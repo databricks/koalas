@@ -44,6 +44,7 @@ from typing import (
     TYPE_CHECKING,
 )
 import datetime
+
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
@@ -2984,7 +2985,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         include_start: bool = True,
         include_end: bool = True,
         axis: Union[int, str] = 0,
-    ) -> "Union[Series[Any], DataFrame[Any]]":
+    ) -> Union["Series", "DataFrame"]:
         """
         Select values between particular times of the day (e.g., 9:00-9:30 AM).
 
@@ -3024,16 +3025,16 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Examples
         --------
-        >>> i = pd.date_range('2018-04-09', periods=4, freq='1D20min')
-        >>> kts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=i)
-        >>> kts
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='1D20min')
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
+        >>> kdf
                              A
         2018-04-09 00:00:00  1
         2018-04-10 00:20:00  2
         2018-04-11 00:40:00  3
         2018-04-12 01:00:00  4
 
-        >>> kts.between_time('0:15', '0:45')
+        >>> kdf.between_time('0:15', '0:45')
                              A
         2018-04-10 00:20:00  2
         2018-04-11 00:40:00  3
@@ -3041,19 +3042,19 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         You get the times that are *not* between two times by setting
         ``start_time`` later than ``end_time``:
 
-        >>> kts.between_time('0:45', '0:15')
+        >>> kdf.between_time('0:45', '0:15')
                              A
         2018-04-09 00:00:00  1
         2018-04-12 01:00:00  4
         """
         from databricks.koalas.indexes import DatetimeIndex
 
-        if axis == 0:
-            index = self.index
-        else:
+        axis = validate_axis(axis)
+
+        if axis != 0:
             raise NotImplementedError("between_time currently only works for axis=0")
 
-        if not isinstance(index, DatetimeIndex):
+        if not isinstance(self.index, DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
 
         def pandas_between_time(pdf):

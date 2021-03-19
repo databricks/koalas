@@ -5424,29 +5424,24 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
 
     def test_between_time(self):
-        i = pd.date_range("2018-04-09", periods=4, freq="1D20min")
-        ts = pd.DataFrame({"A": [1, 2, 3, 4]}, index=i)
-        kts = ks.DataFrame({"A": [1, 2, 3, 4]}, index=i)
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
+        kdf = ks.from_pandas(pdf)
         self.assert_eq(
-            ts.between_time("0:15", "0:45"), kts.between_time("0:15", "0:45"), almost=True
+            pdf.between_time("0:15", "0:45"),
+            kdf.between_time("0:15", "0:45").sort_index(),
+            almost=True,
         )
 
         with self.assertRaisesRegex(
             NotImplementedError, "between_time currently only works for axis=0"
         ):
-            kts.between_time("0:15", "0:45", axis=1)
+            kdf.between_time("0:15", "0:45", axis=1)
 
-        kts = ks.DataFrame({"A": [1, 2, 3, 4]})
+        kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
-            kts.between_time("0:15", "0:45")
+            kdf.between_time("0:15", "0:45")
 
     def test_between_time_no_shortcut(self):
         with ks.option_context("compute.shortcut_limit", 0):
-            i = pd.date_range("2018-04-09", periods=4, freq="1D20min")
-            ts = pd.DataFrame({"A": [1, 2, 3, 4]}, index=i)
-            kts = ks.DataFrame({"A": [1, 2, 3, 4]}, index=i)
-            self.assert_eq(
-                ts.between_time("0:15", "0:45"),
-                kts.between_time("0:15", "0:45").sort_index(),
-                almost=True,
-            )
+            self.test_between_time()
