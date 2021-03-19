@@ -2984,7 +2984,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         include_start: bool = True,
         include_end: bool = True,
         axis: Union[int, str] = 0,
-    ) -> "DataFrame":
+    ) -> "Union[Series[Any], DataFrame[Any]]":
         """
         Select values between particular times of the day (e.g., 9:00-9:30 AM).
 
