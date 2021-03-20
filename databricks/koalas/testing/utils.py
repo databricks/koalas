@@ -130,6 +130,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                     check_index_type=("equiv" if len(left.index) > 0 else False),
                     check_column_type=("equiv" if len(left.columns) > 0 else False),
                     check_exact=check_exact,
+                    check_freq=False,
                 )
             except AssertionError as e:
                 msg = (
@@ -145,6 +146,7 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
                     check_exact=check_exact,
+                    check_freq=False,
                 )
             except AssertionError as e:
                 msg = (

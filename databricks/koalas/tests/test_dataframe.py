@@ -5428,9 +5428,8 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
-            pdf.between_time("0:15", "0:45"),
+            pdf.between_time("0:15", "0:45").sort_index(),
             kdf.between_time("0:15", "0:45").sort_index(),
-            almost=True,
         )
 
         with self.assertRaisesRegex(
