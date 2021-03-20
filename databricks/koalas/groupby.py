@@ -28,9 +28,8 @@ from functools import partial
 from itertools import product
 from typing import Any, List, Set, Tuple, Union, cast
 
-import numpy as np
 import pandas as pd
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype, is_hashable, is_list_like
+from pandas.api.types import is_hashable, is_list_like
 
 from pyspark.sql import Window, functions as F
 from pyspark.sql.types import (
@@ -998,6 +997,11 @@ class GroupBy(object, metaclass=ABCMeta):
             >>> def plus_one(x) -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
             ...     return x[['B', 'C']] / x[['B', 'C']]
 
+            When the given function has the return type annotated, the original index of the
+            GroupBy object will be lost and a default index will be attached to the result.
+            Please be careful about configuring the default index. See also `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
+
         .. note:: the dataframe within ``func`` is actually a pandas dataframe. Therefore,
             any pandas APIs within this function is allowed.
 
@@ -1229,11 +1233,6 @@ class GroupBy(object, metaclass=ABCMeta):
         if should_infer_schema:
             # If schema is inferred, we can restore indexes too.
             internal = kdf_from_pandas._internal.with_new_sdf(sdf)
-            if should_return_series and not is_series_groupby:
-                # Restore grouping names as the index name
-                internal = internal.copy(
-                    index_names=[kser._column_label for kser in self._groupkeys]
-                )
         else:
             # Otherwise, it loses index.
             internal = InternalFrame(spark_frame=sdf, index_spark_columns=None)
@@ -1364,57 +1363,19 @@ class GroupBy(object, metaclass=ABCMeta):
         the same pandas DataFrame as if the Koalas DataFrame is collected to driver side.
         The index, column labels, etc. are re-constructed within the function.
         """
-        index_columns = kdf._internal.index_spark_column_names
-        index_names = kdf._internal.index_names
-        data_columns = kdf._internal.data_spark_column_names
-        column_labels = kdf._internal.column_labels
-        column_labels_level = kdf._internal.column_labels_level
+        arguments_for_restore_index = kdf._internal.arguments_for_restore_index
 
         def rename_output(pdf):
-            # TODO: This logic below was borrowed from `DataFrame.to_pandas_frame` to set the index
-            #   within each pdf properly. we might have to deduplicate it.
-            import pandas as pd
-
-            append = False
-            for index_field in index_columns:
-                drop = index_field not in data_columns
-                pdf = pdf.set_index(index_field, drop=drop, append=append)
-                append = True
-            pdf = pdf[data_columns]
-
-            if column_labels_level > 1:
-                pdf.columns = pd.MultiIndex.from_tuples(column_labels)
-            else:
-                pdf.columns = [None if label is None else label[0] for label in column_labels]
-
-            pdf.index.names = [
-                name if name is None or len(name) > 1 else name[0] for name in index_names
-            ]
+            pdf = InternalFrame.restore_index(pdf, **arguments_for_restore_index)
 
             pdf = func(pdf)
 
-            if retain_index:
-                # If schema should be inferred, we don't restore index. pandas seems restoring
-                # the index in some cases.
-                # When Spark output type is specified, without executing it, we don't know
-                # if we should restore the index or not. For instance, see the example in
-                # https://github.com/databricks/koalas/issues/628.
-
-                # TODO: deduplicate this logic with InternalFrame.from_pandas
-                new_index_columns = [
-                    SPARK_INDEX_NAME_FORMAT(i) for i in range(len(pdf.index.names))
-                ]
-                new_data_columns = [name_like_string(col) for col in pdf.columns]
-
-                pdf.index.names = new_index_columns
-                reset_index = pdf.reset_index()
-                reset_index.columns = new_index_columns + new_data_columns
-                for name, col in reset_index.iteritems():
-                    dt = col.dtype
-                    if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-                        continue
-                    reset_index[name] = col.replace({np.nan: None})
-                pdf = reset_index
+            # If schema should be inferred, we don't restore index. pandas seems restoring
+            # the index in some cases.
+            # When Spark output type is specified, without executing it, we don't know
+            # if we should restore the index or not. For instance, see the example in
+            # https://github.com/databricks/koalas/issues/628.
+            pdf, _, _, _, _ = InternalFrame.prepare_pandas_frame(pdf, retain_index=retain_index)
 
             # Just positionally map the column names to given schema's.
             pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
@@ -2044,6 +2005,11 @@ class GroupBy(object, metaclass=ABCMeta):
 
              >>> def convert_to_string(x) -> ks.Series[str]:
              ...     return x.apply("a string {}".format)
+
+            When the given function has the return type annotated, the original index of the
+            GroupBy object will be lost and a default index will be attached to the result.
+            Please be careful about configuring the default index. See also `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
 
         .. note:: the series within ``func`` is actually a pandas series. Therefore,
             any pandas APIs within this function is allowed.

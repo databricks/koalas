@@ -93,3 +93,44 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kcodes.tolist(), pcodes.tolist())
         self.assert_eq(kuniques, puniques)
+
+    def test_groupby_apply(self):
+        pdf = pd.DataFrame(
+            {
+                "a": pd.Categorical([1, 2, 3, 1, 2, 3]),
+                "b": pd.Categorical(
+                    ["b", "a", "c", "c", "b", "a"], categories=["c", "b", "d", "a"]
+                ),
+            },
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(
+            kdf.groupby("a").apply(lambda df: df).sort_index(),
+            pdf.groupby("a").apply(lambda df: df).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby("b").apply(lambda df: df[["a"]]).sort_index(),
+            pdf.groupby("b").apply(lambda df: df[["a"]]).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby(["a", "b"]).apply(lambda df: df).sort_index(),
+            pdf.groupby(["a", "b"]).apply(lambda df: df).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby("a").apply(lambda df: df.b.cat.codes).sort_index(),
+            pdf.groupby("a").apply(lambda df: df.b.cat.codes).sort_index(),
+        )
+        self.assert_eq(
+            kdf.groupby("a")["b"].apply(lambda b: b.cat.codes).sort_index(),
+            pdf.groupby("a")["b"].apply(lambda b: b.cat.codes).sort_index(),
+        )
+
+        # TODO: grouping by a categorical type sometimes preserves unused categories.
+        # self.assert_eq(
+        #     kdf.groupby("a").apply(len).sort_index(), pdf.groupby("a").apply(len).sort_index(),
+        # )
+
+    def test_groupby_apply_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_groupby_apply()

@@ -1075,6 +1075,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             ].sort_index(),
         )
 
+        pdf = pd.DataFrame(
+            [datetime(2019, 2, 2, 0, 0, 0, 0), datetime(2019, 2, 3, 0, 0, 0, 0)],
+            columns=["timestamp"],
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(kdf.timestamp.min(), pdf.timestamp.min())
+        self.assert_eq(kdf.timestamp.max(), pdf.timestamp.max())
+
     def test_droplevel(self):
         pdf = (
             pd.DataFrame([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
@@ -5206,6 +5215,18 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.Series([]).to_frame()
         self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
 
+        pdf = pd.DataFrame(
+            {"a": [None, 2, 3, 2], "b": [None, 2.0, 3.0, 1.0], "c": [None, 200, 400, 200]},
+            index=[
+                datetime(2021, 1, 1),
+                datetime(2021, 2, 1),
+                datetime(2021, 3, 1),
+                datetime(2021, 4, 1),
+            ],
+        )
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.first_valid_index(), kdf.first_valid_index())
+
     def test_product(self):
         pdf = pd.DataFrame(
             {"A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50], "C": ["a", "b", "c", "d", "e"]}
@@ -5401,3 +5422,26 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             pdf_l, pdf_r = pdf1.align(pdf2, join=join, axis=1)
             self.assert_eq(kdf_l.sort_index(), pdf_l.sort_index())
             self.assert_eq(kdf_r.sort_index(), pdf_r.sort_index())
+
+    def test_between_time(self):
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45"),
+            kdf.between_time("0:15", "0:45").sort_index(),
+            almost=True,
+        )
+
+        with self.assertRaisesRegex(
+            NotImplementedError, "between_time currently only works for axis=0"
+        ):
+            kdf.between_time("0:15", "0:45", axis=1)
+
+        kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
+        with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
+            kdf.between_time("0:15", "0:45")
+
+    def test_between_time_no_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_between_time()

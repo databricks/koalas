@@ -343,6 +343,14 @@ Time/date components
    DatetimeIndex.daysinmonth
    DatetimeIndex.days_in_month
 
+Selecting
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: api/
+
+   DatetimeIndex.indexer_between_time
+   DatetimeIndex.indexer_at_time
+
 Time-specific operations
 ~~~~~~~~~~~~~~~~~~~~~~~~
 .. autosummary::

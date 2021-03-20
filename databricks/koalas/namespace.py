@@ -1957,7 +1957,10 @@ def get_dummies(
         [F.collect_set(kdf._internal.spark_column_for(label)) for label in column_labels],
     )
     for i, label in enumerate(column_labels):
-        values = sorted(all_values[i])
+        values = all_values[i]
+        if isinstance(values, np.ndarray):
+            values = values.tolist()
+        values = sorted(values)
         if drop_first:
             values = values[1:]
 

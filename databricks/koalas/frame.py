@@ -43,6 +43,7 @@ from typing import (
     cast,
     TYPE_CHECKING,
 )
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -2382,6 +2383,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             because the type hint cannot express the index type at this moment. Use
             `reset_index()` to keep index as a workaround.
 
+            When the given function has the return type annotated, the original index of the
+            DataFrame will be lost and then a default index will be attached to the result.
+            Please be careful about configuring the default index. See also `Default Index Type
+            <https://koalas.readthedocs.io/en/latest/user_guide/options.html#default-index-type>`_.
+
         Parameters
         ----------
         func : function
@@ -2985,6 +2991,90 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 index_dtypes=index_dtypes,
             ).resolved_copy
             return DataFrame(internal)
+
+    def between_time(
+        self,
+        start_time: Union[datetime.time, str],
+        end_time: Union[datetime.time, str],
+        include_start: bool = True,
+        include_end: bool = True,
+        axis: Union[int, str] = 0,
+    ) -> Union["Series", "DataFrame"]:
+        """
+        Select values between particular times of the day (e.g., 9:00-9:30 AM).
+
+        By setting ``start_time`` to be later than ``end_time``,
+        you can get the times that are *not* between the two times.
+
+        Parameters
+        ----------
+        start_time : datetime.time or str
+            Initial time as a time filter limit.
+        end_time : datetime.time or str
+            End time as a time filter limit.
+        include_start : bool, default True
+            Whether the start time needs to be included in the result.
+        include_end : bool, default True
+            Whether the end time needs to be included in the result.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine range time on index or columns value.
+
+        Returns
+        -------
+        Series or DataFrame
+            Data from the original object filtered to the specified dates range.
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :class:`DatetimeIndex`
+
+        See Also
+        --------
+        at_time : Select values at a particular time of the day.
+        first : Select initial periods of time series based on a date offset.
+        last : Select final periods of time series based on a date offset.
+        DatetimeIndex.indexer_between_time : Get just the index locations for
+            values between particular times of the day.
+
+        Examples
+        --------
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='1D20min')
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
+        >>> kdf
+                             A
+        2018-04-09 00:00:00  1
+        2018-04-10 00:20:00  2
+        2018-04-11 00:40:00  3
+        2018-04-12 01:00:00  4
+
+        >>> kdf.between_time('0:15', '0:45')
+                             A
+        2018-04-10 00:20:00  2
+        2018-04-11 00:40:00  3
+
+        You get the times that are *not* between two times by setting
+        ``start_time`` later than ``end_time``:
+
+        >>> kdf.between_time('0:45', '0:15')
+                             A
+        2018-04-09 00:00:00  1
+        2018-04-12 01:00:00  4
+        """
+        from databricks.koalas.indexes import DatetimeIndex
+
+        axis = validate_axis(axis)
+
+        if axis != 0:
+            raise NotImplementedError("between_time currently only works for axis=0")
+
+        if not isinstance(self.index, DatetimeIndex):
+            raise TypeError("Index must be DatetimeIndex")
+
+        def pandas_between_time(pdf):
+            return pdf.between_time(start_time, end_time, include_start, include_end)
+
+        return self.koalas.apply_batch(pandas_between_time)
 
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
@@ -11604,9 +11694,9 @@ def _reduce_spark_multi(sdf, aggs):
     """
     assert isinstance(sdf, spark.DataFrame)
     sdf0 = sdf.agg(*aggs)
-    l = sdf0.head(2)
+    l = sdf0.limit(2).toPandas()
     assert len(l) == 1, (sdf, l)
-    row = l[0]
+    row = l.iloc[0]
     l2 = list(row)
     assert len(l2) == len(aggs), (row, l2)
     return l2

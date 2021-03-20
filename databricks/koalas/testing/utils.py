@@ -20,24 +20,16 @@ import tempfile
 import unittest
 import warnings
 from contextlib import contextmanager
-from distutils.version import LooseVersion
 
 import pandas as pd
 from pandas.api.types import is_list_like
 from pandas.testing import assert_frame_equal, assert_index_equal, assert_series_equal
-import pyspark
 
 from databricks import koalas as ks
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.indexes import Index
 from databricks.koalas.series import Series
-from databricks.koalas.utils import default_session
-
-
-if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
-    SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.enabled"
-else:
-    SPARK_CONF_ARROW_ENABLED = "spark.sql.execution.arrow.pyspark.enabled"
+from databricks.koalas.utils import default_session, sql_conf as sqlc, SPARK_CONF_ARROW_ENABLED
 
 
 class SQLTestUtils(object):
@@ -53,22 +45,10 @@ class SQLTestUtils(object):
         A convenient context manager to test some configuration specific logic. This sets
         `value` to the configuration `key` and then restores it back when it exits.
         """
-        assert isinstance(pairs, dict), "pairs should be a dictionary."
         assert hasattr(self, "spark"), "it should have 'spark' attribute, having a spark session."
 
-        keys = pairs.keys()
-        new_values = pairs.values()
-        old_values = [self.spark.conf.get(key, None) for key in keys]
-        for key, new_value in zip(keys, new_values):
-            self.spark.conf.set(key, new_value)
-        try:
+        with sqlc(pairs, spark=self.spark):
             yield
-        finally:
-            for key, old_value in zip(keys, old_values):
-                if old_value is None:
-                    self.spark.conf.unset(key)
-                else:
-                    self.spark.conf.set(key, old_value)
 
     @contextmanager
     def database(self, *databases):

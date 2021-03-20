@@ -2033,6 +2033,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.Series([1, 2, np.nan, 4], index=[40, 30, 20, 10], name="Koalas")
         self.assertRaises(ValueError, lambda: kser.asof(20))
 
+        pidx = pd.DatetimeIndex(["2013-12-31", "2014-01-02", "2014-01-03"])
+        pser = pd.Series([1, 2, np.nan], index=pidx)
+        kser = ks.from_pandas(pser)
+
+        self.assert_eq(kser.asof("2014-01-01"), pser.asof("2014-01-01"))
+        self.assert_eq(kser.asof("2014-01-02"), pser.asof("2014-01-02"))
+        self.assert_eq(repr(kser.asof("1999-01-02")), repr(pser.asof("1999-01-02")))
+
     def test_squeeze(self):
         # Single value
         pser = pd.Series([90])

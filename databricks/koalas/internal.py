@@ -19,7 +19,7 @@ An internal immutable DataFrame with some metadata to manage indexes.
 """
 from distutils.version import LooseVersion
 import re
-from typing import List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from itertools import accumulate
 import py4j
 
@@ -921,13 +921,8 @@ class InternalFrame(object):
         """
         index_spark_columns = self.index_spark_columns
         data_columns = []
-        for i, (label, spark_column, column_name) in enumerate(
-            zip(self.column_labels, self.data_spark_columns, self.data_spark_column_names)
-        ):
+        for spark_column in self.data_spark_columns:
             if all(not spark_column._jc.equals(scol._jc) for scol in index_spark_columns):
-                name = str(i) if label is None else name_like_string(label)
-                if column_name != name:
-                    spark_column = spark_column.alias(name)
                 data_columns.append(spark_column)
         return self.spark_frame.select(index_spark_columns + data_columns)
 
@@ -952,6 +947,11 @@ class InternalFrame(object):
                             spark_type_to_pandas_dtype(field.dataType)
                         )
 
+        return InternalFrame.restore_index(pdf, **self.arguments_for_restore_index)
+
+    @lazy_property
+    def arguments_for_restore_index(self) -> Dict:
+        """ Create arguments for `restore_index`. """
         column_names = []
         ext_dtypes = {
             col: dtype
@@ -963,13 +963,8 @@ class InternalFrame(object):
             for col, dtype in zip(self.index_spark_column_names, self.index_dtypes)
             if isinstance(dtype, CategoricalDtype)
         }
-        for i, (label, spark_column, column_name, dtype) in enumerate(
-            zip(
-                self.column_labels,
-                self.data_spark_columns,
-                self.data_spark_column_names,
-                self.data_dtypes,
-            )
+        for spark_column, column_name, dtype in zip(
+            self.data_spark_columns, self.data_spark_column_names, self.data_dtypes
         ):
             for index_spark_column_name, index_spark_column in zip(
                 self.index_spark_column_names, self.index_spark_columns
@@ -978,44 +973,91 @@ class InternalFrame(object):
                     column_names.append(index_spark_column_name)
                     break
             else:
-                name = str(i) if label is None else name_like_string(label)
-                if column_name != name:
-                    column_name = name
                 column_names.append(column_name)
                 if isinstance(dtype, extension_dtypes):
                     ext_dtypes[column_name] = dtype
                 elif isinstance(dtype, CategoricalDtype):
                     categorical_dtypes[column_name] = dtype
 
-        if len(ext_dtypes) > 0:
+        return dict(
+            index_columns=self.index_spark_column_names,
+            index_names=self.index_names,
+            data_columns=column_names,
+            column_labels=self.column_labels,
+            column_label_names=self.column_label_names,
+            ext_dtypes=ext_dtypes,
+            categorical_dtypes=categorical_dtypes,
+        )
+
+    @staticmethod
+    def restore_index(
+        pdf: pd.DataFrame,
+        *,
+        index_columns: List[str],
+        index_names: List[Tuple],
+        data_columns: List[str],
+        column_labels: List[Tuple],
+        column_label_names: List[Tuple],
+        ext_dtypes: Dict[str, Dtype] = None,
+        categorical_dtypes: Dict[str, CategoricalDtype] = None
+    ) -> pd.DataFrame:
+        """
+        Restore pandas DataFrame indices using the metadata.
+
+        :param pdf: the pandas DataFrame to be processed.
+        :param index_columns: the original column names for index columns.
+        :param index_names: the index names after restored.
+        :param data_columns: the original column names for data columns.
+        :param column_labels: the column labels after restored.
+        :param column_label_names: the column label names after restored.
+        :param ext_dtypes: the map from the original column names to extension data types.
+        :param categorical_dtypes: the map from the original column names to categorical types.
+        :return: the restored pandas DataFrame
+
+        >>> pdf = pd.DataFrame({"index": [10, 20, 30], "a": ['a', 'b', 'c'], "b": [0, 2, 1]})
+        >>> InternalFrame.restore_index(
+        ...     pdf,
+        ...     index_columns=["index"],
+        ...     index_names=[("idx",)],
+        ...     data_columns=["a", "b", "index"],
+        ...     column_labels=[("x",), ("y",), ("z",)],
+        ...     column_label_names=[("lv1",)],
+        ...     ext_dtypes=None,
+        ...     categorical_dtypes={"b": CategoricalDtype(categories=["i", "j", "k"])}
+        ... )  # doctest: +NORMALIZE_WHITESPACE
+        lv1  x  y   z
+        idx
+        10   a  i  10
+        20   b  k  20
+        30   c  j  30
+        """
+        if ext_dtypes is not None and len(ext_dtypes) > 0:
             pdf = pdf.astype(ext_dtypes, copy=True)
 
-        for col, dtype in categorical_dtypes.items():
-            pdf[col] = pd.Categorical.from_codes(
-                pdf[col], categories=dtype.categories, ordered=dtype.ordered
-            )
+        if categorical_dtypes is not None:
+            for col, dtype in categorical_dtypes.items():
+                pdf[col] = pd.Categorical.from_codes(
+                    pdf[col], categories=dtype.categories, ordered=dtype.ordered
+                )
 
         append = False
-        for index_field in self.index_spark_column_names:
-            drop = index_field not in column_names
+        for index_field in index_columns:
+            drop = index_field not in data_columns
             pdf = pdf.set_index(index_field, drop=drop, append=append)
             append = True
-        pdf = pdf[column_names]
-
-        names = [
-            name if name is None or len(name) > 1 else name[0] for name in self.column_label_names
-        ]
-        if self.column_labels_level > 1:
-            pdf.columns = pd.MultiIndex.from_tuples(self.column_labels, names=names)
-        else:
-            pdf.columns = pd.Index(
-                [None if label is None else label[0] for label in self.column_labels],
-                name=names[0],
-            )
+        pdf = pdf[data_columns]
 
         pdf.index.names = [
-            name if name is None or len(name) > 1 else name[0] for name in self.index_names
+            name if name is None or len(name) > 1 else name[0] for name in index_names
         ]
+
+        names = [name if name is None or len(name) > 1 else name[0] for name in column_label_names]
+        if len(column_label_names) > 1:
+            pdf.columns = pd.MultiIndex.from_tuples(column_labels, names=names)
+        else:
+            pdf.columns = pd.Index(
+                [None if label is None else label[0] for label in column_labels], name=names[0],
+            )
 
         return pdf
 
@@ -1287,10 +1329,12 @@ class InternalFrame(object):
         :param pdf: :class:`pd.DataFrame`
         :return: the created immutable DataFrame
         """
-        pdf = pdf.copy()
+
+        index_names = [
+            name if name is None or isinstance(name, tuple) else (name,) for name in pdf.index.names
+        ]
 
         columns = pdf.columns
-        data_columns = [name_like_string(col) for col in columns]
         if isinstance(columns, pd.MultiIndex):
             column_labels = columns.tolist()
         else:
@@ -1299,35 +1343,24 @@ class InternalFrame(object):
             name if name is None or isinstance(name, tuple) else (name,) for name in columns.names
         ]
 
-        index = pdf.index
-        index_names = [
-            name if name is None or isinstance(name, tuple) else (name,) for name in index.names
-        ]
-        index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(len(index_names))]
+        (
+            pdf,
+            index_columns,
+            index_dtypes,
+            data_columns,
+            data_dtypes,
+        ) = InternalFrame.prepare_pandas_frame(pdf)
 
-        pdf.index.names = index_columns
-        reset_index = pdf.reset_index()
-        reset_index.columns = index_columns + data_columns
         schema = StructType(
             [
                 StructField(
-                    name, infer_pd_series_spark_type(col), nullable=bool(col.isnull().any()),
+                    name, infer_pd_series_spark_type(col, dtype), nullable=bool(col.isnull().any()),
                 )
-                for name, col in reset_index.iteritems()
+                for (name, col), dtype in zip(pdf.iteritems(), index_dtypes + data_dtypes)
             ]
         )
 
-        index_dtypes = list(reset_index.dtypes)[: len(index_names)]
-        data_dtypes = list(reset_index.dtypes)[len(index_names) :]
-
-        for name, col in reset_index.iteritems():
-            dt = col.dtype
-            if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
-                continue
-            elif isinstance(dt, CategoricalDtype):
-                col = col.cat.codes
-            reset_index[name] = col.replace({np.nan: None})
-        sdf = default_session().createDataFrame(reset_index, schema=schema)
+        sdf = default_session().createDataFrame(pdf, schema=schema)
         return InternalFrame(
             spark_frame=sdf,
             index_spark_columns=[scol_for(sdf, col) for col in index_columns],
@@ -1338,3 +1371,67 @@ class InternalFrame(object):
             data_dtypes=data_dtypes,
             column_label_names=column_label_names,
         )
+
+    @staticmethod
+    def prepare_pandas_frame(
+        pdf: pd.DataFrame, *, retain_index: bool = True
+    ) -> Tuple[pd.DataFrame, List[str], List[Dtype], List[str], List[Dtype]]:
+        """
+        Prepare pandas DataFrame for creating Spark DataFrame.
+
+        :param pdf: the pandas DataFrame to be prepared.
+        :param retain_index: whether the indices should be retained.
+        :return: the tuple of
+            - the prepared pandas dataFrame
+            - index column names for Spark DataFrame
+            - index dtypes of the given pandas DataFrame
+            - data column names for Spark DataFrame
+            - data dtypes of the given pandas DataFrame
+
+        >>> pdf = pd.DataFrame(
+        ...    {("x", "a"): ['a', 'b', 'c'],
+        ...     ("y", "b"): pd.Categorical(["i", "k", "j"], categories=["i", "j", "k"])},
+        ...    index=[10, 20, 30])
+        >>> prepared, index_columns, index_dtypes, data_columns, data_dtypes = (
+        ...     InternalFrame.prepare_pandas_frame(pdf))
+        >>> prepared
+           __index_level_0__ (x, a)  (y, b)
+        0                 10      a       0
+        1                 20      b       2
+        2                 30      c       1
+        >>> index_columns
+        ['__index_level_0__']
+        >>> index_dtypes
+        [dtype('int64')]
+        >>> data_columns
+        ['(x, a)', '(y, b)']
+        >>> data_dtypes
+        [dtype('O'), CategoricalDtype(categories=['i', 'j', 'k'], ordered=False)]
+        """
+        pdf = pdf.copy()
+
+        data_columns = [name_like_string(col) for col in pdf.columns]
+        pdf.columns = data_columns
+
+        if retain_index:
+            index_nlevels = pdf.index.nlevels
+            index_columns = [SPARK_INDEX_NAME_FORMAT(i) for i in range(index_nlevels)]
+            pdf.index.names = index_columns
+            reset_index = pdf.reset_index()
+        else:
+            index_nlevels = 0
+            index_columns = []
+            reset_index = pdf
+
+        index_dtypes = list(reset_index.dtypes)[:index_nlevels]
+        data_dtypes = list(reset_index.dtypes)[index_nlevels:]
+
+        for name, col in reset_index.iteritems():
+            dt = col.dtype
+            if is_datetime64_dtype(dt) or is_datetime64tz_dtype(dt):
+                continue
+            elif isinstance(dt, CategoricalDtype):
+                col = col.cat.codes
+            reset_index[name] = col.replace({np.nan: None})
+
+        return reset_index, index_columns, index_dtypes, data_columns, data_dtypes
