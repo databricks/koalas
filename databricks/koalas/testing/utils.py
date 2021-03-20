@@ -20,6 +20,7 @@ import tempfile
 import unittest
 import warnings
 from contextlib import contextmanager
+from distutils.version import LooseVersion
 
 import pandas as pd
 from pandas.api.types import is_list_like
@@ -124,13 +125,18 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
     def assertPandasEqual(self, left, right, check_exact=True):
         if isinstance(left, pd.DataFrame) and isinstance(right, pd.DataFrame):
             try:
+                if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+                    kwargs = dict(check_freq=False)
+                else:
+                    kwargs = dict()
+
                 assert_frame_equal(
                     left,
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
                     check_column_type=("equiv" if len(left.columns) > 0 else False),
                     check_exact=check_exact,
-                    check_freq=False,
+                    **kwargs
                 )
             except AssertionError as e:
                 msg = (
@@ -141,12 +147,17 @@ class ReusedSQLTestCase(unittest.TestCase, SQLTestUtils):
                 raise AssertionError(msg) from e
         elif isinstance(left, pd.Series) and isinstance(right, pd.Series):
             try:
+                if LooseVersion(pd.__version__) >= LooseVersion("1.1"):
+                    kwargs = dict(check_freq=False)
+                else:
+                    kwargs = dict()
+
                 assert_series_equal(
                     left,
                     right,
                     check_index_type=("equiv" if len(left.index) > 0 else False),
                     check_exact=check_exact,
-                    check_freq=False,
+                    **kwargs
                 )
             except AssertionError as e:
                 msg = (
