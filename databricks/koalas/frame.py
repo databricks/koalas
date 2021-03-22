@@ -3062,10 +3062,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(self.index, DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
 
-        def pandas_between_time(pdf):
-            return pdf.between_time(start_time, end_time, include_start, include_end)
+        def pandas_between_time(
+            pdf,
+        ) -> ks.DataFrame[zip(self.reset_index().columns, self.reset_index().dtypes)]:
+            return pdf.between_time(start_time, end_time, include_start, include_end).reset_index()
 
-        return self.koalas.apply_batch(pandas_between_time)
+        kdf = self.koalas.apply_batch(pandas_between_time).set_index("index")
+        kdf.index.rename(self.index.name, inplace=True)
+        return kdf
 
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
