@@ -3064,7 +3064,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         def pandas_between_time(
             pdf,
-        ) -> ks.DataFrame[zip(self.reset_index().columns, self.reset_index().dtypes)]:
+        ) -> ks.DataFrame[  # type: ignore
+            zip(self.reset_index().columns, self.reset_index().dtypes)
+        ]:
             return pdf.between_time(start_time, end_time, include_start, include_end).reset_index()
 
         kdf = self.koalas.apply_batch(pandas_between_time).set_index("index")
