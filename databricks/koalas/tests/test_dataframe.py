@@ -5432,6 +5432,13 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.between_time("0:15", "0:45").sort_index(),
         )
 
+        pdf.index.name = "ts"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45").sort_index(),
+            kdf.between_time("0:15", "0:45").sort_index(),
+        )
+
         with self.assertRaisesRegex(
             NotImplementedError, "between_time currently only works for axis=0"
         ):

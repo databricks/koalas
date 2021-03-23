@@ -3069,10 +3069,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         ]:
             return pdf.between_time(start_time, end_time, include_start, include_end).reset_index()
 
+        # In pandas reset_index(), the new column is assigned the name 'index'
+        # if the original index has no name
+        index_name = "index" if self.index.name is None else self.index.name
+
         # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
         # which will never be used. So use "distributed" index as a dummy to avoid overhead.
         with option_context("compute.default_index_type", "distributed"):
-            kdf = self.koalas.apply_batch(pandas_between_time).set_index("index")
+            kdf = self.koalas.apply_batch(pandas_between_time).set_index(index_name)
         kdf.index.rename(self.index.name, inplace=True)
         return kdf
 
