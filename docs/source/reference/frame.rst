@@ -164,6 +164,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.add_prefix
    DataFrame.add_suffix
    DataFrame.align
+   DataFrame.at_time
    DataFrame.between_time
    DataFrame.drop
    DataFrame.droplevel

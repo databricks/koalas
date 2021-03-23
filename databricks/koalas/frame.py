@@ -3097,6 +3097,84 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             )
         )
 
+    # TODO: implement axis=1
+    def at_time(
+        self, time: Union[datetime.time, str], asof: bool = False, axis: Union[int, str] = 0
+    ):
+        """
+        Select values at particular time of day (e.g., 9:30AM).
+
+        Parameters
+        ----------
+        time : datetime.time or str
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+
+            .. versionadded:: 0.24.0
+
+        Returns
+        -------
+        Series or DataFrame
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :class:`DatetimeIndex`
+
+        See Also
+        --------
+        between_time : Select values between particular times of the day.
+        DatetimeIndex.indexer_at_time : Get just the index locations for
+            values at particular time of the day.
+
+        Examples
+        --------
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='12H')
+        >>> ts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
+        >>> ts
+                             A
+        2018-04-09 00:00:00  1
+        2018-04-09 12:00:00  2
+        2018-04-10 00:00:00  3
+        2018-04-10 12:00:00  4
+
+        >>> ts.at_time('12:00')
+                             A
+        2018-04-09 12:00:00  2
+        2018-04-10 12:00:00  4
+        """
+        from databricks.koalas.indexes import DatetimeIndex
+
+        if asof:
+            raise NotImplementedError("'asof' argument is not supported")
+
+        axis = validate_axis(axis)
+
+        if axis != 0:
+            raise NotImplementedError("at_time currently only works for axis=0")
+
+        if not isinstance(self.index, DatetimeIndex):
+            raise TypeError("Index must be DatetimeIndex")
+
+        kdf = self.copy()
+        kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
+        return_types = [kdf.index.dtype] + list(kdf.dtypes)
+
+        def pandas_at_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
+            return pdf.at_time(time, asof, axis).reset_index()
+
+        # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
+        # which will never be used. So use "distributed" index as a dummy to avoid overhead.
+        with option_context("compute.default_index_type", "distributed"):
+            kdf = kdf.koalas.apply_batch(pandas_at_time)
+
+        return DataFrame(
+            self._internal.copy(
+                spark_frame=kdf._internal.spark_frame,
+                index_spark_columns=kdf._internal.data_spark_columns[:1],
+                data_spark_columns=kdf._internal.data_spark_columns[1:],
+            )
+        )
+
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
         Replace values where the condition is False.
