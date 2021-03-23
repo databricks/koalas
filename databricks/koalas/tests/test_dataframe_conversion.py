@@ -139,7 +139,20 @@ class DataFrameConversionTest(ReusedSQLTestCase, SQLTestUtils, TestUtils):
         pdf = self.pdf
         kdf = ks.from_pandas(pdf)
 
-        self.assert_eq(kdf.to_json(), pdf.to_json(orient="records"))
+        self.assert_eq(kdf.to_json(orient="records"), pdf.to_json(orient="records"))
+
+    def test_to_json_negative(self):
+        kdf = ks.from_pandas(self.pdf)
+
+        with self.assertRaises(NotImplementedError):
+            kdf.to_json(orient="table")
+
+        with self.assertRaises(NotImplementedError):
+            kdf.to_json(lines=False)
+
+    def test_read_json_negative(self):
+        with self.assertRaises(NotImplementedError):
+            ks.read_json("invalid", lines=False)
 
     def test_to_json_with_path(self):
         pdf = pd.DataFrame({"a": [1], "b": ["a"]})

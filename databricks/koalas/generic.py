@@ -844,6 +844,8 @@ class Frame(object, metaclass=ABCMeta):
         compression="uncompressed",
         num_files=None,
         mode: str = "overwrite",
+        orient="records",
+        lines=True,
         partition_cols: Optional[Union[str, List[str]]] = None,
         index_col: Optional[Union[str, List[str]]] = None,
         **options
@@ -870,6 +872,12 @@ class Frame(object, metaclass=ABCMeta):
         path : string, optional
             File path. If not specified, the result is returned as
             a string.
+        lines : bool, default True
+            If ‘orient’ is ‘records’ write out line delimited json format.
+            Will throw ValueError if incorrect ‘orient’ since others are not
+            list like. It should be always True for now.
+        orient : str, default 'records'
+             It should be always 'records' for now.
         compression : {'gzip', 'bz2', 'xz', None}
             A string representing the compression to use in the output file,
             only used when the first argument is a filename. By default, the
@@ -929,6 +937,12 @@ class Frame(object, metaclass=ABCMeta):
         """
         if "options" in options and isinstance(options.get("options"), dict) and len(options) == 1:
             options = options.get("options")  # type: ignore
+
+        if not lines:
+            raise NotImplementedError("lines=False is not implemented yet.")
+
+        if orient != "records":
+            raise NotImplementedError("orient='records' is supported only for now.")
 
         if path is None:
             # If path is none, just collect and use pandas's to_json.
