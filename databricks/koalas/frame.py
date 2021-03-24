@@ -62,7 +62,7 @@ import pyspark
 from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import Column, DataFrame as SparkDataFrame, functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
