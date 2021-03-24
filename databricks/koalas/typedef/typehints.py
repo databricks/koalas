@@ -86,6 +86,8 @@ class SeriesType(typing.Generic[T]):
 
 class DataFrameType(object):
     def __init__(self, tpe, names=None):
+        from databricks.koalas.utils import name_like_string
+
         if names is None:
             # Default names `c0, c1, ... cn`.
             self.tpe = types.StructType(
@@ -93,7 +95,7 @@ class DataFrameType(object):
             )  # type: types.StructType
         else:
             self.tpe = types.StructType(
-                [types.StructField(n, t) for n, t in zip(names, tpe)]
+                [types.StructField(name_like_string(n), t) for n, t in zip(names, tpe)]
             )  # type: types.StructType
 
     def __repr__(self):
@@ -338,6 +340,12 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     ...     pass
     >>> infer_return_type(func).tpe
     StructType(List(StructField(a,LongType,true),StructField(b,LongType,true)))
+
+    >>> pdf = pd.DataFrame({("x", "a"): [1, 2, 3], ("y", "b"): [3, 4, 5]})
+    >>> def func() -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField((x, a),LongType,true),StructField((y, b),LongType,true)))
     """
     # We should re-import to make sure the class 'SeriesType' is not treated as a class
     # within this module locally. See Series.__class_getitem__ which imports this class
