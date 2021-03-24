@@ -419,6 +419,7 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         kser = ks.from_pandas(pser)
 
         self.assert_eq(kser.isin(["cow", "lama"]), pser.isin(["cow", "lama"]))
+        self.assert_eq(kser.isin(np.array(["cow", "lama"])), pser.isin(np.array(["cow", "lama"])))
         self.assert_eq(kser.isin({"cow"}), pser.isin({"cow"}))
 
         msg = "only list-like objects are allowed to be passed to isin()"
