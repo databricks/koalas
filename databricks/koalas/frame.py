@@ -3072,9 +3072,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
         # which will never be used. So use "distributed" index as a dummy to avoid overhead.
         with option_context("compute.default_index_type", "distributed"):
-            # In pandas reset_index(), the new column is assigned the name 'index'
-            # if the original index has no name
-            index_name = "index" if self.index.name is None else self.index.name
+            # Get the new column name from pandas reset_index()
+            if self.index.name is None:
+                index_name = "index"
+            elif self.index.name == "index":
+                index_name = "level_0"
+            else:
+                index_name = self.index.name
             kdf = self.koalas.apply_batch(pandas_between_time).set_index(index_name)
 
         kdf.index.rename(self.index.name, inplace=True)
