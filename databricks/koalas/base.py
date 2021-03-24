@@ -44,6 +44,7 @@ from pyspark.sql.types import (
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
 from databricks.koalas.config import get_option, option_context
+from databricks.koalas.data_type_ops import DataTypeOps
 from databricks.koalas.internal import (
     InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
@@ -320,6 +321,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self.spark.column
 
     spark_column.__doc__ = SparkIndexOpsMethods.column.__doc__
+
+    @property
+    def _dtype_op(self):
+        return DataTypeOps(self.dtype, self.spark.data_type)
 
     # arithmetic operators
     __neg__ = column_op(Column.__neg__)
