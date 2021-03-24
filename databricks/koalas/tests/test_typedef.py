@@ -21,6 +21,7 @@ from typing import List
 
 import pandas
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 import numpy as np
 from pyspark.sql.types import (
     ArrayType,
@@ -103,6 +104,19 @@ class TypeHintTests(unittest.TestCase):
         expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
+
+        def func() -> pd.Series[pdf.b.dtype]:  # type: ignore
+            pass
+
+        self.assertEqual(infer_return_type(func).tpe, LongType())
+
+        def func() -> pd.DataFrame[pdf.dtypes]:  # type: ignore
+            pass
+
+        expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
     def test_if_pandas_implements_class_getitem(self):
         # the current type hint implementation of pandas DataFrame assumes pandas doesn't
         # implement '__class_getitem__'. This test case is to make sure pandas
@@ -128,6 +142,14 @@ class TypeHintTests(unittest.TestCase):
         self.assertEqual(infer_return_type(func).tpe, expected)
 
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
+
+        def func() -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+            pass
+
+        expected = StructType([StructField("a", LongType()), StructField("b", LongType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
 
         def func() -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:
             pass
@@ -292,6 +314,8 @@ class TypeHintTests(unittest.TestCase):
             List[np.unicode_]: ArrayType(StringType()),
             List[datetime.datetime]: ArrayType(TimestampType()),
             List[np.datetime64]: ArrayType(TimestampType()),
+            # CategoricalDtype
+            CategoricalDtype(categories=["a", "b", "c"]): LongType(),
         }
 
         for numpy_or_python_type, spark_type in type_mapper.items():
