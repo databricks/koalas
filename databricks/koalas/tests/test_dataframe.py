@@ -5439,7 +5439,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.between_time("0:15", "0:45").sort_index(),
         )
 
-        pdf.index.name = "index"
+        pdf.columns = pd.Index(["index"])
         kdf = ks.from_pandas(pdf)
         self.assert_eq(
             pdf.between_time("0:15", "0:45").sort_index(),

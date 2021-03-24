@@ -3073,12 +3073,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         # which will never be used. So use "distributed" index as a dummy to avoid overhead.
         with option_context("compute.default_index_type", "distributed"):
             # Get the new column name from pandas reset_index()
-            if self.index.name is None:
-                index_name = "index"
-            elif self.index.name == "index":
-                index_name = "level_0"
-            else:
-                index_name = self.index.name
+            index_name = self.reset_index().columns[0]
             kdf = self.koalas.apply_batch(pandas_between_time).set_index(index_name)
 
         kdf.index.rename(self.index.name, inplace=True)
