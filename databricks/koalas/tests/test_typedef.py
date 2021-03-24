@@ -149,6 +149,16 @@ class TypeHintTests(unittest.TestCase):
         expected = StructType([StructField("a", LongType()), StructField("b", LongType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
+        pdf = pd.DataFrame({("x", "a"): [1, 2, 3], ("y", "b"): [3, 4, 5]})
+
+        def func() -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+            pass
+
+        expected = StructType(
+            [StructField("(x, a)", LongType()), StructField("(y, b)", LongType())]
+        )
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
 
         def func() -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:

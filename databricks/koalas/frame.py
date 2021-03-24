@@ -7189,9 +7189,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if isinstance(values, dict):
             for i, col in enumerate(self.columns):
                 if col in values:
+                    item = values[col]
+                    item = item.tolist() if isinstance(item, np.ndarray) else list(item)
                     data_spark_columns.append(
                         self._internal.spark_column_for(self._internal.column_labels[i])
-                        .isin(values[col])
+                        .isin(item)
                         .alias(self._internal.data_spark_column_names[i])
                     )
                 else:
@@ -7199,9 +7201,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         F.lit(False).alias(self._internal.data_spark_column_names[i])
                     )
         elif is_list_like(values):
+            values = values.tolist() if isinstance(values, np.ndarray) else list(values)
             data_spark_columns += [
                 self._internal.spark_column_for(label)
-                .isin(list(values))
+                .isin(values)
                 .alias(self._internal.spark_column_name_for(label))
                 for label in self._internal.column_labels
             ]

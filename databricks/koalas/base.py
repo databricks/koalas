@@ -1161,7 +1161,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
         Parameters
         ----------
-        values : list or set
+        values : set or list-like
             The sequence of values to test.
 
         Returns
@@ -1202,7 +1202,8 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
                 " to isin(), you passed a [{values_type}]".format(values_type=type(values).__name__)
             )
 
-        return self._with_new_scol(self.spark.column.isin(list(values)))
+        values = values.tolist() if isinstance(values, np.ndarray) else list(values)
+        return self._with_new_scol(self.spark.column.isin(values))
 
     def isnull(self) -> Union["Series", "Index"]:
         """
