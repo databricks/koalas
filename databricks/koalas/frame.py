@@ -3066,7 +3066,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
         return_types = [kdf.index.dtype] + list(kdf.dtypes)
 
-        def pandas_between_time(pdf,) -> ks.DataFrame[return_types]:  # type: ignore
+        def pandas_between_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
             return pdf.between_time(start_time, end_time, include_start, include_end).reset_index()
 
         # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
