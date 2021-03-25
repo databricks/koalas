@@ -21,6 +21,7 @@ from typing import List
 
 import pandas
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 import numpy as np
 from pyspark.sql.types import (
     ArrayType,
@@ -103,6 +104,19 @@ class TypeHintTests(unittest.TestCase):
         expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
+
+        def func() -> pd.Series[pdf.b.dtype]:  # type: ignore
+            pass
+
+        self.assertEqual(infer_return_type(func).tpe, LongType())
+
+        def func() -> pd.DataFrame[pdf.dtypes]:  # type: ignore
+            pass
+
+        expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
     def test_if_pandas_implements_class_getitem(self):
         # the current type hint implementation of pandas DataFrame assumes pandas doesn't
         # implement '__class_getitem__'. This test case is to make sure pandas
@@ -143,6 +157,14 @@ class TypeHintTests(unittest.TestCase):
         expected = StructType(
             [StructField("(x, a)", LongType()), StructField("(y, b)", LongType())]
         )
+        self.assertEqual(infer_return_type(func).tpe, expected)
+
+        pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
+
+        def func() -> pd.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+            pass
+
+        expected = StructType([StructField("a", LongType()), StructField("b", LongType())])
         self.assertEqual(infer_return_type(func).tpe, expected)
 
     @unittest.skipIf(
@@ -188,6 +210,14 @@ class TypeHintTests(unittest.TestCase):
 
         self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
 
+        def try_infer_return_type():
+            def f() -> pd.Series[pdf.a.dtype]:  # type: ignore
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
+
     def test_infer_schema_with_names_negative(self):
         def try_infer_return_type():
             def f() -> 'ks.DataFrame["a" : np.float : 1, "b":str:2]':  # noqa: F821
@@ -221,6 +251,14 @@ class TypeHintTests(unittest.TestCase):
 
         def try_infer_return_type():
             def f() -> ks.DataFrame[pdf.dtypes]:  # type: ignore
+                pass
+
+            infer_return_type(f)
+
+        self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
+
+        def try_infer_return_type():
+            def f() -> ks.Series[pdf.a.dtype]:  # type: ignore
                 pass
 
             infer_return_type(f)
@@ -286,6 +324,8 @@ class TypeHintTests(unittest.TestCase):
             List[np.unicode_]: ArrayType(StringType()),
             List[datetime.datetime]: ArrayType(TimestampType()),
             List[np.datetime64]: ArrayType(TimestampType()),
+            # CategoricalDtype
+            CategoricalDtype(categories=["a", "b", "c"]): LongType(),
         }
 
         for numpy_or_python_type, spark_type in type_mapper.items():

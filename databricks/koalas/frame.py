@@ -48,6 +48,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
+from pandas.api.extensions import ExtensionDtype
 
 if TYPE_CHECKING:
     from pandas.io.formats.style import Styler
@@ -333,6 +334,12 @@ T = TypeVar("T")
 
 
 def _create_tuple_for_frame_type(params):
+    """
+    This is a workaround to support variadic generic in DataFrame.
+
+    See https://github.com/python/typing/issues/193
+    we always wraps the given type hints by a tuple to mimic the variadic generic.
+    """
     from databricks.koalas.typedef import NameTypeHolder
 
     if isinstance(params, zip):
@@ -365,8 +372,16 @@ def _create_tuple_for_frame_type(params):
 
     if not isinstance(params, Iterable):
         params = [params]
-    params = [param.type if isinstance(param, np.dtype) else param for param in params]
-    return Tuple[tuple(params)]
+
+    new_params = []
+    for param in params:
+        if isinstance(param, ExtensionDtype):
+            new_class = type("NameType", (NameTypeHolder,), {})
+            new_class.tpe = param
+            new_params.append(new_class)
+        else:
+            new_params.append(param.type if isinstance(param, np.dtype) else param)
+    return Tuple[tuple(new_params)]
 
 
 if (3, 5) <= sys.version_info < (3, 7):
