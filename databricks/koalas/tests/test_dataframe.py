@@ -5471,7 +5471,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
             kdf.between_time("0:15", "0:45")
-
-    def test_between_time_no_shortcut(self):
-        with ks.option_context("compute.shortcut_limit", 0):
-            self.test_between_time()
