@@ -5438,6 +5438,37 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
             kdf.between_time("0:15", "0:45").sort_index(),
         )
 
+        pdf.index.name = "ts"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45").sort_index(),
+            kdf.between_time("0:15", "0:45").sort_index(),
+        )
+
+        # Column label is 'index'
+        pdf.columns = pd.Index(["index"])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45").sort_index(),
+            kdf.between_time("0:15", "0:45").sort_index(),
+        )
+
+        # Both index name and column label are 'index'
+        pdf.index.name = "index"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45").sort_index(),
+            kdf.between_time("0:15", "0:45").sort_index(),
+        )
+
+        # Index name is 'index', column label is ('X', 'A')
+        pdf.columns = pd.MultiIndex.from_arrays([["X"], ["A"]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.between_time("0:15", "0:45").sort_index(),
+            kdf.between_time("0:15", "0:45").sort_index(),
+        )
+
         with self.assertRaisesRegex(
             NotImplementedError, "between_time currently only works for axis=0"
         ):
@@ -5446,7 +5477,3 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
             kdf.between_time("0:15", "0:45")
-
-    def test_between_time_no_shortcut(self):
-        with ks.option_context("compute.shortcut_limit", 0):
-            self.test_between_time()

@@ -3062,10 +3062,25 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(self.index, DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
 
-        def pandas_between_time(pdf):
-            return pdf.between_time(start_time, end_time, include_start, include_end)
+        kdf = self.copy()
+        kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
+        return_types = [kdf.index.dtype] + list(kdf.dtypes)
 
-        return self.koalas.apply_batch(pandas_between_time)
+        def pandas_between_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
+            return pdf.between_time(start_time, end_time, include_start, include_end).reset_index()
+
+        # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
+        # which will never be used. So use "distributed" index as a dummy to avoid overhead.
+        with option_context("compute.default_index_type", "distributed"):
+            kdf = kdf.koalas.apply_batch(pandas_between_time)
+
+        return DataFrame(
+            self._internal.copy(
+                spark_frame=kdf._internal.spark_frame,
+                index_spark_columns=kdf._internal.data_spark_columns[:1],
+                data_spark_columns=kdf._internal.data_spark_columns[1:],
+            )
+        )
 
     def where(self, cond, other=np.nan) -> "DataFrame":
         """
