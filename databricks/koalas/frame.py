@@ -62,7 +62,7 @@ import pyspark
 from pyspark import StorageLevel
 from pyspark import sql as spark
 from pyspark.sql import Column, DataFrame as SparkDataFrame, functions as F
-from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (
     BooleanType,
     DoubleType,
@@ -2747,15 +2747,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             for input_label, output_label in zip(
                 self._internal.column_labels, kdf._internal.column_labels
             ):
-                pudf = pandas_udf(
-                    lambda c: func(c, *args, **kwargs),
-                    returnType=force_decimal_precision_scale(
-                        as_nullable_spark_type(kdf._internal.spark_type_for(output_label))
-                    ),
-                    functionType=PandasUDFType.SCALAR,
-                )
                 kser = self._kser_for(input_label)
-                applied.append(kser._with_new_scol(scol=pudf(kser.spark.column)))
+                return_schema = force_decimal_precision_scale(
+                    as_nullable_spark_type(kdf._internal.spark_type_for(output_label))
+                )
+                applied.append(
+                    kser.koalas._transform_batch(
+                        func=lambda c: func(c, *args, **kwargs), return_schema=return_schema
+                    )
+                )
 
             internal = self._internal.with_new_columns(
                 applied, data_dtypes=kdf._internal.data_dtypes
