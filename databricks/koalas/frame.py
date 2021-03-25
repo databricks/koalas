@@ -334,6 +334,12 @@ T = TypeVar("T")
 
 
 def _create_tuple_for_frame_type(params):
+    """
+    This is a workaround to support variadic generic in DataFrame.
+
+    See https://github.com/python/typing/issues/193
+    we always wraps the given type hints by a tuple to mimic the variadic generic.
+    """
     from databricks.koalas.typedef import NameTypeHolder
 
     if isinstance(params, zip):
