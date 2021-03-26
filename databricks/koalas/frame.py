@@ -5682,6 +5682,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         # Leverage pandas offsets to set a range
         from pandas._libs.tslibs.offsets import to_offset
+
         offset = to_offset(offset)
         index_max = self.index.max()
         from_date = index_max - offset
