@@ -3005,7 +3005,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         include_start: bool = True,
         include_end: bool = True,
         axis: Union[int, str] = 0,
-    ) -> Union["Series", "DataFrame"]:
+    ) -> "DataFrame":
         """
         Select values between particular times of the day (e.g., 9:00-9:30 AM).
 
@@ -3027,7 +3027,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Returns
         -------
-        Series or DataFrame
+        DataFrame
             Data from the original object filtered to the specified dates range.
 
         Raises
@@ -3100,7 +3100,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
     # TODO: implement axis=1
     def at_time(
         self, time: Union[datetime.time, str], asof: bool = False, axis: Union[int, str] = 0
-    ):
+    ) -> "DataFrame":
         """
         Select values at particular time of day (e.g., 9:30AM).
 
@@ -3109,11 +3109,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         time : datetime.time or str
         axis : {0 or 'index', 1 or 'columns'}, default 0
 
-            .. versionadded:: 0.24.0
-
         Returns
         -------
-        Series or DataFrame
+        DataFrame
 
         Raises
         ------
