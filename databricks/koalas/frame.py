@@ -5631,6 +5631,62 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
             return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
 
+    def last(self, offset) -> "DataFrame":
+        """
+        Select final periods of time series data based on a date offset.
+
+        When having a DataFrame with dates as index, this function can
+        select the last few rows based on a date offset.
+
+        Parameters
+        ----------
+        offset : str, DateOffset
+            The offset length of the data that will be selected. For instance,
+            '3D' will display all the rows having their index within the last 3 days.
+
+        Returns
+        -------
+        DataFrame
+            A subset of the caller.
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :type:`np.datetime64`
+
+        Examples
+        --------
+        >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        >>> pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=i)
+        >>> kdf = fs.from_pandas(pdf)
+                    A
+        2018-04-09  1
+        2018-04-11  2
+        2018-04-13  3
+        2018-04-15  4
+
+        Get the rows for the last 3 days:
+
+        >>> kdf.last('3D')
+                    A
+        2018-04-13  3
+        2018-04-15  4
+
+        Notice the data for 3 last calendar days were returned, not the last
+        3 observed days in the dataset, and therefore data for 2018-04-11 was
+        not returned.
+        """
+        # Check index type should be format DateTime
+        if not self.index.dtype.type == np.datetime64:
+            raise TypeError("'last' only supports a DateTime index")
+
+        # Leverage pandas offsets to set a range
+        from pandas._libs.tslibs.offsets import to_offset
+        offset = to_offset(offset)
+        index_max = self.index.max()
+        from_date = index_max - offset
+        return self.loc[from_date:index_max]
+
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None
     ) -> "DataFrame":

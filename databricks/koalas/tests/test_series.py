@@ -180,6 +180,14 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(-3), pser.head(-3))
         self.assert_eq(kser.head(-10), pser.head(-10))
 
+    def test_last(self):
+        index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        pd_input = pd.Series([1, 2, 3, 4], index=index)
+        ks_input = ks.Series([1, 2, 3, 4], index=index)
+        with self.assertRaises(TypeError):
+             self.kser.last('1D')
+        self.assert_eq(ks_input.last('1D'), pd_input.last('1D'))
+
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
         kser = ks.from_pandas(pser)
