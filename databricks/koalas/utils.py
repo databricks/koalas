@@ -663,10 +663,9 @@ def is_name_like_tuple(value: Any, allow_none: bool = True, check_type: bool = F
     elif any(is_list_like(v) or isinstance(v, slice) for v in value):
         return False
     elif check_type:
-        try:
-            return all(v is None or as_spark_type(type(v)) is not None for v in value)
-        except TypeError:
-            return False
+        return all(
+            v is None or as_spark_type(type(v), raise_error=False) is not None for v in value
+        )
     else:
         return True
 
@@ -707,10 +706,7 @@ def is_name_like_value(
     elif is_list_like(value) or isinstance(value, slice):
         return False
     elif check_type:
-        try:
-            return as_spark_type(type(value)) is not None
-        except TypeError:
-            return False
+        return as_spark_type(type(value), raise_error=False) is not None
     else:
         return True
 
