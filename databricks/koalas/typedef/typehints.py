@@ -17,21 +17,21 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
-import typing
 import datetime
 import decimal
 from inspect import getfullargspec
+from typing import Generic, List, Tuple, TypeVar, Union  # noqa: F401
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import CategoricalDtype
+from pandas.api.types import CategoricalDtype, pandas_dtype
 from pandas.api.extensions import ExtensionDtype
 
 try:
     from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
 
     extension_dtypes_available = True
-    extension_dtypes = (Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype)  # type: typing.Tuple
+    extension_dtypes = (Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype)  # type: Tuple
 
     try:
         from pandas import BooleanDtype, StringDtype
@@ -66,17 +66,17 @@ except ImportError:
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef.string_typehints import resolve_string_type_hint
 
-T = typing.TypeVar("T")
+T = TypeVar("T")
 
-Scalar = typing.Union[
+Scalar = Union[
     int, float, bool, str, bytes, decimal.Decimal, datetime.date, datetime.datetime, None
 ]
 
-Dtype = typing.Union[np.dtype, ExtensionDtype]
+Dtype = Union[np.dtype, ExtensionDtype]
 
 
 # A column of data, with the data type.
-class SeriesType(typing.Generic[T]):
+class SeriesType(Generic[T]):
     def __init__(self, tpe):
         self.tpe = tpe  # type: types.DataType
 
@@ -122,9 +122,7 @@ class NameTypeHolder(object):
     tpe = None
 
 
-def as_spark_type(
-    tpe: typing.Union[str, type, Dtype], *, raise_error: bool = True
-) -> types.DataType:
+def as_spark_type(tpe: Union[str, type, Dtype], *, raise_error: bool = True) -> types.DataType:
     """
     Given a Python type, returns the equivalent spark type.
     Accepts:
@@ -134,9 +132,10 @@ def as_spark_type(
     - dictionaries of field_name -> type
     - Python3's typing system
     """
-    # TODO: Add "boolean" and "string" types.
+    if isinstance(tpe, np.dtype) and tpe == np.dtype("object"):
+        pass
     # ArrayType
-    if tpe in (np.ndarray,):
+    elif tpe in (np.ndarray,):
         return types.ArrayType(types.StringType())
     elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):  # type: ignore
         element_type = as_spark_type(tpe.__args__[0], raise_error=raise_error)  # type: ignore
@@ -244,13 +243,60 @@ def spark_type_to_pandas_dtype(
                 return Float64Dtype()
 
     if isinstance(
-        spark_type, (types.DateType, types.NullType, types.StructType, types.UserDefinedType)
+        spark_type,
+        (
+            types.DateType,
+            types.NullType,
+            types.ArrayType,
+            types.MapType,
+            types.StructType,
+            types.UserDefinedType,
+        ),
     ):
         return np.dtype("object")
     elif isinstance(spark_type, types.TimestampType):
         return np.dtype("datetime64[ns]")
     else:
         return np.dtype(to_arrow_type(spark_type).to_pandas_dtype())
+
+
+def koalas_dtype(tpe) -> Tuple[Dtype, types.DataType]:
+    """
+    Convert input into a pandas only dtype object or a numpy dtype object,
+    and its corresponding Spark DataType.
+
+    Parameters
+    ----------
+    tpe : object to be converted
+
+    Returns
+    -------
+    tuple of np.dtype or a pandas dtype, and Spark DataType
+
+    Raises
+    ------
+    TypeError if not a dtype
+
+    Examples
+    --------
+    >>> koalas_dtype(int)
+    (dtype('int64'), LongType)
+    >>> koalas_dtype(str)
+    (dtype('<U'), StringType)
+    >>> koalas_dtype(datetime.date)
+    (dtype('O'), DateType)
+    >>> koalas_dtype(datetime.datetime)
+    (dtype('<M8[ns]'), TimestampType)
+    >>> koalas_dtype(List[bool])
+    (dtype('O'), ArrayType(BooleanType,true))
+    """
+    try:
+        dtype = pandas_dtype(tpe)
+        spark_type = as_spark_type(dtype)
+    except TypeError:
+        spark_type = as_spark_type(tpe)
+        dtype = spark_type_to_pandas_dtype(spark_type)
+    return dtype, spark_type
 
 
 def infer_pd_series_spark_type(pser: pd.Series, dtype: Dtype) -> types.DataType:
@@ -274,7 +320,7 @@ def infer_pd_series_spark_type(pser: pd.Series, dtype: Dtype) -> types.DataType:
         return as_spark_type(dtype)
 
 
-def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
+def infer_return_type(f) -> Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
     """
     >>> def func() -> int:
     ...    pass

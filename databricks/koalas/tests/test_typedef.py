@@ -42,11 +42,12 @@ from pyspark.sql.types import (
 )
 
 from databricks.koalas.typedef import (
-    infer_return_type,
     as_spark_type,
     extension_dtypes_available,
     extension_float_dtypes_available,
     extension_object_dtypes_available,
+    infer_return_type,
+    koalas_dtype,
 )
 from databricks import koalas as ks
 
@@ -265,74 +266,87 @@ class TypeHintTests(unittest.TestCase):
 
         self.assertRaisesRegex(TypeError, "object.*not understood", try_infer_return_type)
 
-    def test_as_spark_type(self):
+    def test_as_spark_type_koalas_dtype(self):
         type_mapper = {
             # binary
-            np.character: BinaryType(),
-            np.bytes_: BinaryType(),
-            np.string_: BinaryType(),
-            bytes: BinaryType(),
+            np.character: (np.character, BinaryType()),
+            np.bytes_: (np.bytes_, BinaryType()),
+            np.string_: (np.bytes_, BinaryType()),
+            bytes: (np.bytes_, BinaryType()),
             # integer
-            np.int8: ByteType(),
-            np.byte: ByteType(),
-            np.int16: ShortType(),
-            np.int32: IntegerType(),
-            np.int64: LongType(),
-            np.int: LongType(),
-            int: LongType(),
+            np.int8: (np.int8, ByteType()),
+            np.byte: (np.int8, ByteType()),
+            np.int16: (np.int16, ShortType()),
+            np.int32: (np.int32, IntegerType()),
+            np.int64: (np.int64, LongType()),
+            np.int: (np.int64, LongType()),
+            int: (np.int64, LongType()),
             # floating
-            np.float32: FloatType(),
-            np.float: DoubleType(),
-            np.float64: DoubleType(),
-            float: DoubleType(),
+            np.float32: (np.float32, FloatType()),
+            np.float: (np.float64, DoubleType()),
+            np.float64: (np.float64, DoubleType()),
+            float: (np.float64, DoubleType()),
             # string
-            np.str: StringType(),
-            np.unicode_: StringType(),
-            str: StringType(),
+            np.str: (np.unicode_, StringType()),
+            np.unicode_: (np.unicode_, StringType()),
+            str: (np.unicode_, StringType()),
             # bool
-            np.bool: BooleanType(),
-            bool: BooleanType(),
+            np.bool: (np.bool, BooleanType()),
+            bool: (np.bool, BooleanType()),
             # datetime
-            np.datetime64: TimestampType(),
-            datetime.datetime: TimestampType(),
+            np.datetime64: (np.datetime64, TimestampType()),
+            datetime.datetime: (np.dtype("datetime64[ns]"), TimestampType()),
             # DateType
-            datetime.date: DateType(),
+            datetime.date: (np.dtype("object"), DateType()),
             # DecimalType
-            decimal.Decimal: DecimalType(38, 18),
+            decimal.Decimal: (np.dtype("object"), DecimalType(38, 18)),
             # ArrayType
-            np.ndarray: ArrayType(StringType()),
-            List[bytes]: ArrayType(BinaryType()),
-            List[np.character]: ArrayType(BinaryType()),
-            List[np.bytes_]: ArrayType(BinaryType()),
-            List[np.string_]: ArrayType(BinaryType()),
-            List[bool]: ArrayType(BooleanType()),
-            List[np.bool]: ArrayType(BooleanType()),
-            List[datetime.date]: ArrayType(DateType()),
-            List[np.int8]: ArrayType(ByteType()),
-            List[np.byte]: ArrayType(ByteType()),
-            List[decimal.Decimal]: ArrayType(DecimalType(38, 18)),
-            List[float]: ArrayType(DoubleType()),
-            List[np.float]: ArrayType(DoubleType()),
-            List[np.float64]: ArrayType(DoubleType()),
-            List[np.float32]: ArrayType(FloatType()),
-            List[np.int32]: ArrayType(IntegerType()),
-            List[int]: ArrayType(LongType()),
-            List[np.int]: ArrayType(LongType()),
-            List[np.int64]: ArrayType(LongType()),
-            List[np.int16]: ArrayType(ShortType()),
-            List[str]: ArrayType(StringType()),
-            List[np.unicode_]: ArrayType(StringType()),
-            List[datetime.datetime]: ArrayType(TimestampType()),
-            List[np.datetime64]: ArrayType(TimestampType()),
+            np.ndarray: (np.dtype("object"), ArrayType(StringType())),
+            List[bytes]: (np.dtype("object"), ArrayType(BinaryType())),
+            List[np.character]: (np.dtype("object"), ArrayType(BinaryType())),
+            List[np.bytes_]: (np.dtype("object"), ArrayType(BinaryType())),
+            List[np.string_]: (np.dtype("object"), ArrayType(BinaryType())),
+            List[bool]: (np.dtype("object"), ArrayType(BooleanType())),
+            List[np.bool]: (np.dtype("object"), ArrayType(BooleanType())),
+            List[datetime.date]: (np.dtype("object"), ArrayType(DateType())),
+            List[np.int8]: (np.dtype("object"), ArrayType(ByteType())),
+            List[np.byte]: (np.dtype("object"), ArrayType(ByteType())),
+            List[decimal.Decimal]: (np.dtype("object"), ArrayType(DecimalType(38, 18))),
+            List[float]: (np.dtype("object"), ArrayType(DoubleType())),
+            List[np.float]: (np.dtype("object"), ArrayType(DoubleType())),
+            List[np.float64]: (np.dtype("object"), ArrayType(DoubleType())),
+            List[np.float32]: (np.dtype("object"), ArrayType(FloatType())),
+            List[np.int32]: (np.dtype("object"), ArrayType(IntegerType())),
+            List[int]: (np.dtype("object"), ArrayType(LongType())),
+            List[np.int]: (np.dtype("object"), ArrayType(LongType())),
+            List[np.int64]: (np.dtype("object"), ArrayType(LongType())),
+            List[np.int16]: (np.dtype("object"), ArrayType(ShortType())),
+            List[str]: (np.dtype("object"), ArrayType(StringType())),
+            List[np.unicode_]: (np.dtype("object"), ArrayType(StringType())),
+            List[datetime.datetime]: (np.dtype("object"), ArrayType(TimestampType())),
+            List[np.datetime64]: (np.dtype("object"), ArrayType(TimestampType())),
             # CategoricalDtype
-            CategoricalDtype(categories=["a", "b", "c"]): LongType(),
+            CategoricalDtype(categories=["a", "b", "c"]): (
+                CategoricalDtype(categories=["a", "b", "c"]),
+                LongType(),
+            ),
         }
 
-        for numpy_or_python_type, spark_type in type_mapper.items():
+        for numpy_or_python_type, (dtype, spark_type) in type_mapper.items():
             self.assertEqual(as_spark_type(numpy_or_python_type), spark_type)
+            self.assertEqual(koalas_dtype(numpy_or_python_type), (dtype, spark_type))
 
         with self.assertRaisesRegex(TypeError, "Type uint64 was not understood."):
             as_spark_type(np.dtype("uint64"))
+
+        with self.assertRaisesRegex(TypeError, "Type object was not understood."):
+            as_spark_type(np.dtype("object"))
+
+        with self.assertRaisesRegex(TypeError, "Type uint64 was not understood."):
+            koalas_dtype(np.dtype("uint64"))
+
+        with self.assertRaisesRegex(TypeError, "Type object was not understood."):
+            koalas_dtype(np.dtype("object"))
 
     @unittest.skipIf(not extension_dtypes_available, "The pandas extension types are not available")
     def test_as_spark_type_extension_dtypes(self):
@@ -347,6 +361,7 @@ class TypeHintTests(unittest.TestCase):
 
         for extension_dtype, spark_type in type_mapper.items():
             self.assertEqual(as_spark_type(extension_dtype), spark_type)
+            self.assertEqual(koalas_dtype(extension_dtype), (extension_dtype, spark_type))
 
     @unittest.skipIf(
         not extension_object_dtypes_available, "The pandas extension object types are not available"
@@ -361,6 +376,7 @@ class TypeHintTests(unittest.TestCase):
 
         for extension_dtype, spark_type in type_mapper.items():
             self.assertEqual(as_spark_type(extension_dtype), spark_type)
+            self.assertEqual(koalas_dtype(extension_dtype), (extension_dtype, spark_type))
 
     @unittest.skipIf(
         not extension_float_dtypes_available, "The pandas extension float types are not available"
@@ -375,3 +391,4 @@ class TypeHintTests(unittest.TestCase):
 
         for extension_dtype, spark_type in type_mapper.items():
             self.assertEqual(as_spark_type(extension_dtype), spark_type)
+            self.assertEqual(koalas_dtype(extension_dtype), (extension_dtype, spark_type))
