@@ -1180,7 +1180,7 @@ class GroupBy(object, metaclass=ABCMeta):
                     "currently; however got [%s]. Use DataFrame type hint instead." % return_sig
                 )
 
-            return_schema = return_type.tpe
+            return_schema = return_type.spark_type
             if not isinstance(return_schema, StructType):
                 should_return_series = True
                 if is_series_groupby:
@@ -2139,7 +2139,7 @@ class GroupBy(object, metaclass=ABCMeta):
             # If schema is inferred, we can restore indexes too.
             internal = kdf_from_pandas._internal.with_new_sdf(sdf)
         else:
-            return_type = infer_return_type(func).tpe
+            return_type = infer_return_type(func).spark_type
             data_columns = kdf._internal.data_spark_column_names
             return_schema = StructType(
                 [StructField(c, return_type) for c in data_columns if c not in groupkey_names]

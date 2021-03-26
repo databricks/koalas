@@ -3049,7 +3049,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     "Expected the return type of this function to be of scalar type, "
                     "but found type {}".format(sig_return)
                 )
-            return_schema = sig_return.tpe
+            return_schema = sig_return.spark_type
             return self.koalas._transform_batch(apply_each, return_schema)
 
     # TODO: not all arguments are implemented comparing to pandas' for now.

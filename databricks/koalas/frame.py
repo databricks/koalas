@@ -2572,7 +2572,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_type = infer_return_type(func)
-            return_schema = return_type.tpe
+            return_schema = return_type.spark_type
             require_index_axis = isinstance(return_type, SeriesType)
             require_column_axis = isinstance(return_type, DataFrameType)
 
@@ -9862,7 +9862,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         return x
 
             elif callable(mapper):
-                spark_return_type = infer_return_type(mapper).tpe
+                spark_return_type = infer_return_type(mapper).spark_type
 
                 def mapper_fn(x):
                     return mapper(x)

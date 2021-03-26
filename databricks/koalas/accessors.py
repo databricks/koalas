@@ -372,7 +372,7 @@ class KoalasFrameMethods(object):
             internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_type = infer_return_type(original_func)
-            return_schema = return_type.tpe
+            return_schema = return_type.spark_type
             is_return_dataframe = isinstance(return_type, DataFrameType)
             if not is_return_dataframe:
                 raise TypeError(
@@ -647,7 +647,7 @@ class KoalasFrameMethods(object):
                 return DataFrame(kdf._internal.with_new_sdf(sdf))
         else:
             return_type = infer_return_type(original_func)
-            return_schema = return_type.tpe
+            return_schema = return_type.spark_type
             is_return_series = isinstance(return_type, SeriesType)
             is_return_dataframe = isinstance(return_type, DataFrameType)
             if not is_return_dataframe and not is_return_series:
@@ -831,7 +831,7 @@ class KoalasSeriesMethods(object):
                     "Expected the return type of this function to be of type column,"
                     " but found type {}".format(sig_return)
                 )
-            return_schema = sig_return.tpe
+            return_schema = sig_return.spark_type
 
         ff = func
         func = lambda o: ff(o, *args, **kwargs)

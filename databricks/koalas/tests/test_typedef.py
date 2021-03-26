@@ -61,41 +61,55 @@ class TypeHintTests(unittest.TestCase):
         def func() -> pd.Series[int]:
             pass
 
-        self.assertEqual(infer_return_type(func).tpe, LongType())
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtype, np.int64)
+        self.assertEqual(inferred.spark_type, LongType())
 
         def func() -> pd.Series[np.float]:
             pass
 
-        self.assertEqual(infer_return_type(func).tpe, DoubleType())
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtype, np.float64)
+        self.assertEqual(inferred.spark_type, DoubleType())
 
         def func() -> "pd.DataFrame[np.float, str]":
             pass
 
         expected = StructType([StructField("c0", DoubleType()), StructField("c1", StringType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.float64, np.unicode_])
+        self.assertEqual(inferred.spark_type, expected)
 
         def func() -> "pandas.DataFrame[np.float]":
             pass
 
         expected = StructType([StructField("c0", DoubleType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.float64])
+        self.assertEqual(inferred.spark_type, expected)
 
         def func() -> "pd.Series[int]":
             pass
 
-        self.assertEqual(infer_return_type(func).tpe, LongType())
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtype, np.int64)
+        self.assertEqual(inferred.spark_type, LongType())
 
         def func() -> pd.DataFrame[np.float, str]:
             pass
 
         expected = StructType([StructField("c0", DoubleType()), StructField("c1", StringType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.float64, np.unicode_])
+        self.assertEqual(inferred.spark_type, expected)
 
         def func() -> pd.DataFrame[np.float]:
             pass
 
         expected = StructType([StructField("c0", DoubleType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.float64])
+        self.assertEqual(inferred.spark_type, expected)
 
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
 
@@ -103,20 +117,26 @@ class TypeHintTests(unittest.TestCase):
             pass
 
         expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.int64, np.int64])
+        self.assertEqual(inferred.spark_type, expected)
 
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
 
         def func() -> pd.Series[pdf.b.dtype]:  # type: ignore
             pass
 
-        self.assertEqual(infer_return_type(func).tpe, LongType())
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtype, CategoricalDtype(categories=["a", "b", "c"]))
+        self.assertEqual(inferred.spark_type, LongType())
 
         def func() -> pd.DataFrame[pdf.dtypes]:  # type: ignore
             pass
 
         expected = StructType([StructField("c0", LongType()), StructField("c1", LongType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.int64, CategoricalDtype(categories=["a", "b", "c"])])
+        self.assertEqual(inferred.spark_type, expected)
 
     def test_if_pandas_implements_class_getitem(self):
         # the current type hint implementation of pandas DataFrame assumes pandas doesn't
@@ -134,13 +154,17 @@ class TypeHintTests(unittest.TestCase):
             pass
 
         expected = StructType([StructField("a", DoubleType()), StructField("b", StringType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.float64, np.unicode_])
+        self.assertEqual(inferred.spark_type, expected)
 
         def func() -> "pd.DataFrame['a': np.float, 'b': int]":  # noqa: F821
             pass
 
         expected = StructType([StructField("a", DoubleType()), StructField("b", LongType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.float64, np.int64])
+        self.assertEqual(inferred.spark_type, expected)
 
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": [3, 4, 5]})
 
@@ -148,7 +172,9 @@ class TypeHintTests(unittest.TestCase):
             pass
 
         expected = StructType([StructField("a", LongType()), StructField("b", LongType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.int64, np.int64])
+        self.assertEqual(inferred.spark_type, expected)
 
         pdf = pd.DataFrame({("x", "a"): [1, 2, 3], ("y", "b"): [3, 4, 5]})
 
@@ -158,7 +184,9 @@ class TypeHintTests(unittest.TestCase):
         expected = StructType(
             [StructField("(x, a)", LongType()), StructField("(y, b)", LongType())]
         )
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.int64, np.int64])
+        self.assertEqual(inferred.spark_type, expected)
 
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical(["a", "b", "c"])})
 
@@ -166,7 +194,9 @@ class TypeHintTests(unittest.TestCase):
             pass
 
         expected = StructType([StructField("a", LongType()), StructField("b", LongType())])
-        self.assertEqual(infer_return_type(func).tpe, expected)
+        inferred = infer_return_type(func)
+        self.assertEqual(inferred.dtypes, [np.int64, CategoricalDtype(categories=["a", "b", "c"])])
+        self.assertEqual(inferred.spark_type, expected)
 
     @unittest.skipIf(
         sys.version_info < (3, 7),
