@@ -5517,8 +5517,10 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, "'asof' argument is not supported"):
             kdf.at_time("0:15", asof=True)
 
-        with self.assertRaisesRegex(NotImplementedError, "at_time currently only works for axis=0"):
-            kdf.at_time("0:15", axis=1)
+        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
+            # axis parameter is new in pandas version 0.24.0.
+            with self.assertRaisesRegex(NotImplementedError, "at_time currently only works for axis=0"):
+                kdf.at_time("0:15", axis=1)
 
         kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
