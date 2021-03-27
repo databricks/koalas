@@ -19,7 +19,7 @@ Utilities to deal with types. This is mostly focused on python3.
 """
 import datetime
 import decimal
-from inspect import getfullargspec
+from inspect import getfullargspec, isclass
 from typing import Generic, List, Optional, Tuple, TypeVar, Union  # noqa: F401
 
 import numpy as np
@@ -497,11 +497,15 @@ def infer_return_type(f) -> Union[SeriesType, DataFrameType, ScalarType, Unknown
             parameters = getattr(tuple_type, "__args__")
         dtypes, spark_types = zip(
             *(
-                koalas_dtype(p.tpe) if issubclass(p, NameTypeHolder) else koalas_dtype(p)
+                koalas_dtype(p.tpe)
+                if isclass(p) and issubclass(p, NameTypeHolder)
+                else koalas_dtype(p)
                 for p in parameters
             )
         )
-        names = [p.name if issubclass(p, NameTypeHolder) else None for p in parameters]
+        names = [
+            p.name if isclass(p) and issubclass(p, NameTypeHolder) else None for p in parameters
+        ]
         return DataFrameType(list(dtypes), list(spark_types), names)
 
     types = koalas_dtype(tpe)

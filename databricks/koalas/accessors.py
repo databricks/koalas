@@ -372,13 +372,13 @@ class KoalasFrameMethods(object):
             internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_type = infer_return_type(original_func)
-            return_schema = return_type.spark_type
             is_return_dataframe = isinstance(return_type, DataFrameType)
             if not is_return_dataframe:
                 raise TypeError(
                     "The given function should specify a frame as its type "
                     "hints; however, the return type was %s." % return_sig
                 )
+            return_schema = cast(DataFrameType, return_type).spark_type
 
             if should_use_map_in_pandas:
                 output_func = GroupBy._make_pandas_df_builder_func(
@@ -647,7 +647,6 @@ class KoalasFrameMethods(object):
                 return DataFrame(kdf._internal.with_new_sdf(sdf))
         else:
             return_type = infer_return_type(original_func)
-            return_schema = return_type.spark_type
             is_return_series = isinstance(return_type, SeriesType)
             is_return_dataframe = isinstance(return_type, DataFrameType)
             if not is_return_dataframe and not is_return_series:
@@ -656,6 +655,8 @@ class KoalasFrameMethods(object):
                     "hints; however, the return type was %s." % return_sig
                 )
             if is_return_series:
+                return_schema = cast(SeriesType, return_type).spark_type
+
                 pudf = pandas_udf(
                     func if should_by_pass else pandas_series_func(func),
                     returnType=return_schema,
@@ -674,6 +675,8 @@ class KoalasFrameMethods(object):
                 )
                 return first_series(DataFrame(internal))
             else:
+                return_schema = cast(DataFrameType, return_type).spark_type
+
                 self_applied = DataFrame(self._kdf._internal.resolved_copy)
 
                 output_func = GroupBy._make_pandas_df_builder_func(
@@ -831,7 +834,7 @@ class KoalasSeriesMethods(object):
                     "Expected the return type of this function to be of type column,"
                     " but found type {}".format(sig_return)
                 )
-            return_schema = sig_return.spark_type
+            return_schema = cast(SeriesType, sig_return).spark_type
 
         ff = func
         func = lambda o: ff(o, *args, **kwargs)
