@@ -5658,7 +5658,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
         >>> pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=i)
-        >>> kdf = fs.from_pandas(pdf)
+        >>> kdf = ks.from_pandas(pdf)
                     A
         2018-04-09  1
         2018-04-11  2
@@ -5677,16 +5677,33 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         not returned.
         """
         # Check index type should be format DateTime
-        if not self.index.dtype.type == np.datetime64:
-            raise TypeError("'last' only supports a DateTime index")
+        from databricks.koalas.indexes import DatetimeIndex
+        if not isinstance(self.index, DatetimeIndex):
+            raise TypeError("'last' only supports a DatetimeIndex")
 
-        # Leverage pandas offsets to set a range
         from pandas._libs.tslibs.offsets import to_offset
-
         offset = to_offset(offset)
         index_max = self.index.max()
         from_date = index_max - offset
-        return self.loc[from_date:index_max]
+
+        kdf = self.copy()
+        kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
+
+        def pandas_loc(pdf):
+            return pdf.loc[from_date:index_max].reset_index()
+
+        # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
+        # which will never be used. So use "distributed" index as a dummy to avoid overhead.
+        with option_context("compute.default_index_type", "distributed"):
+            kdf = kdf.koalas.apply_batch(pandas_loc)
+
+        return DataFrame(
+                self._internal.copy(
+                    spark_frame=kdf._internal.spark_frame,
+                    index_spark_columns=kdf._internal.data_spark_columns[:1],
+                    data_spark_columns=kdf._internal.data_spark_columns[1:],
+                )
+            )
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None

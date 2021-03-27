@@ -171,6 +171,7 @@ Reindexing / Selection / Label manipulation
    Series.idxmax
    Series.idxmin
    Series.isin
+   Series.last
    Series.rename
    Series.rename_axis
    Series.reindex

@@ -172,6 +172,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.equals
    DataFrame.filter
    DataFrame.head
+   DataFrame.last
    DataFrame.rename
    DataFrame.rename_axis
    DataFrame.reset_index

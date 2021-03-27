@@ -49,7 +49,6 @@ class _MissingPandasLikeDataFrame(object):
     first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")
-    last = _unsupported_function("last")
     lookup = _unsupported_function("lookup")
     mode = _unsupported_function("mode")
     reorder_levels = _unsupported_function("reorder_levels")

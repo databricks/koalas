@@ -2235,7 +2235,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         3 observed days in the dataset, and therefore data for 2018-04-11 was
         not returned.
         """
-        return first_series(self.to_frame().last(offset=offset)).rename(self.name)
+        return first_series(self.to_frame().last(offset)).rename(self.name)
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.
