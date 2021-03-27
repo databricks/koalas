@@ -2200,7 +2200,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Parameters
         ----------
-        offset : str, DateOffset
+        offset : str or DateOffset
             The offset length of the data that will be selected. For instance,
             '3D' will display all the rows having their index within the last 3 days.
 

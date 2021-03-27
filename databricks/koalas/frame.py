@@ -5640,7 +5640,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
         Parameters
         ----------
-        offset : str, DateOffset
+        offset : str or DateOffset
             The offset length of the data that will be selected. For instance,
             '3D' will display all the rows having their index within the last 3 days.
 
