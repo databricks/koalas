@@ -5683,9 +5683,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(self.index, DatetimeIndex):
             raise TypeError("'last' only supports a DatetimeIndex")
 
-        from pandas._libs.tslibs.offsets import to_offset
-
-        offset = to_offset(offset)
+        offset = pd._libs.tslibs.offsets.to_offset(offset)
         index_max = self.index.max()
         from_date = index_max - offset
 
