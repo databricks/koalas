@@ -2212,7 +2212,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Raises
         ------
         TypeError
-            If the index is not  a :type:`np.datetime64`
+            If the index is not  a a :class:`DatetimeIndex`
 
         Examples
         --------

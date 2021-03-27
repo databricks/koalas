@@ -5652,12 +5652,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Raises
         ------
         TypeError
-            If the index is not  a :type:`np.datetime64`
+            If the index is not  a :class:`DatetimeIndex`
 
         Examples
         --------
+
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
-        >>> pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=i)
+        >>> pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=index)
         >>> kdf = ks.from_pandas(pdf)
                     A
         2018-04-09  1
