@@ -5660,6 +5660,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
         >>> pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=index)
         >>> kdf = ks.from_pandas(pdf)
+        >>> kdf
                     A
         2018-04-09  1
         2018-04-11  2
