@@ -2219,17 +2219,17 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
         >>> ks_series = ks.Series([1, 2, 3, 4], index=index)
         >>> ks_series
-        2018-04-09  1
-        2018-04-11  2
-        2018-04-13  3
-        2018-04-15  4
+        2018-04-09    1
+        2018-04-11    2
+        2018-04-13    3
+        2018-04-15    4
         dtype: int64
 
         Get the rows for the last 3 days:
 
         >>> ks_series.last('3D')
-        2018-04-13  3
-        2018-04-15  4
+        2018-04-13    3
+        2018-04-15    4
         dtype: int64
 
         Notice the data for 3 last calendar days were returned, not the last
