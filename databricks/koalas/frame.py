@@ -5686,27 +5686,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             raise TypeError("'last' only supports a DatetimeIndex")
 
         offset = pd.tseries.frequencies.to_offset(offset)
-        index_max = self.index.max()
-        from_date = index_max - offset
+        from_date = self.index.max() - offset
 
         kdf = self.copy()
         kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
 
-        def pandas_loc(pdf):
-            return pdf.loc[from_date:index_max].reset_index()
-
-        # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
-        # which will never be used. So use "distributed" index as a dummy to avoid overhead.
-        with option_context("compute.default_index_type", "distributed"):
-            kdf = kdf.koalas.apply_batch(pandas_loc)
-
-        return DataFrame(
-            self._internal.copy(
-                spark_frame=kdf._internal.spark_frame,
-                index_spark_columns=kdf._internal.data_spark_columns[:1],
-                data_spark_columns=kdf._internal.data_spark_columns[1:],
-            )
-        )
+        return self[from_date:]
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None

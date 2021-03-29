@@ -5203,10 +5203,12 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pdf.last_valid_index(), kdf.last_valid_index())
 
     def test_last(self):
+        from pandas.tseries.offsets import DateOffset
         index = pd.date_range("2018-04-09", periods=4, freq="2D")
         pdf = pd.DataFrame([1, 2, 3, 4], index=index)
         kdf = ks.from_pandas(pdf)
         self.assert_eq(pdf.last("1D"), kdf.last("1D"))
+        self.assert_eq(pdf.last(DateOffset(days=1)), kdf.last(DateOffset(days=1)))
 
     def test_first_valid_index(self):
         pdf = pd.DataFrame(
