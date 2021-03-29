@@ -327,6 +327,11 @@ def infer_pd_series_spark_type(pser: pd.Series, dtype: Dtype) -> types.DataType:
 
 def infer_return_type(f) -> Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
     """
+    Infer the return type from the return type annotation of the given function.
+
+    The returned type class indicates both dtypes (a pandas only dtype object
+    or a numpy dtype object) and its corresponding Spark DataType.
+
     >>> def func() -> int:
     ...    pass
     >>> inferred = infer_return_type(func)
