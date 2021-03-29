@@ -5204,6 +5204,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
 
     def test_last(self):
         from pandas.tseries.offsets import DateOffset
+
         index = pd.date_range("2018-04-09", periods=4, freq="2D")
         pdf = pd.DataFrame([1, 2, 3, 4], index=index)
         kdf = ks.from_pandas(pdf)
