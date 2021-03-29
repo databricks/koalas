@@ -31,6 +31,7 @@ import pandas as pd
 from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like, is_hashable
+from pandas.tseries.frequencies import DateOffset
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -2191,7 +2192,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         """
         return first_series(self.to_frame().head(n)).rename(self.name)
 
-    def last(self, offset) -> "Series":
+    def last(self, offset: Union[str, DateOffset]) -> "Series":
         """
         Select final periods of time series data based on a date offset.
 
@@ -2212,7 +2213,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Raises
         ------
         TypeError
-            If the index is not  a a :class:`DatetimeIndex`
+            If the index is not a :class:`DatetimeIndex`
 
         Examples
         --------

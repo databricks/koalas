@@ -48,6 +48,7 @@ import datetime
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
+from pandas.tseries.frequencies import DateOffset
 
 if TYPE_CHECKING:
     from pandas.io.formats.style import Styler
@@ -5631,7 +5632,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
             return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
 
-    def last(self, offset) -> "DataFrame":
+    def last(self, offset: Union[str, DateOffset]) -> "DataFrame":
         """
         Select final periods of time series data based on a date offset.
 
@@ -5652,7 +5653,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Raises
         ------
         TypeError
-            If the index is not  a :class:`DatetimeIndex`
+            If the index is not a :class:`DatetimeIndex`
 
         Examples
         --------
