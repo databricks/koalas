@@ -117,6 +117,7 @@ from databricks.koalas.typedef import (
     DataFrameType,
     SeriesType,
     Scalar,
+    ScalarType,
 )
 from databricks.koalas.plot import KoalasPlotAccessor
 
@@ -2572,7 +2573,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             internal = kdf._internal.with_new_sdf(sdf)
         else:
             return_type = infer_return_type(func)
-            return_schema = return_type.tpe
             require_index_axis = isinstance(return_type, SeriesType)
             require_column_axis = isinstance(return_type, DataFrameType)
 
@@ -2583,6 +2583,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         "hints when axis is 0 or 'index'; however, the return type "
                         "was %s" % return_sig
                     )
+                return_schema = cast(SeriesType, return_type).spark_type
                 fields_types = zip(
                     self_applied.columns, [return_schema] * len(self_applied.columns)
                 )
@@ -2594,9 +2595,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         "hints when axis is 1 or 'column'; however, the return type "
                         "was %s" % return_sig
                     )
+                return_schema = cast(DataFrameType, return_type).spark_type
             else:
                 # any axis is fine.
                 should_return_series = True
+                return_schema = cast(ScalarType, return_type).spark_type
                 return_schema = StructType([StructField(SPARK_DEFAULT_SERIES_NAME, return_schema)])
                 column_labels = [None]
 
@@ -9862,7 +9865,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         return x
 
             elif callable(mapper):
-                spark_return_type = infer_return_type(mapper).tpe
+                spark_return_type = cast(ScalarType, infer_return_type(mapper)).spark_type
 
                 def mapper_fn(x):
                     return mapper(x)

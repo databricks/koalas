@@ -43,7 +43,7 @@ from pyspark.sql.types import (
 from pyspark.sql.functions import PandasUDFType, pandas_udf, Column
 
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
-from databricks.koalas.typedef import infer_return_type, SeriesType
+from databricks.koalas.typedef import infer_return_type, DataFrameType, ScalarType, SeriesType
 from databricks.koalas.frame import DataFrame
 from databricks.koalas.internal import (
     InternalFrame,
@@ -1180,9 +1180,11 @@ class GroupBy(object, metaclass=ABCMeta):
                     "currently; however got [%s]. Use DataFrame type hint instead." % return_sig
                 )
 
-            return_schema = return_type.tpe
-            if not isinstance(return_schema, StructType):
+            if isinstance(return_type, DataFrameType):
+                return_schema = cast(DataFrameType, return_type).spark_type
+            else:
                 should_return_series = True
+                return_schema = cast(Union[SeriesType, ScalarType], return_type).spark_type
                 if is_series_groupby:
                     return_schema = StructType([StructField(name, return_schema)])
                 else:
@@ -2139,10 +2141,17 @@ class GroupBy(object, metaclass=ABCMeta):
             # If schema is inferred, we can restore indexes too.
             internal = kdf_from_pandas._internal.with_new_sdf(sdf)
         else:
-            return_type = infer_return_type(func).tpe
+            return_type = infer_return_type(func)
+            if not isinstance(return_type, SeriesType):
+                raise TypeError(
+                    "Expected the return type of this function to be of Series type, "
+                    "but found type {}".format(return_type)
+                )
+
+            return_schema = cast(SeriesType, return_type).spark_type
             data_columns = kdf._internal.data_spark_column_names
             return_schema = StructType(
-                [StructField(c, return_type) for c in data_columns if c not in groupkey_names]
+                [StructField(c, return_schema) for c in data_columns if c not in groupkey_names]
             )
 
             sdf = GroupBy._spark_group_map_apply(
