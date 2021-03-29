@@ -26,7 +26,7 @@ import warnings
 
 import numpy as np
 import pandas as pd  # noqa: F401
-from pandas.api.types import is_list_like, pandas_dtype, CategoricalDtype
+from pandas.api.types import is_list_like, CategoricalDtype
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Window, Column
 from pyspark.sql.types import (
@@ -55,6 +55,7 @@ from databricks.koalas.typedef import (
     Dtype,
     as_spark_type,
     extension_dtypes,
+    koalas_dtype,
     spark_type_to_pandas_dtype,
 )
 from databricks.koalas.utils import (
@@ -1052,8 +1053,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         >>> ser.rename("a").to_frame().set_index("a").index.astype('int64')
         Int64Index([1, 2], dtype='int64', name='a')
         """
-        dtype = pandas_dtype(dtype)
-        spark_type = as_spark_type(dtype)
+        dtype, spark_type = koalas_dtype(dtype)
         if not spark_type:
             raise ValueError("Type {} not understood".format(dtype))
 
