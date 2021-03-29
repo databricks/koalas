@@ -17,21 +17,21 @@
 """
 Utilities to deal with types. This is mostly focused on python3.
 """
-import typing
 import datetime
 import decimal
-from inspect import getfullargspec, isclass
+from inspect import getfullargspec
+from typing import Generic, List, Tuple, TypeVar, Union  # noqa: F401
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import CategoricalDtype
+from pandas.api.types import CategoricalDtype, pandas_dtype
 from pandas.api.extensions import ExtensionDtype
 
 try:
     from pandas import Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype
 
     extension_dtypes_available = True
-    extension_dtypes = (Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype)  # type: typing.Tuple
+    extension_dtypes = (Int8Dtype, Int16Dtype, Int32Dtype, Int64Dtype)  # type: Tuple
 
     try:
         from pandas import BooleanDtype, StringDtype
@@ -66,17 +66,17 @@ except ImportError:
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas.typedef.string_typehints import resolve_string_type_hint
 
-T = typing.TypeVar("T")
+T = TypeVar("T")
 
-Scalar = typing.Union[
+Scalar = Union[
     int, float, bool, str, bytes, decimal.Decimal, datetime.date, datetime.datetime, None
 ]
 
-Dtype = typing.Union[np.dtype, ExtensionDtype]
+Dtype = Union[np.dtype, ExtensionDtype]
 
 
 # A column of data, with the data type.
-class SeriesType(typing.Generic[T]):
+class SeriesType(Generic[T]):
     def __init__(self, tpe):
         self.tpe = tpe  # type: types.DataType
 
@@ -85,18 +85,15 @@ class SeriesType(typing.Generic[T]):
 
 
 class DataFrameType(object):
-    def __init__(self, tpe, names=None):
+    def __init__(self, tpe, names):
         from databricks.koalas.utils import name_like_string
 
-        if names is None:
-            # Default names `c0, c1, ... cn`.
-            self.tpe = types.StructType(
-                [types.StructField("c%s" % i, tpe[i]) for i in range(len(tpe))]
-            )  # type: types.StructType
-        else:
-            self.tpe = types.StructType(
-                [types.StructField(name_like_string(n), t) for n, t in zip(names, tpe)]
-            )  # type: types.StructType
+        self.tpe = types.StructType(
+            [
+                types.StructField(name_like_string(n) if n is not None else ("c%s" % i), t)
+                for i, (n, t) in enumerate(zip(names, tpe))
+            ]
+        )  # type: types.StructType
 
     def __repr__(self):
         return "DataFrameType[{}]".format(self.tpe)
@@ -125,9 +122,7 @@ class NameTypeHolder(object):
     tpe = None
 
 
-def as_spark_type(
-    tpe: typing.Union[str, type, Dtype], *, raise_error: bool = True
-) -> types.DataType:
+def as_spark_type(tpe: Union[str, type, Dtype], *, raise_error: bool = True) -> types.DataType:
     """
     Given a Python type, returns the equivalent spark type.
     Accepts:
@@ -137,9 +132,10 @@ def as_spark_type(
     - dictionaries of field_name -> type
     - Python3's typing system
     """
-    # TODO: Add "boolean" and "string" types.
+    if isinstance(tpe, np.dtype) and tpe == np.dtype("object"):
+        pass
     # ArrayType
-    if tpe in (np.ndarray,):
+    elif tpe in (np.ndarray,):
         return types.ArrayType(types.StringType())
     elif hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, list):  # type: ignore
         element_type = as_spark_type(tpe.__args__[0], raise_error=raise_error)  # type: ignore
@@ -247,13 +243,60 @@ def spark_type_to_pandas_dtype(
                 return Float64Dtype()
 
     if isinstance(
-        spark_type, (types.DateType, types.NullType, types.StructType, types.UserDefinedType)
+        spark_type,
+        (
+            types.DateType,
+            types.NullType,
+            types.ArrayType,
+            types.MapType,
+            types.StructType,
+            types.UserDefinedType,
+        ),
     ):
         return np.dtype("object")
     elif isinstance(spark_type, types.TimestampType):
         return np.dtype("datetime64[ns]")
     else:
         return np.dtype(to_arrow_type(spark_type).to_pandas_dtype())
+
+
+def koalas_dtype(tpe) -> Tuple[Dtype, types.DataType]:
+    """
+    Convert input into a pandas only dtype object or a numpy dtype object,
+    and its corresponding Spark DataType.
+
+    Parameters
+    ----------
+    tpe : object to be converted
+
+    Returns
+    -------
+    tuple of np.dtype or a pandas dtype, and Spark DataType
+
+    Raises
+    ------
+    TypeError if not a dtype
+
+    Examples
+    --------
+    >>> koalas_dtype(int)
+    (dtype('int64'), LongType)
+    >>> koalas_dtype(str)
+    (dtype('<U'), StringType)
+    >>> koalas_dtype(datetime.date)
+    (dtype('O'), DateType)
+    >>> koalas_dtype(datetime.datetime)
+    (dtype('<M8[ns]'), TimestampType)
+    >>> koalas_dtype(List[bool])
+    (dtype('O'), ArrayType(BooleanType,true))
+    """
+    try:
+        dtype = pandas_dtype(tpe)
+        spark_type = as_spark_type(dtype)
+    except TypeError:
+        spark_type = as_spark_type(tpe)
+        dtype = spark_type_to_pandas_dtype(spark_type)
+    return dtype, spark_type
 
 
 def infer_pd_series_spark_type(pser: pd.Series, dtype: Dtype) -> types.DataType:
@@ -277,7 +320,7 @@ def infer_pd_series_spark_type(pser: pd.Series, dtype: Dtype) -> types.DataType:
         return as_spark_type(dtype)
 
 
-def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
+def infer_return_type(f) -> Union[SeriesType, DataFrameType, ScalarType, UnknownType]:
     """
     >>> def func() -> int:
     ...    pass
@@ -346,6 +389,22 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     ...     pass
     >>> infer_return_type(func).tpe
     StructType(List(StructField((x, a),LongType,true),StructField((y, b),LongType,true)))
+
+    >>> pdf = pd.DataFrame({"a": [1, 2, 3], "b": pd.Categorical([3, 4, 5])})
+    >>> def func() -> ks.DataFrame[pdf.dtypes]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(c0,LongType,true),StructField(c1,LongType,true)))
+
+    >>> def func() -> ks.DataFrame[zip(pdf.columns, pdf.dtypes)]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    StructType(List(StructField(a,LongType,true),StructField(b,LongType,true)))
+
+    >>> def func() -> ks.Series[pdf.b.dtype]:
+    ...     pass
+    >>> infer_return_type(func).tpe
+    LongType
     """
     # We should re-import to make sure the class 'SeriesType' is not treated as a class
     # within this module locally. See Series.__class_getitem__ which imports this class
@@ -357,17 +416,19 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
     if isinstance(tpe, str):
         # This type hint can happen when given hints are string to avoid forward reference.
         tpe = resolve_string_type_hint(tpe)
-    if hasattr(tpe, "__origin__") and (
-        issubclass(tpe.__origin__, SeriesType) or tpe.__origin__ == ks.Series
-    ):
-        # TODO: remove "tpe.__origin__ == ks.Series" when we drop Python 3.5 and 3.6.
-        inner = as_spark_type(tpe.__args__[0])
-        return SeriesType(inner)
 
-    if hasattr(tpe, "__origin__") and tpe.__origin__ == ks.DataFrame:
-        # When Python version is lower then 3.7. Unwrap it to a Tuple type
-        # hints.
+    if hasattr(tpe, "__origin__") and (
+        tpe.__origin__ == ks.DataFrame or tpe.__origin__ == ks.Series
+    ):
+        # When Python version is lower then 3.7. Unwrap it to a Tuple/SeriesType type hints.
         tpe = tpe.__args__[0]
+
+    if hasattr(tpe, "__origin__") and issubclass(tpe.__origin__, SeriesType):
+        tpe = tpe.__args__[0]
+        if issubclass(tpe, NameTypeHolder):
+            tpe = tpe.tpe
+        inner = as_spark_type(tpe)
+        return SeriesType(inner)
 
     # Note that, DataFrame type hints will create a Tuple.
     # Python 3.6 has `__name__`. Python 3.7 and 3.8 have `_name`.
@@ -381,13 +442,9 @@ def infer_return_type(f) -> typing.Union[SeriesType, DataFrameType, ScalarType, 
             parameters = getattr(tuple_type, "__tuple_params__")
         else:
             parameters = getattr(tuple_type, "__args__")
-        if len(parameters) > 0 and all(
-            isclass(p) and issubclass(p, NameTypeHolder) for p in parameters
-        ):
-            names = [p.name for p in parameters if issubclass(p, NameTypeHolder)]
-            types = [p.tpe for p in parameters if issubclass(p, NameTypeHolder)]
-            return DataFrameType([as_spark_type(t) for t in types], names)
-        return DataFrameType([as_spark_type(t) for t in parameters])
+        names = [p.name if issubclass(p, NameTypeHolder) else None for p in parameters]
+        types = [p.tpe if issubclass(p, NameTypeHolder) else p for p in parameters]
+        return DataFrameType([as_spark_type(t) for t in types], names)
     inner = as_spark_type(tpe)
     if inner is None:
         return UnknownType(tpe)
