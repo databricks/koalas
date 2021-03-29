@@ -23,15 +23,27 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
 
 
 class CategoricalTest(ReusedSQLTestCase, TestUtils):
-    def test_categorical_frame(self):
-        pdf = pd.DataFrame(
+    @property
+    def pdf(self):
+        return pd.DataFrame(
             {
                 "a": pd.Categorical([1, 2, 3, 1, 2, 3]),
-                "b": pd.Categorical(["a", "b", "c", "a", "b", "c"], categories=["c", "b", "a"]),
+                "b": pd.Categorical(
+                    ["b", "a", "c", "c", "b", "a"], categories=["c", "b", "d", "a"]
+                ),
             },
-            index=pd.Categorical([10, 20, 30, 20, 30, 10], categories=[30, 10, 20], ordered=True),
         )
-        kdf = ks.from_pandas(pdf)
+
+    @property
+    def kdf(self):
+        return ks.from_pandas(self.pdf)
+
+    @property
+    def df_pair(self):
+        return (self.pdf, self.kdf)
+
+    def test_categorical_frame(self):
+        pdf, kdf = self.df_pair
 
         self.assert_eq(kdf, pdf)
         self.assert_eq(kdf.a, pdf.a)
@@ -94,16 +106,35 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(kcodes.tolist(), pcodes.tolist())
         self.assert_eq(kuniques, puniques)
 
-    def test_groupby_apply(self):
+    def test_frame_apply(self):
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(kdf.apply(lambda x: x).sort_index(), pdf.apply(lambda x: x).sort_index())
+        self.assert_eq(
+            kdf.apply(lambda x: x, axis=1).sort_index(), pdf.apply(lambda x: x, axis=1).sort_index()
+        )
+
+    def test_frame_apply_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_frame_apply()
+
         pdf = pd.DataFrame(
-            {
-                "a": pd.Categorical([1, 2, 3, 1, 2, 3]),
-                "b": pd.Categorical(
-                    ["b", "a", "c", "c", "b", "a"], categories=["c", "b", "d", "a"]
-                ),
-            },
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
         )
         kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c"])
+
+        def categorize(ser) -> ks.Series[dtype]:
+            return ser.astype(dtype)
+
+        self.assert_eq(
+            kdf.apply(categorize).sort_values(["a", "b"]).reset_index(drop=True),
+            pdf.apply(categorize).sort_values(["a", "b"]).reset_index(drop=True),
+        )
+
+    def test_groupby_apply(self):
+        pdf, kdf = self.df_pair
 
         self.assert_eq(
             kdf.groupby("a").apply(lambda df: df).sort_index(),
