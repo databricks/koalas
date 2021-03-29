@@ -5315,6 +5315,63 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame.from_dict(data, orient="index", columns=["A", "B", "C", "D"])
         self.assert_eq(pdf, kdf)
 
+    def test_lookup(self):
+        pdf = pd.DataFrame(
+            {
+                "A": [3, 4, 5, 6, 7],
+                "B": [10.0, 20.0, 30.0, 40.0, 50.0],
+                "C": ["a", "b", "c", "d", "e"],
+            }
+        )
+        kdf = ks.from_pandas(pdf)
+
+        # list
+        self.assert_eq(pdf.lookup([0], ["C"]), kdf.lookup([0], ["C"]))
+        self.assert_list_eq(
+            pdf.lookup([0, 3, 4], ["A", "C", "A"]), kdf.lookup([0, 3, 4], ["A", "C", "A"])
+        )
+
+        # tuple
+        self.assert_eq(pdf.lookup((0,), ("C",)), kdf.lookup((0,), ("C",)))
+        self.assert_list_eq(
+            pdf.lookup((0, 3, 4), ("A", "C", "A")), kdf.lookup((0, 3, 4), ("A", "C", "A"))
+        )
+
+        # dict
+        self.assert_eq(pdf.lookup({0: None}, {"C": None}), kdf.lookup({0: None}, {"C": None}))
+        self.assert_list_eq(
+            pdf.lookup({0: None, 3: None, 4: None}, {"A": None, "C": None, "B": None}),
+            kdf.lookup({0: None, 3: None, 4: None}, {"A": None, "C": None, "B": None}),
+        )
+
+        # MultiIndex
+        pdf.index = pd.MultiIndex.from_tuples(
+            [("a", "v"), ("b", "w"), ("c", "x"), ("d", "y"), ("e", "z")]
+        )
+        kdf = ks.from_pandas(pdf)
+
+        self.assert_eq(pdf.lookup([("a", "v")], ["C"]), kdf.lookup([("a", "v")], ["C"]))
+        self.assert_list_eq(
+            pdf.lookup([("a", "v"), ("d", "y"), ("e", "z")], ["A", "C", "A"]),
+            kdf.lookup([("a", "v"), ("d", "y"), ("e", "z")], ["A", "C", "A"]),
+        )
+
+        err_msg = "Row labels must have same size as column labels"
+        with self.assertRaisesRegex(ValueError, err_msg):
+            kdf.lookup([0, 3, 4], ["A", "C"])
+        err_msg = "'row_labels' doesn't support type 'Index'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup(ks.Index([0]), ["C"])
+        err_msg = "'row_labels' doesn't support type 'Series'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup(ks.Series([0]), ["C"])
+        err_msg = "'col_labels' doesn't support type 'Index'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup([0], ks.Index(["C"]))
+        err_msg = "'col_labels' doesn't support type 'Series'."
+        with self.assertRaisesRegex(TypeError, err_msg):
+            kdf.lookup([0], ks.Series(["C"]))
+
     def test_pad(self):
         pdf = pd.DataFrame(
             {

@@ -11442,6 +11442,74 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         """
         return DataFrame(pd.DataFrame.from_dict(data, orient=orient, dtype=dtype, columns=columns))
 
+    def lookup(self, row_labels, col_labels) -> np.ndarray:
+        """
+        Label-based "fancy indexing" function for DataFrame.
+
+        Given equal-length arrays of row and column labels, return an
+        array of the values corresponding to each (row, col) pair.
+
+        `row_labels` and `col_labels` are not support the type `Series` and `Index`
+        to prevent performance degradation.
+
+        Parameters
+        ----------
+        row_labels : sequence
+            The row labels to use for lookup.
+        col_labels : sequence
+            The column labels to use for lookup.
+
+        Returns
+        -------
+        numpy.ndarray
+            The found values.
+
+        Examples
+        --------
+        >>> kdf = ks.DataFrame({'A': [3, 4, 5, 6, 7],
+        ...                     'B': [10.0, 20.0, 30.0, 40.0, 50.0],
+        ...                     'C': ['a', 'b', 'c', 'd', 'e']})
+        >>> kdf
+           A     B  C
+        0  3  10.0  a
+        1  4  20.0  b
+        2  5  30.0  c
+        3  6  40.0  d
+        4  7  50.0  e
+
+        >>> kdf.lookup([0], ["C"])
+        array(['a'], dtype=object)
+
+        >>> kdf.lookup([2, 3], ["A", "B"])
+        array([ 5., 40.])
+        """
+        from databricks.koalas.series import Series
+        from databricks.koalas.indexes import Index, MultiIndex
+
+        if isinstance(row_labels, (Series, Index)):
+            raise TypeError(
+                "'row_labels' doesn't support type '{}'.".format(type(row_labels).__name__)
+            )
+        if isinstance(col_labels, (Series, Index)):
+            raise TypeError(
+                "'col_labels' doesn't support type '{}'.".format(type(col_labels).__name__)
+            )
+
+        if not isinstance(self.index, MultiIndex):
+            return (
+                self.loc[list(set(row_labels)), list(set(col_labels))]
+                .to_pandas()
+                .lookup(row_labels, col_labels)
+            )
+        else:
+            if len(row_labels) != len(col_labels):
+                raise ValueError("Row labels must have same size as column labels")
+            lookups = [
+                self.loc[row_label, col_label]
+                for row_label, col_label in zip(row_labels, col_labels)
+            ]
+            return np.asarray(pd.Series(lookups))
+
     def _to_internal_pandas(self):
         """
         Return a pandas DataFrame directly from _internal to avoid overhead of copy.
