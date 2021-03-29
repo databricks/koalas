@@ -5688,8 +5688,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         offset = pd.tseries.frequencies.to_offset(offset)
         from_date = self.index.max() - offset
 
-        kdf = self.copy()
-        kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
+        self.index.name = verify_temp_column_name(self, "__index_name__")
 
         return self[from_date:]
 
