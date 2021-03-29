@@ -5517,8 +5517,7 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(NotImplementedError, "'asof' argument is not supported"):
             kdf.at_time("0:15", asof=True)
 
-        if LooseVersion(pd.__version__) >= LooseVersion("0.24"):
-            # axis parameter is new in pandas version 0.24.0.
+        if sys.version_info >= (3, 6):
             with self.assertRaisesRegex(
                 NotImplementedError, "at_time currently only works for axis=0"
             ):
