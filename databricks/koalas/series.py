@@ -32,6 +32,7 @@ from pandas.core.accessor import CachedAccessor
 from pandas.io.formats.printing import pprint_thing
 from pandas.api.types import is_list_like, is_hashable
 from pandas.api.extensions import ExtensionDtype
+from pandas.tseries.frequencies import DateOffset
 import pyspark
 from pyspark import sql as spark
 from pyspark.sql import functions as F, Column
@@ -2217,6 +2218,53 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Name: animal, dtype: object
         """
         return first_series(self.to_frame().head(n)).rename(self.name)
+
+    def last(self, offset: Union[str, DateOffset]) -> "Series":
+        """
+        Select final periods of time series data based on a date offset.
+
+        When having a Series with dates as index, this function can
+        select the last few elements based on a date offset.
+
+        Parameters
+        ----------
+        offset : str or DateOffset
+            The offset length of the data that will be selected. For instance,
+            '3D' will display all the rows having their index within the last 3 days.
+
+        Returns
+        -------
+        Series
+            A subset of the caller.
+
+        Raises
+        ------
+        TypeError
+            If the index is not a :class:`DatetimeIndex`
+
+        Examples
+        --------
+        >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        >>> ks_series = ks.Series([1, 2, 3, 4], index=index)
+        >>> ks_series
+        2018-04-09    1
+        2018-04-11    2
+        2018-04-13    3
+        2018-04-15    4
+        dtype: int64
+
+        Get the rows for the last 3 days:
+
+        >>> ks_series.last('3D')
+        2018-04-13    3
+        2018-04-15    4
+        dtype: int64
+
+        Notice the data for 3 last calendar days were returned, not the last
+        3 observed days in the dataset, and therefore data for 2018-04-11 was
+        not returned.
+        """
+        return first_series(self.to_frame().last(offset)).rename(self.name)
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.

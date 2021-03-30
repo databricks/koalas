@@ -49,6 +49,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
 from pandas.api.extensions import ExtensionDtype
+from pandas.tseries.frequencies import DateOffset, to_offset
 
 if TYPE_CHECKING:
     from pandas.io.formats.style import Styler
@@ -5669,6 +5670,63 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
             if get_option("compute.ordered_head"):
                 sdf = sdf.orderBy(NATURAL_ORDER_COLUMN_NAME)
             return DataFrame(self._internal.with_new_sdf(sdf.limit(n)))
+
+    def last(self, offset: Union[str, DateOffset]) -> "DataFrame":
+        """
+        Select final periods of time series data based on a date offset.
+
+        When having a DataFrame with dates as index, this function can
+        select the last few rows based on a date offset.
+
+        Parameters
+        ----------
+        offset : str or DateOffset
+            The offset length of the data that will be selected. For instance,
+            '3D' will display all the rows having their index within the last 3 days.
+
+        Returns
+        -------
+        DataFrame
+            A subset of the caller.
+
+        Raises
+        ------
+        TypeError
+            If the index is not a :class:`DatetimeIndex`
+
+        Examples
+        --------
+
+        >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4]}, index=index)
+        >>> kdf
+                    A
+        2018-04-09  1
+        2018-04-11  2
+        2018-04-13  3
+        2018-04-15  4
+
+        Get the rows for the last 3 days:
+
+        >>> kdf.last('3D')
+                    A
+        2018-04-13  3
+        2018-04-15  4
+
+        Notice the data for 3 last calendar days were returned, not the last
+        3 observed days in the dataset, and therefore data for 2018-04-11 was
+        not returned.
+        """
+        # Check index type should be format DateTime
+        from databricks.koalas.indexes import DatetimeIndex
+
+        if not isinstance(self.index, DatetimeIndex):
+            raise TypeError("'last' only supports a DatetimeIndex")
+
+        offset = to_offset(offset)
+        from_date = self.index.max() - offset
+
+        return cast(DataFrame, self.loc[from_date:])
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None

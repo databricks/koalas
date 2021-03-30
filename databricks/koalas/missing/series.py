@@ -46,7 +46,6 @@ class MissingPandasLikeSeries(object):
     first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")
-    last = _unsupported_function("last")
     reorder_levels = _unsupported_function("reorder_levels")
     resample = _unsupported_function("resample")
     searchsorted = _unsupported_function("searchsorted")
