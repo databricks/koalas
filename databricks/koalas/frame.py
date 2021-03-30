@@ -3158,9 +3158,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         return_types = [kdf.index.dtype] + list(kdf.dtypes)
 
         if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+
             def pandas_at_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
                 return pdf.at_time(time, asof).reset_index()
+
         else:
+
             def pandas_at_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
                 return pdf.at_time(time, asof, axis).reset_index()
 
