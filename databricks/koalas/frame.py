@@ -49,7 +49,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_list_like, is_dict_like, is_scalar
 from pandas.api.extensions import ExtensionDtype
-from pandas.tseries.frequencies import DateOffset
+from pandas.tseries.frequencies import DateOffset, to_offset
 
 if TYPE_CHECKING:
     from pandas.io.formats.style import Styler
@@ -5689,8 +5689,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         --------
 
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
-        >>> pdf = pd.DataFrame({'A': [1, 2, 3, 4]}, index=index)
-        >>> kdf = ks.from_pandas(pdf)
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4]}, index=index)
         >>> kdf
                     A
         2018-04-09  1
@@ -5715,10 +5714,8 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if not isinstance(self.index, DatetimeIndex):
             raise TypeError("'last' only supports a DatetimeIndex")
 
-        offset = pd.tseries.frequencies.to_offset(offset)
+        offset = to_offset(offset)
         from_date = self.index.max() - offset
-
-        self.index.name = verify_temp_column_name(self, "__index_name__")
 
         return self[from_date:]
 
