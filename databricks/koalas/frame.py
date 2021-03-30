@@ -2588,6 +2588,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                     self_applied.columns, [return_schema] * len(self_applied.columns)
                 )
                 return_schema = StructType([StructField(c, t) for c, t in fields_types])
+                data_dtypes = [cast(SeriesType, return_type).dtype] * len(self_applied.columns)
             elif require_column_axis:
                 if axis != 1:
                     raise TypeError(
@@ -2596,11 +2597,13 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                         "was %s" % return_sig
                     )
                 return_schema = cast(DataFrameType, return_type).spark_type
+                data_dtypes = cast(DataFrameType, return_type).dtypes
             else:
                 # any axis is fine.
                 should_return_series = True
                 return_schema = cast(ScalarType, return_type).spark_type
                 return_schema = StructType([StructField(SPARK_DEFAULT_SERIES_NAME, return_schema)])
+                data_dtypes = [cast(ScalarType, return_type).dtype]
                 column_labels = [None]
 
             if should_use_map_in_pandas:
@@ -2621,7 +2624,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
             # Otherwise, it loses index.
             internal = InternalFrame(
-                spark_frame=sdf, index_spark_columns=None, column_labels=column_labels
+                spark_frame=sdf,
+                index_spark_columns=None,
+                column_labels=column_labels,
+                data_dtypes=data_dtypes,
             )
 
         result = DataFrame(internal)  # type: "DataFrame"
