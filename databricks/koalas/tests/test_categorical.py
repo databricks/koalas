@@ -233,7 +233,7 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         kdf = ks.from_pandas(pdf)
 
         dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
-        ret = 'ks.DataFrame["a":{dtype}, "b":{dtype}]'.format(dtype=repr(dtype))
+        ret = ks.DataFrame["a":dtype, "b":dtype]
 
         def to_category(pdf) -> ret:
             return pdf.astype(dtype)
