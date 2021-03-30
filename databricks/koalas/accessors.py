@@ -393,7 +393,11 @@ class KoalasFrameMethods(object):
                 )
 
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_spark_columns=None)
+            internal = InternalFrame(
+                spark_frame=sdf,
+                index_spark_columns=None,
+                data_dtypes=cast(DataFrameType, return_type).dtypes,
+            )
 
         return DataFrame(internal)
 
