@@ -3157,10 +3157,11 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         kdf.index.name = verify_temp_column_name(kdf, "__index_name__")
         return_types = [kdf.index.dtype] + list(kdf.dtypes)
 
-        def pandas_at_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
-            if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+        if LooseVersion(pd.__version__) < LooseVersion("0.24"):
+            def pandas_at_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
                 return pdf.at_time(time, asof).reset_index()
-            else:
+        else:
+            def pandas_at_time(pdf) -> ks.DataFrame[return_types]:  # type: ignore
                 return pdf.at_time(time, asof, axis).reset_index()
 
         # apply_batch will remove the index of the Koalas DataFrame and attach a default index,
