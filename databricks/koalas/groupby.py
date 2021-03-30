@@ -1182,6 +1182,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
             if isinstance(return_type, DataFrameType):
                 return_schema = cast(DataFrameType, return_type).spark_type
+                data_dtypes = cast(DataFrameType, return_type).dtypes
             else:
                 should_return_series = True
                 return_schema = cast(Union[SeriesType, ScalarType], return_type).spark_type
@@ -1191,6 +1192,7 @@ class GroupBy(object, metaclass=ABCMeta):
                     return_schema = StructType(
                         [StructField(SPARK_DEFAULT_SERIES_NAME, return_schema)]
                     )
+                data_dtypes = [cast(Union[SeriesType, ScalarType], return_type).dtype]
 
         def pandas_groupby_apply(pdf):
 
@@ -1237,7 +1239,9 @@ class GroupBy(object, metaclass=ABCMeta):
             internal = kdf_from_pandas._internal.with_new_sdf(sdf)
         else:
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_spark_columns=None)
+            internal = InternalFrame(
+                spark_frame=sdf, index_spark_columns=None, data_dtypes=data_dtypes
+            )
 
         if should_return_series:
             kser = first_series(DataFrame(internal))
@@ -2153,6 +2157,9 @@ class GroupBy(object, metaclass=ABCMeta):
             return_schema = StructType(
                 [StructField(c, return_schema) for c in data_columns if c not in groupkey_names]
             )
+            data_dtypes = [
+                cast(SeriesType, return_type).dtype for c in data_columns if c not in groupkey_names
+            ]
 
             sdf = GroupBy._spark_group_map_apply(
                 kdf,
@@ -2162,7 +2169,9 @@ class GroupBy(object, metaclass=ABCMeta):
                 retain_index=False,
             )
             # Otherwise, it loses index.
-            internal = InternalFrame(spark_frame=sdf, index_spark_columns=None)
+            internal = InternalFrame(
+                spark_frame=sdf, index_spark_columns=None, data_dtypes=data_dtypes
+            )
 
         return DataFrame(internal)
 
