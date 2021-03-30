@@ -5717,7 +5717,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         offset = to_offset(offset)
         from_date = self.index.max() - offset
 
-        return self[from_date:]
+        return cast(DataFrame, self.loc[from_date:])
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None
