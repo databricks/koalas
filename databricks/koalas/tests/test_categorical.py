@@ -183,7 +183,15 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         def astype(x) -> ks.Series[dtype]:
             return x.astype(dtype)
 
-        self.assert_eq(
-            kdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
-            pdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
-        )
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(
+                kdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
+                pdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
+            )
+        else:
+            expected = pdf.groupby("a").transform(astype)
+            expected["b"] = dtype.categories.take(expected["b"].cat.codes).astype(dtype)
+            self.assert_eq(
+                kdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
+                expected.sort_values("b").reset_index(drop=True),
+            )
