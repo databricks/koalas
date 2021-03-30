@@ -5478,7 +5478,6 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
             kdf.between_time("0:15", "0:45")
 
-    @unittest.skipIf(sys.version_info < (3, 6), "at_time won't work for python version < 3.6")
     def test_at_time(self):
         idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
         pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
