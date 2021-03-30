@@ -40,7 +40,7 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
 
     @property
     def df_pair(self):
-        return (self.pdf, self.kdf)
+        return self.pdf, self.kdf
 
     def test_categorical_frame(self):
         pdf, kdf = self.df_pair
@@ -165,3 +165,60 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
     def test_groupby_apply_without_shortcut(self):
         with ks.option_context("compute.shortcut_limit", 0):
             self.test_groupby_apply()
+
+        pdf, kdf = self.df_pair
+
+        def identity(df) -> ks.DataFrame[zip(kdf.columns, kdf.dtypes)]:
+            return df
+
+        self.assert_eq(
+            kdf.groupby("a").apply(identity).sort_values(["a", "b"]).reset_index(drop=True),
+            pdf.groupby("a").apply(identity).sort_values(["a", "b"]).reset_index(drop=True),
+        )
+
+    def test_groupby_transform(self):
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(
+            kdf.groupby("a").transform(lambda x: x).sort_index(),
+            pdf.groupby("a").transform(lambda x: x).sort_index(),
+        )
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        self.assert_eq(
+            kdf.groupby("a").transform(lambda x: x.astype(dtype)).sort_index(),
+            pdf.groupby("a").transform(lambda x: x.astype(dtype)).sort_index(),
+        )
+
+    def test_groupby_transform_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_groupby_transform()
+
+        pdf, kdf = self.df_pair
+
+        def identity(x) -> ks.Series[kdf.b.dtype]:  # type: ignore
+            return x
+
+        self.assert_eq(
+            kdf.groupby("a").transform(identity).sort_values("b").reset_index(drop=True),
+            pdf.groupby("a").transform(identity).sort_values("b").reset_index(drop=True),
+        )
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        def astype(x) -> ks.Series[dtype]:
+            return x.astype(dtype)
+
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(
+                kdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
+                pdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
+            )
+        else:
+            expected = pdf.groupby("a").transform(astype)
+            expected["b"] = dtype.categories.take(expected["b"].cat.codes).astype(dtype)
+            self.assert_eq(
+                kdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
+                expected.sort_values("b").reset_index(drop=True),
+            )
