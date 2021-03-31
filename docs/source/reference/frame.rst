@@ -171,6 +171,7 @@ Reindexing / Selection / Label manipulation
    DataFrame.duplicated
    DataFrame.equals
    DataFrame.filter
+   DataFrame.first
    DataFrame.head
    DataFrame.last
    DataFrame.rename

@@ -167,6 +167,7 @@ Reindexing / Selection / Label manipulation
    Series.equals
    Series.add_prefix
    Series.add_suffix
+   Series.first
    Series.head
    Series.idxmax
    Series.idxmin
