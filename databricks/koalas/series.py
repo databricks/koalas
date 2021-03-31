@@ -5821,7 +5821,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Returns
         -------
-        DataFrame
+        Series
             Data from the original object filtered to the specified dates range.
 
         Raises
