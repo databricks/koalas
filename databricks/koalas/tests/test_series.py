@@ -2882,3 +2882,26 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser ** np.nan, kser ** np.nan)
         self.assert_eq(pser.rpow(np.nan), kser.rpow(np.nan))
         self.assert_eq(1 ** pser, 1 ** kser)
+
+    def test_between_time(self):
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pser = pd.Series([1, 2, 3, 4], index=idx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.between_time("0:15", "0:45").sort_index(),
+            kser.between_time("0:15", "0:45").sort_index(),
+        )
+
+        pser.index.name = "ts"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.between_time("0:15", "0:45").sort_index(),
+            kser.between_time("0:15", "0:45").sort_index(),
+        )
+
+        pser.index.name = "index"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.between_time("0:15", "0:45").sort_index(),
+            kser.between_time("0:15", "0:45").sort_index(),
+        )

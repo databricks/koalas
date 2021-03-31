@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
+import datetime
 import re
 import inspect
 import sys
@@ -5790,6 +5791,70 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             left_ser = first_series(left).rename(self.name)
 
         return (left_ser.copy(), right.copy()) if copy else (left_ser, right)
+
+    def between_time(
+        self,
+        start_time: Union[datetime.time, str],
+        end_time: Union[datetime.time, str],
+        include_start: bool = True,
+        include_end: bool = True,
+        axis: Union[int, str] = 0,
+    ) -> "Series":
+        """
+        Select values between particular times of the day (e.g., 9:00-9:30 AM).
+
+        By setting ``start_time`` to be later than ``end_time``,
+        you can get the times that are *not* between the two times.
+
+        Parameters
+        ----------
+        start_time : datetime.time or str
+            Initial time as a time filter limit.
+        end_time : datetime.time or str
+            End time as a time filter limit.
+        include_start : bool, default True
+            Whether the start time needs to be included in the result.
+        include_end : bool, default True
+            Whether the end time needs to be included in the result.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine range time on index or columns value.
+
+        Returns
+        -------
+        Series
+            Data from the original object filtered to the specified dates range.
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :class:`DatetimeIndex`
+
+        See Also
+        --------
+        at_time : Select values at a particular time of the day.
+        last : Select final periods of time series based on a date offset.
+        DatetimeIndex.indexer_between_time : Get just the index locations for
+            values between particular times of the day.
+
+        Examples
+        --------
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='1D20min')
+        >>> kser = ks.Series([1, 2, 3, 4], index=idx)
+        >>> kser
+        2018-04-09 00:00:00    1
+        2018-04-10 00:20:00    2
+        2018-04-11 00:40:00    3
+        2018-04-12 01:00:00    4
+        dtype: int64
+
+        >>> kser.between_time('0:15', '0:45')
+        2018-04-10 00:20:00    2
+        2018-04-11 00:40:00    3
+        dtype: int64
+        """
+        return first_series(
+            self.to_frame().between_time(start_time, end_time, include_start, include_end, axis)
+        ).rename(self.name)
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
