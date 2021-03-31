@@ -876,7 +876,7 @@ class KoalasSeriesMethods(object):
             # The input can only be a DataFrame for struct from Spark 3.0.
             # This works around to make the input as a frame. See SPARK-27240
             pdf = pd.concat(series, axis=1)
-            pdf = pdf.rename(columns=dict(zip(pdf.columns, columns)))
+            pdf.columns = columns
             return pdf
 
         def apply_func(pdf):
