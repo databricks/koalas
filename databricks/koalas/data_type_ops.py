@@ -103,7 +103,12 @@ class NumericOps(DataTypeOps):
     The class for binary operations of numeric Koalas objects.
     """
 
-    pass
+    def __add__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__add__)(left, right)
 
 
 class IntegralOps(NumericOps):
@@ -111,13 +116,6 @@ class IntegralOps(NumericOps):
     The class for binary operations of Koalas objects with spark types: LongType, IntegerType,
     ByteType, and ShortType.
     """
-
-    def __add__(self, left, right):
-        if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
-        ) or isinstance(right, str):
-            raise TypeError("string addition can only be applied to string series or literals.")
-        return column_op(Column.__add__)(left, right)
 
     def __sub__(self, left, right):
         return column_op(Column.__sub__)(left, right)
@@ -142,13 +140,6 @@ class FractionalOps(NumericOps):
     """
     The class for binary operations of Koalas objects with spark types: FloatType and DoubleType.
     """
-
-    def __add__(self, left, right):
-        if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
-        ) or isinstance(right, str):
-            raise TypeError("string addition can only be applied to string series or literals.")
-        return column_op(Column.__add__)(left, right)
 
     def __sub__(self, left, right):
         return column_op(Column.__sub__)(left, right)
