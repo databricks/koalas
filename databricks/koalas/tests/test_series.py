@@ -181,20 +181,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(-10), pser.head(-10))
 
     def test_last(self):
-        index = pd.date_range("2018-04-09", periods=4, freq="2D")
-        pd_input = pd.Series([1, 2, 3, 4], index=index)
-        ks_input = ks.Series([1, 2, 3, 4], index=index)
         with self.assertRaises(TypeError):
             self.kser.last("1D")
-        self.assert_eq(ks_input.last("1D"), pd_input.last("1D"))
+
+        index = pd.date_range("2018-04-09", periods=4, freq="2D")
+        pser = pd.Series([1, 2, 3, 4], index=index)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.last("1D"), pser.last("1D"))
 
     def test_first(self):
-        index = pd.date_range("2018-04-09", periods=4, freq="2D")
-        pd_input = pd.Series([1, 2, 3, 4], index=index)
-        ks_input = ks.Series([1, 2, 3, 4], index=index)
         with self.assertRaises(TypeError):
             self.kser.first("1D")
-        self.assert_eq(ks_input.first("1D"), pd_input.first("1D"))
+
+        index = pd.date_range("2018-04-09", periods=4, freq="2D")
+        pser = pd.Series([1, 2, 3, 4], index=index)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.first("1D"), pser.first("1D"))
 
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")

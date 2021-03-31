@@ -2245,8 +2245,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
-        >>> ks_series = ks.Series([1, 2, 3, 4], index=index)
-        >>> ks_series
+        >>> kser = ks.Series([1, 2, 3, 4], index=index)
+        >>> kser
         2018-04-09    1
         2018-04-11    2
         2018-04-13    3
@@ -2255,7 +2255,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Get the rows for the last 3 days:
 
-        >>> ks_series.last('3D')
+        >>> kser.last('3D')
         2018-04-13    3
         2018-04-15    4
         dtype: int64
@@ -2292,8 +2292,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
-        >>> ks_series = ks.Series([1, 2, 3, 4], index=index)
-        >>> ks_series
+        >>> kser = ks.Series([1, 2, 3, 4], index=index)
+        >>> kser
         2018-04-09    1
         2018-04-11    2
         2018-04-13    3
@@ -2302,7 +2302,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Get the rows for the first 3 days:
 
-        >>> ks_series.first('3D')
+        >>> kser.first('3D')
         2018-04-09    1
         2018-04-11    2
         dtype: int64

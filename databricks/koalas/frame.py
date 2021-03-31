@@ -3148,8 +3148,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2018-04-09 12:00:00  2
         2018-04-10 12:00:00  4
         """
-        from databricks.koalas.indexes import DatetimeIndex
-
         if asof:
             raise NotImplementedError("'asof' argument is not supported")
 
@@ -3158,7 +3156,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis != 0:
             raise NotImplementedError("at_time currently only works for axis=0")
 
-        if not isinstance(self.index, DatetimeIndex):
+        if not isinstance(self.index, ks.DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
 
         kdf = self.copy()
