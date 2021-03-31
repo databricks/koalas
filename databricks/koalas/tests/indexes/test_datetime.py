@@ -185,3 +185,34 @@ class DatetimeIndexTest(ReusedSQLTestCase, TestUtils):
             NotImplementedError,
             lambda: ks.DatetimeIndex([0]).indexer_at_time("00:00:00", asof=True),
         )
+
+    def test_arithmetic_op_exceptions(self):
+        for kidx, pidx in self.idx_pairs:
+            py_datetime = pidx.to_pydatetime()
+            for other in [1, 0.1, kidx, kidx.to_series().reset_index(drop=True), py_datetime]:
+                expected_err_msg = "addition can not be applied to date times."
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx + other)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other + kidx)
+
+                expected_err_msg = "multiplication can not be applied to date times."
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx * other)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other * kidx)
+
+                expected_err_msg = "division can not be applied to date times."
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx / other)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other / kidx)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx // other)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other // kidx)
+
+                expected_err_msg = "modulo can not be applied to date times."
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx % other)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other % kidx)
+
+            expected_err_msg = "datetime subtraction can only be applied to datetime series."
+
+            for other in [1, 0.1]:
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx - other)
+                self.assertRaisesRegex(TypeError, expected_err_msg, lambda: other - kidx)
+
+            self.assertRaisesRegex(TypeError, expected_err_msg, lambda: kidx - other)
+            self.assertRaises(NotImplementedError, lambda: py_datetime - kidx)
