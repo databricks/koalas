@@ -5895,6 +5895,50 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             self.to_frame().between_time(start_time, end_time, include_start, include_end, axis)
         ).rename(self.name)
 
+    def at_time(
+        self, time: Union[datetime.time, str], asof: bool = False, axis: Union[int, str] = 0
+    ) -> "Series":
+        """
+        Select values at particular time of day (e.g., 9:30AM).
+
+        Parameters
+        ----------
+        time : datetime.time or str
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+
+        Returns
+        -------
+        Series
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :class:`DatetimeIndex`
+
+        See Also
+        --------
+        between_time : Select values between particular times of the day.
+        DatetimeIndex.indexer_at_time : Get just the index locations for
+            values at particular time of the day.
+
+        Examples
+        --------
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='12H')
+        >>> kser = ks.Series([1, 2, 3, 4], index=idx)
+        >>> kser
+        2018-04-09 00:00:00    1
+        2018-04-09 12:00:00    2
+        2018-04-10 00:00:00    3
+        2018-04-10 12:00:00    4
+        dtype: int64
+
+        >>> kser.at_time('12:00')
+        2018-04-09 12:00:00    2
+        2018-04-10 12:00:00    4
+        dtype: int64
+        """
+        return first_series(self.to_frame().at_time(time, asof, axis)).rename(self.name)
+
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.
 
