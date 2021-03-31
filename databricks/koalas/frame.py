@@ -2773,12 +2773,14 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
                 self._internal.column_labels, kdf._internal.column_labels
             ):
                 kser = self._kser_for(input_label)
+                dtype = kdf._internal.dtype_for(output_label)
                 return_schema = force_decimal_precision_scale(
                     as_nullable_spark_type(kdf._internal.spark_type_for(output_label))
                 )
                 applied.append(
                     kser.koalas._transform_batch(
-                        func=lambda c: func(c, *args, **kwargs), return_schema=return_schema
+                        func=lambda c: func(c, *args, **kwargs),
+                        return_type=SeriesType(dtype, return_schema),
                     )
                 )
 

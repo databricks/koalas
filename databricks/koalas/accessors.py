@@ -18,7 +18,7 @@ Koalas specific features.
 """
 import inspect
 from distutils.version import LooseVersion
-from typing import Any, Tuple, Union, TYPE_CHECKING, cast
+from typing import Any, Optional, Tuple, Union, TYPE_CHECKING, cast
 import types
 
 import numpy as np  # noqa: F401
@@ -26,13 +26,14 @@ import pandas as pd
 import pyspark
 from pyspark.sql import functions as F
 from pyspark.sql.functions import pandas_udf, PandasUDFType
+from pyspark.sql.types import StructField, StructType
 
 from databricks.koalas.internal import (
     InternalFrame,
     SPARK_INDEX_NAME_FORMAT,
     SPARK_DEFAULT_SERIES_NAME,
 )
-from databricks.koalas.typedef import infer_return_type, DataFrameType, SeriesType
+from databricks.koalas.typedef import infer_return_type, DataFrameType, ScalarType, SeriesType
 from databricks.koalas.spark.utils import as_nullable_spark_type, force_decimal_precision_scale
 from databricks.koalas.utils import (
     is_name_like_value,
@@ -829,7 +830,7 @@ class KoalasSeriesMethods(object):
             # Falls back to schema inference if it fails to get signature.
             pass
 
-        return_schema = None
+        return_type = None
         if return_sig is not None:
             # Extract the signature arguments from this function.
             sig_return = infer_return_type(func)
@@ -838,34 +839,58 @@ class KoalasSeriesMethods(object):
                     "Expected the return type of this function to be of type column,"
                     " but found type {}".format(sig_return)
                 )
-            return_schema = cast(SeriesType, sig_return).spark_type
+            return_type = cast(SeriesType, sig_return)
 
-        ff = func
-        func = lambda o: ff(o, *args, **kwargs)
-        return self._transform_batch(func, return_schema)
+        return self._transform_batch(lambda c: func(c, *args, **kwargs), return_type)
 
-    def _transform_batch(self, func, return_schema):
-        from databricks.koalas.series import Series
+    def _transform_batch(self, func, return_type: Optional[Union[SeriesType, ScalarType]]):
+        from databricks.koalas.groupby import GroupBy
+        from databricks.koalas.series import Series, first_series
         from databricks import koalas as ks
 
         if not isinstance(func, types.FunctionType):
             f = func
             func = lambda *args, **kwargs: f(*args, **kwargs)
 
-        if return_schema is None:
+        if return_type is None:
             # TODO: In this case, it avoids the shortcut for now (but only infers schema)
             #  because it returns a series from a different DataFrame and it has a different
             #  anchor. We should fix this to allow the shortcut or only allow to infer
             #  schema.
             limit = ks.get_option("compute.shortcut_limit")
-            pser = self._kser.head(limit)._to_internal_pandas()
+            pser = self._kser.head(limit + 1)._to_internal_pandas()
             transformed = pser.transform(func)
-            kser = Series(transformed)
+            kser = Series(transformed)  # type: Series
             spark_return_type = force_decimal_precision_scale(
                 as_nullable_spark_type(kser.spark.data_type)
             )
+            dtype = kser.dtype
         else:
-            spark_return_type = return_schema
+            spark_return_type = return_type.spark_type
+            dtype = return_type.dtype
 
-        pudf = pandas_udf(func, returnType=spark_return_type, functionType=PandasUDFType.SCALAR)
-        return self._kser._with_new_scol(scol=pudf(self._kser.spark.column))  # TODO: dtype?
+        kdf = self._kser.to_frame()
+        columns = kdf._internal.spark_column_names
+
+        def pandas_concat(series):
+            # The input can only be a DataFrame for struct from Spark 3.0.
+            # This works around to make the input as a frame. See SPARK-27240
+            pdf = pd.concat(series, axis=1)
+            pdf = pdf.rename(columns=dict(zip(pdf.columns, columns)))
+            return pdf
+
+        def apply_func(pdf):
+            return func(first_series(pdf)).to_frame()
+
+        return_schema = StructType([StructField(SPARK_DEFAULT_SERIES_NAME, spark_return_type)])
+        output_func = GroupBy._make_pandas_df_builder_func(
+            kdf, apply_func, return_schema, retain_index=False
+        )
+
+        pudf = pandas_udf(
+            lambda *series: first_series(output_func(pandas_concat(series))),
+            returnType=spark_return_type,
+            functionType=PandasUDFType.SCALAR,
+        )
+
+        return self._kser._with_new_scol(scol=pudf(*kdf._internal.spark_columns), dtype=dtype)
