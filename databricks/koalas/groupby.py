@@ -1384,7 +1384,7 @@ class GroupBy(object, metaclass=ABCMeta):
             pdf, _, _, _, _ = InternalFrame.prepare_pandas_frame(pdf, retain_index=retain_index)
 
             # Just positionally map the column names to given schema's.
-            pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
+            pdf.columns = return_schema.names
 
             return pdf
 

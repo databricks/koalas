@@ -3129,15 +3129,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         apply_each = wraps(func)(lambda s: s.apply(func, args=args, **kwds))
 
         if should_infer_schema:
-            # TODO: In this case, it avoids the shortcut for now (but only infers schema)
-            #  because it returns a series from a different DataFrame and it has a different
-            #  anchor. We should fix this to allow the shortcut or only allow to infer
-            #  schema.
-            limit = get_option("compute.shortcut_limit")
-            pser = self.head(limit)._to_internal_pandas()
-            transformed = pser.apply(func, *args, **kwds)
-            kser = Series(transformed)  # type: "Series"
-            return self.koalas._transform_batch(apply_each, kser.spark.data_type)
+            return self.koalas._transform_batch(apply_each, None)
         else:
             sig_return = infer_return_type(func)
             if not isinstance(sig_return, ScalarType):
@@ -3145,8 +3137,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     "Expected the return type of this function to be of scalar type, "
                     "but found type {}".format(sig_return)
                 )
-            return_schema = cast(ScalarType, sig_return).spark_type
-            return self.koalas._transform_batch(apply_each, return_schema)
+            return_type = cast(ScalarType, sig_return)
+            return self.koalas._transform_batch(apply_each, return_type)
 
     # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func: Union[str, List[str]]) -> Union[Scalar, "Series"]:

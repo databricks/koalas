@@ -15,6 +15,7 @@
 #
 from distutils.version import LooseVersion
 
+import numpy as np
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
@@ -132,6 +133,74 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
             kdf.apply(categorize).sort_values(["a", "b"]).reset_index(drop=True),
             pdf.apply(categorize).sort_values(["a", "b"]).reset_index(drop=True),
         )
+
+    def test_frame_transform(self):
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(kdf.transform(lambda x: x), pdf.transform(lambda x: x))
+        self.assert_eq(kdf.transform(lambda x: x.cat.codes), pdf.transform(lambda x: x.cat.codes))
+
+        pdf = pd.DataFrame(
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        self.assert_eq(
+            kdf.transform(lambda x: x.astype(dtype)).sort_index(),
+            pdf.transform(lambda x: x.astype(dtype)).sort_index(),
+        )
+
+    def test_frame_transform_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_frame_transform()
+
+        pdf, kdf = self.df_pair
+
+        def codes(pser) -> ks.Series[np.int8]:
+            return pser.cat.codes
+
+        self.assert_eq(kdf.transform(codes), pdf.transform(codes))
+
+        pdf = pd.DataFrame(
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        def to_category(pser) -> ks.Series[dtype]:
+            return pser.astype(dtype)
+
+        self.assert_eq(
+            kdf.transform(to_category).sort_index(), pdf.transform(to_category).sort_index()
+        )
+
+    def test_series_apply(self):
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(kdf.a.apply(lambda x: x).sort_index(), pdf.a.apply(lambda x: x).sort_index())
+
+    def test_series_apply_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_series_apply()
+
+        pdf, kdf = self.df_pair
+        ret = kdf.a.dtype
+
+        def identity(pser) -> ret:
+            return pser
+
+        self.assert_eq(kdf.a.apply(identity).sort_index(), pdf.a.apply(identity).sort_index())
+
+        # TODO: The return type is still category.
+        # def to_str(x) -> str:
+        #     return str(x)
+        #
+        # self.assert_eq(
+        #     kdf.a.apply(to_str).sort_index(), pdf.a.apply(to_str).sort_index()
+        # )
 
     def test_groupby_apply(self):
         pdf, kdf = self.df_pair
@@ -267,4 +336,51 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(
             kdf.koalas.apply_batch(to_category).sort_index(), to_category(pdf).sort_index()
+        )
+
+    def test_series_transform_batch(self):
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(
+            kdf.a.koalas.transform_batch(lambda pser: pser.astype(str)).sort_index(),
+            pdf.a.astype(str).sort_index(),
+        )
+
+        pdf = pd.DataFrame(
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        self.assert_eq(
+            kdf.a.koalas.transform_batch(lambda pser: pser.astype(dtype)).sort_index(),
+            pdf.a.astype(dtype).sort_index(),
+        )
+
+    def test_series_transform_batch_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_series_transform_batch()
+
+        pdf, kdf = self.df_pair
+
+        def to_str(pser) -> ks.Series[str]:
+            return pser.astype(str)
+
+        self.assert_eq(
+            kdf.a.koalas.transform_batch(to_str).sort_index(), to_str(pdf.a).sort_index()
+        )
+
+        pdf = pd.DataFrame(
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        def to_category(pser) -> ks.Series[dtype]:
+            return pser.astype(dtype)
+
+        self.assert_eq(
+            kdf.a.koalas.transform_batch(to_category).sort_index(), to_category(pdf.a).sort_index()
         )
