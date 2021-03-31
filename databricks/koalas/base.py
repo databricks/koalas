@@ -334,48 +334,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__add__(self, other)
 
     def __sub__(self, other) -> Union["Series", "Index"]:
-        if (
-            isinstance(self.spark.data_type, StringType)
-            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
-            or isinstance(other, str)
-        ):
-            raise TypeError("substraction can not be applied to string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
-            # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-            msg = (
-                "Note that there is a behavior difference of timestamp subtraction. "
-                "The timestamp subtraction returns an integer in seconds, "
-                "whereas pandas returns 'timedelta64[ns]'."
-            )
-            if isinstance(other, IndexOpsMixin) and isinstance(
-                other.spark.data_type, TimestampType
-            ):
-                warnings.warn(msg, UserWarning)
-                return self.astype("long") - other.astype("long")
-            elif isinstance(other, datetime.datetime):
-                warnings.warn(msg, UserWarning)
-                return self.astype("long") - F.lit(other).cast(as_spark_type("long"))
-            else:
-                raise TypeError("datetime subtraction can only be applied to datetime series.")
-        elif isinstance(self.spark.data_type, DateType):
-            # Note that date subtraction casts arguments to integer. This is to mimic pandas's
-            # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
-            msg = (
-                "Note that there is a behavior difference of date subtraction. "
-                "The date subtraction returns an integer in days, "
-                "whereas pandas returns 'timedelta64[ns]'."
-            )
-            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, DateType):
-                warnings.warn(msg, UserWarning)
-                return column_op(F.datediff)(self, other).astype("long")
-            elif isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
-                warnings.warn(msg, UserWarning)
-                return column_op(F.datediff)(self, F.lit(other)).astype("long")
-            else:
-                raise TypeError("date subtraction can only be applied to date series.")
-        return column_op(Column.__sub__)(self, other)
+        return self._dtype_op.__sub__(self, other)
 
     def __mul__(self, other) -> Union["Series", "Index"]:
         if isinstance(other, str):

@@ -21,20 +21,30 @@ from abc import ABCMeta, abstractmethod
 import datetime
 import decimal
 import numpy as np
+import warnings
 
 from pandas.api.types import CategoricalDtype
 import pyspark.sql.types as types
 from pyspark.sql import Column, functions as F
 
 from databricks.koalas.base import column_op, IndexOpsMixin
-from databricks.koalas.typedef import Dtype
+from databricks.koalas.typedef import Dtype, as_spark_type
 
 
 class DataTypeOps(object, metaclass=ABCMeta):
     """The base class for binary operations of Koalas objects (of different data types)."""
 
     def __new__(cls, dtype: Dtype, spark_type: types.DataType):
-        if dtype in (np.float32,) or (dtype in (float, np.float, np.float64)):
+        if dtype == np.dtype("object"):
+            if isinstance(spark_type, types.DecimalType):
+                return object.__new__(DecimalOps)
+            elif isinstance(spark_type, types.DateType):
+                return object.__new__(DatetimeOps)
+            elif isinstance(spark_type, types.StringType):
+                return object.__new__(StringOps)
+            else:
+                raise TypeError("Type %s cannot be inferred." % dtype)
+        elif dtype in (np.float32,) or (dtype in (float, np.float, np.float64)):
             # FloatType, DoubleType
             return object.__new__(FractionalOps)
         elif dtype in (decimal.Decimal,):
@@ -55,13 +65,8 @@ class DataTypeOps(object, metaclass=ABCMeta):
             return object.__new__(BooleanOps)
         elif dtype in (datetime.datetime, np.datetime64):
             return object.__new__(DatetimeOps)
-        elif dtype == np.dtype("object"):
-            if isinstance(spark_type, types.DecimalType):
-                return object.__new__(DecimalOps)
-            elif isinstance(spark_type, types.DateType):
-                return object.__new__(DatetimeOps)
-            else:
-                raise TypeError("Type %s cannot be inferred." % dtype)
+        elif dtype in (datetime.date,):
+            return object.__new__(DateOps)
         else:
             raise TypeError("Type %s was not understood." % dtype)
 
@@ -73,7 +78,7 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __add__(self, left, right):
         raise NotImplementedError()
 
-    # @abstractmethod
+    @abstractmethod
     def __sub__(self, left, right):
         raise NotImplementedError()
 
@@ -110,15 +115,19 @@ class NumericOps(DataTypeOps):
             raise TypeError("string addition can only be applied to string series or literals.")
         return column_op(Column.__add__)(left, right)
 
+    def __sub__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("substraction can not be applied to string series or literals.")
+        return column_op(Column.__sub__)(left, right)
+
 
 class IntegralOps(NumericOps):
     """
     The class for binary operations of Koalas objects with spark types: LongType, IntegerType,
     ByteType, and ShortType.
     """
-
-    def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
 
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
@@ -141,9 +150,6 @@ class FractionalOps(NumericOps):
     The class for binary operations of Koalas objects with spark types: FloatType and DoubleType.
     """
 
-    def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
-
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
 
@@ -164,17 +170,6 @@ class DecimalOps(FractionalOps):
     """
     The class for binary operations of Koalas objects with spark type: DecimalType.
     """
-
-    def __add__(self, left, right):
-        if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
-        ) or isinstance(right, str):
-            raise TypeError("string addition can only be applied to string series or literals.")
-
-        return column_op(Column.__add__)(left, right)
-
-    def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
 
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
@@ -198,7 +193,7 @@ class StringOps(DataTypeOps):
     """
 
     def __add__(self, left, right):
-        if isinstance(right.spark.data_type, types.StringType):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType):
             return column_op(F.concat)(left, right)
         elif isinstance(right, str):
             return column_op(F.concat)(left, F.lit(right))
@@ -206,7 +201,7 @@ class StringOps(DataTypeOps):
             raise TypeError("string addition can only be applied to string series or literals.")
 
     def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
+        raise TypeError("substraction can not be applied to string series or literals.")
 
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
@@ -230,14 +225,10 @@ class CategoricalOps(DataTypeOps):
     """
 
     def __add__(self, left, right):
-        if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
-        ) or isinstance(right, str):
-            raise TypeError("string addition can only be applied to string series or literals.")
-        return column_op(Column.__add__)(left, right)
+        raise TypeError("Object with dtype category cannot perform the numpy op add")
 
     def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
+        raise TypeError("Object with dtype category cannot perform the numpy op subtract")
 
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
@@ -268,7 +259,7 @@ class BooleanOps(DataTypeOps):
         return column_op(Column.__add__)(left, right)
 
     def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
+        raise TypeError("numpy boolean subtract, the `-` operator, is not supported")
 
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
@@ -295,7 +286,23 @@ class DatetimeOps(DataTypeOps):
         raise TypeError("addition can not be applied to date times.")
 
     def __sub__(self, left, right):
-        return column_op(Column.__sub__)(left, right)
+        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+        msg = (
+            "Note that there is a behavior difference of timestamp subtraction. "
+            "The timestamp subtraction returns an integer in seconds, "
+            "whereas pandas returns 'timedelta64[ns]'."
+        )
+        if isinstance(right, IndexOpsMixin) and isinstance(
+            right.spark.data_type, types.TimestampType
+        ):
+            warnings.warn(msg, UserWarning)
+            return left.astype("long") - right.astype("long")
+        elif isinstance(right, datetime.datetime):
+            warnings.warn(msg, UserWarning)
+            return left.astype("long") - F.lit(right).cast(as_spark_type("long"))
+        else:
+            raise TypeError("datetime subtraction can only be applied to datetime series.")
 
     def __mul__(self, left, right):
         return column_op(Column.__mul__)(left, right)
@@ -311,3 +318,29 @@ class DatetimeOps(DataTypeOps):
 
     def __pow__(self, left, right):
         raise column_op(Column.__pow__)(left, right)
+
+
+class DateOps(DataTypeOps):
+    """
+    The class for binary operations of Koalas objects with spark type: DateType.
+    """
+
+    def __add__(self, left, right):
+        raise TypeError("addition can not be applied to date.")
+
+    def __sub__(self, left, right):
+        # Note that date subtraction casts arguments to integer. This is to mimic pandas's
+        # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
+        msg = (
+            "Note that there is a behavior difference of date subtraction. "
+            "The date subtraction returns an integer in days, "
+            "whereas pandas returns 'timedelta64[ns]'."
+        )
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.DateType):
+            warnings.warn(msg, UserWarning)
+            return column_op(F.datediff)(left, right).astype("long")
+        elif isinstance(right, datetime.date) and not isinstance(right, datetime.datetime):
+            warnings.warn(msg, UserWarning)
+            return column_op(F.datediff)(self, F.lit(right)).astype("long")
+        else:
+            raise TypeError("date subtraction can only be applied to date series.")
