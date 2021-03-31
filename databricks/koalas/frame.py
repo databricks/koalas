@@ -3127,15 +3127,15 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         Examples
         --------
         >>> idx = pd.date_range('2018-04-09', periods=4, freq='12H')
-        >>> ts = ks.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
-        >>> ts
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4]}, index=idx)
+        >>> kdf
                              A
         2018-04-09 00:00:00  1
         2018-04-09 12:00:00  2
         2018-04-10 00:00:00  3
         2018-04-10 12:00:00  4
 
-        >>> ts.at_time('12:00')
+        >>> kdf.at_time('12:00')
                              A
         2018-04-09 12:00:00  2
         2018-04-10 12:00:00  4
