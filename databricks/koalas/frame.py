@@ -3077,14 +3077,12 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2018-04-09 00:00:00  1
         2018-04-12 01:00:00  4
         """
-        from databricks.koalas.indexes import DatetimeIndex
-
         axis = validate_axis(axis)
 
         if axis != 0:
             raise NotImplementedError("between_time currently only works for axis=0")
 
-        if not isinstance(self.index, DatetimeIndex):
+        if not isinstance(self.index, ks.DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
 
         kdf = self.copy()
@@ -3150,8 +3148,6 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         2018-04-09 12:00:00  2
         2018-04-10 12:00:00  4
         """
-        from databricks.koalas.indexes import DatetimeIndex
-
         if asof:
             raise NotImplementedError("'asof' argument is not supported")
 
@@ -3160,7 +3156,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         if axis != 0:
             raise NotImplementedError("at_time currently only works for axis=0")
 
-        if not isinstance(self.index, DatetimeIndex):
+        if not isinstance(self.index, ks.DatetimeIndex):
             raise TypeError("Index must be DatetimeIndex")
 
         kdf = self.copy()
@@ -5801,15 +5797,68 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         not returned.
         """
         # Check index type should be format DateTime
-        from databricks.koalas.indexes import DatetimeIndex
-
-        if not isinstance(self.index, DatetimeIndex):
+        if not isinstance(self.index, ks.DatetimeIndex):
             raise TypeError("'last' only supports a DatetimeIndex")
 
         offset = to_offset(offset)
         from_date = self.index.max() - offset
 
         return cast(DataFrame, self.loc[from_date:])
+
+    def first(self, offset: Union[str, DateOffset]) -> "DataFrame":
+        """
+        Select first periods of time series data based on a date offset.
+
+        When having a DataFrame with dates as index, this function can
+        select the first few rows based on a date offset.
+
+        Parameters
+        ----------
+        offset : str or DateOffset
+            The offset length of the data that will be selected. For instance,
+            '3D' will display all the rows having their index within the first 3 days.
+
+        Returns
+        -------
+        DataFrame
+            A subset of the caller.
+
+        Raises
+        ------
+        TypeError
+            If the index is not a :class:`DatetimeIndex`
+
+        Examples
+        --------
+
+        >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        >>> kdf = ks.DataFrame({'A': [1, 2, 3, 4]}, index=index)
+        >>> kdf
+                    A
+        2018-04-09  1
+        2018-04-11  2
+        2018-04-13  3
+        2018-04-15  4
+
+        Get the rows for the last 3 days:
+
+        >>> kdf.first('3D')
+                    A
+        2018-04-09  1
+        2018-04-11  2
+
+        Notice the data for 3 first calendar days were returned, not the first
+        3 observed days in the dataset, and therefore data for 2018-04-13 was
+        not returned.
+        """
+        # Check index type should be format DatetimeIndex
+        if not isinstance(self.index, ks.DatetimeIndex):
+            raise TypeError("'first' only supports a DatetimeIndex")
+
+        offset = to_offset(offset)
+        to_date = self.index.min() + offset
+
+        return cast(DataFrame, self.loc[:to_date])
 
     def pivot_table(
         self, values=None, index=None, columns=None, aggfunc="mean", fill_value=None

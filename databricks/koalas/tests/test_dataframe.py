@@ -5212,6 +5212,15 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         with self.assertRaisesRegex(TypeError, "'last' only supports a DatetimeIndex"):
             ks.DataFrame([1, 2, 3, 4]).last("1D")
 
+    def test_first(self):
+        index = pd.date_range("2018-04-09", periods=4, freq="2D")
+        pdf = pd.DataFrame([1, 2, 3, 4], index=index)
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(pdf.first("1D"), kdf.first("1D"))
+        self.assert_eq(pdf.first(DateOffset(days=1)), kdf.first(DateOffset(days=1)))
+        with self.assertRaisesRegex(TypeError, "'first' only supports a DatetimeIndex"):
+            ks.DataFrame([1, 2, 3, 4]).first("1D")
+
     def test_first_valid_index(self):
         pdf = pd.DataFrame(
             {"a": [None, 2, 3, 2], "b": [None, 2.0, 3.0, 1.0], "c": [None, 200, 400, 200]},

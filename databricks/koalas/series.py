@@ -2246,8 +2246,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
-        >>> ks_series = ks.Series([1, 2, 3, 4], index=index)
-        >>> ks_series
+        >>> kser = ks.Series([1, 2, 3, 4], index=index)
+        >>> kser
         2018-04-09    1
         2018-04-11    2
         2018-04-13    3
@@ -2256,7 +2256,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Get the rows for the last 3 days:
 
-        >>> ks_series.last('3D')
+        >>> kser.last('3D')
         2018-04-13    3
         2018-04-15    4
         dtype: int64
@@ -2266,6 +2266,53 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         not returned.
         """
         return first_series(self.to_frame().last(offset)).rename(self.name)
+
+    def first(self, offset: Union[str, DateOffset]) -> "Series":
+        """
+        Select first periods of time series data based on a date offset.
+
+        When having a Series with dates as index, this function can
+        select the first few elements based on a date offset.
+
+        Parameters
+        ----------
+        offset : str or DateOffset
+            The offset length of the data that will be selected. For instance,
+            '3D' will display all the rows having their index within the first 3 days.
+
+        Returns
+        -------
+        Series
+            A subset of the caller.
+
+        Raises
+        ------
+        TypeError
+            If the index is not a :class:`DatetimeIndex`
+
+        Examples
+        --------
+        >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        >>> kser = ks.Series([1, 2, 3, 4], index=index)
+        >>> kser
+        2018-04-09    1
+        2018-04-11    2
+        2018-04-13    3
+        2018-04-15    4
+        dtype: int64
+
+        Get the rows for the first 3 days:
+
+        >>> kser.first('3D')
+        2018-04-09    1
+        2018-04-11    2
+        dtype: int64
+
+        Notice the data for 3 first calendar days were returned, not the first
+        3 observed days in the dataset, and therefore data for 2018-04-13 was
+        not returned.
+        """
+        return first_series(self.to_frame().first(offset)).rename(self.name)
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.
