@@ -222,3 +222,49 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
                 kdf.groupby("a").transform(astype).sort_values("b").reset_index(drop=True),
                 expected.sort_values("b").reset_index(drop=True),
             )
+
+    def test_frame_apply_batch(self):
+        pdf, kdf = self.df_pair
+
+        self.assert_eq(
+            kdf.koalas.apply_batch(lambda pdf: pdf.astype(str)).sort_index(),
+            pdf.astype(str).sort_index(),
+        )
+
+        pdf = pd.DataFrame(
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+
+        self.assert_eq(
+            kdf.koalas.apply_batch(lambda pdf: pdf.astype(dtype)).sort_index(),
+            pdf.astype(dtype).sort_index(),
+        )
+
+    def test_frame_apply_batch_without_shortcut(self):
+        with ks.option_context("compute.shortcut_limit", 0):
+            self.test_frame_apply_batch()
+
+        pdf, kdf = self.df_pair
+
+        def to_str(pdf) -> 'ks.DataFrame["a":str, "b":str]':  # noqa: F821
+            return pdf.astype(str)
+
+        self.assert_eq(kdf.koalas.apply_batch(to_str).sort_index(), to_str(pdf).sort_index())
+
+        pdf = pd.DataFrame(
+            {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
+        )
+        kdf = ks.from_pandas(pdf)
+
+        dtype = CategoricalDtype(categories=["a", "b", "c", "d"])
+        ret = ks.DataFrame["a":dtype, "b":dtype]
+
+        def to_category(pdf) -> ret:
+            return pdf.astype(dtype)
+
+        self.assert_eq(
+            kdf.koalas.apply_batch(to_category).sort_index(), to_category(pdf).sort_index()
+        )

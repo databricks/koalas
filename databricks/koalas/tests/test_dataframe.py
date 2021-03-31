@@ -5496,3 +5496,50 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
             kdf.between_time("0:15", "0:45")
+
+    def test_at_time(self):
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pdf = pd.DataFrame({"A": [1, 2, 3, 4]}, index=idx)
+        kdf = ks.from_pandas(pdf)
+        kdf.at_time("0:20")
+        self.assert_eq(
+            pdf.at_time("0:20").sort_index(), kdf.at_time("0:20").sort_index(),
+        )
+
+        # Index name is 'ts'
+        pdf.index.name = "ts"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.at_time("0:20").sort_index(), kdf.at_time("0:20").sort_index(),
+        )
+
+        # Index name is 'ts', column label is 'index'
+        pdf.columns = pd.Index(["index"])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.at_time("0:40").sort_index(), kdf.at_time("0:40").sort_index(),
+        )
+
+        # Both index name and column label are 'index'
+        pdf.index.name = "index"
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.at_time("0:40").sort_index(), kdf.at_time("0:40").sort_index(),
+        )
+
+        # Index name is 'index', column label is ('X', 'A')
+        pdf.columns = pd.MultiIndex.from_arrays([["X"], ["A"]])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.at_time("0:40").sort_index(), kdf.at_time("0:40").sort_index(),
+        )
+
+        with self.assertRaisesRegex(NotImplementedError, "'asof' argument is not supported"):
+            kdf.at_time("0:15", asof=True)
+
+        with self.assertRaisesRegex(NotImplementedError, "at_time currently only works for axis=0"):
+            kdf.at_time("0:15", axis=1)
+
+        kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
+        with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
+            kdf.at_time("0:15")
