@@ -5726,7 +5726,7 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
 
     def first(self, offset: Union[str, DateOffset]) -> "DataFrame":
         """
-        Select initial periods of time series data based on a date offset.
+        Select first periods of time series data based on a date offset.
 
         When having a DataFrame with dates as index, this function can
         select the first few rows based on a date offset.
