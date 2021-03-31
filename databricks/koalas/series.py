@@ -5874,13 +5874,13 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Raises
         ------
         TypeError
-         If the index is not  a :class:`DatetimeIndex`
+            If the index is not  a :class:`DatetimeIndex`
 
         See Also
         --------
         between_time : Select values between particular times of the day.
         DatetimeIndex.indexer_at_time : Get just the index locations for
-         values at particular time of the day.
+            values at particular time of the day.
 
         Examples
         --------
