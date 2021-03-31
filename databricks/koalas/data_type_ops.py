@@ -24,7 +24,9 @@ import numpy as np
 
 from pandas.api.types import CategoricalDtype
 import pyspark.sql.types as types
+from pyspark.sql import Column, functions as F
 
+from databricks.koalas.base import column_op, IndexOpsMixin
 from databricks.koalas.typedef import Dtype
 
 
@@ -71,27 +73,27 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __add__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
+    # @abstractmethod
     def __sub__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
+    # @abstractmethod
     def __mul__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
+    # @abstractmethod
     def __truediv__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
+    # @abstractmethod
     def __floordiv__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
+    # @abstractmethod
     def __mod__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
+    # @abstractmethod
     def __pow__(self, left, right):
         raise NotImplementedError()
 
@@ -110,7 +112,30 @@ class IntegralOps(NumericOps):
     ByteType, and ShortType.
     """
 
-    pass
+    def __add__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__add__)(left, right)
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)
 
 
 class FractionalOps(NumericOps):
@@ -118,7 +143,30 @@ class FractionalOps(NumericOps):
     The class for binary operations of Koalas objects with spark types: FloatType and DoubleType.
     """
 
-    pass
+    def __add__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__add__)(left, right)
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)
 
 
 class DecimalOps(FractionalOps):
@@ -126,7 +174,31 @@ class DecimalOps(FractionalOps):
     The class for binary operations of Koalas objects with spark type: DecimalType.
     """
 
-    pass
+    def __add__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+
+        return column_op(Column.__add__)(left, right)
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)
 
 
 class StringOps(DataTypeOps):
@@ -134,7 +206,31 @@ class StringOps(DataTypeOps):
     The class for binary operations of Koalas objects with spark type: StringType.
     """
 
-    pass
+    def __add__(self, left, right):
+        if isinstance(right.spark.data_type, types.StringType):
+            return column_op(F.concat)(left, right)
+        elif isinstance(right, str):
+            return column_op(F.concat)(left, F.lit(right))
+        else:
+            raise TypeError("string addition can only be applied to string series or literals.")
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)
 
 
 class CategoricalOps(DataTypeOps):
@@ -142,7 +238,30 @@ class CategoricalOps(DataTypeOps):
     The class for binary operations of Koalas objects with categorical types.
     """
 
-    pass
+    def __add__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__add__)(left, right)
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)
 
 
 class BooleanOps(DataTypeOps):
@@ -150,7 +269,30 @@ class BooleanOps(DataTypeOps):
     The class for binary operations of Koalas objects with spark type: BooleanType.
     """
 
-    pass
+    def __add__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__add__)(left, right)
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)
 
 
 class DatetimeOps(DataTypeOps):
@@ -158,4 +300,23 @@ class DatetimeOps(DataTypeOps):
     The class for binary operations of Koalas objects with spark type: TimestampType.
     """
 
-    pass
+    def __add__(self, left, right):
+        raise TypeError("addition can not be applied to date times.")
+
+    def __sub__(self, left, right):
+        return column_op(Column.__sub__)(left, right)
+
+    def __mul__(self, left, right):
+        return column_op(Column.__mul__)(left, right)
+
+    def __truediv__(self, left, right):
+        return column_op(Column.__truediv__)(left, right)
+
+    def __floordiv__(self, left, right):
+        return column_op(Column.__floordiv__)(left, right)
+
+    def __mod__(self, left, right):
+        return column_op(Column.__mod__)(left, right)
+
+    def __pow__(self, left, right):
+        raise column_op(Column.__pow__)(left, right)

@@ -44,7 +44,6 @@ from pyspark.sql.types import (
 from databricks import koalas as ks  # For running doctests and reference resolution in PyCharm.
 from databricks.koalas import numpy_compat
 from databricks.koalas.config import get_option, option_context
-from databricks.koalas.data_type_ops import DataTypeOps
 from databricks.koalas.internal import (
     InternalFrame,
     NATURAL_ORDER_COLUMN_NAME,
@@ -324,32 +323,15 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     @property
     def _dtype_op(self):
+        from databricks.koalas.data_type_ops import DataTypeOps
+
         return DataTypeOps(self.dtype, self.spark.data_type)
 
     # arithmetic operators
     __neg__ = column_op(Column.__neg__)
 
     def __add__(self, other) -> Union["Series", "Index"]:
-        if not isinstance(self.spark.data_type, StringType) and (
-            (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
-            or isinstance(other, str)
-        ):
-            raise TypeError("string addition can only be applied to string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("addition can not be applied to date times.")
-
-        if isinstance(self.spark.data_type, StringType):
-            # Concatenate string columns
-            if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
-                return column_op(F.concat)(self, other)
-            # Handle df['col'] + 'literal'
-            elif isinstance(other, str):
-                return column_op(F.concat)(self, F.lit(other))
-            else:
-                raise TypeError("string addition can only be applied to string series or literals.")
-        else:
-            return column_op(Column.__add__)(self, other)
+        return self._dtype_op.__add__(self, other)
 
     def __sub__(self, other) -> Union["Series", "Index"]:
         if (
