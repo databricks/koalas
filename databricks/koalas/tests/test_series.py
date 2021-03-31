@@ -2905,3 +2905,23 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             pser.between_time("0:15", "0:45").sort_index(),
             kser.between_time("0:15", "0:45").sort_index(),
         )
+
+    def test_at_time(self):
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pser = pd.Series([1, 2, 3, 4], index=idx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.at_time("0:20").sort_index(), kser.at_time("0:20").sort_index(),
+        )
+
+        pser.index.name = "ts"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.at_time("0:20").sort_index(), kser.at_time("0:20").sort_index(),
+        )
+
+        pser.index.name = "index"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.at_time("0:20").sort_index(), kser.at_time("0:20").sort_index(),
+        )
