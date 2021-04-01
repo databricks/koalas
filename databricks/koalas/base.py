@@ -34,7 +34,6 @@ from pyspark.sql.types import (
     DateType,
     DoubleType,
     FloatType,
-    IntegralType,
     LongType,
     NumericType,
     StringType,
