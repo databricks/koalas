@@ -65,6 +65,13 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(kdf.index, pdf.index)
             self.assert_eq(type(kdf.index).__name__, type(pdf.index).__name__)
 
+    def test_map(self):
+        kser = ks.Series([1, 2, 3], index=[1, 2, 3])
+        self.assert_eq(kser.index.map(lambda id: id + 1), ks.Index([2, 3, 4]))
+        self.assert_eq(kser.index.map({1: "one", 2: "two", 3: "three"}), ks.Index(["one", "two", "three"]))
+        self.assert_eq(kser.index.map({1: "one", 2: "two"}), ks.Index(["one", "two", "None"]))
+        self.assert_eq(kser.index.map(lambda id: f"{id} + 1"), ks.Index(["1 + 1", "2 + 1", "3 + 1"]))
+
     def test_index_from_series(self):
         pser = pd.Series([1, 2, 3], name="a", index=[10, 20, 30])
         kser = ks.from_pandas(pser)
