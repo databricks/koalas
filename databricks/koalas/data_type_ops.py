@@ -91,7 +91,7 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __truediv__(self, left, right):
         raise NotImplementedError()
 
-    # @abstractmethod
+    @abstractmethod
     def __floordiv__(self, left, right):
         raise NotImplementedError()
 
@@ -129,6 +129,7 @@ class NumericOps(DataTypeOps):
 
         if isinstance(right.spark.data_type, types.TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
+        return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
         if (
@@ -144,6 +145,25 @@ class NumericOps(DataTypeOps):
             )
 
         return numpy_column_op(truediv)(left, right)
+
+    def __floordiv__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def floordiv(left, right):
+            return F.when(F.lit(right is np.nan), np.nan).otherwise(
+                F.when(
+                    F.lit(right != 0) | F.lit(right).isNull(), F.floor(left.__div__(right))
+                ).otherwise(
+                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                        F.lit(np.inf).__div__(left)
+                    )
+                )
+            )
+
+        return numpy_column_op(floordiv)(left, right)
 
 
 class IntegralOps(NumericOps):
@@ -209,7 +229,7 @@ class StringOps(DataTypeOps):
         raise TypeError("division can not be applied on string series or literals.")
 
     def __floordiv__(self, left, right):
-        pass
+        raise TypeError("division can not be applied on string series or literals.")
 
     def __mod__(self, left, right):
         pass
@@ -232,11 +252,11 @@ class CategoricalOps(DataTypeOps):
     def __mul__(self, left, right):
         raise TypeError("Object with dtype category cannot perform the numpy op multiply")
 
-    def __truediv__(self, left, right):  # ???
+    def __truediv__(self, left, right):
         raise TypeError("Object with dtype category cannot perform truediv")
 
     def __floordiv__(self, left, right):
-        pass
+        raise TypeError("Object with dtype category cannot perform floordiv")
 
     def __mod__(self, left, right):
         pass
@@ -285,7 +305,23 @@ class BooleanOps(DataTypeOps):
         return numpy_column_op(truediv)(left, right)
 
     def __floordiv__(self, left, right):
-        pass
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def floordiv(left, right):
+            return F.when(F.lit(right is np.nan), np.nan).otherwise(
+                F.when(
+                    F.lit(right != 0) | F.lit(right).isNull(), F.floor(left.__div__(right))
+                ).otherwise(
+                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                        F.lit(np.inf).__div__(left)
+                    )
+                )
+            )
+
+        return numpy_column_op(floordiv)(left, right)
 
     def __mod__(self, left, right):
         pass
@@ -328,7 +364,7 @@ class DatetimeOps(DataTypeOps):
         raise TypeError("division can not be applied to date times.")
 
     def __floordiv__(self, left, right):
-        pass
+        raise TypeError("division can not be applied to date times.")
 
     def __mod__(self, left, right):
         pass
@@ -369,7 +405,7 @@ class DateOps(DataTypeOps):
         raise TypeError("division can not be applied to date.")
 
     def __floordiv__(self, left, right):
-        pass
+        raise TypeError("division can not be applied to date.")
 
     def __mod__(self, left, right):
         pass

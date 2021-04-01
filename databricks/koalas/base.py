@@ -471,28 +471,8 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         |          -10          |   null  | -np.inf |
         +-----------------------|---------|---------+
         """
-        if (
-            isinstance(self.spark.data_type, StringType)
-            or (isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType))
-            or isinstance(other, str)
-        ):
-            raise TypeError("division can not be applied on string series or literals.")
 
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("division can not be applied to date times.")
-
-        def floordiv(left, right):
-            return F.when(F.lit(right is np.nan), np.nan).otherwise(
-                F.when(
-                    F.lit(right != 0) | F.lit(right).isNull(), F.floor(left.__div__(right))
-                ).otherwise(
-                    F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
-                        F.lit(np.inf).__div__(left)
-                    )
-                )
-            )
-
-        return numpy_column_op(floordiv)(self, other)
+        return self._dtype_op.__floordiv__(self, other)
 
     def __rfloordiv__(self, other) -> Union["Series", "Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
