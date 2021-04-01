@@ -509,6 +509,7 @@ class Index(IndexOpsMixin):
 
     def map(self, mapper):
         from databricks.koalas.indexes.extension import MapExtension
+
         return MapExtension(index=self).map(mapper)
 
     @property
