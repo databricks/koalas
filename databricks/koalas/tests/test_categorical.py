@@ -321,7 +321,10 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
         def to_str(pdf) -> 'ks.DataFrame["a":str, "b":str]':  # noqa: F821
             return pdf.astype(str)
 
-        self.assert_eq(kdf.koalas.apply_batch(to_str).sort_index(), to_str(pdf).sort_index())
+        self.assert_eq(
+            kdf.koalas.apply_batch(to_str).sort_values(["a", "b"]).reset_index(drop=True),
+            to_str(pdf).sort_values(["a", "b"]).reset_index(drop=True),
+        )
 
         pdf = pd.DataFrame(
             {"a": ["a", "b", "c", "a", "b", "c"], "b": ["b", "a", "c", "c", "b", "a"]}
@@ -335,7 +338,8 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
             return pdf.astype(dtype)
 
         self.assert_eq(
-            kdf.koalas.apply_batch(to_category).sort_index(), to_category(pdf).sort_index()
+            kdf.koalas.apply_batch(to_category).sort_values(["a", "b"]).reset_index(drop=True),
+            to_category(pdf).sort_values(["a", "b"]).reset_index(drop=True),
         )
 
     def test_series_transform_batch(self):
