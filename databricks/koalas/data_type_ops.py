@@ -27,7 +27,7 @@ from pandas.api.types import CategoricalDtype
 import pyspark.sql.types as types
 from pyspark.sql import Column, functions as F
 
-from databricks.koalas.base import column_op, IndexOpsMixin
+from databricks.koalas.base import column_op, IndexOpsMixin, numpy_column_op
 from databricks.koalas.spark import functions as SF
 from databricks.koalas.typedef import Dtype, as_spark_type
 
@@ -87,7 +87,7 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __mul__(self, left, right):
         raise NotImplementedError()
 
-    # @abstractmethod
+    @abstractmethod
     def __truediv__(self, left, right):
         raise NotImplementedError()
 
@@ -130,6 +130,21 @@ class NumericOps(DataTypeOps):
         if isinstance(right.spark.data_type, types.TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
 
+    def __truediv__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def truediv(left, right):
+            return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
+                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                    F.lit(np.inf).__div__(left)
+                )
+            )
+
+        return numpy_column_op(truediv)(left, right)
+
 
 class IntegralOps(NumericOps):
     """
@@ -145,35 +160,13 @@ class IntegralOps(NumericOps):
             return column_op(SF.repeat)(right, left)
         return column_op(Column.__mul__)(left, right)
 
-    def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
-
-    def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
-
-    def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
-
-    def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
-
 
 class FractionalOps(NumericOps):
     """
     The class for binary operations of Koalas objects with spark types: FloatType and DoubleType.
     """
 
-    def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
-
-    def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
-
-    def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
-
-    def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
+    pass
 
 
 class DecimalOps(FractionalOps):
@@ -181,17 +174,7 @@ class DecimalOps(FractionalOps):
     The class for binary operations of Koalas objects with spark type: DecimalType.
     """
 
-    def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
-
-    def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
-
-    def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
-
-    def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
+    pass
 
 
 class StringOps(DataTypeOps):
@@ -223,16 +206,16 @@ class StringOps(DataTypeOps):
             raise TypeError("a string series can only be multiplied to an int series or literal")
 
     def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
+        raise TypeError("division can not be applied on string series or literals.")
 
     def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
+        pass
 
     def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
+        pass
 
     def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
+        pass
 
 
 class CategoricalOps(DataTypeOps):
@@ -249,17 +232,17 @@ class CategoricalOps(DataTypeOps):
     def __mul__(self, left, right):
         raise TypeError("Object with dtype category cannot perform the numpy op multiply")
 
-    def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
+    def __truediv__(self, left, right):  # ???
+        raise TypeError("Object with dtype category cannot perform truediv")
 
     def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
+        pass
 
     def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
+        pass
 
     def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
+        pass
 
 
 class BooleanOps(DataTypeOps):
@@ -287,16 +270,28 @@ class BooleanOps(DataTypeOps):
         return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+        ) or isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def truediv(left, right):
+            return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
+                F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
+                    F.lit(np.inf).__div__(left)
+                )
+            )
+
+        return numpy_column_op(truediv)(left, right)
 
     def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
+        pass
 
     def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
+        pass
 
     def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
+        pass
 
 
 class DatetimeOps(DataTypeOps):
@@ -330,16 +325,16 @@ class DatetimeOps(DataTypeOps):
         raise TypeError("cannot perform __mul__ with this index type: DatetimeArray")
 
     def __truediv__(self, left, right):
-        return column_op(Column.__truediv__)(left, right)
+        raise TypeError("division can not be applied to date times.")
 
     def __floordiv__(self, left, right):
-        return column_op(Column.__floordiv__)(left, right)
+        pass
 
     def __mod__(self, left, right):
-        return column_op(Column.__mod__)(left, right)
+        pass
 
     def __pow__(self, left, right):
-        raise column_op(Column.__pow__)(left, right)
+        pass
 
 
 class DateOps(DataTypeOps):
@@ -369,3 +364,15 @@ class DateOps(DataTypeOps):
 
     def __mul__(self, left, right):
         raise TypeError("multiplication can not be applied to date.")
+
+    def __truediv__(self, left, right):
+        raise TypeError("division can not be applied to date.")
+
+    def __floordiv__(self, left, right):
+        pass
+
+    def __mod__(self, left, right):
+        pass
+
+    def __pow__(self, left, right):
+        pass
