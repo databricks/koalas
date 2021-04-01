@@ -1372,7 +1372,7 @@ class GroupBy(object, metaclass=ABCMeta):
         arguments_for_restore_index = kdf._internal.arguments_for_restore_index
 
         def rename_output(pdf):
-            pdf = InternalFrame.restore_index(pdf, **arguments_for_restore_index)
+            pdf = InternalFrame.restore_index(pdf.copy(), **arguments_for_restore_index)
 
             pdf = func(pdf)
 

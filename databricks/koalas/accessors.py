@@ -557,21 +557,27 @@ class KoalasFrameMethods(object):
             # The input can only be a DataFrame for struct from Spark 3.0.
             # This works around to make the input as a frame. See SPARK-27240
             pdf = pd.concat(series, axis=1)
-            pdf = pdf.rename(columns=dict(zip(pdf.columns, names)))
+            pdf.columns = names
             return pdf
+
+        def apply_func(pdf):
+            return func(pdf).to_frame()
 
         def pandas_extract(pdf, name):
             # This is for output to work around a DataFrame for struct
             # from Spark 3.0.  See SPARK-23836
             return pdf[name]
 
-        def pandas_series_func(f):
+        def pandas_series_func(f, by_pass):
             ff = f
-            return lambda *series: ff(pandas_concat(series))
+            if by_pass:
+                return lambda *series: first_series(ff(*series))
+            else:
+                return lambda *series: first_series(ff(pandas_concat(series)))
 
-        def pandas_frame_func(f):
+        def pandas_frame_func(f, field_name):
             ff = f
-            return lambda *series: pandas_extract(ff(pandas_concat(series)), field.name)
+            return lambda *series: pandas_extract(ff(pandas_concat(series)), field_name)
 
         if should_infer_schema:
             # Here we execute with the first 1000 to get the return type.
@@ -589,12 +595,21 @@ class KoalasFrameMethods(object):
             kdf_or_kser = ks.from_pandas(transformed)
 
             if isinstance(kdf_or_kser, ks.Series):
-                kser = kdf_or_kser
+                kser = cast(ks.Series, kdf_or_kser)
+
+                spark_return_type = force_decimal_precision_scale(
+                    as_nullable_spark_type(kser.spark.data_type)
+                )
+                return_schema = StructType(
+                    [StructField(SPARK_DEFAULT_SERIES_NAME, spark_return_type)]
+                )
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self._kdf, apply_func, return_schema, retain_index=False
+                )
+
                 pudf = pandas_udf(
-                    func if should_by_pass else pandas_series_func(func),
-                    returnType=force_decimal_precision_scale(
-                        as_nullable_spark_type(kser.spark.data_type)
-                    ),
+                    pandas_series_func(output_func, should_by_pass),
+                    returnType=spark_return_type,
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -611,11 +626,11 @@ class KoalasFrameMethods(object):
                 )
                 return first_series(DataFrame(internal))
             else:
-                kdf = kdf_or_kser
+                kdf = cast(DataFrame, kdf_or_kser)
                 if len(pdf) <= limit:
                     # only do the short cut when it returns a frame to avoid
                     # operations on different dataframes in case of series.
-                    return cast(ks.DataFrame, kdf)
+                    return kdf
 
                 # Force nullability.
                 return_schema = force_decimal_precision_scale(
@@ -643,7 +658,7 @@ class KoalasFrameMethods(object):
                     for field in return_schema.fields:
                         applied.append(
                             pandas_udf(
-                                pandas_frame_func(output_func),
+                                pandas_frame_func(output_func, field.name),
                                 returnType=field.dataType,
                                 functionType=PandasUDFType.SCALAR,
                             )(*columns).alias(field.name)
@@ -660,11 +675,19 @@ class KoalasFrameMethods(object):
                     "hints; however, the return type was %s." % return_sig
                 )
             if is_return_series:
-                return_schema = cast(SeriesType, return_type).spark_type
+                spark_return_type = force_decimal_precision_scale(
+                    as_nullable_spark_type(cast(SeriesType, return_type).spark_type)
+                )
+                return_schema = StructType(
+                    [StructField(SPARK_DEFAULT_SERIES_NAME, spark_return_type)]
+                )
+                output_func = GroupBy._make_pandas_df_builder_func(
+                    self._kdf, apply_func, return_schema, retain_index=False
+                )
 
                 pudf = pandas_udf(
-                    func if should_by_pass else pandas_series_func(func),
-                    returnType=return_schema,
+                    pandas_series_func(output_func, should_by_pass),
+                    returnType=spark_return_type,
                     functionType=PandasUDFType.SCALAR,
                 )
                 columns = self._kdf._internal.spark_columns
@@ -675,7 +698,7 @@ class KoalasFrameMethods(object):
                             SPARK_DEFAULT_SERIES_NAME
                         )
                     ],
-                    data_dtypes=[None],
+                    data_dtypes=[cast(SeriesType, return_type).dtype],
                     column_label_names=None,
                 )
                 return first_series(DataFrame(internal))
@@ -704,13 +727,18 @@ class KoalasFrameMethods(object):
                     for field in return_schema.fields:
                         applied.append(
                             pandas_udf(
-                                pandas_frame_func(output_func),
+                                pandas_frame_func(output_func, field.name),
                                 returnType=field.dataType,
                                 functionType=PandasUDFType.SCALAR,
                             )(*columns).alias(field.name)
                         )
                     sdf = self_applied._internal.spark_frame.select(*applied)
-                return DataFrame(sdf)
+                internal = InternalFrame(
+                    spark_frame=sdf,
+                    index_spark_columns=None,
+                    data_dtypes=cast(DataFrameType, return_type).dtypes,
+                )
+                return DataFrame(internal)
 
 
 class KoalasSeriesMethods(object):
@@ -893,4 +921,9 @@ class KoalasSeriesMethods(object):
             functionType=PandasUDFType.SCALAR,
         )
 
-        return self._kser._with_new_scol(scol=pudf(*kdf._internal.spark_columns), dtype=dtype)
+        return self._kser._with_new_scol(
+            scol=pudf(*kdf._internal.spark_columns).alias(
+                self._kser._internal.spark_column_names[0]
+            ),
+            dtype=dtype,
+        )
