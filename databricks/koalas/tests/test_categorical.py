@@ -341,7 +341,7 @@ class CategoricalTest(ReusedSQLTestCase, TestUtils):
             kdf.koalas.apply_batch(to_category).sort_values(["a", "b"]).reset_index(drop=True),
             to_category(pdf).sort_values(["a", "b"]).reset_index(drop=True),
         )
-        
+
     def test_series_transform_batch(self):
         pdf, kdf = self.df_pair
 
