@@ -28,6 +28,7 @@ import pyspark.sql.types as types
 from pyspark.sql import Column, functions as F
 
 from databricks.koalas.base import column_op, IndexOpsMixin
+from databricks.koalas.spark import functions as SF
 from databricks.koalas.typedef import Dtype, as_spark_type
 
 
@@ -82,7 +83,7 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __sub__(self, left, right):
         raise NotImplementedError()
 
-    # @abstractmethod
+    @abstractmethod
     def __mul__(self, left, right):
         raise NotImplementedError()
 
@@ -122,6 +123,13 @@ class NumericOps(DataTypeOps):
             raise TypeError("substraction can not be applied to string series or literals.")
         return column_op(Column.__sub__)(left, right)
 
+    def __mul__(self, left, right):
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if isinstance(right.spark.data_type, types.TimestampType):
+            raise TypeError("multiplication can not be applied to date times.")
+
 
 class IntegralOps(NumericOps):
     """
@@ -130,6 +138,11 @@ class IntegralOps(NumericOps):
     """
 
     def __mul__(self, left, right):
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType):
+            return column_op(SF.repeat)(right, left)
         return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
@@ -150,9 +163,6 @@ class FractionalOps(NumericOps):
     The class for binary operations of Koalas objects with spark types: FloatType and DoubleType.
     """
 
-    def __mul__(self, left, right):
-        return column_op(Column.__mul__)(left, right)
-
     def __truediv__(self, left, right):
         return column_op(Column.__truediv__)(left, right)
 
@@ -170,9 +180,6 @@ class DecimalOps(FractionalOps):
     """
     The class for binary operations of Koalas objects with spark type: DecimalType.
     """
-
-    def __mul__(self, left, right):
-        return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
         return column_op(Column.__truediv__)(left, right)
@@ -204,7 +211,16 @@ class StringOps(DataTypeOps):
         raise TypeError("substraction can not be applied to string series or literals.")
 
     def __mul__(self, left, right):
-        return column_op(Column.__mul__)(left, right)
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if (
+            isinstance(right, IndexOpsMixin)
+            and isinstance(right.spark.data_type, types.IntegralType)
+        ) or isinstance(right, int):
+            return column_op(SF.repeat)(left, right)
+        else:
+            raise TypeError("a string series can only be multiplied to an int series or literal")
 
     def __truediv__(self, left, right):
         return column_op(Column.__truediv__)(left, right)
@@ -231,7 +247,7 @@ class CategoricalOps(DataTypeOps):
         raise TypeError("Object with dtype category cannot perform the numpy op subtract")
 
     def __mul__(self, left, right):
-        return column_op(Column.__mul__)(left, right)
+        raise TypeError("Object with dtype category cannot perform the numpy op multiply")
 
     def __truediv__(self, left, right):
         return column_op(Column.__truediv__)(left, right)
@@ -262,6 +278,12 @@ class BooleanOps(DataTypeOps):
         raise TypeError("numpy boolean subtract, the `-` operator, is not supported")
 
     def __mul__(self, left, right):
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if isinstance(right.spark.data_type, types.TimestampType):
+            raise TypeError("multiplication can not be applied to date times.")
+
         return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
@@ -305,7 +327,7 @@ class DatetimeOps(DataTypeOps):
             raise TypeError("datetime subtraction can only be applied to datetime series.")
 
     def __mul__(self, left, right):
-        return column_op(Column.__mul__)(left, right)
+        raise TypeError("cannot perform __mul__ with this index type: DatetimeArray")
 
     def __truediv__(self, left, right):
         return column_op(Column.__truediv__)(left, right)
@@ -344,3 +366,6 @@ class DateOps(DataTypeOps):
             return column_op(F.datediff)(self, F.lit(right)).astype("long")
         else:
             raise TypeError("date subtraction can only be applied to date series.")
+
+    def __mul__(self, left, right):
+        raise TypeError("multiplication can not be applied to date.")
