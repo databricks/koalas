@@ -107,11 +107,11 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __floordiv__(self, left, right):
         raise NotImplementedError()
 
-    # @abstractmethod
+    @abstractmethod
     def __mod__(self, left, right):
         raise NotImplementedError()
 
-    # @abstractmethod
+    @abstractmethod
     def __pow__(self, left, right):
         raise NotImplementedError()
 
@@ -176,6 +176,17 @@ class NumericOps(DataTypeOps):
             )
 
         return numpy_column_op(floordiv)(left, right)
+
+    def __mod__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
+        ) or isinstance(right, str):
+            raise TypeError("modulo can not be applied on string series or literals.")
+
+        def mod(left, right):
+            return ((left % right) + right) % right
+
+        return column_op(mod)(left, right)
 
     def __pow__(self, left, right):
         if (
@@ -254,7 +265,7 @@ class StringOps(DataTypeOps):
         raise TypeError("floordiv can not be applied on string series or literals.")
 
     def __mod__(self, left, right):
-        pass
+        raise TypeError("modulo can not be applied on string series or literals.")
 
     def __pow__(self, left, right):
         raise TypeError("exponentiation can not be applied on string series or literals.")
@@ -281,10 +292,10 @@ class CategoricalOps(DataTypeOps):
         raise TypeError("Object with dtype category cannot perform floordiv.")
 
     def __mod__(self, left, right):
-        pass
+        raise TypeError("Object with dtype category cannot perform modulo.")
 
     def __pow__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform pow.")
+        raise TypeError("Object with dtype category cannot perform exponentiation.")
 
 
 class BooleanOps(DataTypeOps):
@@ -346,7 +357,15 @@ class BooleanOps(DataTypeOps):
         return numpy_column_op(floordiv)(left, right)
 
     def __mod__(self, left, right):
-        pass
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
+        ) or isinstance(right, str):
+            raise TypeError("modulo can not be applied on string series or literals.")
+
+        def mod(left, right):
+            return ((left % right) + right) % right
+
+        return column_op(mod)(left, right)
 
     def __pow__(self, left, right):
         if (
@@ -395,7 +414,7 @@ class DatetimeOps(DataTypeOps):
         raise TypeError("division can not be applied to date times.")
 
     def __mod__(self, left, right):
-        pass
+        raise TypeError("modulo can not be applied to date times.")
 
     def __pow__(self, left, right):
         raise TypeError("exponentiation can not be applied to date times.")
@@ -436,7 +455,7 @@ class DateOps(DataTypeOps):
         raise TypeError("division can not be applied to date.")
 
     def __mod__(self, left, right):
-        pass
+        raise TypeError("modulo can not be applied to date.")
 
     def __pow__(self, left, right):
         raise TypeError("exponentiation can not be applied to date.")
