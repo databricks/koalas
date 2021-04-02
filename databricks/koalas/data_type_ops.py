@@ -19,12 +19,10 @@ Classes for binary operations between Koalas objects, classified by object data 
 """
 from abc import ABCMeta, abstractmethod
 import datetime
-import decimal
 import numpy as np
 import warnings
 
 from pandas.api.types import CategoricalDtype
-import pyspark.sql.types as types
 from pyspark.sql import Column, functions as F
 from pyspark.sql.types import (
     BooleanType,
