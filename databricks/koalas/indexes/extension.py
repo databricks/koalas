@@ -14,8 +14,10 @@
 # limitations under the License.
 #
 
-from typing import Union
+from typing import Any, Union, Callable
 
+import databricks.koalas as ks
+import pandas as pd
 import numpy as np
 
 from databricks.koalas.indexes.base import Index
@@ -25,9 +27,13 @@ class MapExtension:
     def __init__(self, index):
         self._index = index
 
-    def map(self, mapper: Union[dict, callable]):
+    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series]):
         if isinstance(mapper, dict):
             idx = self._map_dict(mapper)
+        elif isinstance(mapper, pd.Series):
+            idx = self._map_series(mapper)
+        elif isinstance(mapper, ks.Series):
+            raise NotImplementedError("Currently do not support input of ks.Series in Index.map")
         else:
             idx = self._map_lambda(mapper)
         return idx
@@ -37,19 +43,20 @@ class MapExtension:
         vfunc = np.vectorize(lambda i: mapper.get(i, None))
         return Index(vfunc(self._index.values))
 
-    def _map_lambda(self, mapper):
-        try:
-            result = mapper(self._index)
+    def _map_series(self, mapper: pd.Series):
+        vfunc = np.vectorize(lambda i: mapper.loc[i])
+        return Index(vfunc(self._index.values))
 
-            # Try to use this result if we can
-            if isinstance(result, str):
-                result = self._lambda_str(mapper)
+    def _map_lambda(self, mapper: Callable[[Any], Any]):
+        result = mapper(self._index)
 
-            if not isinstance(result, Index):
-                raise TypeError("The map function must return an Index object")
-            return result
-        except Exception:
-            return self.astype(object).map(mapper)
+        # Try to use this result if we can
+        if isinstance(result, str):
+            result = self._lambda_str(mapper)
+
+        if not isinstance(result, Index):
+            raise TypeError("The map function must return an Index object")
+        return result
 
     def _lambda_str(self, mapper):
         """

@@ -67,6 +67,16 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
 
     def test_map(self):
         kser = ks.Series([1, 2, 3], index=[1, 2, 3])
+
+        with self.assertRaisesRegex(
+            NotImplementedError, "Currently do not support input of ks.Series in Index.map"
+        ):
+            kser.index.map(ks.Series(["one", "two", "three"], index=[1, 2, 3]))
+
+        self.assert_eq(
+            kser.index.map(pd.Series(["one", 2, "three"], index=[1, 2, 3])),
+            ks.Index(["one", "2", "three"]),
+        )
         self.assert_eq(kser.index.map(lambda id: id + 1), ks.Index([2, 3, 4]))
         self.assert_eq(kser.index.map(lambda id: id + 1.1), ks.Index([2.1, 3.1, 4.1]))
         self.assert_eq(
