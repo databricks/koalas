@@ -74,15 +74,18 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kser.index.map(ks.Series(["one", "two", "three"], index=[1, 2, 3]))
 
         self.assert_eq(
-            kser.index.map(pd.Series(["one", 2, "three"], index=[1, 2, 3])),
+            kser.index.map(pd.Series(["one", "2", "three"], index=[1, 2, 3])),
             ks.Index(["one", "2", "three"]),
+        )
+        self.assert_eq(
+            kser.index.map(pd.Series(["one", "2"], index=[1, 2])), ks.Index(["one", "2", "3"]),
         )
         self.assert_eq(kser.index.map(lambda id: id + 1), ks.Index([2, 3, 4]))
         self.assert_eq(kser.index.map(lambda id: id + 1.1), ks.Index([2.1, 3.1, 4.1]))
         self.assert_eq(
             kser.index.map({1: "one", 2: "two", 3: "three"}), ks.Index(["one", "two", "three"])
         )
-        self.assert_eq(kser.index.map({1: "one", 2: "two"}), ks.Index(["one", "two", "None"]))
+        self.assert_eq(kser.index.map({1: "one", 2: "two"}), ks.Index(["one", "two", None]))
         self.assert_eq(
             kser.index.map(lambda id: f"{id} + 1"), ks.Index(["1 + 1", "2 + 1", "3 + 1"])
         )

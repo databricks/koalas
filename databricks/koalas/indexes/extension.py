@@ -16,13 +16,15 @@
 
 from typing import Any, Union, Callable
 
-import databricks.koalas as ks
 import pandas as pd
-import numpy as np
 
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+
+import databricks.koalas as ks
 from databricks.koalas.indexes.base import Index
+from databricks.koalas.internal import SPARK_DEFAULT_INDEX_NAME
 
-
+# TODO: User to supply ReturnType (default to StringType) & ability to supply value for missing
 class MapExtension:
     def __init__(self, index):
         self._index = index
@@ -40,12 +42,25 @@ class MapExtension:
 
     def _map_dict(self, mapper: dict) -> Index:
         # Default missing values to None
-        vfunc = np.vectorize(lambda i: mapper.get(i, None))
-        return Index(vfunc(self._index.values))
+        @pandas_udf("string", PandasUDFType.SCALAR)
+        def pyspark_mapper(col):
+            return col.apply(lambda i: mapper.get(i, None))
+
+        return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
     def _map_series(self, mapper: pd.Series):
-        vfunc = np.vectorize(lambda i: mapper.loc[i])
-        return Index(vfunc(self._index.values))
+        # TODO: clean up, maybe move somewhere else
+        def getOrElse(i):
+            try:
+                return mapper.loc[i]
+            except:
+                return f"{i}"
+
+        @pandas_udf("string", PandasUDFType.SCALAR)
+        def pyspark_mapper(col):
+            return col.apply(lambda i: getOrElse(i))
+
+        return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
     def _map_lambda(self, mapper: Callable[[Any], Any]):
         result = mapper(self._index)
@@ -65,12 +80,16 @@ class MapExtension:
         Parameters
         ----------
         mapper
-            A lamdba function that does something
+            A lambda function that does something
 
         Returns
         -------
         Index
 
         """
-        vfunc = np.vectorize(mapper)
-        return Index(vfunc(self._index.values))
+
+        @pandas_udf("string", PandasUDFType.SCALAR)
+        def pyspark_mapper(col):
+            return col.apply(mapper)
+
+        return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
