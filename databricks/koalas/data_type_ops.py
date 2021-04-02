@@ -26,6 +26,21 @@ import warnings
 from pandas.api.types import CategoricalDtype
 import pyspark.sql.types as types
 from pyspark.sql import Column, functions as F
+from pyspark.sql.types import (
+    BooleanType,
+    ByteType,
+    DataType,
+    DateType,
+    DecimalType,
+    DoubleType,
+    FloatType,
+    IntegralType,
+    LongType,
+    NumericType,
+    ShortType,
+    StringType,
+    TimestampType,
+)
 
 from databricks.koalas.base import column_op, IndexOpsMixin, numpy_column_op
 from databricks.koalas.spark import functions as SF
@@ -35,43 +50,40 @@ from databricks.koalas.typedef import Dtype, as_spark_type
 class DataTypeOps(object, metaclass=ABCMeta):
     """The base class for binary operations of Koalas objects (of different data types)."""
 
-    def __new__(cls, dtype: Dtype, spark_type: types.DataType):
+    def __new__(cls, dtype: Dtype, spark_type: DataType):
+        if isinstance(dtype, CategoricalDtype):
+            return object.__new__(CategoricalOps)
         if dtype == np.dtype("object"):
-            if isinstance(spark_type, types.DecimalType):
+            if isinstance(spark_type, DecimalType):
                 return object.__new__(DecimalOps)
-            elif isinstance(spark_type, types.DateType):
-                return object.__new__(DatetimeOps)
-            elif isinstance(spark_type, types.StringType):
+            elif isinstance(spark_type, DateType):
+                return object.__new__(DateOps)
+            elif isinstance(spark_type, StringType):
                 return object.__new__(StringOps)
             else:
                 raise TypeError("Type %s cannot be inferred." % dtype)
-        elif dtype in (np.float32,) or (dtype in (float, np.float, np.float64)):
-            # FloatType, DoubleType
+        elif isinstance(spark_type, FloatType) or isinstance(spark_type, DoubleType):
             return object.__new__(FractionalOps)
-        elif dtype in (decimal.Decimal,):
+        elif isinstance(spark_type, DecimalType):
             return object.__new__(DecimalOps)
         elif (
-            dtype in (int, np.int, np.int64)
-            or (dtype in (np.int32,))
-            or (dtype in (np.int8, np.byte))
-            or (dtype in (np.int16,))
+            isinstance(spark_type, IntegralType)
+            or isinstance(spark_type, ByteType)
+            or isinstance(spark_type, ShortType)
         ):
-            # LongType, IntegerType, ByteType, ShortType
             return object.__new__(IntegralOps)
-        elif isinstance(dtype, CategoricalDtype):
-            return object.__new__(CategoricalOps)
-        elif dtype in (np.unicode_,):
+        elif isinstance(spark_type, StringType):
             return object.__new__(StringOps)
-        elif dtype in (bool, np.bool):
+        elif isinstance(spark_type, BooleanType):
             return object.__new__(BooleanOps)
-        elif dtype in (datetime.datetime, np.datetime64):
+        elif isinstance(spark_type, TimestampType):
             return object.__new__(DatetimeOps)
-        elif dtype in (datetime.date,):
+        elif isinstance(spark_type, DateType):
             return object.__new__(DateOps)
         else:
             raise TypeError("Type %s was not understood." % dtype)
 
-    def __init__(self, dtype: Dtype, spark_type: types.DataType):
+    def __init__(self, dtype: Dtype, spark_type: DataType):
         self.dtype = dtype
         self.spark_type = spark_type
 
@@ -111,14 +123,14 @@ class NumericOps(DataTypeOps):
 
     def __add__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("string addition can only be applied to string series or literals.")
         return column_op(Column.__add__)(left, right)
 
     def __sub__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("substraction can not be applied to string series or literals.")
         return column_op(Column.__sub__)(left, right)
@@ -127,13 +139,13 @@ class NumericOps(DataTypeOps):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
-        if isinstance(right.spark.data_type, types.TimestampType):
+        if isinstance(right.spark.data_type, TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
         return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -148,7 +160,7 @@ class NumericOps(DataTypeOps):
 
     def __floordiv__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -176,7 +188,7 @@ class IntegralOps(NumericOps):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
-        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType):
             return column_op(SF.repeat)(right, left)
         return column_op(Column.__mul__)(left, right)
 
@@ -203,7 +215,7 @@ class StringOps(DataTypeOps):
     """
 
     def __add__(self, left, right):
-        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType):
             return column_op(F.concat)(left, right)
         elif isinstance(right, str):
             return column_op(F.concat)(left, F.lit(right))
@@ -218,8 +230,7 @@ class StringOps(DataTypeOps):
             raise TypeError("multiplication can not be applied to a string literal.")
 
         if (
-            isinstance(right, IndexOpsMixin)
-            and isinstance(right.spark.data_type, types.IntegralType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, IntegralType)
         ) or isinstance(right, int):
             return column_op(SF.repeat)(left, right)
         else:
@@ -272,7 +283,7 @@ class BooleanOps(DataTypeOps):
 
     def __add__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("string addition can only be applied to string series or literals.")
         return column_op(Column.__add__)(left, right)
@@ -284,14 +295,14 @@ class BooleanOps(DataTypeOps):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
-        if isinstance(right.spark.data_type, types.TimestampType):
+        if isinstance(right.spark.data_type, TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
 
         return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -306,7 +317,7 @@ class BooleanOps(DataTypeOps):
 
     def __floordiv__(self, left, right):
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.StringType)
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
 
@@ -346,9 +357,7 @@ class DatetimeOps(DataTypeOps):
             "The timestamp subtraction returns an integer in seconds, "
             "whereas pandas returns 'timedelta64[ns]'."
         )
-        if isinstance(right, IndexOpsMixin) and isinstance(
-            right.spark.data_type, types.TimestampType
-        ):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, TimestampType):
             warnings.warn(msg, UserWarning)
             return left.astype("long") - right.astype("long")
         elif isinstance(right, datetime.datetime):
@@ -358,7 +367,7 @@ class DatetimeOps(DataTypeOps):
             raise TypeError("datetime subtraction can only be applied to datetime series.")
 
     def __mul__(self, left, right):
-        raise TypeError("cannot perform __mul__ with this index type: DatetimeArray")
+        raise TypeError("multiplication can not be applied to date times.")
 
     def __truediv__(self, left, right):
         raise TypeError("division can not be applied to date times.")
@@ -389,12 +398,12 @@ class DateOps(DataTypeOps):
             "The date subtraction returns an integer in days, "
             "whereas pandas returns 'timedelta64[ns]'."
         )
-        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, types.DateType):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, DateType):
             warnings.warn(msg, UserWarning)
             return column_op(F.datediff)(left, right).astype("long")
         elif isinstance(right, datetime.date) and not isinstance(right, datetime.datetime):
             warnings.warn(msg, UserWarning)
-            return column_op(F.datediff)(self, F.lit(right)).astype("long")
+            return column_op(F.datediff)(left, F.lit(right)).astype("long")
         else:
             raise TypeError("date subtraction can only be applied to date series.")
 
