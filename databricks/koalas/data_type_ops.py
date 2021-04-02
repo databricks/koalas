@@ -33,8 +33,6 @@ from pyspark.sql.types import (
     DoubleType,
     FloatType,
     IntegralType,
-    LongType,
-    NumericType,
     ShortType,
     StringType,
     TimestampType,
@@ -137,7 +135,7 @@ class NumericOps(DataTypeOps):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
-        if isinstance(right.spark.data_type, TimestampType):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
         return column_op(Column.__mul__)(left, right)
 
@@ -257,10 +255,10 @@ class StringOps(DataTypeOps):
             raise TypeError("a string series can only be multiplied to an int series or literal")
 
     def __truediv__(self, left, right):
-        raise TypeError("turediv can not be applied on string series or literals.")
+        raise TypeError("division can not be applied on string series or literals.")
 
     def __floordiv__(self, left, right):
-        raise TypeError("floordiv can not be applied on string series or literals.")
+        raise TypeError("division can not be applied on string series or literals.")
 
     def __mod__(self, left, right):
         raise TypeError("modulo can not be applied on string series or literals.")
@@ -315,7 +313,7 @@ class BooleanOps(DataTypeOps):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
-        if isinstance(right.spark.data_type, TimestampType):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
 
         return column_op(Column.__mul__)(left, right)
