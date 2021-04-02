@@ -177,6 +177,17 @@ class NumericOps(DataTypeOps):
 
         return numpy_column_op(floordiv)(left, right)
 
+    def __pow__(self, left, right):
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
+        ) or isinstance(right, str):
+            raise TypeError("exponentiation can not be applied on string series or literals.")
+
+        def pow_func(left, right):
+            return F.when(left == 1, left).otherwise(Column.__pow__(left, right))
+
+        return column_op(pow_func)(left, right)
+
 
 class IntegralOps(NumericOps):
     """
@@ -237,16 +248,16 @@ class StringOps(DataTypeOps):
             raise TypeError("a string series can only be multiplied to an int series or literal")
 
     def __truediv__(self, left, right):
-        raise TypeError("division can not be applied on string series or literals.")
+        raise TypeError("turediv can not be applied on string series or literals.")
 
     def __floordiv__(self, left, right):
-        raise TypeError("division can not be applied on string series or literals.")
+        raise TypeError("floordiv can not be applied on string series or literals.")
 
     def __mod__(self, left, right):
         pass
 
     def __pow__(self, left, right):
-        pass
+        raise TypeError("exponentiation can not be applied on string series or literals.")
 
 
 class CategoricalOps(DataTypeOps):
@@ -255,25 +266,25 @@ class CategoricalOps(DataTypeOps):
     """
 
     def __add__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform the numpy op add")
+        raise TypeError("Object with dtype category cannot perform the numpy op add.")
 
     def __sub__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform the numpy op subtract")
+        raise TypeError("Object with dtype category cannot perform the numpy op subtract.")
 
     def __mul__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform the numpy op multiply")
+        raise TypeError("Object with dtype category cannot perform the numpy op multiply.")
 
     def __truediv__(self, left, right):
         raise TypeError("Object with dtype category cannot perform truediv")
 
     def __floordiv__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform floordiv")
+        raise TypeError("Object with dtype category cannot perform floordiv.")
 
     def __mod__(self, left, right):
         pass
 
     def __pow__(self, left, right):
-        pass
+        raise TypeError("Object with dtype category cannot perform pow.")
 
 
 class BooleanOps(DataTypeOps):
@@ -338,7 +349,15 @@ class BooleanOps(DataTypeOps):
         pass
 
     def __pow__(self, left, right):
-        pass
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
+        ) or isinstance(right, str):
+            raise TypeError("exponentiation can not be applied on string series or literals.")
+
+        def pow_func(left, right):
+            return F.when(left == 1, left).otherwise(Column.__pow__(left, right))
+
+        return column_op(pow_func)(left, right)
 
 
 class DatetimeOps(DataTypeOps):
@@ -379,7 +398,7 @@ class DatetimeOps(DataTypeOps):
         pass
 
     def __pow__(self, left, right):
-        pass
+        raise TypeError("exponentiation can not be applied to date times.")
 
 
 class DateOps(DataTypeOps):
@@ -420,4 +439,4 @@ class DateOps(DataTypeOps):
         pass
 
     def __pow__(self, left, right):
-        pass
+        raise TypeError("exponentiation can not be applied to date.")
