@@ -111,6 +111,14 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __pow__(self, left, right):
         raise NotImplementedError()
 
+    @abstractmethod
+    def __radd__(self, left, right=None):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __rsub__(self, left, right=None):
+        raise NotImplementedError()
+
 
 class NumericOps(DataTypeOps):
     """
@@ -195,6 +203,16 @@ class NumericOps(DataTypeOps):
 
         return column_op(pow_func)(left, right)
 
+    def __radd__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__radd__)(left, right)
+
+    def __rsub__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("substraction can not be applied to string series or literals.")
+        return column_op(Column.__rsub__)(left, right)
+
 
 class IntegralOps(NumericOps):
     """
@@ -225,73 +243,6 @@ class DecimalOps(FractionalOps):
     """
 
     pass
-
-
-class StringOps(DataTypeOps):
-    """
-    The class for binary operations of Koalas objects with spark type: StringType.
-    """
-
-    def __add__(self, left, right):
-        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType):
-            return column_op(F.concat)(left, right)
-        elif isinstance(right, str):
-            return column_op(F.concat)(left, F.lit(right))
-        else:
-            raise TypeError("string addition can only be applied to string series or literals.")
-
-    def __sub__(self, left, right):
-        raise TypeError("substraction can not be applied to string series or literals.")
-
-    def __mul__(self, left, right):
-        if isinstance(right, str):
-            raise TypeError("multiplication can not be applied to a string literal.")
-
-        if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, IntegralType)
-        ) or isinstance(right, int):
-            return column_op(SF.repeat)(left, right)
-        else:
-            raise TypeError("a string series can only be multiplied to an int series or literal")
-
-    def __truediv__(self, left, right):
-        raise TypeError("division can not be applied on string series or literals.")
-
-    def __floordiv__(self, left, right):
-        raise TypeError("division can not be applied on string series or literals.")
-
-    def __mod__(self, left, right):
-        raise TypeError("modulo can not be applied on string series or literals.")
-
-    def __pow__(self, left, right):
-        raise TypeError("exponentiation can not be applied on string series or literals.")
-
-
-class CategoricalOps(DataTypeOps):
-    """
-    The class for binary operations of Koalas objects with categorical types.
-    """
-
-    def __add__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform the numpy op add.")
-
-    def __sub__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform the numpy op subtract.")
-
-    def __mul__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform the numpy op multiply.")
-
-    def __truediv__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform truediv")
-
-    def __floordiv__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform floordiv.")
-
-    def __mod__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform modulo.")
-
-    def __pow__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform exponentiation.")
 
 
 class BooleanOps(DataTypeOps):
@@ -374,6 +325,98 @@ class BooleanOps(DataTypeOps):
 
         return column_op(pow_func)(left, right)
 
+    def __radd__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("string addition can only be applied to string series or literals.")
+        return column_op(Column.__radd__)(left, right)
+
+    def __rsub__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("substraction can not be applied to string series or literals.")
+        return column_op(Column.__rsub__)(left, right)
+
+
+class StringOps(DataTypeOps):
+    """
+    The class for binary operations of Koalas objects with spark type: StringType.
+    """
+
+    def __add__(self, left, right):
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType):
+            return column_op(F.concat)(left, right)
+        elif isinstance(right, str):
+            return column_op(F.concat)(left, F.lit(right))
+        else:
+            raise TypeError("string addition can only be applied to string series or literals.")
+
+    def __sub__(self, left, right):
+        raise TypeError("substraction can not be applied to string series or literals.")
+
+    def __mul__(self, left, right):
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if (
+            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, IntegralType)
+        ) or isinstance(right, int):
+            return column_op(SF.repeat)(left, right)
+        else:
+            raise TypeError("a string series can only be multiplied to an int series or literal")
+
+    def __truediv__(self, left, right):
+        raise TypeError("division can not be applied on string series or literals.")
+
+    def __floordiv__(self, left, right):
+        raise TypeError("division can not be applied on string series or literals.")
+
+    def __mod__(self, left, right):
+        raise TypeError("modulo can not be applied on string series or literals.")
+
+    def __pow__(self, left, right):
+        raise TypeError("exponentiation can not be applied on string series or literals.")
+
+    def __radd__(self, left, right=None):
+        if isinstance(right, str):
+            return self._with_new_scol(F.concat(F.lit(right), left.spark.column))  # TODO: dtype?
+        else:
+            raise TypeError("string addition can only be applied to string series or literals.")
+
+    def __rsub__(self, left, right=None):
+        raise TypeError("substraction can not be applied to string series or literals.")
+
+
+class CategoricalOps(DataTypeOps):
+    """
+    The class for binary operations of Koalas objects with categorical types.
+    """
+
+    def __add__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform the numpy op add.")
+
+    def __sub__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform the numpy op subtract.")
+
+    def __mul__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform the numpy op multiply.")
+
+    def __truediv__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform truediv")
+
+    def __floordiv__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform floordiv.")
+
+    def __mod__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform modulo.")
+
+    def __pow__(self, left, right):
+        raise TypeError("Object with dtype category cannot perform exponentiation.")
+
+    def __radd__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform the numpy op add.")
+
+    def __rsub__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform the numpy op subtract.")
+
 
 class DatetimeOps(DataTypeOps):
     """
@@ -415,6 +458,23 @@ class DatetimeOps(DataTypeOps):
     def __pow__(self, left, right):
         raise TypeError("exponentiation can not be applied to date times.")
 
+    def __radd__(self, left, right=None):
+        raise TypeError("addition can not be applied to date times.")
+
+    def __rsub__(self, left, right=None):
+        # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
+        # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
+        msg = (
+            "Note that there is a behavior difference of timestamp subtraction. "
+            "The timestamp subtraction returns an integer in seconds, "
+            "whereas pandas returns 'timedelta64[ns]'."
+        )
+        if isinstance(right, datetime.datetime):
+            warnings.warn(msg, UserWarning)
+            return -(self.astype("long") - F.lit(right).cast(as_spark_type("long")))
+        else:
+            raise TypeError("datetime subtraction can only be applied to datetime series.")
+
 
 class DateOps(DataTypeOps):
     """
@@ -455,3 +515,20 @@ class DateOps(DataTypeOps):
 
     def __pow__(self, left, right):
         raise TypeError("exponentiation can not be applied to date.")
+
+    def __radd__(self, left, right=None):
+        raise TypeError("addition can not be applied to date.")
+
+    def __rsub__(self, left, right=None):
+        # Note that date subtraction casts arguments to integer. This is to mimic pandas's
+        # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
+        msg = (
+            "Note that there is a behavior difference of date subtraction. "
+            "The date subtraction returns an integer in days, "
+            "whereas pandas returns 'timedelta64[ns]'."
+        )
+        if isinstance(right, datetime.date) and not isinstance(right, datetime.datetime):
+            warnings.warn(msg, UserWarning)
+            return -column_op(F.datediff)(left, F.lit(right)).astype("long")
+        else:
+            raise TypeError("date subtraction can only be applied to date series.")

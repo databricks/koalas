@@ -18,7 +18,6 @@
 Base and utility classes for Koalas objects.
 """
 from abc import ABCMeta, abstractmethod
-import datetime
 from functools import wraps, partial
 from itertools import chain
 from typing import Any, Callable, Optional, Tuple, Union, cast, TYPE_CHECKING
@@ -52,7 +51,6 @@ from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import (
     Dtype,
-    as_spark_type,
     extension_dtypes,
     koalas_dtype,
     spark_type_to_pandas_dtype,
@@ -361,54 +359,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__mod__(self, other)
 
     def __radd__(self, other) -> Union["Series", "Index"]:
-        # Handle 'literal' + df['col']
-        if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
-            raise TypeError("string addition can only be applied to string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("addition can not be applied to date times.")
-
-        if isinstance(self.spark.data_type, StringType):
-            if isinstance(other, str):
-                return self._with_new_scol(
-                    F.concat(F.lit(other), self.spark.column)
-                )  # TODO: dtype?
-            else:
-                raise TypeError("string addition can only be applied to string series or literals.")
-        else:
-            return column_op(Column.__radd__)(self, other)
+        return self._dtype_op.__radd__(self, other)
 
     def __rsub__(self, other) -> Union["Series", "Index"]:
-        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
-            raise TypeError("substraction can not be applied to string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            # Note that timestamp subtraction casts arguments to integer. This is to mimic pandas's
-            # behaviors. pandas returns 'timedelta64[ns]' from 'datetime64[ns]'s subtraction.
-            msg = (
-                "Note that there is a behavior difference of timestamp subtraction. "
-                "The timestamp subtraction returns an integer in seconds, "
-                "whereas pandas returns 'timedelta64[ns]'."
-            )
-            if isinstance(other, datetime.datetime):
-                warnings.warn(msg, UserWarning)
-                return -(self.astype("long") - F.lit(other).cast(as_spark_type("long")))
-            else:
-                raise TypeError("datetime subtraction can only be applied to datetime series.")
-        elif isinstance(self.spark.data_type, DateType):
-            # Note that date subtraction casts arguments to integer. This is to mimic pandas's
-            # behaviors. pandas returns 'timedelta64[ns]' in days from date's subtraction.
-            msg = (
-                "Note that there is a behavior difference of date subtraction. "
-                "The date subtraction returns an integer in days, "
-                "whereas pandas returns 'timedelta64[ns]'."
-            )
-            if isinstance(other, datetime.date) and not isinstance(other, datetime.datetime):
-                warnings.warn(msg, UserWarning)
-                return -column_op(F.datediff)(self, F.lit(other)).astype("long")
-            else:
-                raise TypeError("date subtraction can only be applied to date series.")
-        return column_op(Column.__rsub__)(self, other)
+        return self._dtype_op.__rsub__(self, other)
 
     def __rmul__(self, other) -> Union["Series", "Index"]:
         if isinstance(other, str):
