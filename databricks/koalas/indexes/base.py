@@ -507,10 +507,10 @@ class Index(IndexOpsMixin):
             result = result.copy()
         return result
 
-    def map(self, mapper):
+    def map(self, mapper, return_type: ks.typedef.Dtype = str, na_action: Any = None):
         from databricks.koalas.indexes.extension import MapExtension
 
-        return MapExtension(index=self).map(mapper)
+        return MapExtension(index=self, na_action=na_action).map(mapper, return_type)
 
     @property
     def values(self) -> np.ndarray:

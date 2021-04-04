@@ -23,72 +23,98 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType
 import databricks.koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.internal import SPARK_DEFAULT_INDEX_NAME
+from databricks.koalas.typedef.typehints import Dtype, as_spark_type, pandas_dtype
 
-# TODO: User to supply ReturnType (default to StringType) & ability to supply value for missing
+# TODO: Implement na_action similar functionality to pandas
+# NB: Passing return_type into class cause Serialisation errors; instead pass at method level
 class MapExtension:
-    def __init__(self, index):
+    def __init__(self, index, na_action: Any):
         self._index = index
+        if (na_action != None):
+            raise NotImplementedError
+        else:
+            self._na_action = na_action
 
-    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series]):
+    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type):
         if isinstance(mapper, dict):
-            idx = self._map_dict(mapper)
+            idx = self._map_dict(mapper, return_type)
         elif isinstance(mapper, pd.Series):
-            idx = self._map_series(mapper)
+            idx = self._map_series(mapper, return_type)
         elif isinstance(mapper, ks.Series):
             raise NotImplementedError("Currently do not support input of ks.Series in Index.map")
         else:
-            idx = self._map_lambda(mapper)
+            idx = self._map_lambda(mapper, return_type)
         return idx
 
-    def _map_dict(self, mapper: dict) -> Index:
-        # Default missing values to None
-        @pandas_udf("string", PandasUDFType.SCALAR)
+    def _map_dict(self, mapper: dict, return_type) -> Index:
+        """
+        Helper method that has been isolated to merely help map an Index when argument in dict type.
+
+        Parameters
+        ----------
+        mapper: dict
+            Key-value pairs that are used to instruct mapping from index value to new value
+
+        Returns
+        -------
+        ks.Index
+
+        .. note:: Default return value for missing elements is the index's original value
+
+        """
+        # Default missing values to index value
+        @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
-            return col.apply(lambda i: mapper.get(i, None))
+            return col.apply(lambda i: mapper.get(i, return_type(i)))
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
-    def _map_series(self, mapper: pd.Series):
+    def _map_series(self, mapper: pd.Series, return_type: Dtype):
+        """
+        Helper method that has been isolated to merely help map an Index when argument in pandas.Series type.
+
+        Parameters
+        ----------
+        mapper: pandas.Series
+            Series of (index, value) that is used to instruct mapping from index value to new value
+
+        Returns
+        -------
+        ks.Index
+
+        .. note:: Default return value for missing elements is the index's original value
+
+        """
         # TODO: clean up, maybe move somewhere else
         def getOrElse(i):
             try:
                 return mapper.loc[i]
             except:
-                return f"{i}"
+                return return_type(i)
 
-        @pandas_udf("string", PandasUDFType.SCALAR)
+        @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
             return col.apply(lambda i: getOrElse(i))
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
-    def _map_lambda(self, mapper: Callable[[Any], Any]):
-        result = mapper(self._index)
-
-        # Try to use this result if we can
-        if isinstance(result, str):
-            result = self._lambda_str(mapper)
-
-        if not isinstance(result, Index):
-            raise TypeError("The map function must return an Index object")
-        return result
-
-    def _lambda_str(self, mapper):
+    def _map_lambda(self, mapper: Callable[[Any], Any], return_type: Dtype):
         """
-        Mapping helper when lambda returns str
+        Helper method that has been isolated to merely help map Index when the argument is a
+        generic lambda function.
 
         Parameters
         ----------
-        mapper
-            A lambda function that does something
+        mapper: Callable[[Any], Any]
+            Generic lambda function that is applied to index
 
         Returns
         -------
-        Index
+        ks.Index
 
         """
 
-        @pandas_udf("string", PandasUDFType.SCALAR)
+        @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
             return col.apply(mapper)
 
