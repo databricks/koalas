@@ -1,6 +1,11 @@
+**NOTE**: Koalas will be ported into [Apache Spark](https://github.com/apache/spark) after Apache Spark 3.2 release. Koalas is in maintenance mode and we only accept critical and uegent issues. See the [SPIP Voting](http://apache-spark-developers-list.1001551.n3.nabble.com/VOTE-SPIP-Support-pandas-API-layer-on-PySpark-td30996.html) for more details.
+
+
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/databricks/koalas/master/icons/koalas-logo.png" width="140"/>
 </p>
+
 
 <p align="center">
   pandas API on Apache Spark
