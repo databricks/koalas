@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from typing import Any, Union, Callable
+from typing import Any, Callable, Union
 
 import pandas as pd
 
@@ -23,7 +23,7 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType
 import databricks.koalas as ks
 from databricks.koalas.indexes.base import Index
 from databricks.koalas.internal import SPARK_DEFAULT_INDEX_NAME
-from databricks.koalas.typedef.typehints import Dtype, as_spark_type, pandas_dtype
+from databricks.koalas.typedef.typehints import Dtype, as_spark_type
 
 # TODO: Implement na_action similar functionality to pandas
 # NB: Passing return_type into class cause Serialisation errors; instead pass at method level
@@ -31,11 +31,24 @@ class MapExtension:
     def __init__(self, index, na_action: Any):
         self._index = index
         if (na_action != None):
-            raise NotImplementedError
+            raise NotImplementedError("Currently do not support na_action functionality")
         else:
             self._na_action = na_action
 
-    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type):
+    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type: Dtype) -> Index:
+        """
+        Single callable/entry point to map Index values
+
+        Parameters
+        ----------
+        mapper: dict, function or pd.Series
+        return_type: Dtype
+
+        Returns
+        -------
+        ks.Index
+
+        """
         if isinstance(mapper, dict):
             idx = self._map_dict(mapper, return_type)
         elif isinstance(mapper, pd.Series):
@@ -46,7 +59,7 @@ class MapExtension:
             idx = self._map_lambda(mapper, return_type)
         return idx
 
-    def _map_dict(self, mapper: dict, return_type) -> Index:
+    def _map_dict(self, mapper: dict, return_type: Dtype) -> Index:
         """
         Helper method that has been isolated to merely help map an Index when argument in dict type.
 
@@ -54,6 +67,8 @@ class MapExtension:
         ----------
         mapper: dict
             Key-value pairs that are used to instruct mapping from index value to new value
+        return_type: Dtype
+            Data type of returned value
 
         Returns
         -------
@@ -62,14 +77,13 @@ class MapExtension:
         .. note:: Default return value for missing elements is the index's original value
 
         """
-        # Default missing values to index value
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
             return col.apply(lambda i: mapper.get(i, return_type(i)))
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
-    def _map_series(self, mapper: pd.Series, return_type: Dtype):
+    def _map_series(self, mapper: pd.Series, return_type: Dtype) -> Index:
         """
         Helper method that has been isolated to merely help map an Index when argument in pandas.Series type.
 
@@ -77,6 +91,8 @@ class MapExtension:
         ----------
         mapper: pandas.Series
             Series of (index, value) that is used to instruct mapping from index value to new value
+        return_type: Dtype
+            Data type of returned value
 
         Returns
         -------
@@ -98,7 +114,7 @@ class MapExtension:
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
-    def _map_lambda(self, mapper: Callable[[Any], Any], return_type: Dtype):
+    def _map_lambda(self, mapper: Callable[[Any], Any], return_type: Dtype) -> Index:
         """
         Helper method that has been isolated to merely help map Index when the argument is a
         generic lambda function.
@@ -107,13 +123,14 @@ class MapExtension:
         ----------
         mapper: Callable[[Any], Any]
             Generic lambda function that is applied to index
+        return_type: Dtype
+            Data type of returned value
 
         Returns
         -------
         ks.Index
 
         """
-
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
             return col.apply(mapper)

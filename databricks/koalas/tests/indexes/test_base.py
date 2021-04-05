@@ -67,8 +67,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             self.assert_eq(type(kdf.index).__name__, type(pdf.index).__name__)
 
     def test_map(self):
-        from pyspark.sql.types import StringType, IntegerType, DoubleType, TimestampType
-
         kser = ks.Series([1, 2, 3], index=[1, 2, 3])
 
         with self.assertRaisesRegex(
@@ -76,6 +74,7 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         ):
             kser.index.map(ks.Series(["one", "two", "three"], index=[1, 2, 3]))
 
+        # Apply series
         self.assert_eq(
             kser.index.map(pd.Series(["one", "2", "three"], index=[1, 2, 3])),
             ks.Index(["one", "2", "three"]),
@@ -83,18 +82,23 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         self.assert_eq(
             kser.index.map(pd.Series(["one", "2"], index=[1, 2])), ks.Index(["one", "2", "3"]),
         )
-        self.assert_eq(kser.index.map(lambda id: id + 1, return_type=int), ks.Index([2, 3, 4]))
-        self.assert_eq(
-            kser.index.map(lambda id: id + 1.1, return_type=float), ks.Index([2.1, 3.1, 4.1])
-        )
+
+        # Apply dict
         self.assert_eq(
             kser.index.map({1: "one", 2: "two", 3: "three"}), ks.Index(["one", "two", "three"])
         )
         self.assert_eq(kser.index.map({1: "one", 2: "two"}), ks.Index(["one", "two", "3"]))
         self.assert_eq(kser.index.map({1: 10, 2: 20}, return_type=int), ks.Index([10, 20, 3]))
+
+        # Apply lambda
+        self.assert_eq(kser.index.map(lambda id: id + 1, return_type=int), ks.Index([2, 3, 4]))
+        self.assert_eq(
+            kser.index.map(lambda id: id + 1.1, return_type=float), ks.Index([2.1, 3.1, 4.1])
+        )
         self.assert_eq(
             kser.index.map(lambda id: f"{id} + 1", str), ks.Index(["1 + 1", "2 + 1", "3 + 1"])
         )
+
         kser = ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-09", periods=4, freq="2D"))
         self.assert_eq(
             kser.index.map(lambda id: id + DateOffset(days=1), return_type=datetime),

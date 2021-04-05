@@ -15,7 +15,7 @@
 #
 
 from functools import partial
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 import warnings
 
 import pandas as pd
@@ -507,7 +507,20 @@ class Index(IndexOpsMixin):
             result = result.copy()
         return result
 
-    def map(self, mapper, return_type: ks.typedef.Dtype = str, na_action: Any = None):
+    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type: ks.typedef.Dtype = str, na_action: Any = None):
+        """
+        Use to change Index values
+
+        Parameters
+        ----------
+        mapper: dict, function or pd.Series
+        return_type: Dtype
+
+        Returns
+        -------
+        ks.Index
+
+        """
         from databricks.koalas.indexes.extension import MapExtension
 
         return MapExtension(index=self, na_action=na_action).map(mapper, return_type)
