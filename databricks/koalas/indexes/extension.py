@@ -30,12 +30,14 @@ from databricks.koalas.typedef.typehints import Dtype, as_spark_type
 class MapExtension:
     def __init__(self, index, na_action: Any):
         self._index = index
-        if (na_action != None):
+        if na_action != None:
             raise NotImplementedError("Currently do not support na_action functionality")
         else:
             self._na_action = na_action
 
-    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type: Dtype) -> Index:
+    def map(
+        self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type: Dtype
+    ) -> Index:
         """
         Single callable/entry point to map Index values
 
@@ -77,6 +79,7 @@ class MapExtension:
         .. note:: Default return value for missing elements is the index's original value
 
         """
+
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
             return col.apply(lambda i: mapper.get(i, return_type(i)))
@@ -131,6 +134,7 @@ class MapExtension:
         ks.Index
 
         """
+
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
             return col.apply(mapper)

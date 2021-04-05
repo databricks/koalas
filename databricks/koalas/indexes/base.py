@@ -507,7 +507,12 @@ class Index(IndexOpsMixin):
             result = result.copy()
         return result
 
-    def map(self, mapper: Union[dict, Callable[[Any], Any], pd.Series], return_type: ks.typedef.Dtype = str, na_action: Any = None):
+    def map(
+        self,
+        mapper: Union[dict, Callable[[Any], Any], pd.Series],
+        return_type: ks.typedef.Dtype = str,
+        na_action: Any = None,
+    ):
         """
         Use to change Index values
 
