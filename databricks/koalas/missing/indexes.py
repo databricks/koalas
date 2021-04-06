@@ -131,7 +131,6 @@ class MissingPandasLikeCategoricalIndex(MissingPandasLikeIndex):
     set_categories = _unsupported_function("set_categories", cls="CategoricalIndex")
     as_ordered = _unsupported_function("as_ordered", cls="CategoricalIndex")
     as_unordered = _unsupported_function("as_unordered", cls="CategoricalIndex")
-    map = _unsupported_function("map", cls="CategoricalIndex")
 
 
 class MissingPandasLikeMultiIndex(object):
@@ -160,7 +159,6 @@ class MissingPandasLikeMultiIndex(object):
     is_lexsorted = _unsupported_function("is_lexsorted")
     is_lexsorted_for_tuple = _unsupported_function("is_lexsorted_for_tuple")
     join = _unsupported_function("join")
-    map = _unsupported_function("map")
     putmask = _unsupported_function("putmask")
     ravel = _unsupported_function("ravel")
     reindex = _unsupported_function("reindex")
