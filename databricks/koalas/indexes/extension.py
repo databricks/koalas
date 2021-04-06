@@ -25,12 +25,13 @@ from databricks.koalas.indexes.base import Index
 from databricks.koalas.internal import SPARK_DEFAULT_INDEX_NAME
 from databricks.koalas.typedef.typehints import Dtype, as_spark_type
 
+
 # TODO: Implement na_action similar functionality to pandas
 # NB: Passing return_type into class cause Serialisation errors; instead pass at method level
 class MapExtension:
     def __init__(self, index, na_action: Any):
         self._index = index
-        if na_action != None:
+        if na_action is not None:
             raise NotImplementedError("Currently do not support na_action functionality")
         else:
             self._na_action = na_action
