@@ -135,6 +135,10 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __rpow__(self, left, right=None):
         raise NotImplementedError()
 
+    @abstractmethod
+    def __rmod__(self, left, right=None):
+        raise NotImplementedError()
+
 
 class NumericOps(DataTypeOps):
     """
@@ -264,6 +268,15 @@ class NumericOps(DataTypeOps):
             return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
 
         return column_op(rpow_func)(left, right)
+
+    def __rmod__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("modulo can not be applied on string series or literals.")
+
+        def rmod(left, right):
+            return ((right % left) + left) % left
+
+        return column_op(rmod)(left, right)
 
 
 class IntegralOps(NumericOps):
@@ -425,6 +438,15 @@ class BooleanOps(DataTypeOps):
 
         return column_op(rpow_func)(left, right)
 
+    def __rmod__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("modulo can not be applied on string series or literals.")
+
+        def rmod(left, right):
+            return ((right % left) + left) % left
+
+        return column_op(rmod)(left, right)
+
 
 class StringOps(DataTypeOps):
     """
@@ -467,7 +489,7 @@ class StringOps(DataTypeOps):
 
     def __radd__(self, left, right=None):
         if isinstance(right, str):
-            return self._with_new_scol(F.concat(F.lit(right), left.spark.column))  # TODO: dtype?
+            return left._with_new_scol(F.concat(F.lit(right), left.spark.column))  # TODO: dtype?
         else:
             raise TypeError("string addition can only be applied to string series or literals.")
 
@@ -492,6 +514,9 @@ class StringOps(DataTypeOps):
 
     def __rpow__(self, left, right=None):
         raise TypeError("exponentiation can not be applied on string series or literals.")
+
+    def __rmod__(self, left, right=None):
+        raise TypeError("modulo can not be applied on string series or literals.")
 
 
 class CategoricalOps(DataTypeOps):
@@ -529,16 +554,19 @@ class CategoricalOps(DataTypeOps):
         raise TypeError("Object with dtype category cannot perform the numpy op subtract.")
 
     def __rmul__(self, left, right=None):
-        raise TypeError("Object with dtype category cannot perform rmul")
+        raise TypeError("Object with dtype category cannot perform the numpy op multiply")
 
     def __rtruediv__(self, left, right=None):
-        raise TypeError("Object with dtype category cannot perform rtruediv")
+        raise TypeError("Object with dtype category cannot perform truediv")
 
     def __rfloordiv__(self, left, right=None):
-        raise TypeError("Object with dtype category cannot perform rfloordiv")
+        raise TypeError("Object with dtype category cannot perform floordiv")
 
     def __rpow__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform exponentiation.")
+
+    def __rmod__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform modulo.")
 
 
 class DatetimeOps(DataTypeOps):
@@ -594,7 +622,7 @@ class DatetimeOps(DataTypeOps):
         )
         if isinstance(right, datetime.datetime):
             warnings.warn(msg, UserWarning)
-            return -(self.astype("long") - F.lit(right).cast(as_spark_type("long")))
+            return -(left.astype("long") - F.lit(right).cast(as_spark_type("long")))
         else:
             raise TypeError("datetime subtraction can only be applied to datetime series.")
 
@@ -609,6 +637,9 @@ class DatetimeOps(DataTypeOps):
 
     def __rpow__(self, left, right=None):
         raise TypeError("exponentiation can not be applied to date times.")
+
+    def __rmod__(self, left, right=None):
+        raise TypeError("modulo can not be applied to date times.")
 
 
 class DateOps(DataTypeOps):
@@ -679,3 +710,6 @@ class DateOps(DataTypeOps):
 
     def __rpow__(self, left, right=None):
         raise TypeError("exponentiation can not be applied to date.")
+
+    def __rmod__(self, left, right=None):
+        raise TypeError("modulo can not be applied to date.")

@@ -393,16 +393,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__rfloordiv__(self, other)
 
     def __rmod__(self, other) -> Union["Series", "Index"]:
-        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
-            raise TypeError("modulo can not be applied on string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("modulo can not be applied to date times.")
-
-        def rmod(left, right):
-            return ((right % left) + left) % left
-
-        return column_op(rmod)(self, other)
+        return self._dtype_op.__rmod__(self, other)
 
     def __pow__(self, other) -> Union["Series", "Index"]:
         return self._dtype_op.__pow__(self, other)
