@@ -365,21 +365,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__rsub__(self, other)
 
     def __rmul__(self, other) -> Union["Series", "Index"]:
-        if isinstance(other, str):
-            raise TypeError("multiplication can not be applied to a string literal.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("multiplication can not be applied to date times.")
-
-        if isinstance(self.spark.data_type, StringType):
-            if isinstance(other, int):
-                return column_op(SF.repeat)(self, other)
-            else:
-                raise TypeError(
-                    "a string series can only be multiplied to an int series or literal"
-                )
-
-        return column_op(Column.__rmul__)(self, other)
+        return self._dtype_op.__rmul__(self, other)
 
     def __rtruediv__(self, other) -> Union["Series", "Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):

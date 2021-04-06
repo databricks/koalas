@@ -119,6 +119,10 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __rsub__(self, left, right=None):
         raise NotImplementedError()
 
+    @abstractmethod
+    def __rmul__(self, left, right=None):
+        raise NotImplementedError()
+
 
 class NumericOps(DataTypeOps):
     """
@@ -212,6 +216,11 @@ class NumericOps(DataTypeOps):
         if isinstance(right, str):
             raise TypeError("substraction can not be applied to string series or literals.")
         return column_op(Column.__rsub__)(left, right)
+
+    def __rmul__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+        return column_op(Column.__rmul__)(left, right)
 
 
 class IntegralOps(NumericOps):
@@ -335,6 +344,11 @@ class BooleanOps(DataTypeOps):
             raise TypeError("substraction can not be applied to string series or literals.")
         return column_op(Column.__rsub__)(left, right)
 
+    def __rmul__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("multiplication can not be applied to a string literal.")
+        return column_op(Column.__rmul__)(left, right)
+
 
 class StringOps(DataTypeOps):
     """
@@ -384,11 +398,23 @@ class StringOps(DataTypeOps):
     def __rsub__(self, left, right=None):
         raise TypeError("substraction can not be applied to string series or literals.")
 
+    def __rmul__(self, left, right=None):
+        if isinstance(right, str):
+            # TODO: Remove?
+            raise TypeError("multiplication can not be applied to a string literal.")
+
+        if isinstance(right, int):
+            return column_op(SF.repeat)(left, right)
+        else:
+            raise TypeError("a string series can only be multiplied to an int series or literal")
+
 
 class CategoricalOps(DataTypeOps):
     """
     The class for binary operations of Koalas objects with categorical types.
     """
+
+    # TODO: Consolidate error messages
 
     def __add__(self, left, right):
         raise TypeError("Object with dtype category cannot perform the numpy op add.")
@@ -416,6 +442,9 @@ class CategoricalOps(DataTypeOps):
 
     def __rsub__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform the numpy op subtract.")
+
+    def __rmul__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform rmul")
 
 
 class DatetimeOps(DataTypeOps):
@@ -475,6 +504,9 @@ class DatetimeOps(DataTypeOps):
         else:
             raise TypeError("datetime subtraction can only be applied to datetime series.")
 
+    def __rmul__(self, left, right=None):
+        raise TypeError("multiplication can not be applied to date.")
+
 
 class DateOps(DataTypeOps):
     """
@@ -532,3 +564,6 @@ class DateOps(DataTypeOps):
             return -column_op(F.datediff)(left, F.lit(right)).astype("long")
         else:
             raise TypeError("date subtraction can only be applied to date series.")
+
+    def __rmul__(self, left, right=None):
+        raise TypeError("multiplication can not be applied to date.")
