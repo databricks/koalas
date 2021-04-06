@@ -89,7 +89,8 @@ class MapExtension:
 
     def _map_series(self, mapper: pd.Series, return_type: Dtype) -> Index:
         """
-        Helper method that has been isolated to merely help map an Index when argument in pandas.Series type.
+        Helper method that has been isolated to merely help map an Index
+        when argument in pandas.Series type.
 
         Parameters
         ----------
