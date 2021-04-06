@@ -123,6 +123,10 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __rmul__(self, left, right=None):
         raise NotImplementedError()
 
+    @abstractmethod
+    def __rtruediv__(self, left, right=None):
+        raise NotImplementedError()
+
 
 class NumericOps(DataTypeOps):
     """
@@ -222,6 +226,17 @@ class NumericOps(DataTypeOps):
             raise TypeError("multiplication can not be applied to a string literal.")
         return column_op(Column.__rmul__)(left, right)
 
+    def __rtruediv__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def rtruediv(left, right):
+            return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
+                F.lit(right).__truediv__(left)
+            )
+
+        return numpy_column_op(rtruediv)(left, right)
+
 
 class IntegralOps(NumericOps):
     """
@@ -258,6 +273,8 @@ class BooleanOps(DataTypeOps):
     """
     The class for binary operations of Koalas objects with spark type: BooleanType.
     """
+
+    # TODO: Take advantage of NumericOps?
 
     def __add__(self, left, right):
         if (
@@ -349,6 +366,17 @@ class BooleanOps(DataTypeOps):
             raise TypeError("multiplication can not be applied to a string literal.")
         return column_op(Column.__rmul__)(left, right)
 
+    def __rtruediv__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def rtruediv(left, right):
+            return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
+                F.lit(right).__truediv__(left)
+            )
+
+        return numpy_column_op(rtruediv)(left, right)
+
 
 class StringOps(DataTypeOps):
     """
@@ -408,6 +436,9 @@ class StringOps(DataTypeOps):
         else:
             raise TypeError("a string series can only be multiplied to an int series or literal")
 
+    def __rtruediv__(self, left, right=None):
+        raise TypeError("division can not be applied on string series or literals.")
+
 
 class CategoricalOps(DataTypeOps):
     """
@@ -445,6 +476,9 @@ class CategoricalOps(DataTypeOps):
 
     def __rmul__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform rmul")
+
+    def __rtruediv__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform rtruediv")
 
 
 class DatetimeOps(DataTypeOps):
@@ -505,7 +539,10 @@ class DatetimeOps(DataTypeOps):
             raise TypeError("datetime subtraction can only be applied to datetime series.")
 
     def __rmul__(self, left, right=None):
-        raise TypeError("multiplication can not be applied to date.")
+        raise TypeError("multiplication can not be applied to date times.")
+
+    def __rtruediv__(self, left, right=None):
+        raise TypeError("division can not be applied to date times.")
 
 
 class DateOps(DataTypeOps):
@@ -567,3 +604,6 @@ class DateOps(DataTypeOps):
 
     def __rmul__(self, left, right=None):
         raise TypeError("multiplication can not be applied to date.")
+
+    def __rtruediv__(self, left, right=None):
+        raise TypeError("division can not be applied to date.")

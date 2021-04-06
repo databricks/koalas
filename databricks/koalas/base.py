@@ -368,18 +368,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__rmul__(self, other)
 
     def __rtruediv__(self, other) -> Union["Series", "Index"]:
-        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
-            raise TypeError("division can not be applied on string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("division can not be applied to date times.")
-
-        def rtruediv(left, right):
-            return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
-                F.lit(right).__truediv__(left)
-            )
-
-        return numpy_column_op(rtruediv)(self, other)
+        return self._dtype_op.__rtruediv__(self, other)
 
     def __floordiv__(self, other) -> Union["Series", "Index"]:
         """
