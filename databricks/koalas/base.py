@@ -408,10 +408,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__pow__(self, other)
 
     def __rpow__(self, other) -> Union["Series", "Index"]:
-        def rpow_func(left, right):
-            return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
-
-        return column_op(rpow_func)(self, other)
+        return self._dtype_op.__rpow__(self, other)
 
     __abs__ = column_op(F.abs)
 

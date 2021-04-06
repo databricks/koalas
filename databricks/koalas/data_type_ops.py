@@ -131,6 +131,10 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __rfloordiv__(self, left, right=None):
         raise NotImplementedError()
 
+    @abstractmethod
+    def __rpow__(self, left, right=None):
+        raise NotImplementedError()
+
 
 class NumericOps(DataTypeOps):
     """
@@ -251,6 +255,15 @@ class NumericOps(DataTypeOps):
             )
 
         return numpy_column_op(rfloordiv)(left, right)
+
+    def __rpow__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def rpow_func(left, right):
+            return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
+
+        return column_op(rpow_func)(left, right)
 
 
 class IntegralOps(NumericOps):
@@ -403,6 +416,15 @@ class BooleanOps(DataTypeOps):
 
         return numpy_column_op(rfloordiv)(left, right)
 
+    def __rpow__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def rpow_func(left, right):
+            return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
+
+        return column_op(rpow_func)(left, right)
+
 
 class StringOps(DataTypeOps):
     """
@@ -468,6 +490,9 @@ class StringOps(DataTypeOps):
     def __rfloordiv__(self, left, right=None):
         raise TypeError("division can not be applied on string series or literals.")
 
+    def __rpow__(self, left, right=None):
+        raise TypeError("exponentiation can not be applied on string series or literals.")
+
 
 class CategoricalOps(DataTypeOps):
     """
@@ -511,6 +536,9 @@ class CategoricalOps(DataTypeOps):
 
     def __rfloordiv__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform rfloordiv")
+
+    def __rpow__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform exponentiation.")
 
 
 class DatetimeOps(DataTypeOps):
@@ -579,6 +607,9 @@ class DatetimeOps(DataTypeOps):
     def __rfloordiv__(self, left, right=None):
         raise TypeError("division can not be applied to date times.")
 
+    def __rpow__(self, left, right=None):
+        raise TypeError("exponentiation can not be applied to date times.")
+
 
 class DateOps(DataTypeOps):
     """
@@ -645,3 +676,6 @@ class DateOps(DataTypeOps):
 
     def __rfloordiv__(self, left, right=None):
         raise TypeError("division can not be applied to date.")
+
+    def __rpow__(self, left, right=None):
+        raise TypeError("exponentiation can not be applied to date.")
