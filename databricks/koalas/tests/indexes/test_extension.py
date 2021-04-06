@@ -66,11 +66,11 @@ class MapExtensionTest(ReusedSQLTestCase, TestUtils):
             MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1, int), ks.Index([2, 3, 4])
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1.1, return_type=float),
+            MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1.1, float),
             ks.Index([2.1, 3.1, 4.1]),
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_lambda(lambda id: f"{id} + 1", str),
+            MapExtension(self.kidx, None)._map_lambda(lambda id: "{id} + 1".format(id=id), str),
             ks.Index(["1 + 1", "2 + 1", "3 + 1"]),
         )
         kser = ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-09", periods=4, freq="2D"))
