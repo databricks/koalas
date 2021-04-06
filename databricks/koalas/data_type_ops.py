@@ -127,6 +127,10 @@ class DataTypeOps(object, metaclass=ABCMeta):
     def __rtruediv__(self, left, right=None):
         raise NotImplementedError()
 
+    @abstractmethod
+    def __rfloordiv__(self, left, right=None):
+        raise NotImplementedError()
+
 
 class NumericOps(DataTypeOps):
     """
@@ -236,6 +240,17 @@ class NumericOps(DataTypeOps):
             )
 
         return numpy_column_op(rtruediv)(left, right)
+
+    def __rfloordiv__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def rfloordiv(left, right):
+            return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
+                F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
+            )
+
+        return numpy_column_op(rfloordiv)(left, right)
 
 
 class IntegralOps(NumericOps):
@@ -377,6 +392,17 @@ class BooleanOps(DataTypeOps):
 
         return numpy_column_op(rtruediv)(left, right)
 
+    def __rfloordiv__(self, left, right=None):
+        if isinstance(right, str):
+            raise TypeError("division can not be applied on string series or literals.")
+
+        def rfloordiv(left, right):
+            return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
+                F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
+            )
+
+        return numpy_column_op(rfloordiv)(left, right)
+
 
 class StringOps(DataTypeOps):
     """
@@ -439,6 +465,9 @@ class StringOps(DataTypeOps):
     def __rtruediv__(self, left, right=None):
         raise TypeError("division can not be applied on string series or literals.")
 
+    def __rfloordiv__(self, left, right=None):
+        raise TypeError("division can not be applied on string series or literals.")
+
 
 class CategoricalOps(DataTypeOps):
     """
@@ -479,6 +508,9 @@ class CategoricalOps(DataTypeOps):
 
     def __rtruediv__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform rtruediv")
+
+    def __rfloordiv__(self, left, right=None):
+        raise TypeError("Object with dtype category cannot perform rfloordiv")
 
 
 class DatetimeOps(DataTypeOps):
@@ -544,6 +576,9 @@ class DatetimeOps(DataTypeOps):
     def __rtruediv__(self, left, right=None):
         raise TypeError("division can not be applied to date times.")
 
+    def __rfloordiv__(self, left, right=None):
+        raise TypeError("division can not be applied to date times.")
+
 
 class DateOps(DataTypeOps):
     """
@@ -606,4 +641,7 @@ class DateOps(DataTypeOps):
         raise TypeError("multiplication can not be applied to date.")
 
     def __rtruediv__(self, left, right=None):
+        raise TypeError("division can not be applied to date.")
+
+    def __rfloordiv__(self, left, right=None):
         raise TypeError("division can not be applied to date.")

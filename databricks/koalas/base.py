@@ -47,7 +47,6 @@ from databricks.koalas.internal import (
     NATURAL_ORDER_COLUMN_NAME,
     SPARK_DEFAULT_INDEX_NAME,
 )
-from databricks.koalas.spark import functions as SF
 from databricks.koalas.spark.accessors import SparkIndexOpsMethods
 from databricks.koalas.typedef import (
     Dtype,
@@ -391,18 +390,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         return self._dtype_op.__floordiv__(self, other)
 
     def __rfloordiv__(self, other) -> Union["Series", "Index"]:
-        if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
-            raise TypeError("division can not be applied on string series or literals.")
-
-        if isinstance(self.spark.data_type, TimestampType):
-            raise TypeError("division can not be applied to date times.")
-
-        def rfloordiv(left, right):
-            return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
-                F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
-            )
-
-        return numpy_column_op(rfloordiv)(self, other)
+        return self._dtype_op.__rfloordiv__(self, other)
 
     def __rmod__(self, other) -> Union["Series", "Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
