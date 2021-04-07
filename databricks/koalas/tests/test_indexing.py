@@ -1088,7 +1088,7 @@ class IndexingTest(ReusedSQLTestCase):
         kdf.iloc[0, 1] = 50
         self.assert_eq(kdf, pdf)
 
-        with self.assertRaisesRegex(ValueError, "Incompatible indexer with Series"):
+        with self.assertRaisesRegex(ValueError, "setting an array element with a sequence."):
             kdf.iloc[0, 0] = -kdf.max_speed
         with self.assertRaisesRegex(ValueError, "shape mismatch"):
             kdf.iloc[:, [1, 0]] = -kdf.max_speed

@@ -1851,7 +1851,7 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         another_kdf = ks.DataFrame(pdf)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            kdf.iloc[[1, 2], [1]] = another_kdf.max_speed
+            kdf.iloc[[1, 2], [1]] = another_kdf.max_speed.iloc[[1, 2]]
 
     def test_series_loc_setitem(self):
         pser = pd.Series([1, 2, 3], index=["cobra", "viper", "sidewinder"])
@@ -1877,7 +1877,7 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
         kser_another = ks.from_pandas(pser_another)
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
-            kser.iloc[[1]] = -kser_another
+            kser.iloc[[1]] = -kser_another.iloc[[1]]
 
     def test_where(self):
         pdf1 = pd.DataFrame({"A": [0, 1, 2, 3, 4], "B": [100, 200, 300, 400, 500]})
