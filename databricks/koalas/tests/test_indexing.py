@@ -1226,14 +1226,13 @@ class IndexingTest(ReusedSQLTestCase):
         self.assert_eq(kser, pser)
         self.assert_eq(kdf, pdf)
 
-        # TODO: matching the behavior with pandas 1.2 and uncomment below test.
-        # with self.assertRaisesRegex(
-        #     ValueError,
-        #     "cannot set using a list-like indexer with a different length than the value",
-        # ):
-        #     kser.iloc[[1]] = -kdf.b
+        with self.assertRaisesRegex(
+            ValueError,
+            "cannot set using a list-like indexer with a different length than the value",
+        ):
+            kser.iloc[[1]] = -kdf.b
 
-        with self.assertRaisesRegex(ValueError, "Incompatible indexer with DataFrame"):
+        with self.assertRaisesRegex(ValueError, "setting an array element with a sequence."):
             kser.iloc[1] = kdf[["b"]]
 
     def test_iloc_raises(self):
