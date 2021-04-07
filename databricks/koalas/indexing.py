@@ -1701,13 +1701,13 @@ class iLocIndexer(LocIndexerLike):
             if is_list_like(key) and (len(kdf_or_kser) != len(value)):
                 if self._is_series:
                     raise ValueError(
-                        "cannot set using a list-like indexer with a different length than the value"
+                        "cannot set using a list-like indexer with a different length than "
+                        "the value"
                     )
                 else:
                     raise ValueError(
-                        "shape mismatch: value array of shape ({},) could not be broadcast to indexing result of shape {}".format(
-                            len(value), kdf_or_kser.shape
-                        )
+                        "shape mismatch: value array of shape ({},) could not be broadcast "
+                        "to indexing result of shape {}".format(len(value), kdf_or_kser.shape)
                     )
             elif not is_list_like(key):
                 raise ValueError("setting an array element with a sequence.")

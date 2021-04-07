@@ -1150,9 +1150,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kdf, pdf)
 
         with self.assertRaisesRegex(
-            ValueError,
-            "shape mismatch: value array of shape \(3,\) could not be broadcast to indexing "
-            "result of shape \(2, 1\)",
+            ValueError, "shape mismatch",
         ):
             kdf.iloc[[1, 2], [1]] = -another_kdf.max_speed
 
@@ -1160,11 +1158,7 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         pdf.iloc[[0, 1, 2], 1] = 10 * pdf.max_speed
         self.assert_eq(kdf, pdf)
 
-        with self.assertRaisesRegex(
-            ValueError,
-            "shape mismatch: value array of shape \(3,\) could not be broadcast to indexing "
-            "result of shape \(1,\)",
-        ):
+        with self.assertRaisesRegex(ValueError, "shape mismatch"):
             kdf.iloc[[0], 1] = 10 * another_kdf.max_speed
 
     def test_series_loc_setitem(self):
