@@ -181,12 +181,22 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(kser.head(-10), pser.head(-10))
 
     def test_last(self):
-        index = pd.date_range("2018-04-09", periods=4, freq="2D")
-        pd_input = pd.Series([1, 2, 3, 4], index=index)
-        ks_input = ks.Series([1, 2, 3, 4], index=index)
         with self.assertRaises(TypeError):
             self.kser.last("1D")
-        self.assert_eq(ks_input.last("1D"), pd_input.last("1D"))
+
+        index = pd.date_range("2018-04-09", periods=4, freq="2D")
+        pser = pd.Series([1, 2, 3, 4], index=index)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.last("1D"), pser.last("1D"))
+
+    def test_first(self):
+        with self.assertRaises(TypeError):
+            self.kser.first("1D")
+
+        index = pd.date_range("2018-04-09", periods=4, freq="2D")
+        pser = pd.Series([1, 2, 3, 4], index=index)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(kser.first("1D"), pser.first("1D"))
 
     def test_rename(self):
         pser = pd.Series([1, 2, 3, 4, 5, 6, 7], name="x")
@@ -2882,3 +2892,46 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(pser ** np.nan, kser ** np.nan)
         self.assert_eq(pser.rpow(np.nan), kser.rpow(np.nan))
         self.assert_eq(1 ** pser, 1 ** kser)
+
+    def test_between_time(self):
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pser = pd.Series([1, 2, 3, 4], index=idx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.between_time("0:15", "0:45").sort_index(),
+            kser.between_time("0:15", "0:45").sort_index(),
+        )
+
+        pser.index.name = "ts"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.between_time("0:15", "0:45").sort_index(),
+            kser.between_time("0:15", "0:45").sort_index(),
+        )
+
+        pser.index.name = "index"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.between_time("0:15", "0:45").sort_index(),
+            kser.between_time("0:15", "0:45").sort_index(),
+        )
+
+    def test_at_time(self):
+        idx = pd.date_range("2018-04-09", periods=4, freq="1D20min")
+        pser = pd.Series([1, 2, 3, 4], index=idx)
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.at_time("0:20").sort_index(), kser.at_time("0:20").sort_index(),
+        )
+
+        pser.index.name = "ts"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.at_time("0:20").sort_index(), kser.at_time("0:20").sort_index(),
+        )
+
+        pser.index.name = "index"
+        kser = ks.from_pandas(pser)
+        self.assert_eq(
+            pser.at_time("0:20").sort_index(), kser.at_time("0:20").sort_index(),
+        )

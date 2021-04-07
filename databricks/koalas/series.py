@@ -17,6 +17,7 @@
 """
 A wrapper class for Spark Column to behave similar to pandas Series.
 """
+import datetime
 import re
 import inspect
 import sys
@@ -2245,8 +2246,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         Examples
         --------
         >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
-        >>> ks_series = ks.Series([1, 2, 3, 4], index=index)
-        >>> ks_series
+        >>> kser = ks.Series([1, 2, 3, 4], index=index)
+        >>> kser
         2018-04-09    1
         2018-04-11    2
         2018-04-13    3
@@ -2255,7 +2256,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
 
         Get the rows for the last 3 days:
 
-        >>> ks_series.last('3D')
+        >>> kser.last('3D')
         2018-04-13    3
         2018-04-15    4
         dtype: int64
@@ -2265,6 +2266,53 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         not returned.
         """
         return first_series(self.to_frame().last(offset)).rename(self.name)
+
+    def first(self, offset: Union[str, DateOffset]) -> "Series":
+        """
+        Select first periods of time series data based on a date offset.
+
+        When having a Series with dates as index, this function can
+        select the first few elements based on a date offset.
+
+        Parameters
+        ----------
+        offset : str or DateOffset
+            The offset length of the data that will be selected. For instance,
+            '3D' will display all the rows having their index within the first 3 days.
+
+        Returns
+        -------
+        Series
+            A subset of the caller.
+
+        Raises
+        ------
+        TypeError
+            If the index is not a :class:`DatetimeIndex`
+
+        Examples
+        --------
+        >>> index = pd.date_range('2018-04-09', periods=4, freq='2D')
+        >>> kser = ks.Series([1, 2, 3, 4], index=index)
+        >>> kser
+        2018-04-09    1
+        2018-04-11    2
+        2018-04-13    3
+        2018-04-15    4
+        dtype: int64
+
+        Get the rows for the first 3 days:
+
+        >>> kser.first('3D')
+        2018-04-09    1
+        2018-04-11    2
+        dtype: int64
+
+        Notice the data for 3 first calendar days were returned, not the first
+        3 observed days in the dataset, and therefore data for 2018-04-13 was
+        not returned.
+        """
+        return first_series(self.to_frame().first(offset)).rename(self.name)
 
     # TODO: Categorical type isn't supported (due to PySpark's limitation) and
     # some doctests related with timestamps were not added.
@@ -3081,15 +3129,7 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         apply_each = wraps(func)(lambda s: s.apply(func, args=args, **kwds))
 
         if should_infer_schema:
-            # TODO: In this case, it avoids the shortcut for now (but only infers schema)
-            #  because it returns a series from a different DataFrame and it has a different
-            #  anchor. We should fix this to allow the shortcut or only allow to infer
-            #  schema.
-            limit = get_option("compute.shortcut_limit")
-            pser = self.head(limit)._to_internal_pandas()
-            transformed = pser.apply(func, *args, **kwds)
-            kser = Series(transformed)  # type: "Series"
-            return self.koalas._transform_batch(apply_each, kser.spark.data_type)
+            return self.koalas._transform_batch(apply_each, None)
         else:
             sig_return = infer_return_type(func)
             if not isinstance(sig_return, ScalarType):
@@ -3097,8 +3137,8 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
                     "Expected the return type of this function to be of scalar type, "
                     "but found type {}".format(sig_return)
                 )
-            return_schema = cast(ScalarType, sig_return).spark_type
-            return self.koalas._transform_batch(apply_each, return_schema)
+            return_type = cast(ScalarType, sig_return)
+            return self.koalas._transform_batch(apply_each, return_type)
 
     # TODO: not all arguments are implemented comparing to pandas' for now.
     def aggregate(self, func: Union[str, List[str]]) -> Union[Scalar, "Series"]:
@@ -5790,6 +5830,114 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
             left_ser = first_series(left).rename(self.name)
 
         return (left_ser.copy(), right.copy()) if copy else (left_ser, right)
+
+    def between_time(
+        self,
+        start_time: Union[datetime.time, str],
+        end_time: Union[datetime.time, str],
+        include_start: bool = True,
+        include_end: bool = True,
+        axis: Union[int, str] = 0,
+    ) -> "Series":
+        """
+        Select values between particular times of the day (e.g., 9:00-9:30 AM).
+
+        By setting ``start_time`` to be later than ``end_time``,
+        you can get the times that are *not* between the two times.
+
+        Parameters
+        ----------
+        start_time : datetime.time or str
+            Initial time as a time filter limit.
+        end_time : datetime.time or str
+            End time as a time filter limit.
+        include_start : bool, default True
+            Whether the start time needs to be included in the result.
+        include_end : bool, default True
+            Whether the end time needs to be included in the result.
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+            Determine range time on index or columns value.
+
+        Returns
+        -------
+        Series
+            Data from the original object filtered to the specified dates range.
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :class:`DatetimeIndex`
+
+        See Also
+        --------
+        at_time : Select values at a particular time of the day.
+        last : Select final periods of time series based on a date offset.
+        DatetimeIndex.indexer_between_time : Get just the index locations for
+            values between particular times of the day.
+
+        Examples
+        --------
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='1D20min')
+        >>> kser = ks.Series([1, 2, 3, 4], index=idx)
+        >>> kser
+        2018-04-09 00:00:00    1
+        2018-04-10 00:20:00    2
+        2018-04-11 00:40:00    3
+        2018-04-12 01:00:00    4
+        dtype: int64
+
+        >>> kser.between_time('0:15', '0:45')
+        2018-04-10 00:20:00    2
+        2018-04-11 00:40:00    3
+        dtype: int64
+        """
+        return first_series(
+            self.to_frame().between_time(start_time, end_time, include_start, include_end, axis)
+        ).rename(self.name)
+
+    def at_time(
+        self, time: Union[datetime.time, str], asof: bool = False, axis: Union[int, str] = 0
+    ) -> "Series":
+        """
+        Select values at particular time of day (e.g., 9:30AM).
+
+        Parameters
+        ----------
+        time : datetime.time or str
+        axis : {0 or 'index', 1 or 'columns'}, default 0
+
+        Returns
+        -------
+        Series
+
+        Raises
+        ------
+        TypeError
+            If the index is not  a :class:`DatetimeIndex`
+
+        See Also
+        --------
+        between_time : Select values between particular times of the day.
+        DatetimeIndex.indexer_at_time : Get just the index locations for
+            values at particular time of the day.
+
+        Examples
+        --------
+        >>> idx = pd.date_range('2018-04-09', periods=4, freq='12H')
+        >>> kser = ks.Series([1, 2, 3, 4], index=idx)
+        >>> kser
+        2018-04-09 00:00:00    1
+        2018-04-09 12:00:00    2
+        2018-04-10 00:00:00    3
+        2018-04-10 12:00:00    4
+        dtype: int64
+
+        >>> kser.at_time('12:00')
+        2018-04-09 12:00:00    2
+        2018-04-10 12:00:00    4
+        dtype: int64
+        """
+        return first_series(self.to_frame().at_time(time, asof, axis)).rename(self.name)
 
     def _cum(self, func, skipna, part_cols=(), ascending=True):
         # This is used to cummin, cummax, cumsum, etc.

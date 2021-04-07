@@ -1372,7 +1372,7 @@ class GroupBy(object, metaclass=ABCMeta):
         arguments_for_restore_index = kdf._internal.arguments_for_restore_index
 
         def rename_output(pdf):
-            pdf = InternalFrame.restore_index(pdf, **arguments_for_restore_index)
+            pdf = InternalFrame.restore_index(pdf.copy(), **arguments_for_restore_index)
 
             pdf = func(pdf)
 
@@ -1384,7 +1384,7 @@ class GroupBy(object, metaclass=ABCMeta):
             pdf, _, _, _, _ = InternalFrame.prepare_pandas_frame(pdf, retain_index=retain_index)
 
             # Just positionally map the column names to given schema's.
-            pdf = pdf.rename(columns=dict(zip(pdf.columns, return_schema.fieldNames())))
+            pdf.columns = return_schema.names
 
             return pdf
 

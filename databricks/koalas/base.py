@@ -330,6 +330,10 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
             or isinstance(other, str)
         ):
             raise TypeError("string addition can only be applied to string series or literals.")
+
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("addition can not be applied to date times.")
+
         if isinstance(self.spark.data_type, StringType):
             # Concatenate string columns
             if isinstance(other, IndexOpsMixin) and isinstance(other.spark.data_type, StringType):
@@ -390,6 +394,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("multiplication can not be applied to date times.")
+
         if (
             isinstance(self.spark.data_type, IntegralType)
             and isinstance(other, IndexOpsMixin)
@@ -434,6 +441,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         ):
             raise TypeError("division can not be applied on string series or literals.")
 
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("division can not be applied to date times.")
+
         def truediv(left, right):
             return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
                 F.when(F.lit(left == np.inf) | F.lit(left == -np.inf), left).otherwise(
@@ -451,6 +461,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         ):
             raise TypeError("modulo can not be applied on string series or literals.")
 
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("modulo can not be applied to date times.")
+
         def mod(left, right):
             return ((left % right) + right) % right
 
@@ -460,6 +473,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         # Handle 'literal' + df['col']
         if not isinstance(self.spark.data_type, StringType) and isinstance(other, str):
             raise TypeError("string addition can only be applied to string series or literals.")
+
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("addition can not be applied to date times.")
 
         if isinstance(self.spark.data_type, StringType):
             if isinstance(other, str):
@@ -507,6 +523,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(other, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("multiplication can not be applied to date times.")
+
         if isinstance(self.spark.data_type, StringType):
             if isinstance(other, int):
                 return column_op(SF.repeat)(self, other)
@@ -520,6 +539,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     def __rtruediv__(self, other) -> Union["Series", "Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
+
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("division can not be applied to date times.")
 
         def rtruediv(left, right):
             return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
@@ -552,6 +574,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         ):
             raise TypeError("division can not be applied on string series or literals.")
 
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("division can not be applied to date times.")
+
         def floordiv(left, right):
             return F.when(F.lit(right is np.nan), np.nan).otherwise(
                 F.when(
@@ -569,6 +594,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("division can not be applied on string series or literals.")
 
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("division can not be applied to date times.")
+
         def rfloordiv(left, right):
             return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
                 F.when(F.lit(left) == np.nan, np.nan).otherwise(F.floor(F.lit(right).__div__(left)))
@@ -579,6 +607,9 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
     def __rmod__(self, other) -> Union["Series", "Index"]:
         if isinstance(self.spark.data_type, StringType) or isinstance(other, str):
             raise TypeError("modulo can not be applied on string series or literals.")
+
+        if isinstance(self.spark.data_type, TimestampType):
+            raise TypeError("modulo can not be applied to date times.")
 
         def rmod(left, right):
             return ((right % left) + left) % left

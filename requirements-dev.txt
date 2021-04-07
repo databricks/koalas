@@ -19,6 +19,7 @@ numpydoc>=1.1.0
 pypandoc
 ipython
 pydata-sphinx-theme
+docutils==0.16
 
 # Linter
 mypy

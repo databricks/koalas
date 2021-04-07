@@ -36,14 +36,11 @@ class MissingPandasLikeSeries(object):
 
     # Functions
     asfreq = _unsupported_function("asfreq")
-    at_time = _unsupported_function("at_time")
     autocorr = _unsupported_function("autocorr")
-    between_time = _unsupported_function("between_time")
     combine = _unsupported_function("combine")
     convert_dtypes = _unsupported_function("convert_dtypes")
     cov = _unsupported_function("cov")
     ewm = _unsupported_function("ewm")
-    first = _unsupported_function("first")
     infer_objects = _unsupported_function("infer_objects")
     interpolate = _unsupported_function("interpolate")
     reorder_levels = _unsupported_function("reorder_levels")

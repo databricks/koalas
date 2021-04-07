@@ -167,6 +167,7 @@ Reindexing / Selection / Label manipulation
    Series.equals
    Series.add_prefix
    Series.add_suffix
+   Series.first
    Series.head
    Series.idxmax
    Series.idxmin
@@ -237,6 +238,8 @@ Time series-related
    Series.shift
    Series.first_valid_index
    Series.last_valid_index
+   Series.at_time
+   Series.between_time
 
 Spark-related
 -------------

@@ -288,21 +288,21 @@ class SeriesStringTest(ReusedSQLTestCase, SQLTestUtils):
         self.check_func(lambda x: x.str.slice_replace(start=1, stop=3, repl="X"))
 
     def test_string_split(self):
-        self.check_func_on_series(lambda x: x.str.split().apply(str), self.pser[:-1])
-        self.check_func_on_series(lambda x: x.str.split(r"p*").apply(str), self.pser[:-1])
+        self.check_func_on_series(lambda x: repr(x.str.split()), self.pser[:-1])
+        self.check_func_on_series(lambda x: repr(x.str.split(r"p*")), self.pser[:-1])
         pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
-        self.check_func_on_series(lambda x: x.str.split(n=2).apply(str), pser)
-        self.check_func_on_series(lambda x: x.str.split(pat="-", n=2).apply(str), pser)
+        self.check_func_on_series(lambda x: repr(x.str.split(n=2)), pser)
+        self.check_func_on_series(lambda x: repr(x.str.split(pat="-", n=2)), pser)
         self.check_func_on_series(lambda x: x.str.split(n=2, expand=True), pser, almost=True)
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.split(expand=True))
 
     def test_string_rsplit(self):
-        self.check_func_on_series(lambda x: x.str.rsplit().apply(str), self.pser[:-1])
-        self.check_func_on_series(lambda x: x.str.rsplit(r"p*").apply(str), self.pser[:-1])
+        self.check_func_on_series(lambda x: repr(x.str.rsplit()), self.pser[:-1])
+        self.check_func_on_series(lambda x: repr(x.str.rsplit(r"p*")), self.pser[:-1])
         pser = pd.Series(["This is a sentence.", "This-is-a-long-word."])
-        self.check_func_on_series(lambda x: x.str.rsplit(n=2).apply(str), pser)
-        self.check_func_on_series(lambda x: x.str.rsplit(pat="-", n=2).apply(str), pser)
+        self.check_func_on_series(lambda x: repr(x.str.rsplit(n=2)), pser)
+        self.check_func_on_series(lambda x: repr(x.str.rsplit(pat="-", n=2)), pser)
         self.check_func_on_series(lambda x: x.str.rsplit(n=2, expand=True), pser, almost=True)
         with self.assertRaises(NotImplementedError):
             self.check_func(lambda x: x.str.rsplit(expand=True))
