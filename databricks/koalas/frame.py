@@ -4393,7 +4393,9 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         c  0.059277 -0.008543  1.010670 -0.001486 -0.000271
         d -0.008943 -0.024738 -0.001486  0.921297 -0.013692
         e  0.014144  0.009826 -0.000271 -0.013692  0.977795
+        
         **Minimum number of periods**
+        
         This method also supports an optional ``min_periods`` keyword
         that specifies the required minimum number of non-NA observations for
         each column pair in order to have a valid result:
