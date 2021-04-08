@@ -5543,3 +5543,25 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         kdf = ks.DataFrame({"A": [1, 2, 3, 4]})
         with self.assertRaisesRegex(TypeError, "Index must be DatetimeIndex"):
             kdf.at_time("0:15")
+
+    def test_cov(self):
+        pdf = pd.DataFrame([(1, 2), (0, 3), (2, 0), (1, 1)], columns=["dogs", "cats"])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.cov(), kdf.cov(),
+        )
+
+        np.random.seed(42)
+        pdf = pd.DataFrame(np.random.randn(25, 5), columns=["a", "b", "c", "d", "e"])
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.cov(), kdf.cov(), almost=True,
+        )
+
+        pdf = pd.DataFrame(np.random.randn(20, 3), columns=["a", "b", "c"])
+        pdf.loc[:5, "a"] = np.nan
+        pdf.loc[5:10, "b"] = np.nan
+        kdf = ks.from_pandas(pdf)
+        self.assert_eq(
+            pdf.cov(min_periods=12), kdf.cov(min_periods=12),
+        )
