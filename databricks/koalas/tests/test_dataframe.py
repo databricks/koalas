@@ -5565,3 +5565,9 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assert_eq(
             pdf.cov(min_periods=12), kdf.cov(min_periods=12),
         )
+        if LooseVersion(pd.__version__) > LooseVersion("1.1.0"):
+            df = pd.DataFrame(np.random.rand(10, 2), columns=["a", "b"])
+            kdf = ks.from_pandas(pdf)
+            self.assert_eq(
+                pdf.cov(ddof=2), kdf.cov(ddof=2), almost=True,
+            )
