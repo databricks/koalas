@@ -1,3 +1,5 @@
+**NOTE**: Koalas supports Apache Spark 3.1 and below as it will be [officially included to PySpark in the upcoming Apache Spark 3.2](http://apache-spark-developers-list.1001551.n3.nabble.com/VOTE-SPIP-Support-pandas-API-layer-on-PySpark-td30996.html). This repository is now in maintenance mode. For Apache Spark 3.2 and above, please use PySpark directly.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/databricks/koalas/master/icons/koalas-logo.png" width="140"/>
 </p>
