@@ -4340,6 +4340,10 @@ defaultdict(<class 'list'>, {'col..., 'col...})]
         This method is generally used for the analysis of time series data to
         understand the relationship between different measures
         across time.
+
+        .. note:: This method should only be used if the resulting pandas DataFrame is expected
+            to be small, as all the data is loaded into the driver's memory.
+
         Parameters
         ----------
         min_periods : int, optional
