@@ -32,7 +32,6 @@ jobs:
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
       DEFAULT_INDEX_TYPE: ${{ matrix.default-index-type }}
       KOALAS_TESTING: 1
-      SPARK_LOCAL_IP: 127.0.0.1
       # DISPLAY=0.0 does not work in Github Actions with Python 3.5. Here we work around with xvfb-run
       PYTHON_EXECUTABLE: xvfb-run python
       # Github token is required to auto-generate the release notes from Github release notes
@@ -120,7 +119,6 @@ jobs:
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
       DEFAULT_INDEX_TYPE: ${{ matrix.default-index-type }}
       KOALAS_TESTING: 1
-      SPARK_LOCAL_IP: 127.0.0.1
       # `QT_QPA_PLATFORM` for resolving 'QXcbConnection: Could not connect to display :0.0'
       DISPLAY: 0.0
       QT_QPA_PLATFORM: offscreen
