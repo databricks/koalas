@@ -71,7 +71,7 @@ jobs:
         pip list
     - name: Run tests
       run: |
-        echo /etc/hosts
+        cat /etc/hosts
         # lint-python uses python3 as default. Seems python3 could pick a different Python.
         # Looks a side effect from manual Python 3.5 installation.
         PYTHON_EXECUTABLE=python ./dev/lint-python
@@ -135,7 +135,7 @@ jobs:
         java-version: 1.8
     - name: Install dependencies
       run: |
-        echo /etc/hosts
+        cat /etc/hosts
         # See also https://github.com/conda/conda/issues/7980
         source "$CONDA_PREFIX/etc/profile.d/conda.sh"
         conda update -q conda
