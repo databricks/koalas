@@ -507,28 +507,27 @@ class Index(IndexOpsMixin):
             result = result.copy()
         return result
 
-    def map(
-        self,
-        mapper: Union[dict, Callable[[Any], Any], pd.Series],
-        return_type: ks.typedef.Dtype = str,
-        na_action: Any = None,
-    ):
+    def map(self, mapper: Union[dict, Callable[[Any], Any], dict, pd.Series], na_action: Any = None):
         """
-        Use to change Index values
+        Map values using input correspondence (a dict, Series, or function).
 
         Parameters
         ----------
-        mapper: dict, function or pd.Series
-        return_type: Dtype
+        mapper : function, dict, or pd.Series
+            Mapping correspondence.
+        na_action : {None, 'ignore'}
+            Currently not supported
 
         Returns
         -------
-        ks.Index
-
+        applied : Index, inferred
+            The output of the mapping function applied to the index.
+            If the function returns a tuple with more than one element
+            a MultiIndex will be returned.
         """
         from databricks.koalas.indexes.extension import MapExtension
 
-        return MapExtension(index=self, na_action=na_action).map(mapper, return_type)
+        return MapExtension(index=self, na_action=na_action).map(mapper)
 
     @property
     def values(self) -> np.ndarray:

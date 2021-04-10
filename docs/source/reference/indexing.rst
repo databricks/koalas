@@ -28,6 +28,7 @@ Properties
    Index.inferred_type
    Index.is_all_dates
    Index.shape
+   Index.map
    Index.name
    Index.names
    Index.ndim

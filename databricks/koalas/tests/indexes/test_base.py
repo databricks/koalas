@@ -88,21 +88,19 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kser.index.map({1: "one", 2: "two", 3: "three"}), ks.Index(["one", "two", "three"])
         )
         self.assert_eq(kser.index.map({1: "one", 2: "two"}), ks.Index(["one", "two", "3"]))
-        self.assert_eq(kser.index.map({1: 10, 2: 20}, return_type=int), ks.Index([10, 20, 3]))
+        self.assert_eq(kser.index.map({1: 10, 2: 20}), ks.Index([10, 20, 3]))
 
         # Apply lambda
-        self.assert_eq(kser.index.map(lambda id: id + 1, return_type=int), ks.Index([2, 3, 4]))
+        self.assert_eq(kser.index.map(lambda id: id + 1), ks.Index([2, 3, 4]))
+        self.assert_eq(kser.index.map(lambda id: id + 1.1), ks.Index([2.1, 3.1, 4.1]))
         self.assert_eq(
-            kser.index.map(lambda id: id + 1.1, return_type=float), ks.Index([2.1, 3.1, 4.1])
-        )
-        self.assert_eq(
-            kser.index.map(lambda id: "{id} + 1".format(id=id), str),
+            kser.index.map(lambda id: "{id} + 1".format(id=id)),
             ks.Index(["1 + 1", "2 + 1", "3 + 1"]),
         )
 
         kser = ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-09", periods=4, freq="2D"))
         self.assert_eq(
-            kser.index.map(lambda id: id + DateOffset(days=1), return_type=datetime),
+            kser.index.map(lambda id: id + DateOffset(days=1)),
             ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-10", periods=4, freq="2D")).index,
         )
 

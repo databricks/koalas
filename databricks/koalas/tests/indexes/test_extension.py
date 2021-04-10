@@ -37,46 +37,44 @@ class MapExtensionTest(ReusedSQLTestCase, TestUtils):
 
     def test_map_dict(self):
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_dict({1: "one", 2: "two", 3: "three"}, str),
+            MapExtension(self.kidx, None)._map_dict({1: "one", 2: "two", 3: "three"}),
             ks.Index(["one", "two", "three"]),
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_dict({1: "one", 2: "two"}, str),
+            MapExtension(self.kidx, None)._map_dict({1: "one", 2: "two"}),
             ks.Index(["one", "two", "3"]),
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_dict({1: 10, 2: 20}, int), ks.Index([10, 20, 3])
+            MapExtension(self.kidx, None)._map_dict({1: 10, 2: 20}), ks.Index([10, 20, 3])
         )
 
     def test_map_series(self):
         self.assert_eq(
             MapExtension(self.kidx, None)._map_series(
-                pd.Series(["one", "2", "three"], index=[1, 2, 3]), str
+                pd.Series(["one", "2", "three"], index=[1, 2, 3])
             ),
             ks.Index(["one", "2", "three"]),
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_series(pd.Series(["one", "2"], index=[1, 2]), str),
+            MapExtension(self.kidx, None)._map_series(pd.Series(["one", "2"], index=[1, 2])),
             ks.Index(["one", "2", "3"]),
         )
 
     def test_map_lambda(self):
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1, int), ks.Index([2, 3, 4])
+            MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1), ks.Index([2, 3, 4])
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1.1, float),
+            MapExtension(self.kidx, None)._map_lambda(lambda id: id + 1.1),
             ks.Index([2.1, 3.1, 4.1]),
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_lambda(lambda id: "{id} + 1".format(id=id), str),
+            MapExtension(self.kidx, None)._map_lambda(lambda id: "{id} + 1".format(id=id)),
             ks.Index(["1 + 1", "2 + 1", "3 + 1"]),
         )
         kser = ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-09", periods=4, freq="2D"))
         self.assert_eq(
-            MapExtension(kser.index, None)._map_lambda(
-                lambda id: id + DateOffset(days=1), datetime
-            ),
+            MapExtension(kser.index, None)._map_lambda(lambda id: id + DateOffset(days=1)),
             ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-10", periods=4, freq="2D")).index,
         )
 
@@ -84,6 +82,4 @@ class MapExtensionTest(ReusedSQLTestCase, TestUtils):
         with self.assertRaisesRegex(
             NotImplementedError, "Currently do not support input of ks.Series in Index.map"
         ):
-            MapExtension(self.kidx, None).map(
-                ks.Series(["one", "two", "three"], index=[1, 2, 3]), str
-            )
+            MapExtension(self.kidx, None).map(ks.Series(["one", "two", "three"], index=[1, 2, 3]))

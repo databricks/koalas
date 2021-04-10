@@ -14,10 +14,11 @@
 # limitations under the License.
 #
 from functools import partial
-from typing import Any
+from typing import Any, Callable, Union
 
 import pandas as pd
-from pandas.api.types import is_hashable
+import numpy as np
+from pandas.api.types import is_hashable, CategoricalDtype
 
 from databricks import koalas as ks
 from databricks.koalas.indexes.base import Index
@@ -103,7 +104,7 @@ class CategoricalIndex(Index):
         if isinstance(data, (Series, Index)):
             if dtype is None:
                 dtype = "category"
-            return Index(data, dtype=dtype, copy=copy, name=name)
+            return Index(data, dtype=dtype, ordered=ordered, copy=copy, name=name)
 
         return ks.from_pandas(
             pd.CategoricalIndex(
@@ -176,6 +177,77 @@ class CategoricalIndex(Index):
         False
         """
         return self.dtype.ordered
+
+    def map(self, mapper: Union[dict, Callable[[Any], Any], dict, pd.Series], na_action: Any = None):
+        """
+        Map values using input correspondence (a dict, Series, or function).
+        Maps the values (their categories, not the codes) of the index to new
+        categories.
+        If a `dict` or :class:`~pandas.Series` is used any unmapped category is
+        mapped to the original value.
+        Parameters
+        ----------
+        mapper : function, dict, or Series
+            Mapping correspondence.
+        Returns
+        -------
+        CategoricalIndex
+            Mapped index.
+        Examples
+        --------
+        >>> kidx = ks.CategoricalIndex(['a', 'b', 'c'])
+        >>> kidx
+        CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c'],
+                          ordered=False, dtype='category')
+        >>> kidx.map(lambda x: x.upper())
+        CategoricalIndex(['A', 'B', 'C'], categories=['A', 'B', 'C'],
+                         ordered=False, dtype='category')
+        >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'third'})
+        CategoricalIndex(['first', 'second', 'third'], categories=['first',
+                         'second', 'third'], ordered=False, dtype='category')
+        If the mapping is one-to-one the ordering of the categories is
+        preserved:
+        >>> kidx = ks.CategoricalIndex(['a', 'b', 'c'], ordered=True)
+        >>> kidx
+        CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c'],
+                         ordered=True, dtype='category')
+        >>> kidx.map({'a': 3, 'b': 2, 'c': 1})
+        CategoricalIndex([3, 2, 1], categories=[3, 2, 1], ordered=True,
+                         dtype='category')
+        If the mapping is not one-to-one an :class:`~pandas.Index` is returned:
+        >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'first'})
+        CategoricalIndex(['first', 'second', 'first'], categories=['first', 'second'],
+                         ordered=True, dtype='category')
+        If a `dict` is used, all unmapped categories are mapped to original value
+        >>> idx.map({'a': 'first', 'b': 'second'})
+        CategoricalIndex(['first', 'second', 'c'], categories=['first', 'second', 'c'],
+                         ordered=True, dtype='category')
+        """
+
+        from databricks.koalas.indexes.extension import MapExtension, getOrElse
+
+        extension_mapper = MapExtension(index=self, na_action=na_action)
+        return_type = extension_mapper._mapper_return_type(mapper)
+
+        # Pull unique elements of series and sort
+        if isinstance(mapper, pd.Series):
+            mapper = pd.Series(np.sort(mapper.unique()))
+
+        unique_categories = self.dtype.categories.values
+        pos_dict = {}
+        for i in range(len(unique_categories)):
+            if isinstance(mapper, dict):
+                pos_dict[i] = mapper.get(unique_categories[i], return_type(unique_categories[i]))
+            elif isinstance(mapper, pd.Series):
+                pos_dict[i] = getOrElse(mapper, i, return_type, default_value=unique_categories[i])
+            elif isinstance(mapper, ks.Series):
+                raise NotImplementedError("Currently do not support input of ks.Series in CategoricalIndex.map")
+            else:
+                pos_dict[i] = mapper(unique_categories[i])
+
+        new_index = CategoricalIndex(extension_mapper.map(pos_dict))
+
+        return new_index.astype(CategoricalDtype(categories=new_index.dtype.categories, ordered=self.ordered))
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeCategoricalIndex, item):

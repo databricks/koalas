@@ -108,3 +108,29 @@ class CategoricalIndexTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(kcodes.tolist(), pcodes.tolist())
         self.assert_eq(kuniques, puniques)
+
+    def test_map(self):
+        self.assert_eq(
+            ks.CategoricalIndex(['first', 'second', 'third', 'first']).map(lambda id: id.upper()),
+            ks.CategoricalIndex(['FIRST', 'SECOND', 'THIRD', 'FIRST'])
+        )
+        self.assert_eq(
+            ks.CategoricalIndex(["a", "b", "c", "a", "b"]).map(lambda id: id.upper()),
+            ks.CategoricalIndex(["A", "B", "C", "A", "B"])
+        )
+        self.assert_eq(
+            ks.CategoricalIndex(["a", "b", "c"]).map({"a": "A", "b": "B", "c": "C"}),
+            ks.CategoricalIndex(["A", "B", "C"])
+        )
+        self.assert_eq(
+            ks.CategoricalIndex(["a", "b", "c"]).map(pd.Series(["A", "B", "C"])),
+            ks.CategoricalIndex(["A", "B", "C"])
+        )
+        self.assert_eq(
+            ks.CategoricalIndex(["a", "b", "c"]).map({"a": "A", "b": "B"}),
+            ks.CategoricalIndex(["A", "B", "c"])
+        )
+        self.assert_eq(
+            ks.CategoricalIndex(["a", "b", "c"], ordered=True).map(pd.Series(["A", "B"])),
+            ks.CategoricalIndex(["A", "B", "c"], ordered=True)
+        )
