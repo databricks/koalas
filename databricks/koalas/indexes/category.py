@@ -178,7 +178,7 @@ class CategoricalIndex(Index):
         """
         return self.dtype.ordered
 
-    def map(self, mapper: Union[dict, Callable[[Any], Any], dict, pd.Series], na_action: Any = None):
+    def map(self, mapper: Union[Callable[[Any], Any], dict, pd.Series], na_action: Any = None):
         """
         Map values using input correspondence (a dict, Series, or function).
         Maps the values (their categories, not the codes) of the index to new
@@ -224,7 +224,7 @@ class CategoricalIndex(Index):
                          ordered=True, dtype='category')
         """
 
-        from databricks.koalas.indexes.extension import MapExtension, getOrElse
+        from databricks.koalas.indexes.extension import MapExtension, getOrElse, cast_value
 
         extension_mapper = MapExtension(index=self, na_action=na_action)
         return_type = extension_mapper._mapper_return_type(mapper)
@@ -237,17 +237,23 @@ class CategoricalIndex(Index):
         pos_dict = {}
         for i in range(len(unique_categories)):
             if isinstance(mapper, dict):
-                pos_dict[i] = mapper.get(unique_categories[i], return_type(unique_categories[i]))
+                category = unique_categories[i]
+                print(f"this: {cast_value(category, return_type)}")
+                pos_dict[i] = mapper.get(category, cast_value(category, return_type))
             elif isinstance(mapper, pd.Series):
                 pos_dict[i] = getOrElse(mapper, i, return_type, default_value=unique_categories[i])
             elif isinstance(mapper, ks.Series):
-                raise NotImplementedError("Currently do not support input of ks.Series in CategoricalIndex.map")
+                raise NotImplementedError(
+                    "Currently do not support input of ks.Series in CategoricalIndex.map"
+                )
             else:
                 pos_dict[i] = mapper(unique_categories[i])
 
         new_index = CategoricalIndex(extension_mapper.map(pos_dict))
 
-        return new_index.astype(CategoricalDtype(categories=new_index.dtype.categories, ordered=self.ordered))
+        return new_index.astype(
+            CategoricalDtype(categories=new_index.dtype.categories, ordered=self.ordered)
+        )
 
     def __getattr__(self, item: str) -> Any:
         if hasattr(MissingPandasLikeCategoricalIndex, item):

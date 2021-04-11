@@ -507,7 +507,9 @@ class Index(IndexOpsMixin):
             result = result.copy()
         return result
 
-    def map(self, mapper: Union[dict, Callable[[Any], Any], dict, pd.Series], na_action: Any = None):
+    def map(
+        self, mapper: Union[dict, Callable[[Any], Any], dict, pd.Series], na_action: Any = None
+    ):
         """
         Map values using input correspondence (a dict, Series, or function).
 
