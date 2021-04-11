@@ -108,8 +108,6 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
             ks.MultiIndex.from_arrays(arrays, names=("number", "color")).map(lambda id: id + 1)
 
-
-
     def test_index_from_series(self):
         pser = pd.Series([1, 2, 3], name="a", index=[10, 20, 30])
         kser = ks.from_pandas(pser)
