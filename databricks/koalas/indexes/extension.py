@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from datetime import datetime
-from typing import Any, Callable, Union, cast, Type
+from typing import Any, Callable, Union, cast
 
 import pandas as pd
 import numpy as np
