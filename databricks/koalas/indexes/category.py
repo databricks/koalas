@@ -238,7 +238,6 @@ class CategoricalIndex(Index):
         for i in range(len(unique_categories)):
             if isinstance(mapper, dict):
                 category = unique_categories[i]
-                print(f"this: {cast_value(category, return_type)}")
                 pos_dict[i] = mapper.get(category, cast_value(category, return_type))
             elif isinstance(mapper, pd.Series):
                 pos_dict[i] = getOrElse(mapper, i, return_type, default_value=unique_categories[i])
