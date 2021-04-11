@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from functools import partial
-from typing import Any, Callable, Union, cast
+from typing import Any, Callable, Union
 
 import pandas as pd
 import numpy as np
@@ -240,7 +240,7 @@ class CategoricalIndex(Index):
         for i in range(len(unique_categories)):
             if isinstance(mapper, dict):
                 category = unique_categories[i]
-                pos_dict[i] = mapper.get(category, cast(return_type, category))  # type: ignore
+                pos_dict[i] = mapper.get(category, return_type(category))  # type: ignore
             elif isinstance(mapper, pd.Series):
                 pos_dict[i] = getOrElse(mapper, i, return_type, default_value=unique_categories[i])
             elif isinstance(mapper, ks.Series):

@@ -104,6 +104,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             ks.Series([1, 2, 3, 4], index=pd.date_range("2018-04-10", periods=4, freq="2D")).index,
         )
 
+        with self.assertRaisesRegex(NotImplementedError, "Not supported for type MultiIndex"):
+            arrays = [[1, 1, 2, 2], ["red", "blue", "red", "blue"]]
+            ks.MultiIndex.from_arrays(arrays, names=("number", "color")).map(lambda id: id + 1)
+
+
+
     def test_index_from_series(self):
         pser = pd.Series([1, 2, 3], name="a", index=[10, 20, 30])
         kser = ks.from_pandas(pser)

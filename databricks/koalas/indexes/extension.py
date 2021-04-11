@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from datetime import datetime
-from typing import Any, Callable, Union, cast
+from typing import Any, Callable, Union
 
 import pandas as pd
 import numpy as np
@@ -32,9 +32,9 @@ def getOrElse(input: pd.Series, pos, return_type: Union[Scalar, Dtype], default_
         return input.loc[pos]
     except:
         if default_value is None:
-            return cast(return_type, pos)  # type: ignore
+            return return_type(pos)  # type: ignore
         else:
-            return cast(return_type, default_value)  # type: ignore
+            return return_type(default_value)  # type: ignore
 
 
 # TODO: Implement na_action similar functionality to pandas
@@ -92,7 +92,7 @@ class MapExtension:
 
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
-            return col.apply(lambda i: mapper.get(i, cast(return_type, i)))  # type: ignore
+            return col.apply(lambda i: mapper.get(i, return_type(i)))  # type: ignore
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
