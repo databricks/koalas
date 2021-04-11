@@ -18,7 +18,6 @@ from typing import Any, Callable, Union
 
 import pandas as pd
 import numpy as np
-from decimal import Decimal
 
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 
