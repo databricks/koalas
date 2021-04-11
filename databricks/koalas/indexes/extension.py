@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from datetime import datetime
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, cast, Type
 
 import pandas as pd
 import numpy as np
@@ -27,32 +27,14 @@ from databricks.koalas.internal import SPARK_DEFAULT_INDEX_NAME
 from databricks.koalas.typedef.typehints import as_spark_type, Dtype, Scalar
 
 
-def getOrElse(input: pd.Series, pos, return_type: Scalar, default_value=None):
+def getOrElse(input: pd.Series, pos, return_type: Union[Scalar, Dtype], default_value=None):
     try:
         return input.loc[pos]
     except:
         if default_value is None:
-            return cast_value(pos, return_type)
+            return cast(return_type, pos)  # type: ignore
         else:
-            return cast_value(default_value, return_type)
-
-
-def cast_value(value: Any, return_type: Scalar):
-    if return_type is str:
-        return str(value)
-    elif return_type is int:
-        return int(value)
-    elif return_type is float:
-        return float(value)
-    elif return_type is bool:
-        if str(value).lower == "true":
-            True
-        else:
-            False
-    elif return_type is datetime:
-        return value
-    else:
-        NotImplementedError("Cast has not been implemented for {!r}".format(type(return_type)))
+            return cast(return_type, default_value)  # type: ignore
 
 
 # TODO: Implement na_action similar functionality to pandas
@@ -110,7 +92,7 @@ class MapExtension:
 
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
-            return col.apply(lambda i: mapper.get(i, cast_value(i, return_type)))
+            return col.apply(lambda i: mapper.get(i, cast(return_type, i)))  # type: ignore
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 

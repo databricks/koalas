@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-from datetime import datetime
-
 import pandas as pd
 from pandas.tseries.offsets import DateOffset
 

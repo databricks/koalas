@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 from functools import partial
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, cast
 
 import pandas as pd
 import numpy as np
@@ -178,7 +178,9 @@ class CategoricalIndex(Index):
         """
         return self.dtype.ordered
 
-    def map(self, mapper: Union[Callable[[Any], Any], dict, pd.Series], na_action: Any = None):
+    def map(
+        self, mapper: Union[Callable[[Any], Any], dict, pd.Series], na_action: Any = None
+    ) -> "CategoricalIndex":
         """
         Map values using input correspondence (a dict, Series, or function).
         Maps the values (their categories, not the codes) of the index to new
@@ -224,7 +226,7 @@ class CategoricalIndex(Index):
                          ordered=True, dtype='category')
         """
 
-        from databricks.koalas.indexes.extension import MapExtension, getOrElse, cast_value
+        from databricks.koalas.indexes.extension import MapExtension, getOrElse
 
         extension_mapper = MapExtension(index=self, na_action=na_action)
         return_type = extension_mapper._mapper_return_type(mapper)
@@ -238,7 +240,7 @@ class CategoricalIndex(Index):
         for i in range(len(unique_categories)):
             if isinstance(mapper, dict):
                 category = unique_categories[i]
-                pos_dict[i] = mapper.get(category, cast_value(category, return_type))
+                pos_dict[i] = mapper.get(category, cast(return_type, category))  # type: ignore
             elif isinstance(mapper, pd.Series):
                 pos_dict[i] = getOrElse(mapper, i, return_type, default_value=unique_categories[i])
             elif isinstance(mapper, ks.Series):
@@ -250,8 +252,10 @@ class CategoricalIndex(Index):
 
         new_index = CategoricalIndex(extension_mapper.map(pos_dict))
 
-        return new_index.astype(
-            CategoricalDtype(categories=new_index.dtype.categories, ordered=self.ordered)
+        return CategoricalIndex(
+            new_index.astype(
+                CategoricalDtype(categories=new_index.dtype.categories, ordered=self.ordered)
+            )
         )
 
     def __getattr__(self, item: str) -> Any:

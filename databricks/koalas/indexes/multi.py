@@ -16,7 +16,7 @@
 
 from distutils.version import LooseVersion
 from functools import partial
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Any, Callable, Optional, Tuple, Union, cast
 import warnings
 
 import pandas as pd
@@ -156,6 +156,11 @@ class MultiIndex(Index):
         raise NotImplementedError("Not supported for type MultiIndex")
 
     def _align_and_column_op(self, f, *args) -> Index:
+        raise NotImplementedError("Not supported for type MultiIndex")
+
+    def map(
+        self, mapper: Union[dict, Callable[[Any], Any], dict, pd.Series], na_action: Any = None
+    ) -> "Index":
         raise NotImplementedError("Not supported for type MultiIndex")
 
     def any(self, *args, **kwargs) -> None:
