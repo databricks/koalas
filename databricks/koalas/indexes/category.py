@@ -205,8 +205,7 @@ class CategoricalIndex(Index):
         CategoricalIndex(['A', 'B', 'C'], categories=['A', 'B', 'C'],
                          ordered=False, dtype='category')
         >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'third'}) # doctest: +NORMALIZE_WHITESPACE
-        CategoricalIndex(['first', 'second', 'third'], categories=['first',
-                         'second', 'third'], ordered=False, dtype='category')
+        CategoricalIndex(['first', 'second', 'third'], categories=['first', 'second', 'third'], ordered=False, dtype='category')
         If the mapping is one-to-one the ordering of the categories is
         preserved:
         >>> kidx = ks.CategoricalIndex(['a', 'b', 'c'], ordered=True)
@@ -214,8 +213,7 @@ class CategoricalIndex(Index):
         CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c'],
                          ordered=True, dtype='category')
         >>> kidx.map({'a': 3, 'b': 2, 'c': 1}) # doctest: +NORMALIZE_WHITESPACE
-        CategoricalIndex([3, 2, 1], categories=[3, 2, 1], ordered=True,
-                         dtype='category')
+        CategoricalIndex([3, 2, 1], categories=[3, 2, 1], ordered=True, dtype='category')
         >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'first'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', 'first'], categories=['first', 'second'],
                          ordered=True, dtype='category')
