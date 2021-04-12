@@ -216,7 +216,7 @@ class CategoricalIndex(Index):
         >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'first'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', 'first'], categories=['first', 'second'],
                          ordered=True, dtype='category')
-        >>> idx.map({'a': 'first', 'b': 'second'}) # doctest: +NORMALIZE_WHITESPACE
+        >>> kidx.map({'a': 'first', 'b': 'second'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', nan], categories=['first', 'second'],
                          ordered=True, dtype='category')
         """
