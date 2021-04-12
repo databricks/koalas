@@ -32,7 +32,7 @@ def getOrElse(input: pd.Series, pos, return_type: Union[Scalar, Dtype], default_
         return input.loc[pos]
     except:
         if default_value is not np.nan:
-            return return_type(default_value) # type: ignore
+            return return_type(default_value)  # type: ignore
         else:
             return default_value
 

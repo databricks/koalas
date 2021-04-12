@@ -138,5 +138,7 @@ class CategoricalIndexTest(ReusedSQLTestCase, TestUtils):
 
         self.assert_eq(
             ks.CategoricalIndex(["a", "b", "c"]).map({"a": 1, "b": 2}),
-            ks.CategoricalIndex([1.0, 2.0, np.nan], categories=[1.0, 2.0], ordered=False, dtype='category')
+            ks.CategoricalIndex(
+                [1.0, 2.0, np.nan], categories=[1.0, 2.0], ordered=False, dtype="category"
+            ),
         )
