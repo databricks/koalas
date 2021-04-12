@@ -10,5 +10,6 @@ User Guide
     transform_apply
     types
     typehints
+    from_to_dbms
     best_practices
     faq
