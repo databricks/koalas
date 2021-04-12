@@ -60,6 +60,12 @@ def assert_pyspark_version():
                     pyspark_ver if pyspark_ver is not None else "<unknown version>"
                 )
             )
+        elif LooseVersion(pyspark_ver) >= LooseVersion("3.2"):
+            logging.warning(
+                'Found pyspark version "{}" installed. The pyspark version 3.2 and above has '
+                'a built-in "pandas APIs on Spark" module ported from Koalas. '
+                "Try `import pyspark.pandas as ps` instead. ".format(pyspark_ver)
+            )
 
 
 assert_python_version()
