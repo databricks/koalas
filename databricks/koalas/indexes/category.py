@@ -186,7 +186,7 @@ class CategoricalIndex(Index):
         Maps the values (their categories, not the codes) of the index to new
         categories.
         If a `dict` or :class:`~pandas.Series` is used any unmapped category is
-        mapped to the original value.
+        mapped to np.nan.
         Parameters
         ----------
         mapper : function, dict, or Series
