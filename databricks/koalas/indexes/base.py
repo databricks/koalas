@@ -524,8 +524,6 @@ class Index(IndexOpsMixin):
         -------
         applied : Index, inferred
             The output of the mapping function applied to the index.
-            If the function returns a tuple with more than one element
-            a MultiIndex will be returned.
         """
         from databricks.koalas.indexes.extension import MapExtension
 

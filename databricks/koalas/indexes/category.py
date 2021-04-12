@@ -217,7 +217,7 @@ class CategoricalIndex(Index):
         CategoricalIndex(['first', 'second', 'first'], categories=['first', 'second'],
                          ordered=True, dtype='category')
         >>> idx.map({'a': 'first', 'b': 'second'}) # doctest: +NORMALIZE_WHITESPACE
-        CategoricalIndex(['first', 'second', 'c'], categories=['first', 'second', 'c'],
+        CategoricalIndex(['first', 'second', nan], categories=['first', 'second'],
                          ordered=True, dtype='category')
         """
 
@@ -225,7 +225,6 @@ class CategoricalIndex(Index):
 
         extension_mapper = MapExtension(index=self, na_action=na_action)
         return_type = extension_mapper._mapper_return_type(mapper)
-
         # Pull unique elements of series and sort
         if isinstance(mapper, pd.Series):
             mapper = pd.Series(np.sort(mapper.unique()))
@@ -235,9 +234,9 @@ class CategoricalIndex(Index):
         for i in range(len(unique_categories)):
             if isinstance(mapper, dict):
                 category = unique_categories[i]
-                pos_dict[i] = mapper.get(category, return_type(category))  # type: ignore
+                pos_dict[i] = mapper.get(category, np.nan)  # type: ignore
             elif isinstance(mapper, pd.Series):
-                pos_dict[i] = getOrElse(mapper, i, return_type, default_value=unique_categories[i])
+                pos_dict[i] = getOrElse(mapper, i, return_type)
             elif isinstance(mapper, ks.Series):
                 raise NotImplementedError(
                     "Currently do not support input of ks.Series in CategoricalIndex.map"

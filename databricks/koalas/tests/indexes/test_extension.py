@@ -16,6 +16,7 @@
 
 import pandas as pd
 from pandas.tseries.offsets import DateOffset
+import numpy as np
 
 import databricks.koalas as ks
 from databricks.koalas.indexes.extension import MapExtension
@@ -40,10 +41,10 @@ class MapExtensionTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(
             MapExtension(self.kidx, None)._map_dict({1: "one", 2: "two"}),
-            ks.Index(["one", "two", "3"]),
+            ks.Index(["one", "two", np.nan]),
         )
         self.assert_eq(
-            MapExtension(self.kidx, None)._map_dict({1: 10, 2: 20}), ks.Index([10, 20, 3])
+            MapExtension(self.kidx, None)._map_dict({1: 10, 2: 20}), ks.Index([10, 20, np.nan])
         )
 
     def test_map_series(self):
@@ -55,7 +56,7 @@ class MapExtensionTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(
             MapExtension(self.kidx, None)._map_series(pd.Series(["one", "2"], index=[1, 2])),
-            ks.Index(["one", "2", "3"]),
+            ks.Index(["one", "2", np.nan]),
         )
 
     def test_map_lambda(self):

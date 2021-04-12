@@ -27,14 +27,14 @@ from databricks.koalas.internal import SPARK_DEFAULT_INDEX_NAME
 from databricks.koalas.typedef.typehints import as_spark_type, Dtype, Scalar
 
 
-def getOrElse(input: pd.Series, pos, return_type: Union[Scalar, Dtype], default_value=None):
+def getOrElse(input: pd.Series, pos, return_type: Union[Scalar, Dtype], default_value=np.nan):
     try:
         return input.loc[pos]
     except:
-        if default_value is None:
-            return return_type(pos)  # type: ignore
+        if default_value is not np.nan:
+            return return_type(default_value) # type: ignore
         else:
-            return return_type(default_value)  # type: ignore
+            return default_value
 
 
 # TODO: Implement na_action similar functionality to pandas
@@ -85,14 +85,14 @@ class MapExtension:
         -------
         Index
 
-        .. note:: Default return value for missing elements is the index's original value
+        .. note:: Default return value for missing elements np.nan
 
         """
         return_type = self._mapper_return_type(mapper)
 
         @pandas_udf(as_spark_type(return_type), PandasUDFType.SCALAR)
         def pyspark_mapper(col):
-            return col.apply(lambda i: mapper.get(i, return_type(i)))  # type: ignore
+            return col.apply(lambda i: mapper.get(i, np.nan))  # type: ignore
 
         return self._index._with_new_scol(pyspark_mapper(SPARK_DEFAULT_INDEX_NAME))
 
@@ -111,7 +111,7 @@ class MapExtension:
         -------
         Index
 
-        .. note:: Default return value for missing elements is the index's original value
+        .. note:: Default return value for missing elements is np.nan
 
         """
         return_type = self._mapper_return_type(mapper)
@@ -163,7 +163,7 @@ class MapExtension:
         """
 
         if isinstance(mapper, dict):
-            types = list(set(type(k) for k in mapper.values()))
+            types = list(set(type(k) for k in mapper.values() if k is not np.nan))
             return_type = types[0] if len(types) == 1 else str
         elif isinstance(mapper, pd.Series):
             # Pandas dtype('O') means pandas str

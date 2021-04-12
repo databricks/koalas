@@ -17,6 +17,7 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 from pandas.api.types import CategoricalDtype
+import numpy as np
 
 import databricks.koalas as ks
 from databricks.koalas.testing.utils import ReusedSQLTestCase, TestUtils
@@ -128,9 +129,14 @@ class CategoricalIndexTest(ReusedSQLTestCase, TestUtils):
         )
         self.assert_eq(
             ks.CategoricalIndex(["a", "b", "c"]).map({"a": "A", "b": "B"}),
-            ks.CategoricalIndex(["A", "B", "c"]),
+            ks.CategoricalIndex(["A", "B", np.nan]),
         )
         self.assert_eq(
             ks.CategoricalIndex(["a", "b", "c"], ordered=True).map(pd.Series(["A", "B"])),
-            ks.CategoricalIndex(["A", "B", "c"], ordered=True),
+            ks.CategoricalIndex(["A", "B", np.nan], ordered=True),
+        )
+
+        self.assert_eq(
+            ks.CategoricalIndex(["a", "b", "c"]).map({"a": 1, "b": 2}),
+            ks.CategoricalIndex([1.0, 2.0, np.nan], categories=[1.0, 2.0], ordered=False, dtype='category')
         )
