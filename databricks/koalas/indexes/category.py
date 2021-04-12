@@ -198,30 +198,29 @@ class CategoricalIndex(Index):
         Examples
         --------
         >>> kidx = ks.CategoricalIndex(['a', 'b', 'c'])
-        >>> kidx
+        >>> kidx # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c'],
-                          ordered=False, dtype='category')
-        >>> kidx.map(lambda x: x.upper())
+                         ordered=False, dtype='category')
+        >>> kidx.map(lambda x: x.upper()) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['A', 'B', 'C'], categories=['A', 'B', 'C'],
                          ordered=False, dtype='category')
-        >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'third'})
+        >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'third'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', 'third'], categories=['first',
                          'second', 'third'], ordered=False, dtype='category')
         If the mapping is one-to-one the ordering of the categories is
         preserved:
         >>> kidx = ks.CategoricalIndex(['a', 'b', 'c'], ordered=True)
-        >>> kidx
+        >>> kidx # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c'],
                          ordered=True, dtype='category')
-        >>> kidx.map({'a': 3, 'b': 2, 'c': 1})
+        >>> kidx.map({'a': 3, 'b': 2, 'c': 1}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex([3, 2, 1], categories=[3, 2, 1], ordered=True,
                          dtype='category')
-        If the mapping is not one-to-one an :class:`~pandas.Index` is returned:
-        >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'first'})
+        >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'first'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', 'first'], categories=['first', 'second'],
                          ordered=True, dtype='category')
-        If a `dict` is used, all unmapped categories are mapped to original value
-        >>> idx.map({'a': 'first', 'b': 'second'})
+        If a `dict` is used, all unmapped categories are mapped to the original value
+        >>> idx.map({'a': 'first', 'b': 'second'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', 'c'], categories=['first', 'second', 'c'],
                          ordered=True, dtype='category')
         """
