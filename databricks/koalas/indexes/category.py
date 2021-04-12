@@ -212,7 +212,7 @@ class CategoricalIndex(Index):
         CategoricalIndex(['a', 'b', 'c'], categories=['a', 'b', 'c'],
                          ordered=True, dtype='category')
         >>> kidx.map({'a': 3, 'b': 2, 'c': 1}) # doctest: +NORMALIZE_WHITESPACE
-        CategoricalIndex([3, 2, 1], categories=[3, 2, 1], ordered=True, dtype='category')
+        CategoricalIndex([3, 2, 1], categories=[1, 2, 3], ordered=True, dtype='category')
         >>> kidx.map({'a': 'first', 'b': 'second', 'c': 'first'}) # doctest: +NORMALIZE_WHITESPACE
         CategoricalIndex(['first', 'second', 'first'], categories=['first', 'second'],
                          ordered=True, dtype='category')
