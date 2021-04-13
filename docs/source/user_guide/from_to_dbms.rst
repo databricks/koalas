@@ -48,7 +48,7 @@ Firstly, create the ``example`` database as below via Python's SQLite library. T
     con.commit()
     con.close()
 
-Koalas requires a JDBC driver to read so it requires the driver for your particular database on the Spark's classpath. For SQLite JDBC driver, you can download it, for example, as below:
+Koalas requires a JDBC driver to read so it requires the driver for your particular database to be on the Spark's classpath. For SQLite JDBC driver, you can download it, for example, as below:
 
 .. code-block:: bash
 
