@@ -4,7 +4,7 @@ From/to other DBMSes
 .. currentmodule:: databricks.koalas
 
 
-The APIs interacting with other DBMSes in Koalas is slightly different from the ones in pandas
+The APIs interacting with other DBMSes in Koalas are slightly different from the ones in pandas
 because Koalas leverages JDBC APIs in PySpark to read and write from/to other DBMSes.
 
 The APIs to read/write from/to external DBMSes are as follows:
