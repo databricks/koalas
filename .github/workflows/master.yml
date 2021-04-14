@@ -110,7 +110,7 @@ jobs:
             pyarrow-version: 2.0.0
           - python-version: 3.8
             spark-version: 3.1.1
-            pandas-version: 1.2.3
+            pandas-version: 1.2.4
             pyarrow-version: 3.0.0
             default-index-type: 'distributed-sequence'
     env:
