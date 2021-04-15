@@ -22,8 +22,6 @@ class CategoricalOps(DataTypeOps):
     The class for binary operations of Koalas objects with categorical types.
     """
 
-    # TODO: Consolidate error messages
-
     def __add__(self, left, right):
         raise TypeError("Object with dtype category cannot perform the numpy op add.")
 
@@ -34,10 +32,10 @@ class CategoricalOps(DataTypeOps):
         raise TypeError("Object with dtype category cannot perform the numpy op multiply.")
 
     def __truediv__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform truediv")
+        raise TypeError("Object with dtype category cannot perform Floating division")
 
     def __floordiv__(self, left, right):
-        raise TypeError("Object with dtype category cannot perform floordiv.")
+        raise TypeError("Object with dtype category cannot perform Integer division.")
 
     def __mod__(self, left, right):
         raise TypeError("Object with dtype category cannot perform modulo.")
@@ -55,10 +53,10 @@ class CategoricalOps(DataTypeOps):
         raise TypeError("Object with dtype category cannot perform the numpy op multiply")
 
     def __rtruediv__(self, left, right=None):
-        raise TypeError("Object with dtype category cannot perform truediv")
+        raise TypeError("Object with dtype category cannot perform Floating division")
 
     def __rfloordiv__(self, left, right=None):
-        raise TypeError("Object with dtype category cannot perform floordiv")
+        raise TypeError("Object with dtype category cannot perform Integer division")
 
     def __rpow__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform exponentiation.")

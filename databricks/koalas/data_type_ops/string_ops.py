@@ -71,10 +71,6 @@ class StringOps(DataTypeOps):
         raise TypeError("substraction can not be applied to string series or literals.")
 
     def __rmul__(self, left, right=None):
-        if isinstance(right, str):
-            # TODO: Remove?
-            raise TypeError("multiplication can not be applied to a string literal.")
-
         if isinstance(right, int):
             return column_op(SF.repeat)(left, right)
         else:
