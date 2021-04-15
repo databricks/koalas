@@ -319,7 +319,7 @@ class IndexOpsMixin(object, metaclass=ABCMeta):
 
     @property
     def _dtype_op(self):
-        from databricks.koalas.data_type_ops import DataTypeOps
+        from databricks.koalas.data_type_ops.base import DataTypeOps
 
         return DataTypeOps(self.dtype, self.spark.data_type)
 
