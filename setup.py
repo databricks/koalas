@@ -42,6 +42,7 @@ setup(
     packages=[
         'databricks',
         'databricks.koalas',
+        'databricks.koalas.data_type_ops',
         'databricks.koalas.indexes',
         'databricks.koalas.missing',
         'databricks.koalas.plot',
