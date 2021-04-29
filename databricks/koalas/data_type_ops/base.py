@@ -24,14 +24,12 @@ from pyspark import sql as spark
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
     BooleanType,
-    ByteType,
     DataType,
     DateType,
     DecimalType,
     DoubleType,
     FloatType,
     IntegralType,
-    ShortType,
     StringType,
     TimestampType,
 )
@@ -70,11 +68,7 @@ class DataTypeOps(object, metaclass=ABCMeta):
             return object.__new__(FractionalOps)
         elif isinstance(spark_type, DecimalType):
             return object.__new__(DecimalOps)
-        elif (
-            isinstance(spark_type, IntegralType)
-            or isinstance(spark_type, ByteType)
-            or isinstance(spark_type, ShortType)
-        ):
+        elif isinstance(spark_type, IntegralType):
             return object.__new__(IntegralOps)
         elif isinstance(spark_type, StringType):
             return object.__new__(StringOps)
