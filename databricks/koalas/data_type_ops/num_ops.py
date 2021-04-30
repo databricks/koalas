@@ -81,10 +81,7 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (
-                    not isinstance(right.spark.data_type, NumericType)
-                    and not isinstance(right.spark.data_type, StringType)
-                )
+                or not isinstance(right.spark.data_type, NumericType)
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("addition can not be applied to given types.")
@@ -186,21 +183,30 @@ class NumericOps(DataTypeOps):
     def __radd__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("string addition can only be applied to string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
+
         return column_op(Column.__radd__)(left, right)
 
     def __rsub__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("substraction can not be applied to string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
         return column_op(Column.__rsub__)(left, right)
 
     def __rmul__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
         return column_op(Column.__rmul__)(left, right)
 
     def __rtruediv__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
 
         def rtruediv(left, right):
             return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
@@ -212,6 +218,8 @@ class NumericOps(DataTypeOps):
     def __rfloordiv__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
 
         def rfloordiv(left, right):
             return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
@@ -223,6 +231,8 @@ class NumericOps(DataTypeOps):
     def __rpow__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
 
         def rpow_func(left, right):
             return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
@@ -232,6 +242,8 @@ class NumericOps(DataTypeOps):
     def __rmod__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("modulo can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
 
         def rmod(left, right):
             return ((right % left) + left) % left
