@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+from pandas.api.types import CategoricalDtype
+
 from pyspark.sql import functions as F
 from pyspark.sql.types import IntegralType, StringType
 
@@ -43,7 +45,9 @@ class StringOps(DataTypeOps):
             raise TypeError("multiplication can not be applied to a string literal.")
 
         if (
-            isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, IntegralType)
+            isinstance(right, IndexOpsMixin)
+            and isinstance(right.spark.data_type, IntegralType)
+            and not isinstance(right.dtype, CategoricalDtype)
         ) or isinstance(right, int):
             return column_op(SF.repeat)(left, right)
         else:
