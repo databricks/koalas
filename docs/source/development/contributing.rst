@@ -145,8 +145,8 @@ Release Guide
 Release Cadence
 ---------------
 
-In general, minor releases occur about every month. Therefore, Koalas 1.4.0 would generally be released about a month after 1.3.0.
-Maintenance releases happen as needed in between minor releases. Major releases do not happen according to a fixed schedule.
+Koalas 1.8.0 is the last minor release because Koalas will be officially included to PySpark.
+There will be only maintenance releases. Users are expected to directly use PySpark with Apache Spark 3.2+.
 
 Release Instructions
 --------------------
