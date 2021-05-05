@@ -15,19 +15,18 @@
 #
 
 import datetime
-import decimal
 
-import numpy as np
 import pandas as pd
 
 from pyspark.sql.types import DateType
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
+from databricks.koalas.data_type_ops.testing_utils import TestCasesUtils
 from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
-class DateOpsTest(ReusedSQLTestCase):
+class DateOpsTest(ReusedSQLTestCase, TestCasesUtils):
     @property
     def pser(self):
         return pd.Series([datetime.date(1994, 1, 31), datetime.date(1994, 2, 1)])
@@ -35,51 +34,6 @@ class DateOpsTest(ReusedSQLTestCase):
     @property
     def kser(self):
         return ks.from_pandas(self.pser)
-
-    @property
-    def numeric_psers(self):
-        dtypes = [np.float32, float, int, np.int32]
-        sers = [pd.Series([1, 2, 3], dtype=dtype) for dtype in dtypes]
-        sers.append(pd.Series([decimal.Decimal(1), decimal.Decimal(2), decimal.Decimal(3)]))
-        return sers
-
-    @property
-    def numeric_ksers(self):
-        return [ks.from_pandas(pser) for pser in self.numeric_psers]
-
-    @property
-    def non_numeric_psers(self):
-        psers = {
-            "string": pd.Series(["x", "y", "z"]),
-            "datetime": pd.to_datetime(pd.Series([1, 2, 3])),
-            "bool": pd.Series([True, True, False]),
-            "date": pd.Series(
-                [datetime.date(1994, 1, 1), datetime.date(1994, 1, 2), datetime.date(1994, 1, 3)]
-            ),
-            "categorical": pd.Series(["a", "b", "a"], dtype="category"),
-        }
-        return psers
-
-    @property
-    def non_numeric_ksers(self):
-        ksers = {}
-
-        for k, v in self.non_numeric_psers.items():
-
-            ksers[k] = ks.from_pandas(v)
-        return ksers
-
-    @property
-    def ksers(self):
-        return self.numeric_ksers + list(self.non_numeric_ksers.values())
-
-    @property
-    def psers(self):
-        return self.numeric_psers + list(self.non_numeric_psers.values())
-
-    @property
-    def pser_kser_pairs(self):
-        return zip(self.psers, self.ksers)
 
     @property
     def some_date(self):
