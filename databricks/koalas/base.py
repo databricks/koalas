@@ -225,6 +225,23 @@ def column_op(f):
         # extract Spark Column. For other arguments, they are used as are.
         cols = [arg for arg in args if isinstance(arg, IndexOpsMixin)]
 
+        # For arithmetic operations involving a bool series, take True as 1, False as 0.
+        if len(args) == 1:
+            if isinstance(self.spark.data_type, BooleanType):
+                import numbers
+
+                if isinstance(args[0], numbers.Number):
+                    self = self.astype(type(args[0]))
+                elif isinstance(args[0], IndexOpsMixin) and isinstance(
+                    args[0].spark.data_type, NumericType
+                ):
+                    if args[0].dtype != object:
+                        self = self.astype(args[0].dtype)
+            elif isinstance(args[0], IndexOpsMixin) and isinstance(
+                args[0].spark.data_type, BooleanType
+            ):
+                args = (args[0].astype(self.dtype),)
+
         if all(not should_alignment_for_column_op(self, col) for col in cols):
             # Same DataFrame anchors
             args = [arg.spark.column if isinstance(arg, IndexOpsMixin) else arg for arg in args]
