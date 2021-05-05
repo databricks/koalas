@@ -22,7 +22,7 @@ from pyspark.sql.types import DateType
 
 from databricks import koalas as ks
 from databricks.koalas.config import option_context
-from databricks.koalas.data_type_ops.testing_utils import TestCasesUtils
+from databricks.koalas.tests.data_type_ops.testing_utils import TestCasesUtils
 from databricks.koalas.testing.utils import ReusedSQLTestCase
 
 
