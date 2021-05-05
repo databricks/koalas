@@ -13,11 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import numbers
 
 import numpy as np
+from pandas.api.types import CategoricalDtype
 
 from pyspark.sql import Column, functions as F
 from pyspark.sql.types import (
+    NumericType,
     StringType,
     TimestampType,
 )
@@ -31,17 +34,34 @@ class BooleanOps(DataTypeOps):
     The class for binary operations of Koalas objects with spark type: BooleanType.
     """
 
-    # TODO: Take advantage of NumericOps?
-
     def __add__(self, left, right):
         if (
             isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("string addition can only be applied to string series or literals.")
+
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
+
         return column_op(Column.__add__)(left, right)
 
     def __sub__(self, left, right):
-        raise TypeError("numpy boolean subtract, the `-` operator, is not supported")
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("substraction can not be applied to given types.")
+
+        return column_op(Column.__sub__)(left, right)
 
     def __mul__(self, left, right):
         if isinstance(right, str):
@@ -50,6 +70,15 @@ class BooleanOps(DataTypeOps):
         if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, TimestampType):
             raise TypeError("multiplication can not be applied to date times.")
 
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("multiplication can not be applied to given types.")
+
         return column_op(Column.__mul__)(left, right)
 
     def __truediv__(self, left, right):
@@ -57,6 +86,15 @@ class BooleanOps(DataTypeOps):
             isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("division can not be applied to given types.")
 
         def truediv(left, right):
             return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
@@ -72,6 +110,15 @@ class BooleanOps(DataTypeOps):
             isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType)
         ) or isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("division can not be applied to given types.")
 
         def floordiv(left, right):
             return F.when(F.lit(right is np.nan), np.nan).otherwise(
@@ -92,6 +139,15 @@ class BooleanOps(DataTypeOps):
         ) or isinstance(right, str):
             raise TypeError("modulo can not be applied on string series or literals.")
 
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("division can not be applied to given types.")
+
         def mod(left, right):
             return ((left % right) + right) % right
 
@@ -103,6 +159,15 @@ class BooleanOps(DataTypeOps):
         ) or isinstance(right, str):
             raise TypeError("exponentiation can not be applied on string series or literals.")
 
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (not isinstance(right.spark.data_type, NumericType))
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("division can not be applied to given types.")
+
         def pow_func(left, right):
             return F.when(left == 1, left).otherwise(Column.__pow__(left, right))
 
@@ -111,21 +176,29 @@ class BooleanOps(DataTypeOps):
     def __radd__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("string addition can only be applied to string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
         return column_op(Column.__radd__)(left, right)
 
     def __rsub__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("substraction can not be applied to string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("substraction can not be applied to given types.")
         return column_op(Column.__rsub__)(left, right)
 
     def __rmul__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("multiplication can not be applied to given types.")
         return column_op(Column.__rmul__)(left, right)
 
     def __rtruediv__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("division can not be applied to given types.")
 
         def rtruediv(left, right):
             return F.when(left == 0, F.lit(np.inf).__div__(right)).otherwise(
@@ -137,6 +210,8 @@ class BooleanOps(DataTypeOps):
     def __rfloordiv__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("division can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("division can not be applied to given types.")
 
         def rfloordiv(left, right):
             return F.when(F.lit(left == 0), F.lit(np.inf).__div__(right)).otherwise(
@@ -147,7 +222,9 @@ class BooleanOps(DataTypeOps):
 
     def __rpow__(self, left, right=None):
         if isinstance(right, str):
-            raise TypeError("division can not be applied on string series or literals.")
+            raise TypeError("exponentiation can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("exponentiation can not be applied to given types.")
 
         def rpow_func(left, right):
             return F.when(F.lit(right == 1), right).otherwise(Column.__rpow__(left, right))
@@ -157,6 +234,8 @@ class BooleanOps(DataTypeOps):
     def __rmod__(self, left, right=None):
         if isinstance(right, str):
             raise TypeError("modulo can not be applied on string series or literals.")
+        if not isinstance(right, numbers.Number):
+            raise TypeError("modulo can not be applied to given types.")
 
         def rmod(left, right):
             return ((right % left) + left) % left
