@@ -16,12 +16,8 @@
 
 from abc import ABCMeta, abstractmethod
 
-import numpy as np
-import pandas as pd
 from pandas.api.types import CategoricalDtype
 
-from pyspark import sql as spark
-from pyspark.sql import functions as F
 from pyspark.sql.types import (
     BooleanType,
     DataType,
@@ -34,8 +30,7 @@ from pyspark.sql.types import (
     TimestampType,
 )
 
-from databricks.koalas.base import column_op, IndexOpsMixin
-from databricks.koalas.typedef import Dtype, extension_dtypes
+from databricks.koalas.typedef import Dtype
 
 
 class DataTypeOps(object, metaclass=ABCMeta):
@@ -132,59 +127,3 @@ class DataTypeOps(object, metaclass=ABCMeta):
     @abstractmethod
     def __rmod__(self, left, right=None):
         raise NotImplementedError()
-
-    def __and__(self, left, right):
-        if isinstance(left.dtype, extension_dtypes) or (
-            isinstance(right, IndexOpsMixin) and isinstance(right.dtype, extension_dtypes)
-        ):
-
-            def and_func(left, right):
-                if not isinstance(right, spark.Column):
-                    if pd.isna(right):
-                        right = F.lit(None)
-                    else:
-                        right = F.lit(right)
-                return left & right
-
-        else:
-
-            def and_func(left, right):
-                if not isinstance(right, spark.Column):
-                    if pd.isna(right):
-                        right = F.lit(None)
-                    else:
-                        right = F.lit(right)
-                scol = left & right
-                return F.when(scol.isNull(), False).otherwise(scol)
-
-        return column_op(and_func)(left, right)
-
-    def __rand__(self, left, right=None):
-        return self.__and__(left, right)
-
-    def __or__(self, left, right):
-        if isinstance(left.dtype, extension_dtypes) or (
-            isinstance(right, IndexOpsMixin) and isinstance(right.dtype, extension_dtypes)
-        ):
-
-            def or_func(left, right):
-                if not isinstance(right, spark.Column):
-                    if pd.isna(right):
-                        right = F.lit(None)
-                    else:
-                        right = F.lit(right)
-                return left | right
-
-        else:
-
-            def or_func(left, right):
-                if not isinstance(right, spark.Column) and pd.isna(right):
-                    return F.lit(False)
-                else:
-                    scol = left | F.lit(right)
-                    return F.when(left.isNull() | scol.isNull(), False).otherwise(scol)
-
-        return column_op(or_func)(left, right)
-
-    def __ror__(self, left, right=None):
-        return self.__or__(left, right)
