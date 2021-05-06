@@ -35,8 +35,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser + self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser + self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser + self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser + self.non_numeric_ksers['bool'], pser + self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser + self.non_numeric_ksers["bool"])
 
     def test_sub(self):
         for pser, kser in self.numeric_pser_kser_pairs:
@@ -50,8 +49,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser - self.non_numeric_ksers['bool'], pser - self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["bool"])
 
     def test_mul(self):
         for pser, kser in self.numeric_pser_kser_pairs:
@@ -69,8 +67,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser - self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser * self.non_numeric_ksers['bool'], pser * self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser + self.non_numeric_ksers["bool"])
 
     def test_truediv(self):
         for pser, kser in self.numeric_pser_kser_pairs:
@@ -84,8 +81,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser / self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser / self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser / self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser / self.non_numeric_ksers['bool'], pser / self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser / self.non_numeric_ksers["bool"])
 
     def test_floordiv(self):
         for pser, kser in self.numeric_pser_kser_pairs:
@@ -99,8 +95,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser // self.non_numeric_ksers['bool'], pser // self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["bool"])
 
     def test_mod(self):
         for pser, kser in self.numeric_pser_kser_pairs:
@@ -112,8 +107,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser % self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser % self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser % self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser % self.non_numeric_ksers['bool'], pser % self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser % self.non_numeric_ksers["bool"])
 
     def test_pow(self):
         for pser, kser in self.numeric_pser_kser_pairs:
@@ -127,8 +121,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser ** self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser ** self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser ** self.non_numeric_ksers["categorical"])
-                # self.assertEqual(
-                # kser ** self.non_numeric_ksers['bool'], pser ** self.non_numeric_psers['bool'])
+                self.assertRaises(TypeError, lambda: kser ** self.non_numeric_ksers["bool"])
 
     def test_radd(self):
         for pser, kser in self.numeric_pser_kser_pairs:

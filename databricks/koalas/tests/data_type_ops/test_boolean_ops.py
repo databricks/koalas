@@ -15,7 +15,6 @@
 #
 
 import datetime
-import numpy as np
 import pandas as pd
 
 from databricks import koalas as ks
@@ -33,150 +32,106 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
     def kser(self):
         return ks.from_pandas(self.pser)
 
-    @property
-    def numeric_psers(self):
-        dtypes = [np.float32, float, int, np.int32]
-        sers = [pd.Series([1, 2, 3], dtype=dtype) for dtype in dtypes]
-        # TODO: enable DecimalType series
-        # sers.append(pd.Series([decimal.Decimal(1), decimal.Decimal(2), decimal.Decimal(3)]))
-        return sers
-
     def test_add(self):
-        self.assert_eq(self.pser + 1, self.kser + 1)
-        self.assert_eq(self.pser + 0.1, self.kser + 0.1)
+        self.assertRaises(TypeError, lambda: self.kser + 1)
+        self.assertRaises(TypeError, lambda: self.kser + 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser + pser, (self.kser + kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser + kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser + kser)
 
     def test_sub(self):
-        self.assert_eq(self.pser - 1, self.kser - 1)
-        self.assert_eq(self.pser - 0.1, self.kser - 0.1)
+        self.assertRaises(TypeError, lambda: self.kser - 1)
+        self.assertRaises(TypeError, lambda: self.kser - 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser - pser, (self.kser - kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser - kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser - kser)
 
     def test_mul(self):
-        self.assert_eq(self.pser * 1, self.kser * 1)
-        self.assert_eq(self.pser * 0.1, self.kser * 0.1)
+        self.assertRaises(TypeError, lambda: self.kser * 1)
+        self.assertRaises(TypeError, lambda: self.kser * 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser * pser, (self.kser * kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser * kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser * kser)
 
     def test_truediv(self):
-        self.assert_eq(self.pser / 1, self.kser / 1)
-        self.assert_eq(self.pser / 0.1, self.kser / 0.1)
+        self.assertRaises(TypeError, lambda: self.kser / 1)
+        self.assertRaises(TypeError, lambda: self.kser / 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                if kser.dtype == float:  # DoubleType is returned always
-                    self.assert_eq(self.pser / pser, (self.kser / kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser / kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser / kser)
 
     def test_floordiv(self):
-        # DoubleType is returned always
-        # self.assert_eq(self.pser // 1, self.kser // 1)
-
-        # in pandas, 1 // 0.1 = 9.0; in Koalas, 1 // 0.1 = 10.0
-        # self.assert_eq(self.pser // 0.1, self.kser // 0.1)
+        self.assertRaises(TypeError, lambda: self.kser // 1)
+        self.assertRaises(TypeError, lambda: self.kser // 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                if kser.dtype == float:  # DoubleType is returned always
-                    self.assert_eq(self.pser // pser, (self.kser // kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser // kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser // kser)
 
     def test_mod(self):
-        self.assert_eq(self.pser % 1, self.kser % 1)
-        self.assert_eq(self.pser % 0.1, self.kser % 0.1)
+        self.assertRaises(TypeError, lambda: self.kser % 1)
+        self.assertRaises(TypeError, lambda: self.kser % 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser % pser, (self.kser % kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser % kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser % kser)
 
     def test_pow(self):
-        # DoubleType is returned always
-        # self.assert_eq(self.pser ** 1, self.kser ** 1)
-        self.assert_eq(self.pser ** 0.1, self.kser ** 0.1)
+        self.assertRaises(TypeError, lambda: self.kser ** 1)
+        self.assertRaises(TypeError, lambda: self.kser ** 0.1)
 
         with option_context("compute.ops_on_diff_frames", True):
-            for pser, kser in self.numeric_pser_kser_pairs:
-                if kser.dtype == float:  # DoubleType is returned always
-                    self.assert_eq(self.pser ** pser, (self.kser ** kser).sort_index())
-
-            for k, kser in self.non_numeric_ksers.items():
-                if k != "bool":  # TODO: handle bool case
-                    self.assertRaises(TypeError, lambda: self.kser ** kser)
+            for kser in self.ksers:
+                self.assertRaises(TypeError, lambda: self.kser ** kser)
 
     def test_radd(self):
-        self.assert_eq(1 + self.pser, 1 + self.kser)
-        self.assert_eq(0.1 + self.pser, 0.1 + self.kser)
+        self.assertRaises(TypeError, lambda: 1 + self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 + self.kser)
         self.assertRaises(TypeError, lambda: "x" + self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) + self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) + self.kser)
 
     def test_rsub(self):
-        self.assert_eq(1 - self.pser, 1 - self.kser)
-        self.assert_eq(0.1 - self.pser, 0.1 - self.kser)
+        self.assertRaises(TypeError, lambda: 1 - self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 - self.kser)
         self.assertRaises(TypeError, lambda: "x" - self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) - self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) - self.kser)
 
     def test_rmul(self):
-        self.assert_eq(1 * self.pser, 1 * self.kser)
-        self.assert_eq(0.1 * self.pser, 0.1 * self.kser)
+        self.assertRaises(TypeError, lambda: 1 * self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 * self.kser)
         self.assertRaises(TypeError, lambda: "x" * self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) * self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) * self.kser)
 
     def test_rtruediv(self):
-        self.assert_eq(1 / self.pser, 1 / self.kser)
-        self.assert_eq(0.1 / self.pser, 0.1 / self.kser)
+        self.assertRaises(TypeError, lambda: 1 / self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 / self.kser)
         self.assertRaises(TypeError, lambda: "x" / self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) / self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) / self.kser)
 
     def test_rfloordiv(self):
-        self.assert_eq(1 // self.pser, 1 // self.kser)
-        self.assert_eq(0.1 // self.pser, 0.1 // self.kser)
+        self.assertRaises(TypeError, lambda: 1 // self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 // self.kser)
         self.assertRaises(TypeError, lambda: "x" + self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) // self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) // self.kser)
 
     def test_rpow(self):
-        # self.assert_eq(1 ** self.pser, 1 ** self.kser)
-        self.assert_eq(0.1 ** self.pser, 0.1 ** self.kser)
+        self.assertRaises(TypeError, lambda: 1 ** self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 ** self.kser)
         self.assertRaises(TypeError, lambda: "x" ** self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) ** self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) ** self.kser)
 
     def test_rmod(self):
-        # self.assert_eq(1 % self.pser, 1 % self.kser)
-        # in pandas 0.1 / True is 0.1; in Koalas 0.1 / True is 0.10000000000000009
-        # self.assert_eq(0.1 % self.pser, 0.1 % self.kser)
+        self.assertRaises(TypeError, lambda: 1 % self.kser)
+        self.assertRaises(TypeError, lambda: 0.1 % self.kser)
         self.assertRaises(TypeError, lambda: datetime.date(1994, 1, 1) % self.kser)
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) % self.kser)
