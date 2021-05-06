@@ -29,7 +29,9 @@ from databricks.koalas.testing.utils import ReusedSQLTestCase
 class DateOpsTest(ReusedSQLTestCase, TestCasesUtils):
     @property
     def pser(self):
-        return pd.Series([datetime.date(1994, 1, 31), datetime.date(1994, 2, 1)])
+        return pd.Series(
+            [datetime.date(1994, 1, 31), datetime.date(1994, 2, 1), datetime.date(1994, 2, 2)]
+        )
 
     @property
     def kser(self):
