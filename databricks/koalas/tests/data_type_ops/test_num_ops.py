@@ -61,7 +61,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
             for pser, kser in self.numeric_pser_kser_pairs:
                 if kser.dtype in [int, np.int32]:
                     self.assert_eq(
-                        kser * self.non_numeric_ksers["string"],
+                        (kser * self.non_numeric_ksers["string"]).sort_index(),
                         pser * self.non_numeric_psers["string"],
                     )
                 else:

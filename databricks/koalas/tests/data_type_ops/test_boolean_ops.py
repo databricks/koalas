@@ -47,7 +47,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
 
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser + pser, self.kser + kser)
+                self.assert_eq(self.pser + pser, (self.kser + kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case
@@ -59,7 +59,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
 
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser - pser, self.kser - kser)
+                self.assert_eq(self.pser - pser, (self.kser - kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case
@@ -71,7 +71,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
 
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser * pser, self.kser * kser)
+                self.assert_eq(self.pser * pser, (self.kser * kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case
@@ -84,7 +84,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
                 if kser.dtype == float:  # DoubleType is returned always
-                    self.assert_eq(self.pser / pser, self.kser / kser)
+                    self.assert_eq(self.pser / pser, (self.kser / kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case
@@ -100,7 +100,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
                 if kser.dtype == float:  # DoubleType is returned always
-                    self.assert_eq(self.pser // pser, self.kser // kser)
+                    self.assert_eq(self.pser // pser, (self.kser // kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case
@@ -112,7 +112,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
 
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
-                self.assert_eq(self.pser % pser, self.kser % kser)
+                self.assert_eq(self.pser % pser, (self.kser % kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case
@@ -126,7 +126,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.numeric_pser_kser_pairs:
                 if kser.dtype == float:  # DoubleType is returned always
-                    self.assert_eq(self.pser ** pser, self.kser ** kser)
+                    self.assert_eq(self.pser ** pser, (self.kser ** kser).sort_index())
 
             for k, kser in self.non_numeric_ksers.items():
                 if k != "bool":  # TODO: handle bool case

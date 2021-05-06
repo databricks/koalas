@@ -39,7 +39,7 @@ class StringOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             self.assert_eq(
                 self.pser + self.non_numeric_psers["string"],
-                self.kser + self.non_numeric_ksers["string"],
+                (self.kser + self.non_numeric_ksers["string"]).sort_index(),
             )
             self.assertRaises(TypeError, lambda: self.kser + self.non_numeric_ksers["datetime"])
             self.assertRaises(TypeError, lambda: self.kser + self.non_numeric_ksers["date"])
@@ -63,7 +63,7 @@ class StringOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.pser_kser_pairs:
                 if kser.dtype in [np.int64, np.int32]:
-                    self.assert_eq(self.pser * pser, self.kser * kser)
+                    self.assert_eq(self.pser * pser, (self.kser * kser).sort_index())
                 else:
                     self.assertRaises(TypeError, lambda: self.kser * kser)
 

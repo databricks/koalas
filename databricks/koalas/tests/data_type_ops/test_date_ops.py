@@ -57,7 +57,7 @@ class DateOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.pser_kser_pairs:
                 if isinstance(kser.spark.data_type, DateType):
-                    self.assert_eq((self.pser - pser).dt.days, self.kser - kser)
+                    self.assert_eq((self.pser - pser).dt.days, (self.kser - kser).sort_index())
                 else:
                     self.assertRaises(TypeError, lambda: self.kser - kser)
 

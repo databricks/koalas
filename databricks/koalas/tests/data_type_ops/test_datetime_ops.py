@@ -58,7 +58,8 @@ class DatetimeOpsTest(ReusedSQLTestCase, TestCasesUtils):
             for pser, kser in self.pser_kser_pairs:
                 if pser.dtype == np.dtype("<M8[ns]"):
                     self.assert_eq(
-                        (self.pser - pser).dt.total_seconds().astype("int"), self.kser - kser
+                        (self.pser - pser).dt.total_seconds().astype("int"),
+                        (self.kser - kser).sort_index(),
                     )
                 else:
                     self.assertRaises(TypeError, lambda: self.kser - kser)
