@@ -54,15 +54,6 @@ class DataTypeOps(object, metaclass=ABCMeta):
 
         if isinstance(dtype, CategoricalDtype):
             return object.__new__(CategoricalOps)
-        if dtype == np.dtype("object"):
-            if isinstance(spark_type, DecimalType):
-                return object.__new__(FractionalOps)
-            elif isinstance(spark_type, DateType):
-                return object.__new__(DateOps)
-            elif isinstance(spark_type, StringType):
-                return object.__new__(StringOps)
-            else:
-                raise TypeError("Type %s cannot be inferred." % dtype)
         elif (
             isinstance(spark_type, FloatType)
             or isinstance(spark_type, DoubleType)
