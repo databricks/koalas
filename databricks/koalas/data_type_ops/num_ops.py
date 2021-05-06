@@ -272,11 +272,3 @@ class FractionalOps(NumericOps):
     """
 
     pass
-
-
-class DecimalOps(FractionalOps):
-    """
-    The class for binary operations of Koalas objects with spark type: DecimalType.
-    """
-
-    pass

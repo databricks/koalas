@@ -49,7 +49,6 @@ class DataTypeOps(object, metaclass=ABCMeta):
         from databricks.koalas.data_type_ops.num_ops import (
             IntegralOps,
             FractionalOps,
-            DecimalOps,
         )
         from databricks.koalas.data_type_ops.string_ops import StringOps
 
@@ -57,17 +56,19 @@ class DataTypeOps(object, metaclass=ABCMeta):
             return object.__new__(CategoricalOps)
         if dtype == np.dtype("object"):
             if isinstance(spark_type, DecimalType):
-                return object.__new__(DecimalOps)
+                return object.__new__(FractionalOps)
             elif isinstance(spark_type, DateType):
                 return object.__new__(DateOps)
             elif isinstance(spark_type, StringType):
                 return object.__new__(StringOps)
             else:
                 raise TypeError("Type %s cannot be inferred." % dtype)
-        elif isinstance(spark_type, FloatType) or isinstance(spark_type, DoubleType):
+        elif (
+            isinstance(spark_type, FloatType)
+            or isinstance(spark_type, DoubleType)
+            or isinstance(spark_type, DecimalType)
+        ):
             return object.__new__(FractionalOps)
-        elif isinstance(spark_type, DecimalType):
-            return object.__new__(DecimalOps)
         elif isinstance(spark_type, IntegralType):
             return object.__new__(IntegralOps)
         elif isinstance(spark_type, StringType):
