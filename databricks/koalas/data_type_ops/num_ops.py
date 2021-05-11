@@ -21,6 +21,7 @@ from pandas.api.types import CategoricalDtype
 
 from pyspark.sql import Column, functions as F
 from pyspark.sql.types import (
+    BooleanType,
     NumericType,
     StringType,
     TimestampType,
@@ -46,10 +47,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (not isinstance(right.spark.data_type, NumericType))
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("addition can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         return column_op(Column.__add__)(left, right)
 
@@ -63,10 +70,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (not isinstance(right.spark.data_type, NumericType))
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("substraction can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         return column_op(Column.__sub__)(left, right)
 
@@ -81,10 +94,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or not isinstance(right.spark.data_type, NumericType)
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("addition can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         return column_op(Column.__mul__)(left, right)
 
@@ -98,10 +117,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (not isinstance(right.spark.data_type, NumericType))
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("division can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         def truediv(left, right):
             return F.when(F.lit(right != 0) | F.lit(right).isNull(), left.__div__(right)).otherwise(
@@ -122,10 +147,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (not isinstance(right.spark.data_type, NumericType))
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("division can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         def floordiv(left, right):
             return F.when(F.lit(right is np.nan), np.nan).otherwise(
@@ -150,10 +181,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (not isinstance(right.spark.data_type, NumericType))
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("modulo can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         def mod(left, right):
             return ((left % right) + right) % right
@@ -170,10 +207,16 @@ class NumericOps(DataTypeOps):
             isinstance(right, IndexOpsMixin)
             and (
                 isinstance(right.dtype, CategoricalDtype)
-                or (not isinstance(right.spark.data_type, NumericType))
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
             )
         ) and not isinstance(right, numbers.Number):
             raise TypeError("exponentiation can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
 
         def pow_func(left, right):
             return F.when(left == 1, left).otherwise(Column.__pow__(left, right))
@@ -261,8 +304,27 @@ class IntegralOps(NumericOps):
         if isinstance(right, str):
             raise TypeError("multiplication can not be applied to a string literal.")
 
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, TimestampType):
+            raise TypeError("multiplication can not be applied to date times.")
+
         if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, StringType):
             return column_op(SF.repeat)(right, left)
+
+        if (
+            isinstance(right, IndexOpsMixin)
+            and (
+                isinstance(right.dtype, CategoricalDtype)
+                or (
+                    not isinstance(right.spark.data_type, NumericType)
+                    and not isinstance(right.spark.data_type, BooleanType)
+                )
+            )
+        ) and not isinstance(right, numbers.Number):
+            raise TypeError("addition can not be applied to given types.")
+
+        if isinstance(right, IndexOpsMixin) and isinstance(right.spark.data_type, BooleanType):
+            right = right.spark.apply(lambda scol: scol.cast(left.spark.data_type))
+
         return column_op(Column.__mul__)(left, right)
 
 
