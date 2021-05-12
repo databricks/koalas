@@ -119,7 +119,7 @@ class NumOpsTest(ReusedSQLTestCase, TestCasesUtils):
                 self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["datetime"])
                 self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["date"])
                 self.assertRaises(TypeError, lambda: kser // self.non_numeric_ksers["categorical"])
-            if LooseVersion(pd.__version__) >= LooseVersion("0.24.2"):
+            if LooseVersion(pd.__version__) >= LooseVersion("0.25.3"):
                 self.assert_eq(
                     (self.float_kser // self.non_numeric_ksers["bool"]).sort_index(),
                     self.float_pser // self.non_numeric_psers["bool"],

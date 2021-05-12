@@ -153,7 +153,7 @@ class BooleanOpsTest(ReusedSQLTestCase, TestCasesUtils):
         self.assertRaises(TypeError, lambda: datetime.datetime(1994, 1, 1) / self.kser)
 
     def test_rfloordiv(self):
-        if LooseVersion(pd.__version__) >= LooseVersion("0.24.2"):
+        if LooseVersion(pd.__version__) >= LooseVersion("0.25.3"):
             self.assert_eq(1 // self.pser, 1 // self.kser)
             self.assert_eq(0.1 // self.pser, 0.1 // self.kser)
         self.assertRaises(TypeError, lambda: "x" + self.kser)
