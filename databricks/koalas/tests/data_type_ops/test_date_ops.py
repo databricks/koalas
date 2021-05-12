@@ -15,6 +15,7 @@
 #
 
 import datetime
+from distutils.version import LooseVersion
 
 import pandas as pd
 
@@ -59,7 +60,8 @@ class DateOpsTest(ReusedSQLTestCase, TestCasesUtils):
         with option_context("compute.ops_on_diff_frames", True):
             for pser, kser in self.pser_kser_pairs:
                 if isinstance(kser.spark.data_type, DateType):
-                    self.assert_eq((self.pser - pser).dt.days, (self.kser - kser).sort_index())
+                    if LooseVersion(pd.__version__) >= LooseVersion("0.24.2"):
+                        self.assert_eq((self.pser - pser).dt.days, (self.kser - kser).sort_index())
                 else:
                     self.assertRaises(TypeError, lambda: self.kser - kser)
 
