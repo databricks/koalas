@@ -96,3 +96,6 @@ class DatetimeOps(DataTypeOps):
 
     def __rmod__(self, left, right=None):
         raise TypeError("modulo can not be applied to date times.")
+
+    def prepare(self, col):
+        return col

@@ -16,6 +16,7 @@
 
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
 from pandas.api.types import CategoricalDtype
 
 from pyspark.sql.types import (
@@ -127,3 +128,11 @@ class DataTypeOps(object, metaclass=ABCMeta):
     @abstractmethod
     def __rmod__(self, left, right=None):
         raise NotImplementedError()
+
+    def restore(self, col):
+        """Restore column when to_pandas."""
+        return col
+
+    def prepare(self, col):
+        """Prepare column when from_pandas"""
+        return col.replace({np.nan: None})

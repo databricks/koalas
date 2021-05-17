@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+import numpy as np
+import pandas as pd
+
 from databricks.koalas.data_type_ops.base import DataTypeOps
 
 
@@ -63,3 +66,11 @@ class CategoricalOps(DataTypeOps):
 
     def __rmod__(self, left, right=None):
         raise TypeError("Object with dtype category cannot perform modulo.")
+
+    def restore(self, col):
+        return pd.Categorical.from_codes(
+            col, categories=self.dtype.categories, ordered=self.dtype.ordered
+        )
+
+    def prepare(self, col):
+        return col.cat.codes.replace({np.nan: None})
