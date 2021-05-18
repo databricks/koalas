@@ -988,7 +988,7 @@ class InternalFrame(object):
                 if isinstance(dtype, extension_dtypes):
                     ext_dtypes[column_name] = dtype
                 dtypes.append(dtype)
-                spark_types.append(self.spark_frame.select(column_name).schema[0].dataType)
+                spark_types.append(self.resolved_copy.spark_frame.select(column_name).schema[0].dataType)
 
         return dict(
             index_columns=self.index_spark_column_names,
