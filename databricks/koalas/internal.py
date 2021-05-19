@@ -25,13 +25,13 @@ import py4j
 
 import numpy as np
 import pandas as pd
-from pandas.api.types import CategoricalDtype, is_datetime64_dtype, is_datetime64tz_dtype
+from pandas.api.types import CategoricalDtype  # noqa: F401
 import pyspark
 from pyspark import sql as spark
 from pyspark._globals import _NoValue, _NoValueType
 from pyspark.sql import functions as F, Window
 from pyspark.sql.functions import PandasUDFType, pandas_udf
-from pyspark.sql.types import (
+from pyspark.sql.types import (  # noqa: F401
     BooleanType,
     DataType,
     IntegralType,
@@ -60,7 +60,6 @@ from databricks.koalas.typedef import (
     extension_dtypes,
     infer_pd_series_spark_type,
     spark_type_to_pandas_dtype,
-    koalas_dtype,
 )
 from databricks.koalas.utils import (
     column_labels_level,

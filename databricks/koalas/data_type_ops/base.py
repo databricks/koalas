@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 import numpy as np
 from pandas.api.types import CategoricalDtype
@@ -73,59 +73,45 @@ class DataTypeOps(object, metaclass=ABCMeta):
         self.dtype = dtype
         self.spark_type = spark_type
 
-    @abstractmethod
     def __add__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __sub__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __mul__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __truediv__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __floordiv__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __mod__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __pow__(self, left, right):
         raise NotImplementedError()
 
-    @abstractmethod
     def __radd__(self, left, right=None):
         raise NotImplementedError()
 
-    @abstractmethod
     def __rsub__(self, left, right=None):
         raise NotImplementedError()
 
-    @abstractmethod
     def __rmul__(self, left, right=None):
         raise NotImplementedError()
 
-    @abstractmethod
     def __rtruediv__(self, left, right=None):
         raise NotImplementedError()
 
-    @abstractmethod
     def __rfloordiv__(self, left, right=None):
         raise NotImplementedError()
 
-    @abstractmethod
     def __rpow__(self, left, right=None):
         raise NotImplementedError()
 
-    @abstractmethod
     def __rmod__(self, left, right=None):
         raise NotImplementedError()
 
