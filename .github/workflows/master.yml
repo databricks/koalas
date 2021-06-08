@@ -89,11 +89,13 @@ jobs:
             spark-version: 2.4.7
             pandas-version: 0.24.2
             pyarrow-version: 0.14.1
+            numpy-version: 1.19.5
             logger: databricks.koalas.usage_logging.usage_logger
           - python-version: 3.7
             spark-version: 2.4.7
             pandas-version: 0.25.3
             pyarrow-version: 0.15.1
+            numpy-version: 1.19.5
             default-index-type: 'distributed-sequence'
           - python-version: 3.7
             spark-version: 3.0.2
@@ -103,21 +105,25 @@ jobs:
             spark-version: 3.1.1
             pandas-version: 1.1.5
             pyarrow-version: 2.0.0
+            numpy-version: 1.19.5
             default-index-type: 'distributed-sequence'
           - python-version: 3.8
             spark-version: 3.0.2
             pandas-version: 1.1.5
             pyarrow-version: 2.0.0
+            numpy-version: 1.20.3
           - python-version: 3.8
             spark-version: 3.1.1
             pandas-version: 1.2.4
             pyarrow-version: 3.0.0
+            numpy-version: 1.20.3
             default-index-type: 'distributed-sequence'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
+      NUMPY_VERSION: ${{ matrix.numpy-version }}
       DEFAULT_INDEX_TYPE: ${{ matrix.default-index-type }}
       KOALAS_TESTING: 1
       SPARK_LOCAL_IP: 127.0.0.1
@@ -145,6 +151,7 @@ jobs:
         conda config --env --add pinned_packages python=$PYTHON_VERSION
         conda config --env --add pinned_packages pandas==$PANDAS_VERSION
         conda config --env --add pinned_packages pyarrow==$PYARROW_VERSION
+        conda config --env --add pinned_packages numpy==$NUMPY_VERSION
         conda config --env --add pinned_packages pyspark==$SPARK_VERSION
         if [[ "$SPARK_VERSION" < "3.0" ]]; then
           pip install pyspark==$SPARK_VERSION
@@ -152,7 +159,7 @@ jobs:
           conda install -c conda-forge --yes pyspark==$SPARK_VERSION
         fi
         conda install -c conda-forge --yes pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION
-        sed -i -e "/pandas/d" -e "/pyarrow/d" requirements-dev.txt
+        sed -i -e "/pandas/d" -e "/pyarrow/d" -e "/numpy/d" requirements-dev.txt
         # Disable mypy check for PySpark 3.1
         if [[ "$SPARK_VERSION" > "3.1" ]]; then sed -i '/mypy/d' requirements-dev.txt; fi
         # sphinx-plotly-directive is not available on Conda.
