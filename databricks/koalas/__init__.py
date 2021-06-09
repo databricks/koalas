@@ -72,6 +72,24 @@ assert_python_version()
 assert_pyspark_version()
 
 import pyspark
+import numpy
+
+if LooseVersion(pyspark.__version__) < LooseVersion("3.1") and LooseVersion(
+    numpy.__version__
+) >= LooseVersion("1.20"):
+    import logging
+
+    logging.warning(
+        'Found numpy version "{numpy_version}" installed with pyspark version "{pyspark_version}". '
+        "Some functions will not work well with this combination of "
+        'numpy version "{numpy_version}" and pyspark version "{pyspark_version}". '
+        "Please try to upgrade pyspark version to 3.1 or above, "
+        "or downgrade numpy version to below 1.20.".format(
+            numpy_version=numpy.__version__, pyspark_version=pyspark.__version__
+        )
+    )
+
+
 import pyarrow
 
 if LooseVersion(pyspark.__version__) < LooseVersion("3.0"):
