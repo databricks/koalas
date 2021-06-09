@@ -20,16 +20,25 @@ jobs:
             spark-version: 2.3.4
             pandas-version: 0.23.4
             pyarrow-version: 0.16.0
+            numpy-version: 1.18.5
           - python-version: 3.6
             spark-version: 2.3.4
             pandas-version: 0.24.2
             pyarrow-version: 0.10.0
+            numpy-version: 1.19.5
+            default-index-type: 'distributed-sequence'
+          - python-version: 3.9
+            spark-version: 3.1.1
+            pandas-version: 1.2.4
+            pyarrow-version: 3.0.0
+            numpy-version: 1.20.3
             default-index-type: 'distributed-sequence'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}
       SPARK_VERSION: ${{ matrix.spark-version }}
       PANDAS_VERSION: ${{ matrix.pandas-version }}
       PYARROW_VERSION: ${{ matrix.pyarrow-version }}
+      NUMPY_VERSION: ${{ matrix.numpy-version }}
       DEFAULT_INDEX_TYPE: ${{ matrix.default-index-type }}
       KOALAS_TESTING: 1
       SPARK_LOCAL_IP: 127.0.0.1
@@ -64,8 +73,10 @@ jobs:
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then sed -i '/black/d' requirements-dev.txt; fi
         # sphinx-plotly-directive supports Python 3.6+
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then sed -i '/sphinx-plotly-directive/d' requirements-dev.txt; fi
+        # Disable mypy check for PySpark 3.1
+        if [[ "$SPARK_VERSION" > "3.1" ]]; then sed -i '/mypy/d' requirements-dev.txt; fi
         pip install -r requirements-dev.txt
-        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION
+        pip install pandas==$PANDAS_VERSION pyarrow==$PYARROW_VERSION pyspark==$SPARK_VERSION numpy==$NUMPY_VERSION
         # matplotlib dropped Python 3.5 support from 3.1.x; however, 3.0.3 only supports sphinx 2.x.
         # It forces the sphinx version to 2.x.
         if [[ "$PYTHON_VERSION" < "3.6" ]]; then pip install "sphinx<3.0.0"; fi
