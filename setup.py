@@ -54,7 +54,7 @@ setup(
         'plotly': ['plotly>=4.8'],
         'matplotlib': ['matplotlib>=3.0.0,<3.3.0'],
     },
-    python_requires='>=3.5,<3.9',
+    python_requires='>=3.5,<3.10',
     install_requires=[
         'pandas>=0.23.2',
         'pyarrow>=0.10',
@@ -77,5 +77,6 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 )
