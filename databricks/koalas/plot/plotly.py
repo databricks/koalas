@@ -72,8 +72,14 @@ def plot_pie(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
 
 def plot_histogram(data: Union["ks.DataFrame", "ks.Series"], **kwargs):
     import plotly.graph_objs as go
+    import databricks.koalas as ks
 
     bins = kwargs.get("bins", 10)
+    y = kwargs.get("y")
+    if y and isinstance(data, ks.DataFrame):
+        # Note that the results here are matched with matplotlib. x and y
+        # handling is different from pandas' plotly output.
+        data = data[y]
     kdf, bins = HistogramPlotBase.prepare_hist_data(data, bins)
     assert len(bins) > 2, "the number of buckets must be higher than 2."
     output_series = HistogramPlotBase.compute_hist(kdf, bins)
