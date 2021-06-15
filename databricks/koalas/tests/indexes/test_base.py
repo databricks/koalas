@@ -1289,8 +1289,12 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
         pidx2 = pd.Index([3, 4, 5, 6], name="koalas")
         kidx1 = ks.from_pandas(pidx1)
         kidx2 = ks.from_pandas(pidx2)
+        # Series
+        pser = pd.Series([3, 4, 5, 6], name="koalas")
+        kser = ks.from_pandas(pser)
 
         self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
+        self.assert_eq(kidx1.difference(kser).sort_values(), pidx1.difference(pser).sort_values())
         self.assert_eq(
             kidx1.difference([3, 4, 5, 6]).sort_values(),
             pidx1.difference([3, 4, 5, 6]).sort_values(),
@@ -1325,28 +1329,36 @@ class IndexesTest(ReusedSQLTestCase, TestUtils):
             kidx1.difference(kidx2, sort=1)
 
         # MultiIndex
-        pidx1 = pd.MultiIndex.from_tuples(
+        pmidx1 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "y", 2), ("c", "z", 3)], names=["hello", "koalas", "world"]
         )
-        pidx2 = pd.MultiIndex.from_tuples(
+        pmidx2 = pd.MultiIndex.from_tuples(
             [("a", "x", 1), ("b", "z", 2), ("k", "z", 3)], names=["hello", "koalas", "world"]
         )
-        kidx1 = ks.from_pandas(pidx1)
-        kidx2 = ks.from_pandas(pidx2)
+        kmidx1 = ks.from_pandas(pmidx1)
+        kmidx2 = ks.from_pandas(pmidx2)
 
-        self.assert_eq(kidx1.difference(kidx2).sort_values(), pidx1.difference(pidx2).sort_values())
         self.assert_eq(
-            kidx1.difference({("a", "x", 1)}).sort_values(),
-            pidx1.difference({("a", "x", 1)}).sort_values(),
+            kmidx1.difference(kmidx2).sort_values(), pmidx1.difference(pmidx2).sort_values()
         )
         self.assert_eq(
-            kidx1.difference({("a", "x", 1): [1, 2, 3]}).sort_values(),
-            pidx1.difference({("a", "x", 1): [1, 2, 3]}).sort_values(),
+            kmidx1.difference(kidx1).sort_values(), pmidx1.difference(pidx1).sort_values()
+        )
+        self.assert_eq(
+            kidx1.difference(kmidx1).sort_values(), pidx1.difference(pmidx1).sort_values()
+        )
+        self.assert_eq(
+            kmidx1.difference({("a", "x", 1)}).sort_values(),
+            pmidx1.difference({("a", "x", 1)}).sort_values(),
+        )
+        self.assert_eq(
+            kmidx1.difference({("a", "x", 1): [1, 2, 3]}).sort_values(),
+            pmidx1.difference({("a", "x", 1): [1, 2, 3]}).sort_values(),
         )
 
         # Exceptions for MultiIndex
         with self.assertRaisesRegex(TypeError, "other must be a MultiIndex or a list of tuples"):
-            kidx1.difference(["b", "z", "2"])
+            kmidx1.difference(["b", "z", "2"])
 
     def test_repeat(self):
         pidx = pd.Index(["a", "b", "c"])
