@@ -25,7 +25,6 @@ import py4j
 
 import numpy as np
 import pandas as pd
-from pandas.api.extensions import ExtensionDtype
 from pandas.api.types import CategoricalDtype, is_datetime64_dtype, is_datetime64tz_dtype
 import pyspark
 from pyspark import sql as spark
@@ -49,6 +48,7 @@ from databricks.koalas.config import get_option
 from databricks.koalas.typedef import (
     Dtype,
     as_spark_type,
+    dtype_data_types,
     extension_dtypes,
     infer_pd_series_spark_type,
     spark_type_to_pandas_dtype,
@@ -77,8 +77,6 @@ HIDDEN_COLUMNS = {NATURAL_ORDER_COLUMN_NAME}
 
 DEFAULT_SERIES_NAME = 0
 SPARK_DEFAULT_SERIES_NAME = str(DEFAULT_SERIES_NAME)
-
-dtype_data_types = (np.dtype, ExtensionDtype)
 
 
 class InternalFrame(object):
