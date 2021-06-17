@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 from databricks.koalas.config import get_option
 from databricks.koalas.typedef import (
     Dtype,
+    DtypeDataTypes,
     as_spark_type,
     extension_dtypes,
     infer_pd_series_spark_type,
@@ -540,7 +541,7 @@ class InternalFrame(object):
         ]
 
         assert all(
-            isinstance(dtype, Dtype.__args__)  # type: ignore
+            isinstance(dtype, DtypeDataTypes)
             and (dtype == np.dtype("object") or as_spark_type(dtype, raise_error=False) is not None)
             for dtype in index_dtypes
         ), index_dtypes
@@ -601,7 +602,7 @@ class InternalFrame(object):
         ]
 
         assert all(
-            isinstance(dtype, Dtype.__args__)  # type: ignore
+            isinstance(dtype, DtypeDataTypes)
             and (dtype == np.dtype("object") or as_spark_type(dtype, raise_error=False) is not None)
             for dtype in data_dtypes
         ), data_dtypes
