@@ -25,6 +25,7 @@ import py4j
 
 import numpy as np
 import pandas as pd
+from pandas.api.extensions import ExtensionDtype
 from pandas.api.types import CategoricalDtype, is_datetime64_dtype, is_datetime64tz_dtype
 import pyspark
 from pyspark import sql as spark
@@ -76,6 +77,8 @@ HIDDEN_COLUMNS = {NATURAL_ORDER_COLUMN_NAME}
 
 DEFAULT_SERIES_NAME = 0
 SPARK_DEFAULT_SERIES_NAME = str(DEFAULT_SERIES_NAME)
+
+dtype_data_types = (np.dtype, ExtensionDtype)
 
 
 class InternalFrame(object):
@@ -540,7 +543,7 @@ class InternalFrame(object):
         ]
 
         assert all(
-            isinstance(dtype, Dtype.__args__)  # type: ignore
+            isinstance(dtype, dtype_data_types)  # type: ignore
             and (dtype == np.dtype("object") or as_spark_type(dtype, raise_error=False) is not None)
             for dtype in index_dtypes
         ), index_dtypes
@@ -601,7 +604,7 @@ class InternalFrame(object):
         ]
 
         assert all(
-            isinstance(dtype, Dtype.__args__)  # type: ignore
+            isinstance(dtype, dtype_data_types)  # type: ignore
             and (dtype == np.dtype("object") or as_spark_type(dtype, raise_error=False) is not None)
             for dtype in data_dtypes
         ), data_dtypes
