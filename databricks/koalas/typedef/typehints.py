@@ -77,9 +77,9 @@ Dtype = Union[np.dtype, ExtensionDtype]
 if hasattr(Dtype, "__union_params__"):
     # Python 3.5.0 to 3.5.2 has '__union_params__' instead.
     # See https://github.com/python/cpython/blob/v3.5.2/Lib/typing.py
-    dtype_data_types = getattr(Dtype, "__union_params__")
+    DtypeDataTypes = getattr(Dtype, "__union_params__")
 else:
-    dtype_data_types = getattr(Dtype, "__args__")
+    DtypeDataTypes = getattr(Dtype, "__args__")
 
 
 # A column of data, with the data type.
