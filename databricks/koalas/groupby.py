@@ -1105,7 +1105,11 @@ class GroupBy(object, metaclass=ABCMeta):
         1    52
         Name: B, dtype: int64
         """
-        from pandas.core.base import SelectionMixin
+        try:
+            from pandas.core.base import SelectionMixin
+            _builtin_table = SelectionMixin._builtin_table
+        except AttributeError:
+            from pandas.core.common import _builtin_table
 
         if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
@@ -1133,9 +1137,9 @@ class GroupBy(object, metaclass=ABCMeta):
 
         if is_series_groupby:
             name = kdf.columns[-1]
-            pandas_apply = SelectionMixin._builtin_table.get(func, func)
+            pandas_apply = _builtin_table.get(func, func)
         else:
-            f = SelectionMixin._builtin_table.get(func, func)
+            f = _builtin_table.get(func, func)
 
             def pandas_apply(pdf, *a, **k):
                 return f(pdf.drop(groupkey_names, axis=1), *a, **k)
@@ -1324,7 +1328,7 @@ class GroupBy(object, metaclass=ABCMeta):
                 return pd.DataFrame(pdf.groupby(groupkey_names)[pdf.columns[-1]].filter(func))
 
         else:
-            f = SelectionMixin._builtin_table.get(func, func)
+            f = _builtin_table.get(func, func)
 
             def wrapped_func(pdf):
                 return f(pdf.drop(groupkey_names, axis=1))
