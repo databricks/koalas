@@ -1105,10 +1105,10 @@ class GroupBy(object, metaclass=ABCMeta):
         1    52
         Name: B, dtype: int64
         """
-        try:
+        if LooseVersion(pd.__version__) >= LooseVersion("1.3.0"):
             from pandas.core.base import SelectionMixin
             _builtin_table = SelectionMixin._builtin_table
-        except AttributeError:
+        else:
             from pandas.core.common import _builtin_table
 
         if not isinstance(func, Callable):  # type: ignore
