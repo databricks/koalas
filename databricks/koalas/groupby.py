@@ -1296,7 +1296,11 @@ class GroupBy(object, metaclass=ABCMeta):
         5    6
         Name: B, dtype: int64
         """
-        from pandas.core.base import SelectionMixin
+        if LooseVersion(pd.__version__) >= LooseVersion("1.3.0"):
+            from pandas.core.base import SelectionMixin
+            _builtin_table = SelectionMixin._builtin_table
+        else:
+            from pandas.core.common import _builtin_table
 
         if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
