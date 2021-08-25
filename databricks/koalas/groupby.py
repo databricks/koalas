@@ -1107,6 +1107,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         if LooseVersion(pd.__version__) >= LooseVersion("1.3.0"):
             from pandas.core.base import SelectionMixin
+
             _builtin_table = SelectionMixin._builtin_table
         else:
             from pandas.core.common import _builtin_table
@@ -1298,6 +1299,7 @@ class GroupBy(object, metaclass=ABCMeta):
         """
         if LooseVersion(pd.__version__) >= LooseVersion("1.3.0"):
             from pandas.core.base import SelectionMixin
+
             _builtin_table = SelectionMixin._builtin_table
         else:
             from pandas.core.common import _builtin_table
