@@ -1110,7 +1110,9 @@ class GroupBy(object, metaclass=ABCMeta):
 
             _builtin_table = SelectionMixin._builtin_table
         else:
-            from pandas.core.common import _builtin_table
+            from pandas.core.common import _builtin_table as imported_builtin_table
+
+            _builtin_table = imported_builtin_table
 
         if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
@@ -1302,7 +1304,9 @@ class GroupBy(object, metaclass=ABCMeta):
 
             _builtin_table = SelectionMixin._builtin_table
         else:
-            from pandas.core.common import _builtin_table
+            from pandas.core.common import _builtin_table as imported_builtin_table
+
+            _builtin_table = imported_builtin_table
 
         if not isinstance(func, Callable):  # type: ignore
             raise TypeError("%s object is not callable" % type(func).__name__)
