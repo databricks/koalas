@@ -638,7 +638,7 @@ class KoalasPlotAccessor(PandasObject):
             ...                    'lifespan': lifespan}, index=index)
             >>> fig = (make_subplots(rows=2, cols=1)
             ...        .add_trace(df.plot.bar(y='speed').data[0], row=1, col=1)
-            ...        .add_trace(df.plot.bar(y='speed').data[0], row=1, col=1)
+            ...        .add_trace(df.plot.bar(y='lifespan').data[0], row=1, col=1)
             ...        .add_trace(df.plot.bar(y='lifespan').data[0], row=2, col=1))
             >>> fig  # doctest: +SKIP
 
