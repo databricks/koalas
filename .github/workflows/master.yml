@@ -28,10 +28,15 @@ jobs:
             numpy-version: 1.19.5
             default-index-type: 'distributed-sequence'
           - python-version: 3.9
-            spark-version: 3.1.1
+            spark-version: 3.1.2
             pandas-version: 1.2.5
             pyarrow-version: 3.0.0
             numpy-version: 1.20.3
+          - python-version: 3.9
+            spark-version: 3.2.0
+            pandas-version: 1.2.5
+            pyarrow-version: 4.0.1
+            numpy-version: 1.21.2
             default-index-type: 'distributed-sequence'
     env:
       PYTHON_VERSION: ${{ matrix.python-version }}

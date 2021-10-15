@@ -1073,7 +1073,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         >>> def plus_max(x) -> ks.Series[np.int]:
         ...     return x + x.max()
-        >>> df.B.groupby(df.A).apply(plus_max).sort_index()
+        >>> df.B.groupby(df.A).apply(plus_max).sort_index()  # doctest: +SKIP
         0    6
         1    3
         2    4
@@ -1091,7 +1091,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         >>> def plus_length(x) -> np.int:
         ...     return len(x)
-        >>> df.B.groupby(df.A).apply(plus_length).sort_index()
+        >>> df.B.groupby(df.A).apply(plus_length).sort_index()  # doctest: +SKIP
         0    1
         1    2
         Name: B, dtype: int64
@@ -1100,7 +1100,7 @@ class GroupBy(object, metaclass=ABCMeta):
 
         >>> def calculation(x, y, z) -> np.int:
         ...     return len(x) + y * z
-        >>> df.B.groupby(df.A).apply(calculation, 5, z=10).sort_index()
+        >>> df.B.groupby(df.A).apply(calculation, 5, z=10).sort_index()  # doctest: +SKIP
         0    51
         1    52
         Name: B, dtype: int64
@@ -1903,12 +1903,12 @@ class GroupBy(object, metaclass=ABCMeta):
         ...                    'b': [2, 3, 1, 4, 6, 9, 8, 10, 7, 5],
         ...                    'c': [3, 5, 2, 5, 1, 2, 6, 4, 3, 6]},
         ...                   columns=['a', 'b', 'c'],
-        ...                   index=[7, 2, 4, 1, 3, 4, 9, 10, 5, 6])
+        ...                   index=[7, 2, 3, 1, 3, 4, 9, 10, 5, 6])
         >>> df
             a   b  c
         7   1   2  3
         2   1   3  5
-        4   1   1  2
+        3   1   1  2
         1   1   4  5
         3   2   6  1
         4   2   9  2
@@ -1920,16 +1920,16 @@ class GroupBy(object, metaclass=ABCMeta):
         >>> df.groupby('a').tail(2).sort_index()
            a  b  c
         1  1  4  5
+        3  1  1  2
         4  2  9  2
-        4  1  1  2
         5  3  7  3
         6  3  5  6
         9  2  8  6
 
         >>> df.groupby('a')['b'].tail(2).sort_index()
         1    4
+        3    1
         4    9
-        4    1
         5    7
         6    5
         9    8
