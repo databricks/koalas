@@ -84,3 +84,52 @@ lot longer (in the order of days)
 2. Koalas takes a different approach that might contradict Spark's API design principles, and those
 principles cannot be changed lightly given the large user base of Spark. A new, separate project
 provides an opportunity for us to experiment with new design principles.
+
+What is the list of APIs that are not planned to support in Koalas?
+-------------------------------------------------------------------
+
+Koalas doesn't support several APIs that may cause memory issues mostly due to the size of the data.
+
+For example, implementing and using `DataFrame.values` in Koalas can cause all data belonging to the
+
+DataFrame to be loaded into the driver's memory, causing memory errors like OOM.
+
+The following is a list of APIs that Koalas doesn't plan to support.
+
+- DataFrame
+    - DataFrame.values
+    - DataFrame.to_pickle
+    - DataFrame.memory_usage
+    - DataFrame.to_xarray
+
+- Series
+    - Series.values
+    - Series.to_pickle
+    - Series.memory_usage
+    - Series.to_xarray
+    - Series.array
+    - Series.duplicated
+    - Series.real
+    - Series.nbytes
+    - Series.__iter__
+    - Series.ravel
+
+- Index
+    - Index.values
+    - Index.memory_usage
+    - Index.array
+    - Index.duplicated
+    - Index.__iter__
+    - Index.to_list
+    - Index.tolist
+
+- MultiIndex
+    - MultiIndex.values
+    - MultiIndex.memory_usage
+    - MultiIndex.array
+    - MultiIndex.duplicated
+    - MultiIndex.codes
+    - MultiIndex.levels
+    - MultiIndex.__iter__
+    - MultiIndex.to_list
+    - MultiIndex.tolist
