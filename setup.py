@@ -56,8 +56,8 @@ setup(
     },
     python_requires='>=3.5,<3.11',
     install_requires=[
-        'pandas>=0.23.2',
-        'pyarrow>=0.10',
+        'pandas>=0.23.2,<2.0.0',
+        'pyarrow>=0.10,<=12.0',
         'numpy>=1.14',
     ],
     author="Databricks",
