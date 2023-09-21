@@ -2866,6 +2866,42 @@ class SeriesTest(ReusedSQLTestCase, SQLTestUtils):
             kser.backfill(inplace=True)
             self.assert_eq(expected, kser)
 
+    def test_eq(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        self.assert_eq(pser.eq(pser), kser.eq(kser))
+        self.assert_eq(pser == pser, kser == kser)
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other))
+            self.assert_eq(pser == other, kser == other)
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other))
+            self.assert_eq((pser == other).rename("x"), kser == other)
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other))
+            self.assert_eq(pser == other, kser == other)
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other))
+            self.assert_eq((pser == other).rename("x"), kser == other)
+
+        # other = dict
+        other = {1: None, 2: None, 3: None, 4: None, np.nan: None, 6: None}
+        self.assert_eq(pser.eq(other), kser.eq(other))
+        self.assert_eq(pser == other, kser == other)
+
+        # other = set
+        other = {1, 2, 3, 4, np.nan, 6}
+        self.assert_eq(pser.eq(other), kser.eq(other))
+        self.assert_eq(pser == other, kser == other)
+
     def test_align(self):
         pdf = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]})
         kdf = ks.from_pandas(pdf)

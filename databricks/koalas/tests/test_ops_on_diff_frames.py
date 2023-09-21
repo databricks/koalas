@@ -1641,6 +1641,61 @@ class OpsOnDiffFramesEnabledTest(ReusedSQLTestCase, SQLTestUtils):
         else:
             self.assert_eq(kidx1 * 10 + kidx3, (pidx1 * 10 + pidx3).rename(None))
 
+    def test_series_eq(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        # other = Series
+        pandas_other = pd.Series([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
+        self.assert_eq(pser == pandas_other, (kser == koalas_other).sort_index())
+
+        # other = Series with different Index
+        pandas_other = pd.Series(
+            [np.nan, 1, 3, 4, np.nan, 6], index=[10, 20, 30, 40, 50, 60], name="x"
+        )
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
+
+        # other = Index
+        pandas_other = pd.Index([np.nan, 1, 3, 4, np.nan, 6], name="x")
+        koalas_other = ks.from_pandas(pandas_other)
+        self.assert_eq(pser.eq(pandas_other), kser.eq(koalas_other).sort_index())
+        self.assert_eq(pser == pandas_other, (kser == koalas_other).sort_index())
+
+        # other = list
+        other = [np.nan, 1, 3, 4, np.nan, 6]
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
+            self.assert_eq(pser == other, (kser == other).sort_index())
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other).sort_index())
+            self.assert_eq((pser == other).rename("x"), (kser == other).sort_index())
+
+        # other = tuple
+        other = (np.nan, 1, 3, 4, np.nan, 6)
+        if LooseVersion(pd.__version__) >= LooseVersion("1.2"):
+            self.assert_eq(pser.eq(other), kser.eq(other).sort_index())
+            self.assert_eq(pser == other, (kser == other).sort_index())
+        else:
+            self.assert_eq(pser.eq(other).rename("x"), kser.eq(other).sort_index())
+            self.assert_eq((pser == other).rename("x"), (kser == other).sort_index())
+
+        # other = list with the different length
+        other = [np.nan, 1, 3, 4, np.nan]
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
+            kser.eq(other)
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
+            kser == other
+
+        # other = tuple with the different length
+        other = (np.nan, 1, 3, 4, np.nan)
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
+            kser.eq(other)
+        with self.assertRaisesRegex(ValueError, "Lengths must be equal"):
+            kser == other
+
     def test_align(self):
         pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
         pdf2 = pd.DataFrame({"a": [4, 5, 6], "c": ["d", "e", "f"]}, index=[10, 11, 12])
@@ -1912,6 +1967,20 @@ class OpsOnDiffFramesDisabledTest(ReusedSQLTestCase, SQLTestUtils):
 
         with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
             kdf1.mask(kdf2 > -250)
+
+    def test_series_eq(self):
+        pser = pd.Series([1, 2, 3, 4, 5, 6], name="x")
+        kser = ks.from_pandas(pser)
+
+        others = (
+            ks.Series([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+            ks.Index([np.nan, 1, 3, 4, np.nan, 6], name="x"),
+        )
+        for other in others:
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser.eq(other)
+            with self.assertRaisesRegex(ValueError, "Cannot combine the series or dataframe"):
+                kser == other
 
     def test_align(self):
         pdf1 = pd.DataFrame({"a": [1, 2, 3], "b": ["a", "b", "c"]}, index=[10, 20, 30])
