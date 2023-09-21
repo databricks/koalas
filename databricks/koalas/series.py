@@ -2994,10 +2994,19 @@ class Series(Frame, IndexOpsMixin, Generic[T]):
         n: Optional[int] = None,
         frac: Optional[float] = None,
         replace: bool = False,
+        weights: Optional[Any] = None,
         random_state: Optional[int] = None,
+        axis: Optional[Any] = None,
     ) -> "Series":
         return first_series(
-            self.to_frame().sample(n=n, frac=frac, replace=replace, random_state=random_state)
+            self.to_frame().sample(
+                n=n,
+                frac=frac,
+                replace=replace,
+                weights=weights,
+                random_state=random_state,
+                axis=axis,
+            )
         ).rename(self.name)
 
     sample.__doc__ = DataFrame.sample.__doc__

@@ -2443,21 +2443,162 @@ class DataFrameTest(ReusedSQLTestCase, SQLTestUtils):
         self.assertRaisesRegex(TypeError, ks_err_msg, lambda: 0.1 * kdf["a"])
 
     def test_sample(self):
-        pdf = pd.DataFrame({"A": [0, 2, 4]})
+        pdf = pd.DataFrame({"col1": [5, 6, 7], "col2": ["a", "b", "c"]}, index=[9, 5, 3])
         kdf = ks.from_pandas(pdf)
 
-        # Make sure the tests run, but we can't check the result because they are non-deterministic.
-        kdf.sample(frac=0.1)
-        kdf.sample(frac=0.2, replace=True)
-        kdf.sample(frac=0.2, random_state=5)
-        kdf["A"].sample(frac=0.2)
-        kdf["A"].sample(frac=0.2, replace=True)
-        kdf["A"].sample(frac=0.2, random_state=5)
+        ###
+        # Check behavior of random_state argument
+        ###
+
+        # Check for stability when receives seed or random state -- run 10
+        # times.
+        for test in range(10):
+            seed = np.random.randint(0, 100)
+            self.assert_eq(kdf.sample(n=2, random_state=seed), kdf.sample(n=2, random_state=seed))
+            self.assert_eq(
+                kdf.sample(frac=0.7, random_state=seed), kdf.sample(frac=0.7, random_state=seed)
+            )
+            self.assert_eq(
+                kdf.sample(n=2, random_state=np.random.RandomState(test)),
+                kdf.sample(n=2, random_state=np.random.RandomState(test)),
+            )
+            self.assert_eq(
+                kdf.sample(frac=0.7, random_state=np.random.RandomState(test)),
+                kdf.sample(frac=0.7, random_state=np.random.RandomState(test)),
+            )
+
+        # Check for error when random_state argument invalid.
+        with self.assertRaises(ValueError):
+            kdf.sample(random_state="astring!")
+
+        ###
+        # Check behavior of `frac` and `N`
+        ###
+
+        # Giving both frac and N throws error
+        with self.assertRaises(ValueError):
+            kdf.sample(n=3, frac=0.3)
+
+        # Check that raises right error for negative lengths
+        with self.assertRaises(ValueError):
+            kdf.sample(n=-3)
+        with self.assertRaises(ValueError):
+            kdf.sample(frac=-0.3)
+
+        # Make sure float values of `n` give error
+        with self.assertRaises(ValueError):
+            kdf.sample(n=3.2)
+
+        # Check lengths are right
+        assert len(kdf.sample(n=2) == 2)
+        assert len(kdf.sample(frac=0.34) == 1)
+        assert len(kdf.sample(frac=0.48) == 2)
+
+        ###
+        # Check weights
+        ###
+
+        # Weight length must be right
+        with self.assertRaises(ValueError):
+            kdf.sample(n=3, weights=[0, 1])
 
         with self.assertRaises(ValueError):
-            kdf.sample()
+            bad_weights = [0.5] * 11
+            kdf.sample(n=3, weights=bad_weights)
+
+        # Weight do not support a Series or str
         with self.assertRaises(NotImplementedError):
-            kdf.sample(n=1)
+            weight_series = ks.Series([0, 0.2])
+            kdf.sample(n=4, weights=weight_series)
+
+        with self.assertRaises(NotImplementedError):
+            kdf.sample(n=4, weights="col1")
+
+        # Check won't accept negative weights
+        with self.assertRaises(ValueError):
+            bad_weights = [-0.1] * 3
+            kdf.sample(n=3, weights=bad_weights)
+
+        # Check inf and -inf throw errors:
+        with self.assertRaises(ValueError):
+            weights_with_inf = [0.1] * 3
+            weights_with_inf[0] = np.inf
+            kdf.sample(n=3, weights=weights_with_inf)
+
+        with self.assertRaises(ValueError):
+            weights_with_ninf = [0.1] * 3
+            weights_with_ninf[0] = -np.inf
+            kdf.sample(n=3, weights=weights_with_ninf)
+
+        # All zeros raises errors
+        zero_weights = [0] * 3
+        with self.assertRaises(ValueError):
+            kdf.sample(n=3, weights=zero_weights)
+
+        # All missing weights
+        nan_weights = [np.nan] * 3
+        with self.assertRaises(ValueError):
+            kdf.sample(n=3, weights=nan_weights)
+
+        # Check np.nan are replaced by zeros.
+        weights_with_nan = [np.nan] * 3
+        weights_with_nan[2] = 0.5
+        self.assert_eq(
+            kdf.sample(n=1, axis=0, weights=weights_with_nan),
+            pdf.sample(n=1, axis=0, weights=weights_with_nan),
+        )
+
+        # Check None are also replaced by zeros.
+        weights_with_None = [None] * 3
+        weights_with_None[2] = 0.5
+        self.assert_eq(
+            kdf.sample(n=1, axis=0, weights=weights_with_None),
+            pdf.sample(n=1, axis=0, weights=weights_with_None),
+        )
+
+        ###
+        # Test axis argument
+        ###
+
+        # Test axis argument
+        pdf = pd.DataFrame({"col1": range(10), "col2": ["a"] * 10})
+        kdf = ks.from_pandas(pdf)
+        second_column_weight = [0, 1]
+
+        weight = [0] * 10
+        weight[5] = 0.5
+        self.assert_eq(
+            kdf.sample(n=1, axis="rows", weights=weight),
+            pdf.sample(n=1, axis="rows", weights=weight),
+        )
+        self.assert_eq(
+            kdf.sample(n=1, axis="index", weights=weight),
+            pdf.sample(n=1, axis="index", weights=weight),
+        )
+
+        # Check out of range axis values
+        with self.assertRaises(ValueError):
+            kdf.sample(n=1, axis=2)
+
+        with self.assertRaises(ValueError):
+            kdf.sample(n=1, axis="not_a_name")
+
+        # Check for axis=1 raise NotImplementedError
+        with self.assertRaises(NotImplementedError):
+            kdf.sample(n=1, axis=1)
+
+        with self.assertRaises(NotImplementedError):
+            kdf.sample(n=1, axis="columns")
+
+        # Check for frac > 1 and replace
+        kdf = ks.DataFrame({"A": list("abc")})
+        msg = "Replace has to be set to `True` when " "upsampling the population `frac` > 1."
+        with self.assertRaisesRegex(ValueError, msg):
+            kdf.sample(frac=2, replace=False)
+
+        # Check for frac > 1 and replace
+        # Make sure the tests run, but we can't check the result because they are non-deterministic.
+        kdf.sample(frac=2, replace=True)
 
     def test_add_prefix(self):
         pdf = pd.DataFrame({"A": [1, 2, 3, 4], "B": [3, 4, 5, 6]}, index=np.random.rand(4))
